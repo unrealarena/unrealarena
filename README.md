@@ -15,7 +15,12 @@ scratch inspired by the original works.
 
 ### Linux
 
-*TODO*
+```bash
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make -j$(nproc)
+```
 
 ### OS X
 
