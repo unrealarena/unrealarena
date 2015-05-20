@@ -95,7 +95,7 @@ endif()
 # Directories
 ################################################################################
 
-# Dependencies version, this must match the number in build/build-external-deps.sh
+# Dependencies version
 set( DEPS_VERSION 3 )
 
 set( CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake )
@@ -114,23 +114,23 @@ endif()
 if( MSVC )
   set( DEPS_EXT ".zip" )
   if( ARCH STREQUAL "x86_64" )
-    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/build/msvc64-${DEPS_VERSION} )
+    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/msvc64-${DEPS_VERSION} )
   else()
-    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/build/msvc32-${DEPS_VERSION} )
+    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/msvc32-${DEPS_VERSION} )
   endif()
 elseif( WIN32 )
   set( DEPS_EXT ".zip" )
   if( ARCH STREQUAL "x86_64" )
-    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/build/mingw64-${DEPS_VERSION} )
+    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/mingw64-${DEPS_VERSION} )
   else()
-    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/build/mingw32-${DEPS_VERSION} )
+    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/mingw32-${DEPS_VERSION} )
   endif()
 elseif( APPLE )
   set( DEPS_EXT ".tar.bz2" )
   if( ARCH STREQUAL "x86_64" )
-    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/build/macosx64-${DEPS_VERSION} )
+    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/macosx64-${DEPS_VERSION} )
   else()
-    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/build/macosx32-${DEPS_VERSION} )
+    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/macosx32-${DEPS_VERSION} )
   endif()
 elseif( LINUX )
   set( DEPS_EXT ".tar.bz2" )
@@ -138,9 +138,9 @@ elseif( LINUX )
   if( EXISTS "/usr/lib/nacl/nacl_loader" )
     set( DEPS_DIR "/usr/lib/nacl" )
   elseif( ARCH STREQUAL "x86_64" )
-    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/build/linux64-${DEPS_VERSION} )
+    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/linux64-${DEPS_VERSION} )
   else()
-    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/build/linux32-${DEPS_VERSION} )
+    set( DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/linux32-${DEPS_VERSION} )
   endif()
 endif()
 set( PNACL_TOOLCHAIN ${DEPS_DIR}/pnacl/bin )
@@ -904,7 +904,7 @@ set( MINIZIPLIST
 )
 
 # This is only used for the NaCl modules. For all other targets, the host zlib
-# is used (sourced from build if not available on target platform).
+# is used (sourced from deps if not available on target platform).
 set( ZLIBLIST
   ${LIB_DIR}/zlib/adler32.c
   ${LIB_DIR}/zlib/compress.c
@@ -1099,8 +1099,9 @@ if( DEPS_DIR )
     message( STATUS "Download completed successfully" )
 
     # Extract the downloaded archive
+    execute_process( COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/deps )
     execute_process( COMMAND ${CMAKE_COMMAND} -E tar xzf ${OBJ_DIR}/${BASENAME}${DEPS_EXT}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build RESULT_VARIABLE EXTRACT_RESULT )
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps RESULT_VARIABLE EXTRACT_RESULT )
     if( NOT EXTRACT_RESULT EQUAL 0 )
       message( FATAL_ERROR "Could not extract ${BASENAME}${DEPS_EXT}" )
     endif()
@@ -1634,7 +1635,7 @@ if( BUILD_CLIENT OR BUILD_SERVER OR BUILD_TTY_CLIENT )
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DEPS_DIR}/irt_core-x86_64.nexe ${FULL_OUTPUT_DIR}/irt_core-x86_64.nexe )
   endif()
 
-  # Mac requires some libraries from build
+  # Mac requires some libraries from deps
   if( APPLE )
     add_custom_command( TARGET runtime_deps PRE_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${DEPS_DIR}/SDL2.framework ${FULL_OUTPUT_DIR}/SDL2.framework )
@@ -1645,7 +1646,7 @@ if( BUILD_CLIENT OR BUILD_SERVER OR BUILD_TTY_CLIENT )
     endforeach()
   endif()
 
-  # Windows requires some libraries from build
+  # Windows requires some libraries from deps
   if( WIN32 )
     file( GLOB RUNTIME_LIBS ${DEPS_DIR}/bin/*.dll )
     foreach( RUNTIME_LIB ${RUNTIME_LIBS} )
