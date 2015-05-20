@@ -13,6 +13,7 @@ scratch inspired by the original works.
 
 ## Build Instructions
 
+
 ### Linux
 
 ```bash
@@ -22,13 +23,35 @@ $ cmake ..
 $ make -j$(nproc)
 ```
 
+
 ### OS X
 
 *TODO*
 
+
 ### Windows
 
 *TODO*
+
+
+#### 32-bit cross-compiling from Linux
+
+```bash
+$ mkdir build-win32
+$ cd build-win32
+$ cmake -DBUILD_GAME_NACL=0 -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw32.cmake ..
+$ make -j$(nproc)
+```
+
+
+#### 64-bit cross-compiling from Linux
+
+```bash
+$ mkdir build-win64
+$ cd build-win64
+$ cmake -DBUILD_GAME_NACL=0 -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw64.cmake ..
+$ make -j$(nproc)
+```
 
 
 ## Run Instructions
