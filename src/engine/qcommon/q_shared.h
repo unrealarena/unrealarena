@@ -38,7 +38,7 @@
 #define PRODUCT_VERSION         "0.0"
 
 #define ENGINE_NAME             "Daemon Engine"
-#define ENGINE_VERSION          "0.38"
+#define ENGINE_VERSION          "0.39"
 
 #define RSQRT_PRECISE 1
 
