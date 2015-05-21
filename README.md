@@ -39,7 +39,7 @@ $ make -j$(nproc)
 ```bash
 $ mkdir build-win32
 $ cd build-win32
-$ cmake -DBUILD_GAME_NACL=0 -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw32.cmake ..
+$ cmake -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw32.cmake ..
 $ make -j$(nproc)
 ```
 
@@ -49,7 +49,7 @@ $ make -j$(nproc)
 ```bash
 $ mkdir build-win64
 $ cd build-win64
-$ cmake -DBUILD_GAME_NACL=0 -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw64.cmake ..
+$ cmake -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw64.cmake ..
 $ make -j$(nproc)
 ```
 

@@ -107,13 +107,13 @@ cvar_t *cl_IRC_reconnect_delay;
 /* Function that sets the thread status when the thread dies. Since that is
  * system-dependent, it can't be done in the thread's main code.
  */
-static void         IRC_SetThreadDead( void );
+static void         IRC_SetThreadDead();
 
 /* Status of the IRC thread */
 static int          IRC_ThreadStatus = IRC_THREAD_DEAD;
 
 /* Quit requested? */
-static qboolean     IRC_QuitRequested;
+static bool     IRC_QuitRequested;
 
 /* Socket handler */
 static irc_socket_t IRC_Socket; // Socket
@@ -142,8 +142,8 @@ static irc_socket_t IRC_Socket; // Socket
 #define IRC_PARSER_LF             15 // End of line
 
 static int      IRC_ParserState;
-static qboolean IRC_ParserInMessage;
-static qboolean IRC_ParserError;
+static bool IRC_ParserInMessage;
+static bool IRC_ParserError;
 
 /*
  * According to RFC 1459, maximal message size is 512 bytes, including trailing
@@ -207,13 +207,13 @@ static struct irc_message_t IRC_ReceivedMessage;
  * they are stored in hash tables.
  */
 
-typedef int ( *irc_handler_func_t )( void );
-typedef int ( *ctcp_handler_func_t )( qboolean is_channel, const char *message );
+typedef int ( *irc_handler_func_t )();
+typedef int ( *ctcp_handler_func_t )( bool is_channel, const char *message );
 
 typedef struct
 {
 	char cmd_string[ 33 ];
-	void ( *handler )( void );
+	void ( *handler )();
 }irc_handler_t;
 
 static std::unordered_map<std::string, irc_handler_func_t>  IRC_Handlers;
@@ -284,7 +284,7 @@ IRC_ResetHandlers
 Re-Initialises the handler tables
 ==================
 */
-static INLINE void IRC_ResetHandlers( void )
+static INLINE void IRC_ResetHandlers()
 {
 	IRC_Handlers.clear();
 	IRC_CTCPHandlers.clear();
@@ -322,7 +322,7 @@ Executes the command handler for the currently stored command. If there is
 no registered handler matching the command, ignore it.
 ==================
 */
-static int IRC_ExecuteHandler( void )
+static int IRC_ExecuteHandler()
 {
 	auto it = IRC_Handlers.find( IRC_String( cmd_string ) );
 
@@ -341,7 +341,7 @@ IRC_ExecuteCTCPHandler
 Executes a CTCP command handler.
 ==================
 */
-static int IRC_ExecuteCTCPHandler( const char *command, qboolean is_channel, const char *argument )
+static int IRC_ExecuteCTCPHandler( const char *command, bool is_channel, const char *argument )
 {
 	auto it = IRC_CTCPHandlers.find( IRC_String( cmd_string ) );
 
@@ -366,7 +366,7 @@ struct irc_delayed_t
 };
 
 /* Delayed execution queue head & tail */
-static struct irc_delayed_t *IRC_DEQueue = NULL;
+static struct irc_delayed_t *IRC_DEQueue = nullptr;
 
 /*
 ==================
@@ -409,7 +409,7 @@ static void IRC_SetTimeout( irc_handler_func_t function, int time )
 	}
 	else
 	{
-		qe->next = NULL;
+		qe->next = nullptr;
 		IRC_DEQueue = qe;
 	}
 }
@@ -421,19 +421,19 @@ IRC_DequeueDelayed
 This function dequeues an entry from the delayed execution queue.
 ==================
 */
-static qboolean IRC_DequeueDelayed( void )
+static bool IRC_DequeueDelayed()
 {
 	struct irc_delayed_t *found;
 
 	if ( !IRC_DEQueue )
 	{
-		return qfalse;
+		return false;
 	}
 
 	found = IRC_DEQueue;
 	IRC_DEQueue = found->next;
 	free( found );
-	return qtrue;
+	return true;
 }
 
 /*
@@ -443,7 +443,7 @@ IRC_ProcessDEQueue
 This function deletes all remaining entries from the delayed execution queue
 ==================
 */
-static void IRC_FlushDEQueue( void )
+static void IRC_FlushDEQueue()
 {
 	while ( IRC_DequeueDelayed() )
 	{
@@ -458,7 +458,7 @@ IRC_ProcessDEQueue
 This function processes the delayed execution queue.
 ==================
 */
-static int IRC_ProcessDEQueue( void )
+static int IRC_ProcessDEQueue()
 {
 	struct irc_delayed_t *iter;
 
@@ -498,7 +498,7 @@ static int IRC_ProcessDEQueue( void )
 #define P_SET_STATE(S)    IRC_ParserState = IRC_PARSER_##S
 #define P_INIT_MESSAGE(S) { \
     P_SET_STATE(S); \
-    IRC_ParserInMessage = qtrue; \
+    IRC_ParserInMessage = true; \
     memset( &IRC_ReceivedMessage, 0, sizeof( struct irc_message_t ) ); \
 }
 #if defined DEBUG_DUMP_IRC
@@ -507,12 +507,12 @@ static int IRC_ProcessDEQueue( void )
       Com_Printf( "IRC PARSER ERROR (state: %d , received: %d)\n", IRC_ParserState, next ); \
     } \
     P_SET_STATE(S); \
-    IRC_ParserError = qtrue; \
+    IRC_ParserError = true; \
 }
 #else // defined DEBUG_DUMP_IRC
 #define P_ERROR(S)        { \
     P_SET_STATE(S); \
-    IRC_ParserError = qtrue; \
+    IRC_ParserError = true; \
 }
 #endif // defined DEBUG_DUMP_IRC
 #define P_AUTO_ERROR  { \
@@ -554,9 +554,9 @@ Main parsing function that uses a FSM to parse one character at a time.
 Returns true when a full message is read and no error has occurred.
 ==================
 */
-static qboolean IRC_Parser( char next )
+static bool IRC_Parser( char next )
 {
-	qboolean has_msg = qfalse;
+	bool has_msg = false;
 
 	switch ( IRC_ParserState )
 	{
@@ -567,8 +567,8 @@ static qboolean IRC_Parser( char next )
 			 * it. Anything else is an error.
 			 */
 		case IRC_PARSER_START:
-			IRC_ParserError = qfalse;
-			IRC_ParserInMessage = qfalse;
+			IRC_ParserError = false;
+			IRC_ParserInMessage = false;
 
 			if ( next == ':' )
 			{
@@ -923,7 +923,7 @@ Debugging function that dumps the IRC message.
 ==================
 */
 #ifdef DEBUG_DUMP_IRC
-static void IRC_DumpMessage( void )
+static void IRC_DumpMessage()
 {
 	int i;
 
@@ -952,7 +952,7 @@ IRC_HandleError
 ==================
 */
 #ifdef WIN32
-static void IRC_HandleError( void )
+static void IRC_HandleError()
 {
 	switch ( WSAGetLastError() )
 	{
@@ -1060,7 +1060,7 @@ static void IRC_HandleError( void )
 }
 
 #elif defined __linux__ || defined MACOS_X || defined __FreeBSD__ || defined __OpenBSD__
-static void IRC_HandleError( void )
+static void IRC_HandleError()
 {
 	Com_Printf( "IRC: %s: %s\n", "socket connection error", strerror( errno ) );
 }
@@ -1139,7 +1139,7 @@ static int PRINTF_LIKE(1) IRC_Send( const char *format, ... )
 IRC_Wait
 ==================
 */
-static int IRC_Wait( void )
+static int IRC_Wait()
 {
 	struct timeval timeout;
 
@@ -1153,7 +1153,7 @@ static int IRC_Wait( void )
 		FD_SET( IRC_Socket, &read_set );
 		timeout.tv_sec = 0;
 		timeout.tv_usec = IRC_TIMEOUT_US;
-		rv = select( SELECT_ARG, &read_set, NULL, NULL, &timeout );
+		rv = select( SELECT_ARG, &read_set, nullptr, nullptr, &timeout );
 	}
 	while ( SELECT_CHECK );
 
@@ -1201,15 +1201,15 @@ Checks if some action can be effected using the rate limiter. If it can,
 the rate limiter's status will be updated.
 ==================
 */
-static INLINE qboolean IRC_CheckEventRate( int event_type )
+static INLINE bool IRC_CheckEventRate( int event_type )
 {
 	if ( IRC_RateLimiter[ event_type ] >= IRC_LIMIT_THRESHOLD * IRC_TIMEOUTS_PER_SEC )
 	{
-		return qfalse;
+		return false;
 	}
 
 	IRC_RateLimiter[ event_type ] += IRC_LIMIT_INCREASE * IRC_TIMEOUTS_PER_SEC;
-	return qtrue;
+	return true;
 }
 
 /*
@@ -1219,7 +1219,7 @@ IRC_UpdateRateLimiter
 Decrease all non-zero rate limiter entries.
 ==================
 */
-static INLINE void IRC_UpdateRateLimiter( void )
+static INLINE void IRC_UpdateRateLimiter()
 {
 	int i;
 
@@ -1239,7 +1239,7 @@ IRC_InitRateLimiter
 Initialise the rate limiter.
 ==================
 */
-static INLINE void IRC_InitRateLimiter( void )
+static INLINE void IRC_InitRateLimiter()
 {
 	int i;
 
@@ -1299,8 +1299,8 @@ static void IRC_Display( int event, const char *nick, const char *message )
 	char       nick_copy[ IRC_MAX_NICK_LEN * 2 ];
 	char       message_copy[ IRC_MAX_ARG_LEN * 2 ];
 	const char *fmt_string;
-	qboolean   has_nick;
-	qboolean   has_message;
+	bool   has_nick;
+	bool   has_message;
 
 	// If we're quitting, just skip this
 	if ( IRC_QuitRequested )
@@ -1312,7 +1312,7 @@ static void IRC_Display( int event, const char *nick, const char *message )
 	switch ( IRC_EventType( event ) )
 	{
 		case IRC_EVT_SAY:
-			has_nick = has_message = qtrue;
+			has_nick = has_message = true;
 
 			if ( IRC_EventIsSelf( event ) )
 			{
@@ -1330,7 +1330,7 @@ static void IRC_Display( int event, const char *nick, const char *message )
 			break;
 
 		case IRC_EVT_ACT:
-			has_nick = has_message = qtrue;
+			has_nick = has_message = true;
 
 			if ( IRC_EventIsSelf( event ) )
 			{
@@ -1348,7 +1348,7 @@ static void IRC_Display( int event, const char *nick, const char *message )
 			break;
 
 		case IRC_EVT_JOIN:
-			has_message = qfalse;
+			has_message = false;
 			has_nick = !IRC_EventIsSelf( event );
 
 			if ( has_nick )
@@ -1365,7 +1365,7 @@ static void IRC_Display( int event, const char *nick, const char *message )
 		case IRC_EVT_PART:
 			// The AlienArena IRC client never parts, so it's
 			// someone else.
-			has_nick = qtrue;
+			has_nick = true;
 			has_message = ( message[ 0 ] != 0 );
 
 			if ( has_message )
@@ -1397,14 +1397,14 @@ static void IRC_Display( int event, const char *nick, const char *message )
 			}
 			else
 			{
-				has_message = qtrue;
+				has_message = true;
 				fmt_string = "^2Quit IRC chat: %s.\n";
 			}
 
 			break;
 
 		case IRC_EVT_KICK:
-			has_nick = has_message = qtrue;
+			has_nick = has_message = true;
 
 			if ( IRC_EventIsSelf( event ) )
 			{
@@ -1418,7 +1418,7 @@ static void IRC_Display( int event, const char *nick, const char *message )
 			break;
 
 		case IRC_EVT_NICK_CHANGE:
-			has_nick = has_message = qtrue;
+			has_nick = has_message = true;
 
 			if ( IRC_EventIsSelf( event ) )
 			{
@@ -1432,7 +1432,7 @@ static void IRC_Display( int event, const char *nick, const char *message )
 			break;
 
 		default:
-			has_nick = has_message = qfalse;
+			has_nick = has_message = false;
 			fmt_string = "unknown message received\n";
 			break;
 	}
@@ -1480,7 +1480,7 @@ IRC_SendNickname
 Send the user's nickname.
 ==================
 */
-static int IRC_SendNickname( void )
+static int IRC_SendNickname()
 {
 	return IRC_Send( "NICK %s\n", IRC_User.nick );
 }
@@ -1492,7 +1492,7 @@ IRC_JoinChannel
 Join the channel
 ==================
 */
-static int IRC_JoinChannel( void )
+static int IRC_JoinChannel()
 {
 	return IRC_Send( "JOIN #%s\n", cl_IRC_channel->string );
 }
@@ -1504,7 +1504,7 @@ IRCH_Ping
 Handles a PING by replying with a PONG.
 ==================
 */
-static int IRCH_Ping( void )
+static int IRCH_Ping()
 {
 	if ( IRC_ReceivedMessage.arg_count == 1 )
 	{
@@ -1521,7 +1521,7 @@ IRCH_ServerError
 Handles server errors
 ==================
 */
-static int IRCH_ServerError( void )
+static int IRCH_ServerError()
 {
 	if ( IRC_ThreadStatus == IRC_THREAD_QUITTING )
 	{
@@ -1547,7 +1547,7 @@ IRCH_FatalError
 Some fatal error was received, the IRC thread must die.
 ==================
 */
-static int IRCH_FatalError( void )
+static int IRCH_FatalError()
 {
 	IRC_Display( IRC_MakeEvent( QUIT, 1 ), "", "fatal error" );
 	IRC_Send( "QUIT :Something went wrong\n" );
@@ -1564,7 +1564,7 @@ not have been received anyway.
 ==================
 */
 #define RANDOM_NUMBER_CHAR ( '0' + rand() % 10 )
-static int IRCH_NickError( void )
+static int IRCH_NickError()
 {
 	int i;
 
@@ -1605,7 +1605,7 @@ IRCH_Connected
 Connection established, we will be able to join a channel
 ==================
 */
-static int IRCH_Connected( void )
+static int IRCH_Connected()
 {
 	if ( IRC_ThreadStatus != IRC_THREAD_SETNICK )
 	{
@@ -1626,7 +1626,7 @@ IRCH_Joined
 Received JOIN
 ==================
 */
-static int IRCH_Joined( void )
+static int IRCH_Joined()
 {
 	int event;
 
@@ -1647,7 +1647,7 @@ static int IRCH_Joined( void )
 		event = IRC_MakeEvent( JOIN, 0 );
 	}
 
-	IRC_Display( event, IRC_String( pfx_nickOrServer ), NULL );
+	IRC_Display( event, IRC_String( pfx_nickOrServer ), nullptr );
 	return IRC_CMD_SUCCESS;
 }
 
@@ -1658,7 +1658,7 @@ IRCH_Part
 Received PART
 ==================
 */
-static int IRCH_Part( void )
+static int IRCH_Part()
 {
 	IRC_Display( IRC_MakeEvent( PART, 0 ), IRC_String( pfx_nickOrServer ), IRC_String( arg_values[ 1 ] ) );
 	return IRC_CMD_SUCCESS;
@@ -1671,7 +1671,7 @@ IRCH_Quit
 Received QUIT
 ==================
 */
-static int IRCH_Quit( void )
+static int IRCH_Quit()
 {
 	IRC_Display( IRC_MakeEvent( QUIT, 0 ), IRC_String( pfx_nickOrServer ), IRC_String( arg_values[ 0 ] ) );
 	return IRC_CMD_SUCCESS;
@@ -1684,7 +1684,7 @@ IRCH_Kick
 Received KICK
 ==================
 */
-static int IRCH_Kick( void )
+static int IRCH_Kick()
 {
 	if ( !strcmp( IRC_String( arg_values[ 1 ] ), IRC_User.nick ) )
 	{
@@ -1712,7 +1712,7 @@ it is still possible to receive a NICK applying to the connected user
 because of e.g. OperServ's SVSNICK command.
 ==================
 */
-static int IRCH_Nick( void )
+static int IRCH_Nick()
 {
 	int event;
 
@@ -1743,7 +1743,7 @@ IRC_HandleMessage
 Handles an actual message.
 ==================
 */
-static int IRC_HandleMessage( qboolean is_channel, const char *string )
+static int IRC_HandleMessage( bool is_channel, const char *string )
 {
 	if ( is_channel )
 	{
@@ -1767,13 +1767,13 @@ Splits a CTCP message into action and argument, then call
 its handler (if there is one).
 ==================
 */
-static int IRC_HandleCTCP( qboolean is_channel, char *string, int string_len )
+static int IRC_HandleCTCP( bool is_channel, char *string, int string_len )
 {
 	char *end_of_action;
 
 	end_of_action = strchr( string, ' ' );
 
-	if ( end_of_action == NULL )
+	if ( end_of_action == nullptr )
 	{
 		end_of_action = string + string_len - 1;
 		*end_of_action = 0;
@@ -1802,9 +1802,9 @@ This is either an actual message (to the channel or to the user) or a
 CTCP command (action, version, etc...)
 ==================
 */
-static int IRCH_PrivMsg( void )
+static int IRCH_PrivMsg()
 {
-	qboolean is_channel;
+	bool is_channel;
 
 	if ( IRC_ReceivedMessage.arg_count != 2 )
 	{
@@ -1836,7 +1836,7 @@ IRCH_Banned
 User is banned. Leave and do not come back.
 ==================
 */
-static int IRCH_Banned( void )
+static int IRCH_Banned()
 {
 	IRC_Display( IRC_MakeEvent( QUIT, 1 ), "", "banned from channel..\n" );
 	IRC_Send( "QUIT :b&!\n" );
@@ -1854,7 +1854,7 @@ CTCP_Action
 Action command aka "/me"
 ==================
 */
-static int CTCP_Action( qboolean is_channel, const char *argument )
+static int CTCP_Action( bool is_channel, const char *argument )
 {
 	if ( !*argument )
 	{
@@ -1882,7 +1882,7 @@ CTCP_Ping
 PING requests
 ==================
 */
-static int CTCP_Ping( qboolean is_channel, const char *argument )
+static int CTCP_Ping( bool is_channel, const char *argument )
 {
 	if ( is_channel || !IRC_CheckEventRate( IRC_RL_PING ) )
 	{
@@ -1904,7 +1904,7 @@ CTCP_Version
 VERSION requests, let's advertise AA a lil'.
 ==================
 */
-static int CTCP_Version( qboolean is_channel, const char *argument )
+static int CTCP_Version( bool is_channel, const char *argument )
 {
 	if ( is_channel || !IRC_CheckEventRate( IRC_RL_VERSION ) )
 	{
@@ -1929,8 +1929,8 @@ static int CTCP_Version( qboolean is_channel, const char *argument )
 
 struct irc_sendqueue_t
 {
-	qboolean has_content;
-	qboolean is_action;
+	bool has_content;
+	bool is_action;
 	char     string[ IRC_MAX_SEND_LEN ];
 };
 
@@ -1952,7 +1952,7 @@ IRC_InitSendQueue
 Initialise the send queue.
 ==================
 */
-static INLINE void IRC_InitSendQueue( void )
+static INLINE void IRC_InitSendQueue()
 {
 	memset( &IRC_SendQueue, 0, sizeof( IRC_SendQueue ) );
 }
@@ -1964,18 +1964,18 @@ IRC_AddSendItem
 Writes an entry to the send queue.
 ==================
 */
-static qboolean IRC_AddSendItem( qboolean is_action, const char *string )
+static bool IRC_AddSendItem( bool is_action, const char *string )
 {
 	if ( IRC_SendQueue[ IRC_SendQueue_Write ].has_content )
 	{
-		return qfalse;
+		return false;
 	}
 
 	Q_strncpyz( IRC_SendQueue[ IRC_SendQueue_Write ].string, string, sizeof( IRC_SendQueue[ IRC_SendQueue_Write ].string ) );
 	IRC_SendQueue[ IRC_SendQueue_Write ].is_action = is_action;
-	IRC_SendQueue[ IRC_SendQueue_Write ].has_content = qtrue;
+	IRC_SendQueue[ IRC_SendQueue_Write ].has_content = true;
 	IRC_SendQueue_Write = ( IRC_SendQueue_Write + 1 ) % IRC_SENDQUEUE_SIZE;
-	return qtrue;
+	return true;
 }
 
 /*
@@ -1985,14 +1985,14 @@ CL_IRCSay
 Sends an IRC message (console command).
 ==================
 */
-void CL_IRCSay( void )
+void CL_IRCSay()
 {
 	char     m_sendstring[ 480 ];
-	qboolean send_result;
+	bool send_result;
 
 	if ( Cmd_Argc() < 2 )
 	{
-		Cmd_PrintUsage("<text>", NULL);
+		Cmd_PrintUsage("<text>", nullptr);
 		return;
 	}
 
@@ -2011,11 +2011,11 @@ void CL_IRCSay( void )
 
 	if ( ( m_sendstring[ 0 ] == '/' || m_sendstring[ 0 ] == '.' ) && !Q_strnicmp( m_sendstring + 1, "me ", 3 ) && m_sendstring[ 4 ] != 0 )
 	{
-		send_result = IRC_AddSendItem( qtrue, m_sendstring + 4 );
+		send_result = IRC_AddSendItem( true, m_sendstring + 4 );
 	}
 	else
 	{
-		send_result = IRC_AddSendItem( qfalse, m_sendstring );
+		send_result = IRC_AddSendItem( false, m_sendstring );
 	}
 
 	if ( !send_result )
@@ -2031,13 +2031,13 @@ IRC_ProcessSendQueue
 Processes the next item on the send queue, if any.
 ==================
 */
-static qboolean IRC_ProcessSendQueue( void )
+static bool IRC_ProcessSendQueue()
 {
 	int        event, rv;
 
 	if ( !IRC_SendQueue[ IRC_SendQueue_Process ].has_content )
 	{
-		return qtrue;
+		return true;
 	}
 
 	if ( IRC_SendQueue[ IRC_SendQueue_Process ].is_action )
@@ -2057,7 +2057,7 @@ static qboolean IRC_ProcessSendQueue( void )
 		IRC_Display( event, IRC_User.nick, IRC_SendQueue[ IRC_SendQueue_Process ].string );
 	}
 
-	IRC_SendQueue[ IRC_SendQueue_Process ].has_content = qfalse;
+	IRC_SendQueue[ IRC_SendQueue_Process ].has_content = false;
 	IRC_SendQueue_Process = ( IRC_SendQueue_Process + 1 ) % IRC_SENDQUEUE_SIZE;
 	return ( rv == IRC_CMD_SUCCESS );
 }
@@ -2070,7 +2070,7 @@ Attempts to receive data from the server. If data is received, parse it
 and attempt to execute a handler for each complete message.
 ==================
 */
-static int IRC_ProcessData( void )
+static int IRC_ProcessData()
 {
 	char buffer[ IRC_RECV_BUF_SIZE ];
 	int  i, len, err_code;
@@ -2115,9 +2115,9 @@ IRC_InitialiseUser
 Prepares the user record which is used when issuing the USER command.
 ==================
 */
-static qboolean IRC_InitialiseUser( const char *name )
+static bool IRC_InitialiseUser( const char *name )
 {
-	qboolean   ovrnn;
+	bool   ovrnn;
 	const char *source;
 	int        i = 0, j = 0;
 	int        replaced = 0;
@@ -2185,7 +2185,7 @@ static qboolean IRC_InitialiseUser( const char *name )
 	// it is invalid
 	if ( ovrnn && strcmp( source, IRC_User.nick ) )
 	{
-		return qfalse;
+		return false;
 	}
 
 	// Set static address
@@ -2204,7 +2204,7 @@ Establishes the IRC connection, sets the nick, etc...
 #define CHECK_SHUTDOWN       { if ( IRC_QuitRequested ) { return IRC_CMD_FATAL; } }
 #define CHECK_SHUTDOWN_CLOSE { if ( IRC_QuitRequested ) { closesocket( IRC_Socket ); return IRC_CMD_FATAL; } }
 
-static int IRC_AttemptConnection( void )
+static int IRC_AttemptConnection()
 {
 	struct sockaddr_in address; // socket address
 
@@ -2237,7 +2237,7 @@ static int IRC_AttemptConnection( void )
 	// Find server address
 	Q_strncpyz( host_name, cl_IRC_server->string, sizeof( host_name ) );
 
-	if ( ( host = gethostbyname( host_name ) ) == NULL )
+	if ( ( host = gethostbyname( host_name ) ) == nullptr )
 	{
 		Com_Printf("…IRC: %s\n", "unknown server" );
 		return IRC_CMD_FATAL;
@@ -2307,7 +2307,7 @@ Only retry a few times and assume the server's dead/does not exist if
 connection can't be established.
 ==================
 */
-static qboolean IRC_InitialConnect( void )
+static bool IRC_InitialConnect()
 {
 	int err_code, retries = 3;
 	int rc_delay = cl_IRC_reconnect_delay->integer;
@@ -2330,7 +2330,7 @@ static qboolean IRC_InitialConnect( void )
 		}
 		else if ( IRC_QuitRequested )
 		{
-			return qfalse;
+			return false;
 		}
 
 		err_code = IRC_AttemptConnection();
@@ -2348,7 +2348,7 @@ Attempt to reconnect to the IRC server. Only stop trying on fatal errors
 or if the thread's status is set to QUITTING.
 ==================
 */
-static int IRC_Reconnect( void )
+static int IRC_Reconnect()
 {
 	int err_code;
 	int rc_delay = cl_IRC_reconnect_delay->integer;
@@ -2386,7 +2386,7 @@ Once the initial connection has been established, either
 connection is lost.
 ==================
 */
-static void IRC_MainLoop( void )
+static void IRC_MainLoop()
 {
 	int err_code;
 
@@ -2464,7 +2464,7 @@ start the main loop, and uninitialise handlers after the loop
 exits.
 ==================
 */
-static void IRC_Thread( void )
+static void IRC_Thread()
 {
 	// Init. send queue & rate limiter
 	IRC_InitSendQueue();
@@ -2511,7 +2511,7 @@ static void IRC_Thread( void )
 
 /****** THREAD HANDLING - WINDOWS VARIANT ******/
 
-static HANDLE IRC_ThreadHandle = NULL;
+static HANDLE IRC_ThreadHandle = nullptr;
 
 /*
 ==================
@@ -2529,11 +2529,11 @@ static DWORD WINAPI IRC_SystemThreadProc( LPVOID dummy )
 IRC_StartThread
 ==================
 */
-static void IRC_StartThread( void )
+static void IRC_StartThread()
 {
-	if ( IRC_ThreadHandle == NULL )
+	if ( IRC_ThreadHandle == nullptr )
 	{
-		IRC_ThreadHandle = CreateThread( NULL, 0, IRC_SystemThreadProc, NULL, 0, NULL );
+		IRC_ThreadHandle = CreateThread( nullptr, 0, IRC_SystemThreadProc, nullptr, 0, nullptr );
 	}
 }
 
@@ -2542,10 +2542,10 @@ static void IRC_StartThread( void )
 IRC_SetThreadDead
 ==================
 */
-static void IRC_SetThreadDead( void )
+static void IRC_SetThreadDead()
 {
 	IRC_ThreadStatus = IRC_THREAD_DEAD;
-	IRC_ThreadHandle = NULL;
+	IRC_ThreadHandle = nullptr;
 }
 
 /*
@@ -2553,9 +2553,9 @@ static void IRC_SetThreadDead( void )
 IRC_StartThread
 ==================
 */
-static void IRC_WaitThread( void )
+static void IRC_WaitThread()
 {
-	if ( IRC_ThreadHandle != NULL )
+	if ( IRC_ThreadHandle != nullptr )
 	{
 		if ( IRC_ThreadStatus != IRC_THREAD_DEAD )
 		{
@@ -2563,7 +2563,7 @@ static void IRC_WaitThread( void )
 			CloseHandle( IRC_ThreadHandle );
 		}
 
-		IRC_ThreadHandle = NULL;
+		IRC_ThreadHandle = nullptr;
 	}
 }
 
@@ -2571,7 +2571,7 @@ static void IRC_WaitThread( void )
 
 /****** THREAD HANDLING - UNIX VARIANT ******/
 
-static pthread_t IRC_ThreadHandle = ( pthread_t ) NULL;
+static pthread_t IRC_ThreadHandle = ( pthread_t ) nullptr;
 
 /*
 ==================
@@ -2581,7 +2581,7 @@ IRC_SystemThreadProc
 static void *IRC_SystemThreadProc( void *dummy )
 {
 	IRC_Thread();
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -2589,11 +2589,11 @@ static void *IRC_SystemThreadProc( void *dummy )
 IRC_StartThread
 ==================
 */
-static void IRC_StartThread( void )
+static void IRC_StartThread()
 {
-	if ( IRC_ThreadHandle == ( pthread_t ) NULL )
+	if ( IRC_ThreadHandle == ( pthread_t ) nullptr )
 	{
-		pthread_create( &IRC_ThreadHandle, NULL, IRC_SystemThreadProc, NULL );
+		pthread_create( &IRC_ThreadHandle, nullptr, IRC_SystemThreadProc, nullptr );
 	}
 }
 
@@ -2602,10 +2602,10 @@ static void IRC_StartThread( void )
 IRC_SetThreadDead
 ==================
 */
-static void IRC_SetThreadDead( void )
+static void IRC_SetThreadDead()
 {
 	IRC_ThreadStatus = IRC_THREAD_DEAD;
-	IRC_ThreadHandle = ( pthread_t ) NULL;
+	IRC_ThreadHandle = ( pthread_t ) nullptr;
 }
 
 /*
@@ -2613,16 +2613,16 @@ static void IRC_SetThreadDead( void )
 IRC_WaitThread
 ==================
 */
-static void IRC_WaitThread( void )
+static void IRC_WaitThread()
 {
-	if ( IRC_ThreadHandle != ( pthread_t ) NULL )
+	if ( IRC_ThreadHandle != ( pthread_t ) nullptr )
 	{
 		if ( IRC_ThreadStatus != IRC_THREAD_DEAD )
 		{
-			pthread_join( IRC_ThreadHandle, NULL );
+			pthread_join( IRC_ThreadHandle, nullptr );
 		}
 
-		IRC_ThreadHandle = ( pthread_t ) NULL;
+		IRC_ThreadHandle = ( pthread_t ) nullptr;
 	}
 }
 
@@ -2633,7 +2633,7 @@ static void IRC_WaitThread( void )
 CL_IRCSetup
 ==================
 */
-void CL_IRCSetup( void )
+void CL_IRCSetup()
 {
 	cl_IRC_connect_at_startup = Cvar_Get( "cl_IRC_connect_at_startup", "0", 0 );
 	cl_IRC_server = Cvar_Get( "cl_IRC_server", "irc.freenode.org", 0 );
@@ -2654,7 +2654,7 @@ void CL_IRCSetup( void )
 CL_InitIRC
 ==================
 */
-void CL_InitIRC( void )
+void CL_InitIRC()
 {
 	if ( IRC_ThreadStatus != IRC_THREAD_DEAD )
 	{
@@ -2662,7 +2662,7 @@ void CL_InitIRC( void )
 		return;
 	}
 
-	IRC_QuitRequested = qfalse;
+	IRC_QuitRequested = false;
 	IRC_ThreadStatus = IRC_THREAD_INITIALISING;
 	IRC_StartThread();
 }
@@ -2672,9 +2672,9 @@ void CL_InitIRC( void )
 CL_IRCInitiateShutdown
 ==================
 */
-void CL_IRCInitiateShutdown( void )
+void CL_IRCInitiateShutdown()
 {
-	IRC_QuitRequested = qtrue;
+	IRC_QuitRequested = true;
 }
 
 /*
@@ -2682,7 +2682,7 @@ void CL_IRCInitiateShutdown( void )
 CL_IRCWaitShutdown
 ==================
 */
-void CL_IRCWaitShutdown( void )
+void CL_IRCWaitShutdown()
 {
 	IRC_WaitThread();
 }
@@ -2692,7 +2692,7 @@ void CL_IRCWaitShutdown( void )
 CL_IRCIsConnected
 ==================
 */
-qboolean CL_IRCIsConnected( void )
+bool CL_IRCIsConnected()
 {
 	// get IRC status
 	return ( IRC_ThreadStatus == IRC_THREAD_JOINED );
@@ -2703,7 +2703,7 @@ qboolean CL_IRCIsConnected( void )
 CL_IRCIsRunning
 ==================
 */
-qboolean CL_IRCIsRunning( void )
+bool CL_IRCIsRunning()
 {
 	// return IRC status
 	return ( IRC_ThreadStatus != IRC_THREAD_DEAD );
