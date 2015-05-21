@@ -138,7 +138,7 @@ SV_SendServerCommand
 
 Sends a reliable command string to be interpreted by
 the client game module: "cp", "print", "chat", etc
-A NULL client will broadcast to all clients
+A nullptr client will broadcast to all clients
 =================
 */
 void QDECL PRINTF_LIKE(2) SV_SendServerCommand( client_t *cl, const char *fmt, ... )
@@ -159,7 +159,7 @@ void QDECL PRINTF_LIKE(2) SV_SendServerCommand( client_t *cl, const char *fmt, .
 		return;
 	}
 
-	if ( cl != NULL )
+	if ( cl != nullptr )
 	{
 		SV_AddServerCommand( cl, ( char * ) message );
 		return;
@@ -169,11 +169,11 @@ void QDECL PRINTF_LIKE(2) SV_SendServerCommand( client_t *cl, const char *fmt, .
 	{
 		if ( !strncmp( ( char * ) message, "print_tr_p ", 11 ) )
 		{
-			SV_PrintTranslatedText( ( const char * ) message, qtrue, qtrue );
+			SV_PrintTranslatedText( ( const char * ) message, true, true );
 		}
 		else if ( !strncmp( ( char * ) message, "print_tr ", 9 ) )
 		{
-			SV_PrintTranslatedText( ( const char * ) message, qtrue, qfalse );
+			SV_PrintTranslatedText( ( const char * ) message, true, false );
 		}
 
 		// hack to echo broadcast prints to console
@@ -218,7 +218,7 @@ static struct {
 	char         text[ MAX_CHALLENGE_LEN + 1 ];
 } challenges[ MAX_MASTER_SERVERS ];
 
-static void SV_ResolveMasterServers( void )
+static void SV_ResolveMasterServers()
 {
 	int i, netenabled, res;
 
@@ -238,7 +238,7 @@ static void SV_ResolveMasterServers( void )
 		// do it when needed
 		if ( sv_master[ i ]->modified || ( masterServerAddr[ i ].ipv4.type == NA_BAD && masterServerAddr[ i ].ipv6.type == NA_BAD ) )
 		{
-			sv_master[ i ]->modified = qfalse;
+			sv_master[ i ]->modified = false;
 
 			if ( netenabled & NET_ENABLEV4 )
 			{
@@ -288,7 +288,7 @@ static void SV_ResolveMasterServers( void )
 				// so we don't take repeated dns hits
 				Com_Printf( "Couldn't resolve address: %s\n", sv_master[ i ]->string );
 				Cvar_Set( sv_master[ i ]->name, "" );
-				sv_master[ i ]->modified = qfalse;
+				sv_master[ i ]->modified = false;
 				continue;
 			}
 		}
@@ -381,7 +381,7 @@ SV_MasterShutdown
 Informs all masters that this server is going down
 =================
 */
-void SV_MasterShutdown( void )
+void SV_MasterShutdown()
 {
 	// send a heartbeat right now
 	svs.nextHeartbeatTime = -9999;
@@ -440,22 +440,22 @@ CONNECTIONLESS COMMANDS
 */
 
 //bani - bugtraq 12534
-//returns qtrue if valid challenge
-//returns qfalse if m4d h4x0rz
-qboolean SV_VerifyChallenge( const char *challenge )
+//returns true if valid challenge
+//returns false if m4d h4x0rz
+bool SV_VerifyChallenge( const char *challenge )
 {
 	int i, j;
 
 	if ( !challenge )
 	{
-		return qfalse;
+		return false;
 	}
 
 	j = strlen( challenge );
 
 	if ( j > 64 )
 	{
-		return qfalse;
+		return false;
 	}
 
 	for ( i = 0; i < j; i++ )
@@ -464,11 +464,11 @@ qboolean SV_VerifyChallenge( const char *challenge )
 		     challenge[ i ] > 126 // non-ascii
 		   )
 		{
-			return qfalse;
+			return false;
 		}
 	}
 
-	return qtrue;
+	return true;
 }
 
 /*
@@ -497,13 +497,13 @@ void SVC_Status( netadr_t from, const Cmd::Args& args )
 		return;
 	}
 
-	Q_strncpyz( infostring, Cvar_InfoString( CVAR_SERVERINFO, qfalse ), MAX_INFO_STRING );
+	Q_strncpyz( infostring, Cvar_InfoString( CVAR_SERVERINFO, false ), MAX_INFO_STRING );
 
 	if ( args.Argc() > 1 )
 	{
 		// echo back the parameter to status. so master servers can use it as a challenge
 		// to prevent timed spoofed reply packets that add ghost servers
-		Info_SetValueForKey( infostring, "challenge", args.Argv(1).c_str(), qfalse );
+		Info_SetValueForKey( infostring, "challenge", args.Argv(1).c_str(), false );
 	}
 
 	status[ 0 ] = 0;
@@ -592,7 +592,7 @@ void SVC_Info( netadr_t from, const Cmd::Args& args )
 
 	// echo back the parameter to status. so servers can use it as a challenge
 	// to prevent timed spoofed reply packets that add ghost servers
-	Info_SetValueForKey( infostring, "challenge", challenge, qfalse );
+	Info_SetValueForKey( infostring, "challenge", challenge, false );
 
 	// If the master server listens on IPv4 and IPv6, we want to send the
 	// most recent challenge received from it over the OTHER protocol
@@ -609,7 +609,7 @@ void SVC_Info( netadr_t from, const Cmd::Args& args )
 		{
 			if ( challenges[ i ].type != from.type )
 			{
-				Info_SetValueForKey( infostring, "challenge2", challenges[ i ].text, qfalse );
+				Info_SetValueForKey( infostring, "challenge2", challenges[ i ].text, false );
 				challenges[ i ].type = from.type;
 				strcpy( challenges[ i ].text, challenge );
 				break;
@@ -621,40 +621,40 @@ void SVC_Info( netadr_t from, const Cmd::Args& args )
 		strcpy( challenges[ i ].text, challenge );
 	}
 
-	Info_SetValueForKey( infostring, "protocol", va( "%i", PROTOCOL_VERSION ), qfalse );
-	Info_SetValueForKey( infostring, "hostname", sv_hostname->string, qfalse );
-	Info_SetValueForKey( infostring, "serverload", va( "%i", svs.serverLoad ), qfalse );
-	Info_SetValueForKey( infostring, "mapname", sv_mapname->string, qfalse );
-	Info_SetValueForKey( infostring, "clients", va( "%i", count ), qfalse );
-	Info_SetValueForKey( infostring, "bots", va( "%i", botCount ), qfalse );
-	Info_SetValueForKey( infostring, "sv_maxclients", va( "%i", sv_maxclients->integer - sv_privateClients->integer ), qfalse );
-	Info_SetValueForKey( infostring, "pure", va( "%i", sv_pure->integer ), qfalse );
+	Info_SetValueForKey( infostring, "protocol", va( "%i", PROTOCOL_VERSION ), false );
+	Info_SetValueForKey( infostring, "hostname", sv_hostname->string, false );
+	Info_SetValueForKey( infostring, "serverload", va( "%i", svs.serverLoad ), false );
+	Info_SetValueForKey( infostring, "mapname", sv_mapname->string, false );
+	Info_SetValueForKey( infostring, "clients", va( "%i", count ), false );
+	Info_SetValueForKey( infostring, "bots", va( "%i", botCount ), false );
+	Info_SetValueForKey( infostring, "sv_maxclients", va( "%i", sv_maxclients->integer - sv_privateClients->integer ), false );
+	Info_SetValueForKey( infostring, "pure", va( "%i", sv_pure->integer ), false );
 
 	if ( sv_statsURL->string[0] )
 	{
-		Info_SetValueForKey( infostring, "stats", sv_statsURL->string, qfalse );
+		Info_SetValueForKey( infostring, "stats", sv_statsURL->string, false );
 	}
 
 #ifdef USE_VOIP
 
 	if ( sv_voip->integer )
 	{
-		Info_SetValueForKey( infostring, "voip", va( "%i", sv_voip->integer ), qfalse );
+		Info_SetValueForKey( infostring, "voip", va( "%i", sv_voip->integer ), false );
 	}
 
 #endif
 
 	if ( sv_minPing->integer )
 	{
-		Info_SetValueForKey( infostring, "minPing", va( "%i", sv_minPing->integer ), qfalse );
+		Info_SetValueForKey( infostring, "minPing", va( "%i", sv_minPing->integer ), false );
 	}
 
 	if ( sv_maxPing->integer )
 	{
-		Info_SetValueForKey( infostring, "maxPing", va( "%i", sv_maxPing->integer ), qfalse );
+		Info_SetValueForKey( infostring, "maxPing", va( "%i", sv_maxPing->integer ), false );
 	}
 
-	Info_SetValueForKey( infostring, "gamename", GAMENAME_STRING, qfalse );  // Arnout: to be able to filter out Quake servers
+	Info_SetValueForKey( infostring, "gamename", GAMENAME_STRING, false );  // Arnout: to be able to filter out Quake servers
 
 	NET_OutOfBandPrint( NS_SERVER, from, "infoResponse\n%s", infostring );
 }
@@ -666,11 +666,11 @@ SV_CheckDRDoS
 DRDoS stands for "Distributed Reflected Denial of Service".
 See here: http://www.lemuria.org/security/application-drdos.html
 
-Returns qfalse if we're good.  qtrue return value means we need to block.
+Returns false if we're good.  true return value means we need to block.
 If the address isn't NA_IP, it's automatically denied.
 =================
 */
-qboolean SV_CheckDRDoS( netadr_t from )
+bool SV_CheckDRDoS( netadr_t from )
 {
 	int        i;
 	int        globalCount;
@@ -686,7 +686,7 @@ qboolean SV_CheckDRDoS( netadr_t from )
 	// with a source address being a spoofed LAN address.  Even if that's not
 	// the case, sending packets to other hosts in the LAN is not a big deal.
 	// NA_LOOPBACK qualifies as a LAN address.
-	if ( Sys_IsLANAddress( from ) ) { return qfalse; }
+	if ( Sys_IsLANAddress( from ) ) { return false; }
 
 	exactFrom = from;
 
@@ -703,7 +703,7 @@ qboolean SV_CheckDRDoS( netadr_t from )
 		// So we got a connectionless packet but it's not IPv4, so
 		// what is it?  I don't care, it doesn't matter, we'll just block it.
 		// This probably won't even happen.
-		return qtrue;
+		return true;
 	}
 
 	// Count receipts in last 2 seconds.
@@ -749,7 +749,7 @@ qboolean SV_CheckDRDoS( netadr_t from )
 			lastGlobalLogTime = svs.time;
 		}
 
-		return qtrue;
+		return true;
 	}
 
 	if ( specificCount >= 3 ) // Already sent 3 to this IP address in last 2 seconds.
@@ -761,13 +761,13 @@ qboolean SV_CheckDRDoS( netadr_t from )
 			lastSpecificLogTime = svs.time;
 		}
 
-		return qtrue;
+		return true;
 	}
 
 	receipt = &svs.infoReceipts[ oldest ];
 	receipt->adr = from;
 	receipt->time = svs.time;
-	return qfalse;
+	return false;
 }
 
 /*
@@ -806,7 +806,7 @@ class RconEnvironment: public Cmd::DefaultEnvironment {
 
 void SVC_RemoteCommand( netadr_t from, const Cmd::Args& args )
 {
-	qboolean     valid;
+	bool     valid;
 	unsigned int time;
 
 	// show_bug.cgi?id=376
@@ -828,12 +828,12 @@ void SVC_RemoteCommand( netadr_t from, const Cmd::Args& args )
 
 	if ( !strlen( sv_rconPassword->string ) || args.Argv(1) != sv_rconPassword->string )
 	{
-		valid = qfalse;
+		valid = false;
 		Com_Printf( "Bad rcon from %s:\n%s\n", NET_AdrToString( from ), args.ConcatArgs(2).c_str() );
 	}
 	else
 	{
-		valid = qtrue;
+		valid = true;
 		Com_Printf( "Rcon from %s:\n%s\n", NET_AdrToString( from ), args.ConcatArgs(2).c_str() );
 	}
 
@@ -1011,7 +1011,7 @@ SV_CalcPings
 Updates the cl->ping variables
 ===================
 */
-void SV_CalcPings( void )
+void SV_CalcPings()
 {
 	int           i, j;
 	client_t      *cl;
@@ -1089,7 +1089,7 @@ for a few seconds to make sure any final reliable message gets resent
 if necessary
 ==================
 */
-void SV_CheckTimeouts( void )
+void SV_CheckTimeouts()
 {
 	int      i;
 	client_t *cl;
@@ -1138,7 +1138,7 @@ void SV_CheckTimeouts( void )
 SV_CheckPaused
 ==================
 */
-qboolean SV_CheckPaused( void )
+bool SV_CheckPaused()
 {
 	int      count;
 	client_t *cl;
@@ -1146,7 +1146,7 @@ qboolean SV_CheckPaused( void )
 
 	if ( !cl_paused->integer )
 	{
-		return qfalse;
+		return false;
 	}
 
 	// only pause if there is just a single client connected
@@ -1168,7 +1168,7 @@ qboolean SV_CheckPaused( void )
 			Cvar_Set( "sv_paused", "0" );
 		}
 
-		return qfalse;
+		return false;
 	}
 
 	if ( !sv_paused->integer )
@@ -1176,7 +1176,7 @@ qboolean SV_CheckPaused( void )
 		Cvar_Set( "sv_paused", "1" );
 	}
 
-	return qtrue;
+	return true;
 }
 
 /*
@@ -1185,7 +1185,7 @@ SV_FrameMsec
 Return time in millseconds until processing of the next server frame.
 ==================
 */
-int SV_FrameMsec( void )
+int SV_FrameMsec()
 {
 	if( sv_fps )
 	{
@@ -1304,13 +1304,13 @@ void SV_Frame( int msec )
 	// update infostrings if anything has been changed
 	if ( cvar_modifiedFlags & CVAR_SERVERINFO )
 	{
-		SV_SetConfigstring( CS_SERVERINFO, Cvar_InfoString( CVAR_SERVERINFO, qfalse ) );
+		SV_SetConfigstring( CS_SERVERINFO, Cvar_InfoString( CVAR_SERVERINFO, false ) );
 		cvar_modifiedFlags &= ~CVAR_SERVERINFO;
 	}
 
 	if ( cvar_modifiedFlags & CVAR_SYSTEMINFO )
 	{
-		SV_SetConfigstring( CS_SYSTEMINFO, Cvar_InfoString( CVAR_SYSTEMINFO, qtrue ) );
+		SV_SetConfigstring( CS_SYSTEMINFO, Cvar_InfoString( CVAR_SYSTEMINFO, true ) );
 		cvar_modifiedFlags &= ~CVAR_SYSTEMINFO;
 	}
 
@@ -1437,7 +1437,7 @@ int SV_LoadTag( const char *mod_name )
 
 	if ( !buffer )
 	{
-		return qfalse;
+		return false;
 	}
 
 	pinmodel = ( tagHeader_t * ) buffer;
@@ -1504,7 +1504,7 @@ int SV_LoadTag( const char *mod_name )
 #define PLURAL_TRANSLATE_FUNC Trans_GettextGamePlural
 #include "qcommon/print_translated.h"
 
-void SV_PrintTranslatedText( const char *text, qboolean broadcast, qboolean plural )
+void SV_PrintTranslatedText( const char *text, bool broadcast, bool plural )
 {
 	Cmd_SaveCmdContext();
 	Cmd_TokenizeString( text );
