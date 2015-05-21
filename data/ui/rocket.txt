@@ -1,12 +1,12 @@
 {
 	fonts
 	{
+		fonts/DejaVuSansCondensed.ttf
 		fonts/Roboto-Bold.ttf
 		fonts/Roboto-BoldItalic.ttf
 		fonts/Roboto-Italic.ttf
 		fonts/Roboto-Regular.ttf
 		fonts/fontawesome-webfont.ttf
-		fonts/DejaVuSansCondensed.ttf
 	}
 	main
 	{
