@@ -1,14 +1,21 @@
 # Unreal Arena
 
 Unreal Arena is a fast-paced first-person shooter that aims to merge the
-universes of Unreal Tournament and Quake III Arena. The idea behind it is very
-simple: the player can choose from either side, determining in this way which
-weapons/items/movements are available, and fight against other players of the
-opposite faction with their own traits.
+universes of Unreal Tournament** and Quake III Arena**. The idea behind it is
+very simple: the player can choose from either side, determining in this way
+which weapons/items/movements are available, and fight against other players of
+the opposite faction with their own traits.
 
 The game is a community developed open-source project powered by the
 [Daemon](http://unvanquished.net) engine and has all content recreated from
 scratch inspired by the original works.
+
+** *Unreal Tournament™ is a trademark or registered trademark of Epic Games,
+Inc. in the United States of America and elsewhere. Quake III Arena™ is a
+trademark or registered trademark of id Software LLC in the United States and/or
+other countries. The authors of Unreal Arena are not affiliated with, endorsed
+by, nor connected in any way to Epic Games, Inc., id Software LLC or any of
+theirs subsidiaries.*
 
 
 ## Build Instructions
