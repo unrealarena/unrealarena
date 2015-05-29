@@ -4008,7 +4008,7 @@ void CL_Init()
 	// ~ and `, as keys and characters
 	cl_consoleKeys = Cvar_Get( "cl_consoleKeys", _("~ ` 0x7e 0x60"), 0 );
 
-	cl_consoleFont = Cvar_Get( "cl_consoleFont", "fonts/unifont.ttf",  CVAR_LATCH );
+	cl_consoleFont = Cvar_Get( "cl_consoleFont", "fonts/Play-Regular.ttf",  CVAR_LATCH );
 	cl_consoleFontSize = Cvar_Get( "cl_consoleFontSize", "16",  CVAR_LATCH );
 	cl_consoleFontKerning = Cvar_Get( "cl_consoleFontKerning", "0", 0 );
 
