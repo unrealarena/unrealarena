@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/unrealarena/unrealarena.svg?branch=master)](https://travis-ci.org/unrealarena/unrealarena)
+[![Build Status](https://travis-ci.org/unrealarena/unrealarena.svg?branch=master)](https://travis-ci.org/unrealarena/unrealarena) [![Build status](https://ci.appveyor.com/api/projects/status/a1dwc3xr7jottyls/branch/master?svg=true&pendingText=pending&failingText=failing&passingText=passing)](https://ci.appveyor.com/project/unrealarena/unrealarena)
 
 # Unreal Arena
 
