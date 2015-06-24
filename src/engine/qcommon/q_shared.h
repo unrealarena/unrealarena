@@ -35,7 +35,7 @@
 #define PRODUCT_NAME            "Unreal Arena"
 #define PRODUCT_NAME_UPPER      "UNREALARENA" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unrealarena" // No case, No spaces
-#define PRODUCT_VERSION         "0.0"
+#define PRODUCT_VERSION         "0.1"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          "0.39"
