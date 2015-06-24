@@ -1,0 +1,90 @@
+#---------------------------------#
+#      General Configuration      #
+#---------------------------------#
+
+# Build version format
+version: "#{build}"
+
+# Git clone depth
+clone_depth: 50
+
+
+#---------------------------------#
+#    Environment Configuration    #
+#---------------------------------#
+
+# Operating system
+# os: Windows Server 2012 R2
+
+# Scripts called before repo cloning
+# init:
+#   - git config --global core.autocrlf input
+
+# Build matrix configuration
+environment:
+  matrix:
+    - PLATFORM: x86
+      OS: win32
+      TARGET: x86
+    - PLATFORM: x64
+      OS: win64
+      TARGET: x86_amd64
+
+# Environment configuration
+install:
+  - call "%VS120COMNTOOLS%\..\..\VC\vcvarsall.bat" %TARGET%
+
+
+#---------------------------------#
+#       Build Configuration       #
+#---------------------------------#
+
+# Scripts called before build
+before_build:
+  - if defined APPVEYOR_REPO_TAG_NAME
+      (set ARTIFACT=unrealarena-%OS%.pre.zip)
+    else
+      (set ARTIFACT=artifacts.zip)
+
+# Build configuration
+build_script:
+  - md build
+  - cd build
+  - cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SERVER=0 -DBUILD_GAME_NATIVE_EXE=0 -DBUILD_GAME_NATIVE_DLL=0 -DBUILD_GAME_NACL=0 -DBUILD_TTY_CLIENT=0 ..
+  - cmake --build .
+
+# Scripts called after build
+after_build:
+  - copy "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\%PLATFORM%\Microsoft.VC120.CRT\msvc*120.dll"
+  - 7z a %APPVEYOR_BUILD_FOLDER%\%ARTIFACT% daemon.exe glew32.dll irt_core*.nexe libcurl-4.dll libfreetype-6.dll libGeoIP-1.dll libgmp-10.dll libhogweed-3-0.dll libjpeg-8.dll libnettle-5-0.dll libogg-0.dll libopus-0.dll libopusfile-0.dll libpng16-16.dll libtheora-0.dll libvorbis-0.dll libvorbisfile-3.dll libwebp-5.dll msvcp120.dll msvcr120.dll nacl_loader*.exe OpenAL32.dll SDL2.dll zlib1.dll
+
+
+#---------------------------------#
+#       Tests Configuration       #
+#---------------------------------#
+
+# Disable automatic tests
+test: off
+
+
+#---------------------------------#
+#      Artifacts Configuration    #
+#---------------------------------#
+
+# Artifacts uploading
+artifacts:
+  - path: $(ARTIFACT)
+
+
+#---------------------------------#
+#     Deployment Configuration    #
+#---------------------------------#
+
+# Deploy configuration
+deploy:
+  provider: GitHub
+  auth_token:
+    secure: spoBwMP9bEms2fq9bzANE/+Fj39lA85K0clAv9sx7yTHT+WR7sfdCSChynbMOHQP
+  draft: true
+  on:
+    appveyor_repo_tag: true
