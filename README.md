@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/unrealarena/unrealarena.svg?branch=master)](https://travis-ci.org/unrealarena/unrealarena)
+
 # Unreal Arena
 
 Unreal Arena is a fast-paced first-person shooter that aims to merge the
