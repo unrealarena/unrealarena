@@ -65,4 +65,4 @@ $ make -j$(nproc)
 
 ## Run Instructions
 
-*TODO*
+- Run `daemon` (Linux / OS X) or `daemon.exe` (Windows)
