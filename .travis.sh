@@ -54,8 +54,8 @@ linux64-before_deploy() {
 # Main -------------------------------------------------------------------------
 
 # Arguments check
-if ! `declare -f "${1}" > /dev/null`; then
-	echo "Error: unknown step \"${1}\""
+if ! `declare -f "${OS}-${1}" > /dev/null`; then
+	echo "Error: unknown step \"${OS}-${1}\""
 	exit 1
 fi
 
