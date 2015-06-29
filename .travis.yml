@@ -18,19 +18,19 @@ env:
     - OS="linux64"
 
 before_install:
-  - ./.travis.sh "${OS}" "before_install"
+  - ./.travis.sh "before_install"
 
 install:
-  - ./.travis.sh "${OS}" "install"
+  - ./.travis.sh "install"
 
 before_script:
-  - ./.travis.sh "${OS}" "before_script"
+  - ./.travis.sh "before_script"
 
 script:
-  - ./.travis.sh "${OS}" "script"
+  - ./.travis.sh "script"
 
 before_deploy:
-  - ./.travis.sh "${OS}" "before_deploy"
+  - ./.travis.sh "before_deploy"
 
 deploy:
   provider: releases

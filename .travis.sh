@@ -4,13 +4,10 @@
 
 
 # Arguments parsing
-if [ $# -ne 2 ]; then
-	echo "Usage: ${0} <PLATFORM> <STEP>"
+if [ $# -ne 1 ]; then
+	echo "Usage: ${0} <STEP>"
 	exit 1
 fi
-
-# Enable exit on error & display of executing commands
-set -ex
 
 
 # Routines ---------------------------------------------------------------------
@@ -26,7 +23,7 @@ linux64-before_install() {
 
 # install
 linux64-install() {
-	sudo apt-get -qq install cmake cmake-data gcc-4.7 g++-4.7 libgl1-mesa-dev libx11-dev libxext-dev unzip zip
+	sudo apt-get -qq install cmake cmake-data gcc-4.7 g++-4.7 libgl1-mesa-dev libx11-dev libxext-dev zip
 	sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.7 100 --slave /usr/bin/g++ g++ /usr/bin/g++-4.7
 }
 
@@ -56,4 +53,14 @@ linux64-before_deploy() {
 
 # Main -------------------------------------------------------------------------
 
-"${1}-${2}"
+# Arguments check
+if ! `declare -f "${1}" > /dev/null`; then
+	echo "Error: unknown step \"${1}\""
+	exit 1
+fi
+
+# Enable exit on error & display of executing commands
+set -ex
+
+# Run <STEP>
+${OS}-${1}
