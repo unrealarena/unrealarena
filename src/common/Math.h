@@ -28,28 +28,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ===========================================================================
 */
 
-#ifndef COMMON_COMMON_H_
-#define COMMON_COMMON_H_
+#ifndef COMMON_MATH_H_
+#define COMMON_MATH_H_
 
-// Compiler.h, Platform.h and Endian.h are included by q_shared.h
-#include "engine/qcommon/q_shared.h"
+namespace Math {
 
-// Common headers
-#include "String.h"
-#include "Util.h"
-#include "Optional.h"
-#include "Command.h"
-#include "Cvar.h"
-#include "Log.h"
-#include "LineEditData.h"
-#include "Math.h"
-#include "System.h"
-#include "Serialize.h"
-#include "FileSystem.h"
-#include "DisjointSets.h"
+	template<typename T> static inline T Clamp(T value, T min, T max)
+	{
+		// if min > max, use min instead of max
+		return std::max(min, std::min(std::max(min, max), value));
+	}
 
-using Math::Vec2;
-using Math::Vec3;
-using Math::Vec4;
+}
 
-#endif // COMMON_COMMON_H_
+#include "math/Vector.h"
+
+#endif //COMMON_MATH_H_
