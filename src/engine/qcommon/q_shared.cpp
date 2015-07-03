@@ -695,7 +695,6 @@ const char *Com_EntityTypeName(entityType_t entityType)
 	case ET_GENERAL:          return "GENERAL";
 	case ET_PLAYER:           return "PLAYER";
 	case ET_ITEM:             return "ITEM";
-	case ET_BUILDABLE:        return "BUILDABLE";
 	case ET_LOCATION:         return "LOCATION";
 	case ET_MISSILE:          return "MISSILE";
 	case ET_MOVER:            return "MOVER";
