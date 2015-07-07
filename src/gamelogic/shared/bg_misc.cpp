@@ -36,175 +36,6 @@ void                               trap_FS_Seek( fileHandle_t f, long offset, fs
 int                                trap_FS_GetFileList( const char *path, const char *extension, char *listbuf, int bufsize );
 void                               trap_QuoteString( const char *, char *, int );
 
-typedef struct
-{
-	buildable_t number;
-	const char* name;
-	const char* classname;
-} buildableName_t;
-
-static const buildableName_t bg_buildableNameList[] =
-{
-	{ BA_A_SPAWN,     "eggpod",    "team_alien_spawn"     },
-	{ BA_A_OVERMIND,  "overmind",  "team_alien_overmind"  },
-	{ BA_A_BARRICADE, "barricade", "team_alien_barricade" },
-	{ BA_A_ACIDTUBE,  "acid_tube", "team_alien_acid_tube" },
-	{ BA_A_TRAPPER,   "trapper",   "team_alien_trapper"   },
-	{ BA_A_BOOSTER,   "booster",   "team_alien_booster"   },
-	{ BA_A_HIVE,      "hive",      "team_alien_hive"      },
-	{ BA_A_LEECH,     "leech",     "team_alien_leech"     },
-	{ BA_A_SPIKER,    "spiker",    "team_alien_spiker"    },
-	{ BA_H_SPAWN,     "telenode",  "team_human_spawn"     },
-	{ BA_H_MGTURRET,  "mgturret",  "team_human_mgturret"  },
-	{ BA_H_ROCKETPOD, "rocketpod", "team_human_rocketpod" },
-	{ BA_H_ARMOURY,   "arm",       "team_human_armoury"   },
-	{ BA_H_MEDISTAT,  "medistat",  "team_human_medistat"  },
- 	{ BA_H_DRILL,     "drill",     "team_human_drill"     },
-	{ BA_H_REACTOR,   "reactor",   "team_human_reactor"   },
-	{ BA_H_REPEATER,  "repeater",  "team_human_repeater"  }
-};
-
-static const size_t bg_numBuildables = ARRAY_LEN( bg_buildableNameList );
-
-static buildableAttributes_t bg_buildableList[ ARRAY_LEN( bg_buildableNameList ) ];
-
-static const buildableAttributes_t nullBuildable = { (buildable_t) 0, 0, 0 };
-
-/*
-==============
-BG_BuildableByName
-==============
-*/
-const buildableAttributes_t *BG_BuildableByName( const char *name )
-{
-	int i;
-
-	for ( i = 0; i < bg_numBuildables; i++ )
-	{
-		if ( !Q_stricmp( bg_buildableList[ i ].name, name ) )
-		{
-			return &bg_buildableList[ i ];
-		}
-	}
-
-	return &nullBuildable;
-}
-
-/*
-==============
-BG_BuildableByEntityName
-==============
-*/
-const buildableAttributes_t *BG_BuildableByEntityName( const char *name )
-{
-	int i;
-
-	for ( i = 0; i < bg_numBuildables; i++ )
-	{
-		if ( !Q_stricmp( bg_buildableList[ i ].entityName, name ) )
-		{
-			return &bg_buildableList[ i ];
-		}
-	}
-
-	return &nullBuildable;
-}
-
-/*
-==============
-BG_Buildable
-==============
-*/
-const buildableAttributes_t *BG_Buildable( int buildable )
-{
-	return ( buildable > BA_NONE && buildable < BA_NUM_BUILDABLES ) ?
-	       &bg_buildableList[ buildable - 1 ] : &nullBuildable;
-}
-
-/*
-===============
-BG_InitBuildableAttributes
-===============
-*/
-void BG_InitBuildableAttributes()
-{
-	int i;
-	const buildableName_t *bh;
-	buildableAttributes_t *ba;
-
-	for ( i = 0; i < bg_numBuildables; i++ )
-	{
-		bh = &bg_buildableNameList[i];
-		ba = &bg_buildableList[i];
-
-		//Initialise default values for buildables
-		Com_Memset( ba, 0, sizeof( buildableAttributes_t ) );
-
-		ba->number = bh->number;
-		ba->name = bh->name;
-		ba->entityName = bh->classname;
-
-		ba->traj = TR_GRAVITY;
-		ba->bounce = 0.0;
-		ba->minNormal = 0.0;
-
-		BG_ParseBuildableAttributeFile( va( "configs/buildables/%s.attr.cfg", ba->name ), ba );
-	}
-}
-
-static buildableModelConfig_t bg_buildableModelConfigList[ BA_NUM_BUILDABLES ];
-
-/*
-==============
-BG_BuildableModelConfig
-==============
-*/
-buildableModelConfig_t *BG_BuildableModelConfig( int buildable )
-{
-	return &bg_buildableModelConfigList[ buildable ];
-}
-
-/*
-==============
-BG_BuildableBoundingBox
-==============
-*/
-void BG_BuildableBoundingBox( int buildable,
-                              vec3_t mins, vec3_t maxs )
-{
-	buildableModelConfig_t *buildableModelConfig = BG_BuildableModelConfig( buildable );
-
-	if ( mins != nullptr )
-	{
-		VectorCopy( buildableModelConfig->mins, mins );
-	}
-
-	if ( maxs != nullptr )
-	{
-		VectorCopy( buildableModelConfig->maxs, maxs );
-	}
-}
-
-/*
-===============
-BG_InitBuildableModelConfigs
-===============
-*/
-void BG_InitBuildableModelConfigs()
-{
-	int               i;
-	buildableModelConfig_t *bc;
-
-	for ( i = BA_NONE + 1; i < BA_NUM_BUILDABLES; i++ )
-	{
-		bc = BG_BuildableModelConfig( i );
-		Com_Memset( bc, 0, sizeof( buildableModelConfig_t ) );
-
-		BG_ParseBuildableModelFile( va( "configs/buildables/%s.model.cfg",
-		                           BG_Buildable( i )->name ), bc );
-	}
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct
 {
@@ -510,7 +341,6 @@ void BG_InitClassAttributes()
 		ca->name = cd->name;
 		ca->startWeapon = cd->startWeapon;
 
-		ca->buildDist = 0.0f;
 		ca->bob = 0.0f;
 		ca->bobCycle = 0.0f;
 		ca->abilities = 0;
@@ -567,10 +397,6 @@ static const weaponData_t bg_weaponsData[] =
 	{ WP_FLAMER,            "flamer"    },
 	{ WP_PULSE_RIFLE,       "prifle"    },
 	{ WP_LUCIFER_CANNON,    "lcannon"   },
-	{ WP_LOCKBLOB_LAUNCHER, "lockblob"  },
-	{ WP_HIVE,              "hive"      },
-	{ WP_ROCKETPOD,         "rocketpod" },
-	{ WP_MGTURRET,          "mgturret"  },
 	{ WP_ABUILD,            "abuild"    },
 	{ WP_ABUILD2,           "abuildupg" },
 	{ WP_HBUILD,            "ckit"      }
@@ -729,7 +555,7 @@ void BG_InitUpgradeAttributes()
 		ud = &bg_upgradesData[i];
 		ua = &bg_upgrades[i];
 
-		//Initialise default values for buildables
+		//Initialise default values for attributes
 		Com_Memset( ua, 0, sizeof( upgradeAttributes_t ) );
 
 		ua->number = ud->number;
@@ -757,12 +583,8 @@ static const missileData_t bg_missilesData[] =
   { MIS_GRENADE,      "grenade"      },
   { MIS_FIREBOMB,     "firebomb"     },
   { MIS_FIREBOMB_SUB, "firebomb_sub" },
-  { MIS_HIVE,         "hive"         },
-  { MIS_LOCKBLOB,     "lockblob"     },
-  { MIS_SLOWBLOB,     "slowblob"     },
   { MIS_BOUNCEBALL,   "bounceball"   },
-  { MIS_ROCKET,       "rocket"       },
-  { MIS_SPIKER,       "spiker"       }
+  { MIS_ROCKET,       "rocket"       }
 };
 
 static const size_t              bg_numMissiles = ARRAY_LEN( bg_missilesData );
@@ -851,7 +673,6 @@ static const meansOfDeathData_t bg_meansOfDeathData[] =
 	{ MOD_LCANNON_SPLASH, "MOD_LCANNON_SPLASH" },
 	{ MOD_FLAMER, "MOD_FLAMER" },
 	{ MOD_FLAMER_SPLASH, "MOD_FLAMER_SPLASH" },
-	{ MOD_BURN, "MOD_BURN" },
 	{ MOD_GRENADE, "MOD_GRENADE" },
 	{ MOD_FIREBOMB, "MOD_FIREBOMB" },
 	{ MOD_WEIGHT_H, "MOD_WEIGHT_H" },
@@ -875,20 +696,8 @@ static const meansOfDeathData_t bg_meansOfDeathData[] =
 	{ MOD_LEVEL4_CLAW, "MOD_LEVEL4_CLAW" },
 	{ MOD_LEVEL4_TRAMPLE, "MOD_LEVEL4_TRAMPLE" },
 	{ MOD_WEIGHT_A, "MOD_WEIGHT_A" },
-	{ MOD_SLOWBLOB, "MOD_SLOWBLOB" },
 	{ MOD_POISON, "MOD_POISON" },
-	{ MOD_SWARM, "MOD_SWARM" },
-	{ MOD_HSPAWN, "MOD_HSPAWN" },
-	{ MOD_ROCKETPOD, "MOD_ROCKETPOD" },
-	{ MOD_MGTURRET, "MOD_MGTURRET" },
-	{ MOD_REACTOR, "MOD_REACTOR" },
-	{ MOD_ASPAWN, "MOD_ASPAWN" },
-	{ MOD_ATUBE, "MOD_ATUBE" },
-	{ MOD_SPIKER, "MOD_SPIKER" },
-	{ MOD_OVERMIND, "MOD_OVERMIND" },
-	{ MOD_DECONSTRUCT, "MOD_DECONSTRUCT" },
-	{ MOD_REPLACE, "MOD_REPLACE" },
-	{ MOD_NOCREEP, "MOD_NOCREEP" }
+	{ MOD_REPLACE, "MOD_REPLACE" }
 };
 
 static const size_t bg_numMeansOfDeath = ARRAY_LEN( bg_meansOfDeathData );
@@ -1011,8 +820,6 @@ bool config_loaded = false;
 
 void BG_InitAllConfigs()
 {
-	BG_InitBuildableAttributes();
-	BG_InitBuildableModelConfigs();
 	BG_InitClassAttributes();
 	BG_InitClassModelConfigs();
 	BG_InitWeaponAttributes();
@@ -1042,17 +849,6 @@ void BG_UnloadAllConfigs()
         return;
     }
     config_loaded = false;
-
-    for ( i = 0; i < bg_numBuildables; i++ )
-    {
-        buildableAttributes_t *ba = &bg_buildableList[i];
-
-        if ( ba )
-        {
-            BG_Free( (char *)ba->humanName );
-            BG_Free( (char *)ba->info );
-        }
-    }
 
     for ( i = 0; i < bg_numClasses; i++ )
     {
@@ -1322,17 +1118,6 @@ static const char *const eventnames[] =
 
   "EV_GIB_PLAYER",
 
-  "EV_BUILD_CONSTRUCT",
-  "EV_BUILD_DESTROY",
-  "EV_BUILD_DELAY", // can't build yet
-  "EV_BUILD_REPAIR", // repairing buildable
-  "EV_BUILD_REPAIRED", // buildable has full health
-  "EV_HUMAN_BUILDABLE_DYING",
-  "EV_HUMAN_BUILDABLE_EXPLOSION",
-  "EV_ALIEN_BUILDABLE_EXPLOSION",
-  "EV_ALIEN_ACIDTUBE",
-  "EV_ALIEN_BOOSTER",
-
   "EV_MEDKIT_USED",
 
   "EV_ALIEN_EVOLVE",
@@ -1340,19 +1125,6 @@ static const char *const eventnames[] =
 
   "EV_STOPLOOPINGSOUND",
   "EV_TAUNT",
-
-  "EV_OVERMIND_ATTACK_1", // overmind under attack
-  "EV_OVERMIND_ATTACK_2", // overmind under attack
-  "EV_OVERMIND_DYING", // overmind close to death
-  "EV_OVERMIND_SPAWNS", // overmind needs spawns
-
-  "EV_REACTOR_ATTACK_1", // reactor under attack
-  "EV_REACTOR_ATTACK_2", // reactor under attack
-  "EV_REACTOR_DYING", // reactor destroyed
-
-  "EV_WARN_ATTACK", // a building has been destroyed and the destruction noticed by a nearby om/rc/rrep
-
-  "EV_MGTURRET_SPINUP", // turret spinup sound should play
 
   "EV_AMMO_REFILL",     // ammo for clipless weapon has been refilled
   "EV_CLIPS_REFILL",    // weapon clips have been refilled
@@ -1475,15 +1247,6 @@ void BG_PlayerStateToEntityState( playerState_t *ps, entityState_t *s, bool snap
 	else
 	{
 		s->eFlags &= ~EF_DEAD;
-	}
-
-	if ( ps->stats[ STAT_STATE ] & SS_BLOBLOCKED )
-	{
-		s->eFlags |= EF_BLOBLOCKED;
-	}
-	else
-	{
-		s->eFlags &= ~EF_BLOBLOCKED;
 	}
 
 	if ( ps->externalEvent )
@@ -1624,15 +1387,6 @@ void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s
 	else
 	{
 		s->eFlags &= ~EF_DEAD;
-	}
-
-	if ( ps->stats[ STAT_STATE ] & SS_BLOBLOCKED )
-	{
-		s->eFlags |= EF_BLOBLOCKED;
-	}
-	else
-	{
-		s->eFlags &= ~EF_BLOBLOCKED;
 	}
 
 	if ( ps->externalEvent )
@@ -1949,50 +1703,6 @@ void BG_GetClientViewOrigin( const playerState_t *ps, vec3_t viewOrigin )
 	vec3_t normal;
 	BG_GetClientNormal( ps, normal );
 	VectorMA( ps->origin, ps->viewheight, normal, viewOrigin );
-}
-
-/*
-===============
-BG_PositionBuildableRelativeToPlayer
-
-Find a place to build a buildable
-===============
-*/
-void BG_PositionBuildableRelativeToPlayer( playerState_t *ps,
-    const vec3_t mins, const vec3_t maxs,
-    void ( *trace )( trace_t *, const vec3_t, const vec3_t,
-                     const vec3_t, const vec3_t, int, int, int ),
-    vec3_t outOrigin, vec3_t outAngles, trace_t *tr )
-{
-	vec3_t aimDir, forward, entityOrigin, targetOrigin;
-	vec3_t angles, playerOrigin, playerNormal;
-	float  buildDist;
-
-	BG_GetClientNormal( ps, playerNormal );
-
-	VectorCopy( ps->viewangles, angles );
-	VectorCopy( ps->origin, playerOrigin );
-
-	AngleVectors( angles, aimDir, nullptr, nullptr );
-	ProjectPointOnPlane( forward, aimDir, playerNormal );
-	VectorNormalize( forward );
-
-	buildDist = BG_Class( ps->stats[ STAT_CLASS ] )->buildDist * DotProduct( forward, aimDir );
-
-	VectorMA( playerOrigin, buildDist, forward, entityOrigin );
-
-	VectorCopy( entityOrigin, targetOrigin );
-
-	//so buildings can be placed facing slopes
-	VectorMA( entityOrigin, 32, playerNormal, entityOrigin );
-
-	//so buildings drop to floor
-	VectorMA( targetOrigin, -128, playerNormal, targetOrigin );
-
-	// The mask is MASK_DEADSOLID on purpose to avoid collisions with other entities
-	( *trace )( tr, entityOrigin, mins, maxs, targetOrigin, ps->clientNum, MASK_DEADSOLID, 0 );
-	VectorCopy( tr->endpos, outOrigin );
-	vectoangles( forward, outAngles );
 }
 
 /**
@@ -2477,71 +2187,8 @@ void BG_ParseCSVClassList( const char *string, class_t *classes, int classesSize
 	classes[ i ] = PCL_NONE;
 }
 
-/*
-===============
-BG_ParseCSVBuildableList
-===============
-*/
-void BG_ParseCSVBuildableList( const char *string, buildable_t *buildables, int buildablesSize )
-{
-	char     buffer[ MAX_STRING_CHARS ];
-	int      i = 0;
-	char     *p, *q;
-	bool EOS = false;
-
-	Q_strncpyz( buffer, string, MAX_STRING_CHARS );
-
-	p = q = buffer;
-
-	while ( *p != '\0' && i < buildablesSize - 1 )
-	{
-		//skip to first , or EOS
-		while ( *p != ',' && *p != '\0' )
-		{
-			p++;
-		}
-
-		if ( *p == '\0' )
-		{
-			EOS = true;
-		}
-
-		*p = '\0';
-
-		//strip leading whitespace
-		while ( *q == ' ' )
-		{
-			q++;
-		}
-
-		buildables[ i ] = BG_BuildableByName( q )->number;
-
-		if ( buildables[ i ] == BA_NONE )
-		{
-			Com_Printf( S_WARNING "unknown buildable %s\n", q );
-		}
-		else
-		{
-			i++;
-		}
-
-		if ( !EOS )
-		{
-			p++;
-			q = p;
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	buildables[ i ] = BA_NONE;
-}
-
 typedef struct gameElements_s
 {
-	buildable_t buildables[ BA_NUM_BUILDABLES ];
 	class_t     classes[ PCL_NUM_CLASSES ];
 	weapon_t    weapons[ WP_NUM_WEAPONS ];
 	upgrade_t   upgrades[ UP_NUM_UPGRADES ];
@@ -2570,12 +2217,6 @@ void BG_InitAllowedGameElements()
 
 	BG_ParseCSVClassList( cvar,
 	                      bg_disabledGameElements.classes, PCL_NUM_CLASSES );
-
-	trap_Cvar_VariableStringBuffer( "g_disabledBuildables",
-	                                cvar, MAX_CVAR_VALUE_STRING );
-
-	BG_ParseCSVBuildableList( cvar,
-	                          bg_disabledGameElements.buildables, BA_NUM_BUILDABLES );
 }
 
 /*
@@ -2633,27 +2274,6 @@ bool BG_ClassDisabled( int class_ )
 	      bg_disabledGameElements.classes[ i ] != PCL_NONE; i++ )
 	{
 		if ( bg_disabledGameElements.classes[ i ] == class_ )
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/*
-============
-BG_BuildableIsAllowed
-============
-*/
-bool BG_BuildableDisabled( int buildable )
-{
-	int i;
-
-	for ( i = 0; i < BA_NUM_BUILDABLES &&
-	      bg_disabledGameElements.buildables[ i ] != BA_NONE; i++ )
-	{
-		if ( bg_disabledGameElements.buildables[ i ] == buildable )
 		{
 			return true;
 		}

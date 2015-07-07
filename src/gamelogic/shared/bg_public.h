@@ -42,8 +42,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CROUCH_VIEWHEIGHT  12
 #define DEAD_VIEWHEIGHT    4 // height from ground
 
-#define POWER_REFRESH_TIME 2000 // nextthink time for power checks
-
 // player teams
 typedef enum
 {
@@ -234,7 +232,6 @@ typedef enum
   STAT_STAMINA,    // humans: stamina
   STAT_STATE,      // client states
   STAT_MISC,       // aliens: pounce, trample; humans: lcannon
-  STAT_BUILDABLE,  // ghost model to display for building
   STAT_FALLDIST,   // distance the player fell
   STAT_VIEWLOCK,   // direction to lock the view in
   STAT_PREDICTION, // predictions for current player action
@@ -252,14 +249,9 @@ typedef enum
 
 // STAT_STATE fields. 16 bit available
 #define SS_WALLCLIMBING     BIT(0)
-#define SS_CREEPSLOWED      BIT(1)
 #define SS_SPEEDBOOST       BIT(2)
 #define SS_UNUSED_1         BIT(3)
-#define SS_BLOBLOCKED       BIT(4)
 #define SS_POISONED         BIT(5)
-#define SS_BOOSTED          BIT(6)
-#define SS_BOOSTEDNEW       BIT(7) // booster recharged // TODO: Unnecessary, remove
-#define SS_BOOSTEDWARNING   BIT(8) // booster poison is running out // TODO: Unnecessary, remove
 #define SS_SLOWLOCKED       BIT(9)
 #define SS_CHARGING         BIT(10)
 #define SS_HEALING_2X       BIT(11) // humans: medistation
@@ -271,37 +263,6 @@ typedef enum
 #define SS2_JETPACK_WARM    BIT(1)  // whether we can start a thrust
 #define SS2_JETPACK_ACTIVE  BIT(2)  // whether we are thrusting
 #define SS2_LEVEL1SLOW      BIT(3)  // hit and slowed by a Mantis attack
-
-// has to fit into 16 bits
-#define SB_BUILDABLE_MASK        0x00FF
-#define SB_BUILDABLE_STATE_MASK  0xFF00
-#define SB_BUILDABLE_STATE_SHIFT 8
-#define SB_BUILDABLE_FROM_IBE(x) ( ( x ) << SB_BUILDABLE_STATE_SHIFT )
-#define SB_BUILDABLE_TO_IBE(x)   ( ( ( x ) & SB_BUILDABLE_STATE_MASK ) >> SB_BUILDABLE_STATE_SHIFT )
-
-typedef enum
-{
-  IBE_NONE,             // no error, can build
-
-  IBE_NOOVERMIND,       // no overmind present
-  IBE_ONEOVERMIND,      // may not build two overminds
-  IBE_NOALIENBP,        // not enough build points (aliens)
-  IBE_NOCREEP,          // no creep in this area
-
-  IBE_NOREACTOR,        // not enough power in this area and no reactor present
-  IBE_ONEREACTOR,       // may not build two reactors
-  IBE_NOHUMANBP,        // not enough build points (humans)
-  IBE_NOPOWERHERE,      // not enough power in this area even though a reactor is present
-
-  IBE_NORMAL,           // surface is too steep
-  IBE_NOROOM,           // no room
-  IBE_SURFACE,          // map doesn't allow building on that surface
-  IBE_DISABLED,         // building has been disabled for team
-  IBE_LASTSPAWN,        // may not replace last spawn with non-spawn
-  IBE_MAINSTRUCTURE,    // may not replace main structure with other buildable
-
-  IBE_MAXERRORS
-} itemBuildError_t;
 
 // player_state->persistent[] indexes
 // these fields are the only part of player_state that isn't
@@ -341,15 +302,7 @@ typedef enum
 #define EF_BOUNCE_HALF      0x0010 // for missiles
 #define EF_NO_BOUNCE_SOUND  0x0020 // for missiles
 
-// buildable flags:
-#define EF_B_SPAWNED        0x0008
-#define EF_B_POWERED        0x0010
-#define EF_B_MARKED         0x0020
-#define EF_B_ONFIRE         0x0040
-#define EF_B_LOCKON         0x0080
-
 // for players
-#define EF_POWER_AVAILABLE  0x0010
 #define EF_WARN_CHARGE      0x0020 // Lucifer Cannon is about to overcharge
 #define EF_WALLCLIMB        0x0040 // wall walking
 #define EF_WALLCLIMBCEILING 0x0080 // wall walking ceiling hack
@@ -360,7 +313,6 @@ typedef enum
 #define EF_MOVER_STOP       0x1000 // will push otherwise
 #define EF_UNUSED_1         0x2000 // UNUSED
 #define EF_CONNECTION       0x4000 // draw a connection trouble sprite
-#define EF_BLOBLOCKED       0x8000 // caught by a trapper
 
 // entityState_t->modelIndex2 "public flags" when used for client entities
 #define PF_JETPACK_ENABLED  BIT(0)
@@ -411,10 +363,6 @@ typedef enum
   WP_FLAMER,
   WP_PULSE_RIFLE,
   WP_LUCIFER_CANNON,
-  WP_LOCKBLOB_LAUNCHER,
-  WP_HIVE,
-  WP_ROCKETPOD,
-  WP_MGTURRET,
 
   // build weapons must remain in a block ← I'm not asking why but I can imagine
   WP_ABUILD,
@@ -455,12 +403,8 @@ typedef enum
 	MIS_GRENADE,
 	MIS_FIREBOMB,
 	MIS_FIREBOMB_SUB,
-	MIS_HIVE,
-	MIS_LOCKBLOB,
-	MIS_SLOWBLOB,
 	MIS_BOUNCEBALL,
 	MIS_ROCKET,
-	MIS_SPIKER,
 
 	MIS_NUM_MISSILES
 } missile_t;
@@ -475,36 +419,6 @@ typedef enum
 #define SLOT_WEAPON   0x00000020
 #define SLOT_SIDEARM  0x00000040
 #define SLOT_GRENADE  0x00000080
-
-typedef enum
-{
-  BA_NONE,
-
-  BA_A_SPAWN,
-  BA_A_OVERMIND,
-
-  BA_A_BARRICADE,
-  BA_A_ACIDTUBE,
-  BA_A_TRAPPER,
-  BA_A_BOOSTER,
-  BA_A_HIVE,
-  BA_A_LEECH,
-  BA_A_SPIKER,
-
-  BA_H_SPAWN,
-
-  BA_H_MGTURRET,
-  BA_H_ROCKETPOD,
-
-  BA_H_ARMOURY,
-  BA_H_MEDISTAT,
-  BA_H_DRILL,
-
-  BA_H_REACTOR,
-  BA_H_REPEATER,
-
-  BA_NUM_BUILDABLES
-} buildable_t;
 
 // entityState_t->event values
 // entity events are for effects that take place relative
@@ -601,17 +515,6 @@ typedef enum
 
   EV_GIB_PLAYER,
 
-  EV_BUILD_CONSTRUCT,
-  EV_BUILD_DESTROY,
-  EV_BUILD_DELAY, // can't build yet
-  EV_BUILD_REPAIR, // repairing buildable
-  EV_BUILD_REPAIRED, // buildable has full health
-  EV_HUMAN_BUILDABLE_DYING,
-  EV_HUMAN_BUILDABLE_EXPLOSION,
-  EV_ALIEN_BUILDABLE_EXPLOSION,
-  EV_ALIEN_ACIDTUBE,
-  EV_ALIEN_BOOSTER,
-
   EV_MEDKIT_USED,
 
   EV_ALIEN_EVOLVE,
@@ -619,19 +522,6 @@ typedef enum
 
   EV_STOPLOOPINGSOUND,
   EV_TAUNT,
-
-  EV_OVERMIND_ATTACK_1, // overmind under attack
-  EV_OVERMIND_ATTACK_2, // overmind under attack
-  EV_OVERMIND_DYING, // overmind close to death
-  EV_OVERMIND_SPAWNS, // overmind needs spawns
-
-  EV_REACTOR_ATTACK_1, // reactor under attack
-  EV_REACTOR_ATTACK_2, // reactor under attack
-  EV_REACTOR_DYING, // reactor destroyed
-
-  EV_WARN_ATTACK, // a building has been destroyed and the destruction noticed by a nearby om/rc/rrep
-
-  EV_MGTURRET_SPINUP, // turret spinup sound should play
 
   EV_AMMO_REFILL,     // ammo for clipless weapon has been refilled
   EV_CLIPS_REFILL,    // weapon clips have been refilled
@@ -666,11 +556,9 @@ typedef enum
 
   //alien stuff
   MN_A_CLASS,
-  MN_A_BUILD,
   MN_A_INFEST,
   MN_A_NOEROOM,
   MN_A_TOOCLOSE,
-  MN_A_NOOVMND_EVOLVE,
   MN_A_EVOLVEBUILDTIMER,
   MN_A_CANTEVOLVE,
   MN_A_EVOLVEWALLWALK,
@@ -680,42 +568,19 @@ typedef enum
   MN_A_CLASSLOCKED,
 
   //shared build
-  MN_B_NOROOM,
-  MN_B_NORMAL,
-  MN_B_CANNOT,
   MN_B_LASTSPAWN,
-  MN_B_MAINSTRUCTURE,
-  MN_B_DISABLED,
-  MN_B_REVOKED,
   MN_B_SURRENDER,
-
-  //alien build
-  MN_A_ONEOVERMIND,
-  MN_A_NOBP,
-  MN_A_NOCREEP,
-  MN_A_NOOVMND,
 
   //human stuff
   MN_H_SPAWN,
-  MN_H_BUILD,
-  MN_H_ARMOURY,
   MN_H_UNKNOWNITEM,
   MN_H_NOSLOTS,
   MN_H_NOFUNDS,
   MN_H_ITEMHELD,
-  MN_H_NOARMOURYHERE,
   MN_H_NOENERGYAMMOHERE,
   MN_H_NOROOMARMOURCHANGE,
-  MN_H_ARMOURYBUILDTIMER,
   MN_H_DEADTOCLASS,
   MN_H_UNKNOWNSPAWNITEM,
-
-  //human buildables
-  MN_H_NOPOWERHERE,
-  MN_H_NOREACTOR,
-  MN_H_NOBP,
-  MN_H_NOTPOWERED,
-  MN_H_ONEREACTOR
 } dynMenu_t;
 
 // animations
@@ -834,38 +699,6 @@ typedef enum
 
   MAX_NONSEG_PLAYER_TOTALANIMATIONS
 } nonSegPlayerAnimNumber_t;
-
-// for buildable animations
-typedef enum
-{
-  BANIM_NONE,
-
-  BANIM_IDLE1, // inactive idle
-  BANIM_IDLE2, // active idle
-
-  BANIM_POWERDOWN, // BANIM_IDLE1 -> BANIM_IDLE_UNPOWERED
-  BANIM_IDLE_UNPOWERED,
-
-  BANIM_CONSTRUCT, // -> BANIM_IDLE1
-
-  BANIM_POWERUP, // BANIM_IDLE_UNPOWERED -> BANIM_IDLE1
-
-  BANIM_ATTACK1,
-  BANIM_ATTACK2,
-
-  BANIM_SPAWN1,
-  BANIM_SPAWN2,
-
-  BANIM_PAIN1,
-  BANIM_PAIN2,
-
-  BANIM_DESTROY, // BANIM_IDLE1 -> BANIM_DESTROYED
-  BANIM_DESTROY_UNPOWERED, // BANIM_IDLE_UNPOWERED -> BANIM_DESTROYED
-  BANIM_DESTROYED,
-  BANIM_DESTROYED_UNPOWERED,
-
-  MAX_BUILDABLE_ANIMATIONS
-} buildableAnimNumber_t;
 
 typedef enum
 {
@@ -990,7 +823,6 @@ typedef enum
   MOD_LCANNON_SPLASH,
   MOD_FLAMER,
   MOD_FLAMER_SPLASH,
-  MOD_BURN,
   MOD_GRENADE,
   MOD_FIREBOMB,
   MOD_WEIGHT_H,
@@ -1016,22 +848,9 @@ typedef enum
   MOD_LEVEL4_TRAMPLE,
   MOD_WEIGHT_A,
 
-  MOD_SLOWBLOB,
   MOD_POISON,
-  MOD_SWARM,
 
-  MOD_HSPAWN,
-  MOD_ROCKETPOD,
-  MOD_MGTURRET,
-  MOD_REACTOR,
-
-  MOD_ASPAWN,
-  MOD_ATUBE,
-  MOD_SPIKER,
-  MOD_OVERMIND,
-  MOD_DECONSTRUCT,
-  MOD_REPLACE,
-  MOD_NOCREEP
+  MOD_REPLACE
 } meansOfDeath_t;
 
 //---------------------------------------------------------
@@ -1122,8 +941,6 @@ typedef struct
 
 	weapon_t startWeapon;
 
-	float    buildDist;
-
 	int      fov;
 	float    bob;
 	float    bobCycle;
@@ -1172,64 +989,6 @@ typedef struct
 	class_t navMeshClass; // if not PCL_NONE, which model's navmesh to use
 	int     navHandle;
 } classModelConfig_t;
-
-#define MAX_BUILDABLE_MODELS 3
-
-// buildable item record
-typedef struct
-{
-	buildable_t number;
-
-	const char *name;
-	const char *humanName;
-	const char *info;
-	const char *entityName;
-	const char *icon;
-
-	trType_t    traj;
-	float       bounce;
-
-	int         buildPoints;
-	int         powerConsumption;
-	int         unlockThreshold;
-
-	int         health;
-	int         regenRate;
-
-	int         splashDamage;
-	int         splashRadius;
-
-	weapon_t    weapon; // used to look up weaponInfo_t for clientside effects
-	int         meansOfDeath;
-
-	team_t      team;
-	weapon_t    buildWeapon;
-
-	int         buildTime;
-	bool    usable;
-
-	float       minNormal;
-	bool    invertNormal;
-
-	bool    creepTest;
-	int         creepSize;
-
-	bool    transparentTest;
-	bool    uniqueTest;
-} buildableAttributes_t;
-
-typedef struct
-{
-	char   models[ MAX_BUILDABLE_MODELS ][ MAX_QPATH ];
-
-	float  modelScale;
-	vec3_t modelRotation;
-	vec3_t mins;
-	vec3_t maxs;
-	float  zOffset;
-	float  oldScale;
-	float  oldOffset;
-} buildableModelConfig_t;
 
 // weapon record
 typedef struct
@@ -1350,7 +1109,6 @@ typedef struct
 bool BG_GetTrajectoryPitch( vec3_t origin, vec3_t target, float v0, float g,
                                 vec2_t angles, vec3_t dir1, vec3_t dir2 );
 void     BG_BuildEntityDescription( char *str, size_t size, entityState_t *es );
-bool BG_IsMainStructure( entityState_t *es );
 void     BG_MoveOriginToBBOXCenter( vec3_t point, const vec3_t mins, const vec3_t maxs );
 
 bool BG_WeaponIsFull(int weapon, int ammo, int clips );
@@ -1366,10 +1124,6 @@ bool BG_RotateAxis( vec3_t surfNormal, vec3_t inAxis[ 3 ],
                         vec3_t outAxis[ 3 ], bool inverse, bool ceiling );
 void     BG_GetClientNormal( const playerState_t *ps, vec3_t normal );
 void     BG_GetClientViewOrigin( const playerState_t *ps, vec3_t viewOrigin );
-void     BG_PositionBuildableRelativeToPlayer( playerState_t *ps, const vec3_t mins, const vec3_t maxs,
-                                               void ( *trace )( trace_t *, const vec3_t, const vec3_t,
-                                               const vec3_t, const vec3_t, int, int, int ),
-                                               vec3_t outOrigin, vec3_t outAngles, trace_t *tr );
 int                         BG_GetValueOfPlayer( playerState_t *ps );
 bool                    BG_PlayerCanChangeWeapon( playerState_t *ps );
 weapon_t                    BG_GetPlayerWeapon( playerState_t *ps );
@@ -1377,13 +1131,6 @@ bool                    BG_PlayerLowAmmo( const playerState_t *ps, bool *energy 
 
 void                        BG_PackEntityNumbers( entityState_t *es, const int *entityNums, unsigned int count );
 int                         BG_UnpackEntityNumbers( entityState_t *es, int *entityNums, unsigned int count );
-
-const buildableAttributes_t *BG_BuildableByName( const char *name );
-const buildableAttributes_t *BG_BuildableByEntityName( const char *name );
-const buildableAttributes_t *BG_Buildable( int buildable );
-
-buildableModelConfig_t      *BG_BuildableModelConfig( int buildable );
-void                        BG_BuildableBoundingBox( int buildable, vec3_t mins, vec3_t maxs );
 
 const classAttributes_t     *BG_ClassByName( const char *name );
 
@@ -1423,8 +1170,6 @@ void                      BG_UnloadAllConfigs();
 bool                  BG_ReadWholeFile( const char *filename, char *buffer, int size);
 bool                  BG_CheckConfigVars();
 bool                  BG_NonSegModel( const char *filename );
-void                      BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t *ba );
-void                      BG_ParseBuildableModelFile( const char *filename, buildableModelConfig_t *bc );
 void                      BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca );
 void                      BG_ParseClassModelFile( const char *filename, classModelConfig_t *cc );
 void                      BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa );
@@ -1434,13 +1179,12 @@ void                      BG_ParseMissileDisplayFile( const char *filename, miss
 void                      BG_ParseBeaconAttributeFile( const char *filename, beaconAttributes_t *ba );
 
 // bg_teamprogress.c
-#define NUM_UNLOCKABLES WP_NUM_WEAPONS + UP_NUM_UPGRADES + BA_NUM_BUILDABLES + PCL_NUM_CLASSES
+#define NUM_UNLOCKABLES WP_NUM_WEAPONS + UP_NUM_UPGRADES + PCL_NUM_CLASSES
 
 typedef enum
 {
 	UNLT_WEAPON,
 	UNLT_UPGRADE,
-	UNLT_BUILDABLE,
 	UNLT_CLASS,
 	UNLT_NUM_UNLOCKABLETYPES
 } unlockableType_t;
@@ -1455,7 +1199,6 @@ void     BG_ImportUnlockablesFromMask( int team, int mask );
 int      BG_UnlockablesMask( int team );
 bool BG_WeaponUnlocked( int weapon );
 bool BG_UpgradeUnlocked( int upgrade );
-bool BG_BuildableUnlocked( int buildable );
 bool BG_ClassUnlocked( int class_ );
 
 unlockableType_t              BG_UnlockableType( int num );
@@ -1507,20 +1250,17 @@ int      atoi_neg( char *token, bool allowNegative );
 void     BG_ParseCSVEquipmentList( const char *string, weapon_t *weapons, int weaponsSize,
                                    upgrade_t *upgrades, int upgradesSize );
 void     BG_ParseCSVClassList( const char *string, class_t *classes, int classesSize );
-void     BG_ParseCSVBuildableList( const char *string, buildable_t *buildables, int buildablesSize );
 void     BG_InitAllowedGameElements();
 bool BG_WeaponDisabled( int weapon );
 bool BG_UpgradeDisabled( int upgrade );
 
 bool BG_ClassDisabled( int class_ );
-bool BG_BuildableDisabled( int buildable );
 
 weapon_t BG_PrimaryWeapon( int stats[] );
 
 // Friendly Fire Flags
 #define FFF_HUMANS             1
 #define FFF_ALIENS             2
-#define FFF_BUILDABLES         4
 
 // bg_voice.c
 #define MAX_VOICES             8
