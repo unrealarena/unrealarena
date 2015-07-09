@@ -69,53 +69,6 @@ namespace Beacon
 	void DeleteTags( gentity_t *ent );
 }
 
-// sg_buildable.c
-gentity_t         *G_CheckSpawnPoint( int spawnNum, const vec3_t origin, const vec3_t normal, buildable_t spawn, vec3_t spawnOrigin );
-gentity_t         *G_Reactor();
-gentity_t         *G_AliveReactor();
-gentity_t         *G_ActiveReactor();
-gentity_t         *G_Overmind();
-gentity_t         *G_AliveOvermind();
-gentity_t         *G_ActiveOvermind();
-float             G_DistanceToBase( gentity_t *self, bool ownBase );
-bool          G_InsideBase( gentity_t *self, bool ownBase );
-bool          G_FindCreep( gentity_t *self );
-gentity_t         *G_Build( gentity_t *builder, buildable_t buildable, const vec3_t origin, const vec3_t normal, const vec3_t angles, int groundEntityNum );
-void              G_BuildableThink( gentity_t *ent, int msec );
-bool          G_BuildableInRange( vec3_t origin, float radius, buildable_t buildable );
-void              G_IgniteBuildable( gentity_t *self, gentity_t *fireStarter );
-void              G_Deconstruct( gentity_t *self, gentity_t *deconner, meansOfDeath_t deconType );
-itemBuildError_t  G_CanBuild( gentity_t *ent, buildable_t buildable, int distance, vec3_t origin, vec3_t normal, int *groundEntNum );
-bool          G_BuildIfValid( gentity_t *ent, buildable_t buildable );
-void              G_SetBuildableAnim( gentity_t *ent, buildableAnimNumber_t anim, bool force );
-void              G_SetIdleBuildableAnim( gentity_t *ent, buildableAnimNumber_t anim );
-void              G_SpawnBuildable(gentity_t *ent, buildable_t buildable);
-void              G_LayoutSave( const char *name );
-int               G_LayoutList( const char *map, char *list, int len );
-void              G_LayoutSelect();
-void              G_LayoutLoad();
-void              G_BaseSelfDestruct( team_t team );
-buildLog_t        *G_BuildLogNew( gentity_t *actor, buildFate_t fate );
-void              G_BuildLogSet( buildLog_t *log, gentity_t *ent );
-void              G_BuildLogAuto( gentity_t *actor, gentity_t *buildable, buildFate_t fate );
-void              G_BuildLogRevert( int id );
-void              G_SetHumanBuildablePowerState();
-
-// sg_buildpoints
-void              G_RGSThink( gentity_t *self );
-void              G_MainStructBPStorageThink( gentity_t *self );
-void              G_BPStorageDie( gentity_t *self );
-void              G_RGSDie( gentity_t *self );
-float             G_RGSPredictEfficiency( vec3_t origin );
-float             G_RGSPredictEfficiencyDelta( vec3_t origin, team_t team );
-void              G_MineBuildPoints();
-int               G_GetBuildPointsInt( team_t team );
-int               G_GetMarkedBuildPointsInt( team_t team );
-bool          G_CanAffordBuildPoints( team_t team, float amount );
-void              G_GetBuildableResourceValue( int *teamValue );
-void              G_ModifyBuildPoints( team_t team, float amount );
-void              G_MarkBuildPointsMined( team_t team, float amount );
-
 // sg_client.c
 void              G_AddCreditToClient( gclient_t *client, short credit, bool cap );
 void              G_SetClientViewAngle( gentity_t *ent, const vec3_t angle );
@@ -196,11 +149,7 @@ void              G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t 
 void              G_DecreaseMomentum();
 float             G_AddMomentumGeneric( team_t team, float amount );
 float             G_AddMomentumGenericStep( team_t team, float amount );
-float             G_PredictMomentumForBuilding( gentity_t *buildable );
-float             G_AddMomentumForBuilding( gentity_t *buildable );
-float             G_RemoveMomentumForDecon( gentity_t *buildable, gentity_t *deconner );
 float             G_AddMomentumForKillingStep( gentity_t *victim, gentity_t *attacker, float share );
-float             G_AddMomentumForDestroyingStep( gentity_t *buildable, gentity_t *attacker, float amount );
 void              G_AddMomentumEnd();
 
 // sg_main.c
@@ -313,8 +262,6 @@ void              G_TriggerMenuArgs( int clientNum, dynMenu_t menu, int arg );
 void              G_CloseMenus( int clientNum );
 void              G_ClientnumToMask( int clientNum, int *loMask, int *hiMask );
 void              G_TeamToClientmask( team_t team, int *loMask, int *hiMask );
-void              G_FireThink( gentity_t *self );
-gentity_t         *G_SpawnFire(vec3_t origin, vec3_t normal, gentity_t *fireStarter );
 bool          G_LineOfSight( const gentity_t *from, const gentity_t *to, int mask, bool useTrajBase );
 bool          G_LineOfSight( const gentity_t *from, const gentity_t *to );
 bool          G_LineOfFire( const gentity_t *from, const gentity_t *to );
@@ -337,7 +284,6 @@ void              G_CalcMuzzlePoint( gentity_t *self, vec3_t forward, vec3_t rig
 void              G_SnapVectorTowards( vec3_t v, vec3_t to );
 bool          G_CheckVenomAttack( gentity_t *self );
 bool          G_CheckPounceAttack( gentity_t *self );
-void              G_CheckCkitRepair( gentity_t *self );
 void              G_ChargeAttack( gentity_t *self, gentity_t *victim );
 void              G_ImpactAttack( gentity_t *self, gentity_t *victim );
 void              G_WeightAttack( gentity_t *self, gentity_t *victim );
@@ -345,6 +291,5 @@ void              G_UpdateZaps( int msec );
 void              G_ClearPlayerZapEffects( gentity_t *player );
 void              G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode );
 void              G_FireUpgrade( gentity_t *self, upgrade_t upgrade );
-bool              G_RocketpodSafeShot( int passEntityNum, vec3_t origin, vec3_t dir );
 
 #endif // SG_PUBLIC_H_

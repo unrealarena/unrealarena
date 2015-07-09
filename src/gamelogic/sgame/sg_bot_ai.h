@@ -25,32 +25,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define __BOT_AI_HEADER
 
 // integer constants given to the behavior tree to use as parameters
-// values E_A_SPAWN to E_H_REPEATER are meant to have the same
-// integer values as the corresponding enum in buildable_t
-// TODO: get rid of dependence on buildable_t
 typedef enum
 {
 	E_NONE,
 	E_A_SPAWN,
-	E_A_OVERMIND,
-	E_A_BARRICADE,
-	E_A_ACIDTUBE,
-	E_A_TRAPPER,
-	E_A_BOOSTER,
-	E_A_HIVE,
-	E_A_LEECH,
 	E_H_SPAWN,
-	E_H_MGTURRET,
-	E_H_ROCKETPOD,
-	E_H_ARMOURY,
-	E_H_MEDISTAT,
-	E_H_DRILL,
-	E_H_REACTOR,
-	E_H_REPEATER,
-	E_NUM_BUILDABLES,
-	E_GOAL = E_NUM_BUILDABLES,
+	E_GOAL,
 	E_ENEMY,
-	E_DAMAGEDBUILDING,
 	E_SELF
 } AIEntity_t;
 
@@ -250,11 +231,7 @@ AINodeStatus_t BotActionEvolveTo( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionSay( gentity_t *self, AIGenericNode_t *node );
 
 AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node );
-AINodeStatus_t BotActionBuy( gentity_t *self, AIGenericNode_t *node );
-AINodeStatus_t BotActionRepair( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionEvolve ( gentity_t *self, AIGenericNode_t *node );
-AINodeStatus_t BotActionHealH( gentity_t *self, AIGenericNode_t *node );
-AINodeStatus_t BotActionHealA( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionHeal( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionFlee( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionRoam( gentity_t *self, AIGenericNode_t *node );

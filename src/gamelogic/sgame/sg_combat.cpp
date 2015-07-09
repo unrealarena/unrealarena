@@ -47,7 +47,6 @@ static const char *const modNames[] =
 	"MOD_LCANNON_SPLASH",
 	"MOD_FLAMER",
 	"MOD_FLAMER_SPLASH",
-	"MOD_BURN",
 	"MOD_GRENADE",
 	"MOD_FIREBOMB",
 	"MOD_WEIGHT_H",
@@ -73,22 +72,9 @@ static const char *const modNames[] =
 	"MOD_LEVEL4_TRAMPLE",
 	"MOD_WEIGHT_A",
 
-	"MOD_SLOWBLOB",
 	"MOD_POISON",
-	"MOD_SWARM",
 
-	"MOD_HSPAWN",
-	"MOD_ROCKETPOD",
-	"MOD_MGTURRET",
-	"MOD_REACTOR",
-
-	"MOD_ASPAWN",
-	"MOD_ATUBE",
-	"MOD_SPIKER",
-	"MOD_OVERMIND",
-	"MOD_DECONSTRUCT",
-	"MOD_REPLACE",
-	"MOD_NOCREEP"
+	"MOD_REPLACE"
 };
 
 /**
@@ -203,27 +189,12 @@ void G_RewardAttackers( gentity_t *self )
 	gentity_t *player;
 	team_t    ownTeam, playerTeam;
 
-	// Only reward killing players and buildables
+	// Only reward killing players
 	if ( self->client )
 	{
 		ownTeam   = (team_t) self->client->pers.team;
 		maxHealth = self->client->ps.stats[ STAT_MAX_HEALTH ];
 		value     = BG_GetValueOfPlayer( &self->client->ps );
-	}
-	else if ( self->s.eType == ET_BUILDABLE )
-	{
-		ownTeam   = (team_t) self->buildableTeam;
-		maxHealth = BG_Buildable( self->s.modelindex )->health;
-		value     = BG_IsMainStructure( &self->s )
-		            ? MAIN_STRUCTURE_MOMENTUM_VALUE
-		            : BG_Buildable( self->s.modelindex )->buildPoints;
-
-		// Give partial credits for buildables in construction
-		if ( !self->spawned )
-		{
-			value *= ( level.time - self->creationTime ) /
-			         ( float )BG_Buildable( self->s.modelindex )->buildTime;
-		}
 	}
 	else
 	{
@@ -277,25 +248,14 @@ void G_RewardAttackers( gentity_t *self )
 		share  = damageShare / ( float )maxHealth;
 		reward = value * share;
 
-		if ( self->s.eType == ET_BUILDABLE )
-		{
-			// Add score
-			G_AddMomentumToScore( player, reward );
+		// Add score
+		G_AddCreditsToScore( player, ( int )reward );
 
-			// Add momentum
-			G_AddMomentumForDestroyingStep( self, player, reward );
-		}
-		else
-		{
-			// Add score
-			G_AddCreditsToScore( player, ( int )reward );
+		// Add credits
+		G_AddCreditToClient( player->client, ( short )reward, true );
 
-			// Add credits
-			G_AddCreditToClient( player->client, ( short )reward, true );
-
-			// Add momentum
-			G_AddMomentumForKillingStep( self, player, share );
-		}
+		// Add momentum
+		G_AddMomentumForKillingStep( self, player, share );
 	}
 
 	// Complete momentum modification
@@ -406,6 +366,7 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 	ent->s.generic1 = assistantTeam;
 	ent->r.svFlags = SVF_BROADCAST; // send to everyone
 
+	// FIXME if ( attacker )
 	if ( attacker && attacker->client )
 	{
 		if ( ( attacker == self || G_OnSameTeam( self, attacker ) ) )
@@ -428,9 +389,7 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 			                        Quote( killerName ),
 			                        attacker->health ) );
 		}
-	}
-	else if ( attacker->s.eType != ET_BUILDABLE )
-	{
+
 		if ( self->client->pers.team == TEAM_ALIENS )
 		{
 			G_AddCreditsToScore( self, -ALIEN_TK_SUICIDE_PENALTY );
@@ -1178,18 +1137,6 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 				return;
 			}
 		}
-
-		// for buildables, never protect from damage dealt by building actions
-		if ( target->s.eType == ET_BUILDABLE && attacker->client &&
-		     mod != MOD_DECONSTRUCT && mod != MOD_SUICIDE &&
-		     mod != MOD_REPLACE     && mod != MOD_NOCREEP )
-		{
-			// check for protection from friendly buildable damage
-			if ( G_OnSameTeam( target, attacker ) && !g_friendlyBuildableFire.integer )
-			{
-				return;
-			}
-		}
 	}
 
 	// update combat timers
@@ -1227,25 +1174,6 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 		// apply damage modifier
 		modifier = CalcDamageModifier( point, target, (class_t) client->ps.stats[ STAT_CLASS ], damageFlags );
 		take = ( int )( ( float )damage * modifier + 0.5f );
-
-		// if boosted poison every attack
-		if ( attacker->client &&
-		     ( attacker->client->ps.stats[ STAT_STATE ] & SS_BOOSTED ) &&
-		     target->client->pers.team == TEAM_HUMANS &&
-		     target->client->poisonImmunityTime < level.time )
-		{
-			switch ( mod )
-			{
-				case MOD_POISON:
-				case MOD_LEVEL2_ZAP:
-					break;
-
-				default:
-					target->client->ps.stats[ STAT_STATE ] |= SS_POISONED;
-					target->client->lastPoisonTime   = level.time;
-					target->client->lastPoisonClient = attacker;
-			}
-		}
 	}
 	else
 	{
@@ -1301,12 +1229,6 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 			// notify the attacker of a hit
 			NotifyClientOfHit( attacker );
 		}
-
-		// update buildable stats
-		if ( attacker->s.eType == ET_BUILDABLE && attacker->health > 0 )
-		{
-			attacker->buildableStatsTotal += loss;
-		}
 	}
 
 	// handle dying target
@@ -1328,12 +1250,6 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 		if ( target->die )
 		{
 			target->die( target, inflictor, attacker, mod );
-		}
-
-		// update buildable stats
-		if ( attacker->s.eType == ET_BUILDABLE && attacker->health > 0 )
-		{
-			attacker->buildableStatsCount++;
 		}
 
 		// for non-client victims, fire ON_DIE event
@@ -1590,85 +1506,4 @@ bool G_RadiusDamage( vec3_t origin, gentity_t *attacker, float damage,
 	}
 
 	return hitSomething;
-}
-
-/**
- * @brief Log deconstruct/destroy events
- * @param self
- * @param actor
- * @param mod
- */
-void G_LogDestruction( gentity_t *self, gentity_t *actor, int mod )
-{
-	buildFate_t fate;
-
-	switch ( mod )
-	{
-		case MOD_DECONSTRUCT:
-			fate = BF_DECONSTRUCT;
-			break;
-
-		case MOD_REPLACE:
-			fate = BF_REPLACE;
-			break;
-
-		case MOD_NOCREEP:
-			fate = ( actor->client ) ? BF_UNPOWER : BF_AUTO;
-			break;
-
-		default:
-			if ( actor->client )
-			{
-				if ( actor->client->pers.team ==
-				     BG_Buildable( self->s.modelindex )->team )
-				{
-					fate = BF_TEAMKILL;
-				}
-				else
-				{
-					fate = BF_DESTROY;
-				}
-			}
-			else
-			{
-				fate = BF_AUTO;
-			}
-
-			break;
-	}
-
-	G_BuildLogAuto( actor, self, fate );
-
-	// don't log when marked structures are removed
-	if ( mod == MOD_REPLACE )
-	{
-		return;
-	}
-
-	G_LogPrintf( S_COLOR_YELLOW "Deconstruct: %d %d %s %s: %s %s by %s\n",
-	             ( int )( actor - g_entities ),
-	             ( int )( self - g_entities ),
-	             BG_Buildable( self->s.modelindex )->name,
-	             modNames[ mod ],
-	             BG_Buildable( self->s.modelindex )->humanName,
-	             mod == MOD_DECONSTRUCT ? "deconstructed" : "destroyed",
-	             actor->client ? actor->client->pers.netname : "<world>" );
-
-	// No-power deaths for humans come after some minutes and it's confusing
-	//  when the messages appear attributed to the deconner. Just don't print them.
-	if ( mod == MOD_NOCREEP && actor->client &&
-	     actor->client->pers.team == TEAM_HUMANS )
-	{
-		return;
-	}
-
-	if ( actor->client && actor->client->pers.team ==
-	     BG_Buildable( self->s.modelindex )->team )
-	{
-		G_TeamCommand( (team_t) actor->client->pers.team,
-		               va( "print_tr %s %s %s", mod == MOD_DECONSTRUCT ? QQ( N_("$1$ ^3DECONSTRUCTED^7 by $2$\n") ) :
-						   QQ( N_("$1$ ^3DESTROYED^7 by $2$\n") ),
-		                   Quote( BG_Buildable( self->s.modelindex )->humanName ),
-		                   Quote( actor->client->pers.netname ) ) );
-	}
 }

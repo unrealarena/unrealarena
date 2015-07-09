@@ -210,8 +210,6 @@ static const fieldDescriptor_t fields[] =
 	{ "noise",               FOFS( soundIndex ),          F_SOUNDINDEX },
 	{ "onAct",               FOFS( calltargets ),         F_CALLTARGET },
 	{ "onDie",               FOFS( calltargets ),         F_CALLTARGET },
-	{ "onDisable",           FOFS( calltargets ),         F_CALLTARGET },
-	{ "onEnable",            FOFS( calltargets ),         F_CALLTARGET },
 	{ "onFree",              FOFS( calltargets ),         F_CALLTARGET },
 	{ "onReach",             FOFS( calltargets ),         F_CALLTARGET },
 	{ "onReset",             FOFS( calltargets ),         F_CALLTARGET },
@@ -407,11 +405,8 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	 *  of another entity, event, or gamestate (timer and start being aware of the game start).
 	 *  Enabling/Disabling Sensors generally changes their ability of perceiving other entities.
 	 */
-	{ S_SENSOR_BUILDABLE,         SP_sensor_buildable,       CHAIN_ACTIVE },
-	{ S_SENSOR_CREEP,             SP_sensor_creep,           CHAIN_ACTIVE },
 	{ S_SENSOR_END,               SP_sensor_end,             CHAIN_ACTIVE },
 	{ S_SENSOR_PLAYER,            SP_sensor_player,          CHAIN_ACTIVE },
-	{ S_SENSOR_POWER,             SP_sensor_power,           CHAIN_ACTIVE },
 	{ S_SENSOR_STAGE,             SP_sensor_stage,           CHAIN_ACTIVE },
 	{ S_SENSOR_START,             SP_sensor_start,           CHAIN_ACTIVE },
 	{ S_SENSOR_SUPPORT,           SP_sensor_support,         CHAIN_ACTIVE },
@@ -447,7 +442,6 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	{ "target_teleporter",        SP_target_teleporter,      CHAIN_PASSIV,     ENT_V_UNCLEAR, nullptr },
 	{ "trigger_always",           SP_sensor_start,           CHAIN_ACTIVE,     ENT_V_RENAMED, S_SENSOR_START },
 	{ "trigger_ammo",             SP_env_afx_ammo,           CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_env_afx_ammo },
-	{ "trigger_buildable",        SP_sensor_buildable,       CHAIN_ACTIVE,     ENT_V_TMPNAME, S_SENSOR_BUILDABLE },
 	{ "trigger_class",            SP_sensor_player,          CHAIN_ACTIVE,     ENT_V_TMPNAME, S_SENSOR_PLAYER },
 	{ "trigger_equipment",        SP_sensor_player,          CHAIN_ACTIVE,     ENT_V_TMPNAME, S_SENSOR_PLAYER },
 	{ "trigger_gravity",          SP_env_afx_gravity,        CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_env_afx_gravity },
@@ -534,7 +528,6 @@ returning false if not found
 bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 {
 	entityClassDescriptor_t     *spawnedClass;
-	buildable_t buildable;
 
 	if ( !spawnedEntity->classname )
 	{
@@ -542,31 +535,6 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 		if ( g_debugEntities.integer > -2 )
 			G_Printf( S_ERROR "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " is missing classname – we are unable to spawn it.\n", spawnedEntity->s.number );
 		return false;
-	}
-
-	//check buildable spawn functions
-	buildable = BG_BuildableByEntityName( spawnedEntity->classname )->number;
-
-	if ( buildable != BA_NONE )
-	{
-		const buildableAttributes_t *attr = BG_Buildable( buildable );
-
-		// don't spawn built-in buildings if we are using a custom layout
-		if ( level.layout[ 0 ] && Q_stricmp( level.layout, S_BUILTIN_LAYOUT ) )
-		{
-			return false;
-		}
-
-		if ( buildable == BA_A_SPAWN || buildable == BA_H_SPAWN )
-		{
-			spawnedEntity->s.angles[ YAW ] += 180.0f;
-			AngleNormalize360( spawnedEntity->s.angles[ YAW ] );
-		}
-
-		G_SpawnBuildable( spawnedEntity, buildable );
-		level.team[ attr->team ].layoutBuildPoints += attr->buildPoints;
-
-		return true;
 	}
 
 	// check the spawn functions for other classes
@@ -583,7 +551,6 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 			return false; // results in freeing the entity
 
 		spawnedClass->spawn( spawnedEntity );
-		spawnedEntity->spawned = true;
 
 		if ( g_debugEntities.integer > 2 )
 			G_Printf( S_DEBUG "Successfully spawned entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " as " S_COLOR_YELLOW "%i" S_COLOR_WHITE "th instance of " S_COLOR_CYAN "%s\n",
@@ -1022,13 +989,8 @@ Every map should have exactly one.
 ; music: path/name of looping .wav file used for level's music (eg. music/sonic5.wav).
 ; gravity: level gravity [g_gravity (800)]
 
-; humanBuildPoints: maximum amount of power the humans can use. [g_humanBuildPoints]
-; humanRepeaterBuildPoints: maximum amount of power the humans can use around each repeater. [g_humanRepeaterBuildPoints]
-; alienBuildPoints: maximum amount of sentience available to the overmind. [g_alienBuildPoints]
-
 ; disabledEquipment: A comma delimited list of human weapons or upgrades to disable for this map. [g_disabledEquipment ()]
 ; disabledClasses: A comma delimited list of alien classes to disable for this map. [g_disabledClasses ()]
-; disabledBuildables: A comma delimited list of buildables to disable for this map. [g_disabledBuildables ()]
 */
 void SP_worldspawn()
 {
@@ -1071,13 +1033,8 @@ void SP_worldspawn()
 
 	G_SpawnStringIntoCVarIfSet( "gravity", "g_gravity" );
 
-	G_SpawnStringIntoCVarIfSet( "humanBuildPoints", "g_humanBuildPoints" );
-	G_SpawnStringIntoCVarIfSet( "humanRepeaterBuildPoints", "g_humanRepeaterBuildPoints" );
-	G_SpawnStringIntoCVarIfSet( "alienBuildPoints", "g_alienBuildPoints" );
-
 	G_SpawnStringIntoCVar( "disabledEquipment", "g_disabledEquipment" );
 	G_SpawnStringIntoCVar( "disabledClasses", "g_disabledClasses" );
-	G_SpawnStringIntoCVar( "disabledBuildables", "g_disabledBuildables" );
 
 	g_entities[ ENTITYNUM_WORLD ].s.number = ENTITYNUM_WORLD;
 	g_entities[ ENTITYNUM_WORLD ].r.ownerNum = ENTITYNUM_NONE;

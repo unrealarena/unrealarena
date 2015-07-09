@@ -201,9 +201,6 @@ shared field spawn functions
 void SP_ConditionFields( gentity_t *self ) {
 	char *buffer;
 
-	if ( G_SpawnString( "buildables", "", &buffer ) )
-		BG_ParseCSVBuildableList( buffer, self->conditions.buildables, BA_NUM_BUILDABLES );
-
 	if ( G_SpawnString( "classes", "", &buffer ) )
 		BG_ParseCSVClassList( buffer, self->conditions.classes, PCL_NUM_CLASSES );
 

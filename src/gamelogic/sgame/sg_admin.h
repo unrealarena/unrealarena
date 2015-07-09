@@ -209,7 +209,6 @@ bool        G_admin_listrotation( gentity_t *ent );
 bool        G_admin_changemap( gentity_t *ent );
 bool        G_admin_warn( gentity_t *ent );
 bool        G_admin_mute( gentity_t *ent );
-bool        G_admin_denybuild( gentity_t *ent );
 bool        G_admin_showbans( gentity_t *ent );
 bool        G_admin_adminhelp( gentity_t *ent );
 bool        G_admin_admintest( gentity_t *ent );
@@ -225,9 +224,6 @@ bool        G_admin_lock( gentity_t *ent );
 bool        G_admin_flaglist( gentity_t *ent );
 bool        G_admin_flag( gentity_t *ent );
 bool        G_admin_pause( gentity_t *ent );
-bool        G_admin_builder( gentity_t *ent );
-bool        G_admin_buildlog( gentity_t *ent );
-bool        G_admin_revert( gentity_t *ent );
 bool        G_admin_l0( gentity_t *ent );  // AA-QVM 1.2
 bool        G_admin_l1( gentity_t *ent );  // AA-QVM 1.2
 bool        G_admin_register( gentity_t *ent );  // AA-QVM 1.2

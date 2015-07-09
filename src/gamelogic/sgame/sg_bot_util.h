@@ -36,8 +36,6 @@ void     BotSetSkillLevel( gentity_t *self, int skill );
 int        FindBots( int *botEntityNumbers, int maxBots, team_t team );
 gentity_t* BotFindClosestEnemy( gentity_t *self );
 gentity_t* BotFindBestEnemy( gentity_t *self );
-void       BotFindClosestBuildings( gentity_t *self );
-gentity_t* BotFindBuilding( gentity_t *self, int buildingType, int range );
 bool   BotTeamateHasWeapon( gentity_t *self, int weapon );
 void       BotSearchForEnemy( gentity_t *self );
 void       BotPain( gentity_t *self, gentity_t *attacker, int damage );
@@ -86,15 +84,8 @@ void     BotClassMovement( gentity_t *self, bool inAttackRange );
 // human bots
 bool   WeaponIsEmpty( weapon_t weapon, playerState_t *ps );
 float      PercentAmmoRemaining( weapon_t weapon, playerState_t *ps );
-void       BotFindDamagedFriendlyStructure( gentity_t *self );
-bool   BotGetBuildingToBuild( gentity_t *self, vec3_t origin, vec3_t normal, buildable_t *building );
-void       BotBuyWeapon( gentity_t *self, weapon_t weapon );
-void       BotBuyUpgrade( gentity_t *self, upgrade_t upgrade );
-void       BotSellWeapons( gentity_t *self );
-void       BotSellAll( gentity_t *self );
 int        BotValueOfWeapons( gentity_t *self );
 int        BotValueOfUpgrades( gentity_t *self );
-void       BotGetDesiredBuy( gentity_t *self, weapon_t *weapon, upgrade_t *upgrades, int *numUpgrades );
 
 // alien bots
 #define AS_OVER_RT3         ((ALIENSENSE_RANGE*0.5f)/M_ROOT3)

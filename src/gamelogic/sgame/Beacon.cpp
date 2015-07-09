@@ -72,7 +72,6 @@ namespace Beacon //this should eventually become a class
 		{
 			switch( ent->s.eType )
 			{
-				case ET_BUILDABLE:
 				case ET_PLAYER:
 					if( ent->tagScoreTime + 2000 < level.time )
 						ent->tagScore -= 50;
@@ -369,9 +368,6 @@ namespace Beacon //this should eventually become a class
 		// Don't send enemy bases or tagged enemy entities to spectators.
 		if ( ent->s.eFlags & EF_BC_ENEMY )
 		{}
-		// Don't send tagged structures to spectators.
-		else if ( ent->s.modelindex == BCT_TAG && !(ent->s.eFlags & EF_BC_TAG_PLAYER) )
-		{}
 		else
 		{
 			int loMask, hiMask;
@@ -449,11 +445,6 @@ namespace Beacon //this should eventually become a class
 				ent->s.bc_data = BG_GetPlayerWeapon( &parent->client->ps );
 			}
 		}
-		else if ( parent->s.eType == ET_BUILDABLE )
-		{
-			BG_BuildableBoundingBox( parent->s.modelindex, mins, maxs );
-			BG_MoveOriginToBBOXCenter( center, mins, maxs );
-		}
 
 		Move( ent, center );
 	}
@@ -463,10 +454,6 @@ namespace Beacon //this should eventually become a class
 	 */
 	void UpdateTags( gentity_t *ent )
 	{
-		// Buildables are supposed to be static.
-		if( ent->s.eType == ET_BUILDABLE )
-			return;
-
 		if( ent->alienTag )
 			UpdateTagLocation( ent->alienTag, ent );
 		if( ent->humanTag )
@@ -475,8 +462,6 @@ namespace Beacon //this should eventually become a class
 
 	/**
 	 * @brief Deletes all tags attached to an entity (plays effects).
-	 *
-	 * Deletion is deferred for the enemy team's buildable tags until their death was confirmed.
 	 */
 	void DetachTags( gentity_t *ent )
 	{
@@ -558,13 +543,6 @@ namespace Beacon //this should eventually become a class
 
 		switch( ent->s.eType )
 		{
-			case ET_BUILDABLE:
-				if( ent->health <= 0 )
-					return false;
-				if( ent->buildableTeam == team )
-					return false;
-				return true;
-
 			case ET_PLAYER:
 				if ( trace ) return false;
 
@@ -690,14 +668,6 @@ namespace Beacon //this should eventually become a class
 		}
 
 		switch( ent->s.eType ) {
-			case ET_BUILDABLE:
-				targetTeam = ent->buildableTeam;
-				data       = ent->s.modelindex;
-				dead       = ( ent->health <= 0 );
-				player     = false;
-				BG_BuildableBoundingBox( ent->s.modelindex, mins, maxs );
-				break;
-
 			case ET_PLAYER:
 				targetTeam = (team_t)ent->client->pers.team;
 				dead       = ( ent->client && ent->client->ps.stats[ STAT_HEALTH ] <= 0 );
@@ -740,9 +710,6 @@ namespace Beacon //this should eventually become a class
 		// Set expiration time.
 		if( permanent ) beacon->s.bc_etime = 0;
 		else            RefreshTag( beacon, true );
-
-		// Update the base clusterings.
-		if ( ent->s.eType == ET_BUILDABLE ) BaseClustering::Update( beacon );
 
 		Propagate( beacon );
 	}

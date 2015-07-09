@@ -813,204 +813,6 @@ void G_TeamToClientmask( team_t team, int *loMask, int *hiMask )
 	}
 }
 
-/*
-===============
-G_FireThink
-
-Run by fire entities and burning buildables.
-===============
-*/
-void G_FireThink( gentity_t *self )
-{
-	char descr[ 64 ];
-
-	if ( g_debugFire.integer )
-	{
-		BG_BuildEntityDescription( descr, sizeof( descr ), &self->s );
-	}
-	else
-	{
-		descr[ 0 ] = '\0';
-	}
-
-	// damage self
-	if ( self->takedamage )
-	{
-		if ( self->nextBurnDamage < level.time )
-		{
-			if ( g_debugFire.integer )
-			{
-				Com_Printf( "%s ^3took burn damage^7.", descr );
-			}
-
-			G_Damage( self, self, self->fireStarter, nullptr, nullptr, BURN_SELFDAMAGE, 0, MOD_BURN );
-
-			self->nextBurnDamage = level.time + BURN_SELFDAMAGE_PERIOD * BURN_PERIODS_RAND_MOD;
-		}
-	}
-
-	// damage close players
-	if ( self->nextBurnSplashDamage < level.time )
-	{
-		bool hit;
-
-		hit = G_SelectiveRadiusDamage( self->s.origin, self->fireStarter, BURN_SPLDAMAGE,
-		                               BURN_SPLDAMAGE_RADIUS, self, MOD_BURN, TEAM_NONE );
-
-		if ( hit && g_debugFire.integer ) Com_Printf( "%s ^8dealt burn damage^7.", descr );
-
-		self->nextBurnSplashDamage = level.time + BURN_SPLDAMAGE_PERIOD * BURN_PERIODS_RAND_MOD;
-	}
-
-	// evaluate chances to stop burning or ignite close alien buildables
-	if ( self->nextBurnAction < level.time )
-	{
-		gentity_t *neighbor;
-		float     burnStopChance = BURN_STOP_CHANCE;
-
-		// lower burn stop chance if there are other burning entities nearby
-		neighbor = nullptr;
-		while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, BURN_STOP_RADIUS ) ) )
-		{
-			if ( neighbor == self ) continue;
-
-			if ( neighbor->onFire && neighbor->health > 0 )
-			{
-				float frac = Distance( self->s.origin, neighbor->s.origin ) / (float)BURN_STOP_RADIUS;
-				float mod  = frac * 1.0f + ( 1.0f - frac ) * BURN_STOP_CHANCE;
-
-				burnStopChance *= mod;
-			}
-		}
-
-		// attempt to stop burning
-		if ( random() < burnStopChance )
-		{
-			if ( g_debugFire.integer )
-			{
-				Com_Printf( "%s has chance to stop burning of %.2f → ^1stop^7", descr, burnStopChance );
-			}
-
-			switch ( self->s.eType )
-			{
-				case ET_BUILDABLE: self->onFire = false; break;
-				case ET_FIRE:      G_FreeEntity( self );  break;
-				default:                                  break;
-			}
-
-			return;
-		}
-		else if ( g_debugFire.integer )
-		{
-			Com_Printf( "%s has chance to stop burning of %.2f → ^2continue^7", descr, burnStopChance );
-		}
-
-		// attempt to ignite close alien buildables
-		neighbor = nullptr;
-		while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, BURN_SPREAD_RADIUS ) ) )
-		{
-			float chance;
-
-			if ( neighbor->s.eType != ET_BUILDABLE || neighbor->buildableTeam != TEAM_ALIENS ) continue;
-			if ( neighbor == self ) continue;
-
-			chance = 1.0f - ( Distance( self->s.origin, neighbor->s.origin ) / (float)BURN_SPREAD_RADIUS );
-
-			if ( random() < chance && G_LineOfSight( self, neighbor ) )
-			{
-				if ( g_debugFire.integer )
-				{
-					Com_Printf( "%s has chance to ignite a neighbour of %.2f → ^2ignite^7", descr, chance );
-				}
-
-				G_IgniteBuildable( neighbor, self->fireStarter );
-			}
-			else if ( g_debugFire.integer )
-			{
-				Com_Printf( "%s has chance to ignite a neighbour of %.2f → failed or no los", descr, chance );
-			}
-		}
-
-		self->nextBurnAction = level.time + BURN_ACTION_PERIOD * BURN_PERIODS_RAND_MOD;
-	}
-
-	// HACK: Assume that all non-ET_FIRE entities that can catch fire will think frequently enough.
-	// TODO: Add support for multiple think functions with individual timers.
-	if ( self->s.eType == ET_FIRE )
-	{
-		self->nextthink = level.time;
-	}
-}
-
-/*
-===============
-G_SpawnFire
-===============
-*/
-gentity_t *G_SpawnFire( vec3_t origin, vec3_t normal, gentity_t *fireStarter )
-{
-	gentity_t *fire;
-	vec3_t    snapHelper, floorNormal;
-
-	VectorSet( floorNormal, 0.0f, 0.0f, 1.0f );
-
-	// don't spawn fire on walls and ceiling since we can't display it properly yet
-	// TODO: Add fire effects for floor and ceiling
-	if ( DotProduct( normal, floorNormal ) < 0.71f ) // 0.71 ~= cos(45°)
-	{
-		return nullptr;
-	}
-
-	// don't spawn a fire inside another fire
-	fire = nullptr;
-	while ( ( fire = G_IterateEntitiesWithinRadius( fire, origin, FIRE_MIN_DISTANCE ) ) )
-	{
-		if ( fire->s.eType == ET_FIRE )
-		{
-			return nullptr;
-		}
-	}
-
-	fire = G_NewEntity();
-
-	// create a fire entity
-	fire->classname = "fire";
-	fire->s.eType   = ET_FIRE;
-	fire->clipmask  = 0;
-
-	// thinking
-	fire->think                = G_FireThink;
-	fire->nextthink            = level.time;
-	fire->nextBurnSplashDamage = level.time + BURN_SPLDAMAGE_PERIOD * BURN_PERIODS_RAND_MOD;
-	fire->nextBurnAction       = level.time + BURN_ACTION_PERIOD    * BURN_PERIODS_RAND_MOD;
-
-	// attacker
-	fire->r.ownerNum  = fireStarter->s.number;
-	fire->fireStarter = fireStarter;
-
-	// normal
-	VectorNormalize( normal ); // make sure normal is a direction
-	VectorCopy( normal, fire->s.origin2 );
-
-	// origin
-	VectorCopy( origin, fire->s.origin );
-	VectorAdd( origin, normal, snapHelper );
-	G_SnapVectorTowards( fire->s.origin, snapHelper ); // save net bandwidth
-	VectorCopy( fire->s.origin, fire->r.currentOrigin );
-
-	// send to client
-	trap_LinkEntity( fire );
-
-	if ( g_debugFire.integer )
-	{
-		char descr[ 64 ];
-		BG_BuildEntityDescription( descr, sizeof( descr ), &fire->s );
-		Com_Printf("%s spawned.", descr);
-	}
-
-	return fire;
-}
-
 bool G_LineOfSight( const gentity_t *from, const gentity_t *to, int mask, bool useTrajBase )
 {
 	trace_t trace;
@@ -1086,10 +888,6 @@ int G_Heal( gentity_t *self, int amount )
 	{
 		case ET_PLAYER:
 			maxHealth = self->client->ps.stats[ STAT_MAX_HEALTH ];
-			break;
-
-		case ET_BUILDABLE:
-			maxHealth = BG_Buildable( self->s.modelindex )->health;
 			break;
 
 		default:
@@ -1198,7 +996,7 @@ team_t G_Enemy( team_t team )
 }
 
 /**
- * @return Whether ent is a player or buildable with positive health.
+ * @return Whether ent is a player with positive health.
  */
 bool G_Alive( gentity_t *ent )
 {
@@ -1209,9 +1007,6 @@ bool G_Alive( gentity_t *ent )
 		case ET_PLAYER:
 			return ( ent->client->sess.spectatorState == SPECTATOR_NOT &&
 			         ent->client->ps.stats[ STAT_HEALTH ] > 0 );
-
-		case ET_BUILDABLE:
-			return ( ent->health > 0 );
 
 		default:
 			return false;

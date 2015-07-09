@@ -62,8 +62,6 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	// each one listed affects a command's output or limits its functionality
 	// none of these prevent all use of the command if denied
 	// (in this list, *function is re-used for the command name)
-	{ nullptr, 0, false, "buildlog",       "builder",       nullptr },
-	{ nullptr, 0, false, "buildlog_admin", "buildlog",      nullptr },
 	{ nullptr, 0, false, "gametimelimit",  "time",          nullptr },
 	{ nullptr, 0, false, "setlevel",       "listplayers",   nullptr },
 
@@ -92,12 +90,6 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	},
 
 	{
-		"allowbuild",   G_admin_denybuild,   false, "denybuild",
-		N_("restore a player's ability to build"),
-		N_("[^3name|slot#^7]")
-	},
-
-	{
 		"allready",     G_admin_allready,    false, "allready",
 		N_("makes everyone ready in intermission"),
 		""
@@ -116,17 +108,6 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		N_("Add/Del/Spec bots"),
 		N_("[^5add|del|spec|unspec^7] [^5name|all^7] [^5aliens/humans^7] (^5skill^7)")
 	},
-	{
-		"builder",      G_admin_builder,     true,  "builder",
-		N_("show who built a structure"),
-		""
-	},
-
-	{
-		"buildlog",     G_admin_buildlog,    false, "buildlog",
-		N_("show buildable log"),
-		N_("(^5name|slot#^7) (^5id^7)")
-	},
 
 	{
 		"cancelvote",   G_admin_endvote,     false, "cancelvote",
@@ -138,12 +119,6 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		"changemap",    G_admin_changemap,   false, "changemap",
 		N_("load a map (and optionally force layout)"),
 		N_("[^3mapname^7] (^5layout^7)")
-	},
-
-	{
-		"denybuild",    G_admin_denybuild,   false, "denybuild",
-		N_("take away a player's ability to build"),
-		N_("[^3name|slot#^7]")
 	},
 
 	{
@@ -277,12 +252,6 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		"restart",      G_admin_restart,     false, "restart",
 		N_("restart the current map (optionally using named layout or keeping/switching teams)"),
 		N_("(^5layout^7) (^5keepteams|switchteams|keepteamslock|switchteamslock^7)")
-	},
-
-	{
-		"revert",       G_admin_revert,      false, "revert",
-		N_("revert buildables to a given time"),
-		N_("[^3id^7]")
 	},
 
 	{
@@ -990,7 +959,7 @@ static void admin_default_levels()
 	Q_strncpyz( l->name, "^2Junior Admin", sizeof( l->name ) );
 	Q_strncpyz( l->flags,
 	            "listplayers admintest adminhelp time putteam spec999 warn kick mute ADMINCHAT "
-	            "buildlog register unregister l0 l1",
+	            "register unregister l0 l1",
 	            sizeof( l->flags ) );
 
 	l = l->next = (g_admin_level_t*) BG_Alloc( sizeof( g_admin_level_t ) );
@@ -998,7 +967,7 @@ static void admin_default_levels()
 	Q_strncpyz( l->name, "^3Senior Admin", sizeof( l->name ) );
 	Q_strncpyz( l->flags,
 	            "listplayers admintest adminhelp time putteam spec999 warn kick mute showbans ban "
-	            "namelog buildlog ADMINCHAT register unregister l0 l1",
+	            "namelog ADMINCHAT register unregister l0 l1",
 	            sizeof( l->flags ) );
 
 	l = l->next = (g_admin_level_t*) BG_Alloc( sizeof( g_admin_level_t ) );
@@ -3373,83 +3342,6 @@ bool G_admin_mute( gentity_t *ent )
 	return true;
 }
 
-bool G_admin_denybuild( gentity_t *ent )
-{
-	char      name[ MAX_NAME_LENGTH ];
-	char      command[ MAX_ADMIN_CMD_LEN ];
-	namelog_t *vic;
-
-	RETURN_IF_INTERMISSION;
-
-	trap_Argv( 0, command, sizeof( command ) );
-
-	if ( trap_Argc() < 2 )
-	{
-		ADMP( va( "%s %s %s", QQ( N_("^3$1$: ^7usage: $2$ [name|slot#]\n") ), command, command ) );
-		return false;
-	}
-
-	trap_Argv( 1, name, sizeof( name ) );
-
-	if ( !( vic = G_NamelogFromString( ent, name ) ) )
-	{
-		ADMP( va( "%s %s", QQ( N_("^3$1$: ^7no match\n") ), command ) );
-		return false;
-	}
-
-	if ( ent && !admin_higher_admin( ent->client->pers.admin,
-	                                 G_admin_admin( vic->guid ) ) )
-	{
-		ADMP( va( "%s %s", QQ( N_("^3$1$: ^7sorry, but your intended victim has a higher admin"
-		          " level than you\n") ), command ) );
-		return false;
-	}
-
-	if ( vic->denyBuild )
-	{
-		if ( !Q_stricmp( command, "denybuild" ) )
-		{
-			ADMP( QQ( N_("^3denybuild: ^7player already has no building rights\n" ) ) );
-			return false;
-		}
-
-		vic->denyBuild = false;
-
-		if ( vic->slot > -1 )
-		{
-			CPx( vic->slot, "cp_tr " QQ(N_("^1You've regained your building rights")) );
-		}
-
-		AP( va( "print_tr %s %s %s", QQ( N_("^3allowbuild: ^7building rights for ^7$1$^7 restored by $2$\n") ),
-		        Quote( vic->name[ vic->nameOffset ] ),
-		        G_quoted_admin_name( ent ) ) );
-	}
-	else
-	{
-		if ( !Q_stricmp( command, "allowbuild" ) )
-		{
-			ADMP( QQ( N_("^3allowbuild: ^7player already has building rights\n" ) ) );
-			return false;
-		}
-
-		vic->denyBuild = true;
-
-		if ( vic->slot > -1 )
-		{
-			level.clients[ vic->slot ].ps.stats[ STAT_BUILDABLE ] = BA_NONE;
-			CPx( vic->slot, "cp_tr " QQ(N_("^1You've lost your building rights")) );
-		}
-
-		AP( va( "print_tr %s %s %s", QQ( N_("^3denybuild: ^7building rights for ^7$1$^7 revoked by $2$\n") ),
-		        Quote( vic->name[ vic->nameOffset ] ),
-		        G_quoted_admin_name( ent ) ) );
-	}
-
-	admin_log( va( "%d (%s) \"%s" S_COLOR_WHITE "\"", vic->slot, vic->guid,
-	               vic->name[ vic->nameOffset ] ) );
-	return true;
-}
-
 bool G_admin_listadmins( gentity_t *ent )
 {
 	int  i;
@@ -3569,7 +3461,6 @@ bool G_admin_listlayouts( gentity_t *ent )
 		trap_Cvar_VariableStringBuffer( "mapname", map, sizeof( map ) );
 	}
 
-	count = G_LayoutList( map, list, sizeof( list ) );
 	ADMP( va( "%s %d %s", QQ( N_("^3listlayouts:^7 $1$ layouts found for '$2$':\n") ), count, map ) );
 	ADMBP_begin();
 	s = &list[ 0 ];
@@ -3715,7 +3606,7 @@ bool G_admin_listplayers( gentity_t *ent )
 
 		bot = ( level.gentities[ i ].r.svFlags & SVF_BOT ) ? 'R' : ' ';
 		muted = p->pers.namelog->muted ? 'M' : ' ';
-		denied = p->pers.namelog->denyBuild ? 'B' : ' ';
+		denied = ' ';
 
 		l = d;
 		registeredname = nullptr;
@@ -5016,106 +4907,6 @@ bool G_admin_flag( gentity_t *ent )
 	return true;
 }
 
-bool G_admin_builder( gentity_t *ent )
-{
-	vec3_t     forward, right, up;
-	vec3_t     start, end, dist;
-	trace_t    tr;
-	gentity_t  *traceEnt;
-	buildLog_t *log;
-	int        i = 0;
-	bool   buildlog;
-
-	RETURN_IF_INTERMISSION;
-
-	if ( !ent )
-	{
-		ADMP( QQ( N_("^3builder: ^7console can't aim.\n") ) );
-		return false;
-	}
-
-	buildlog = G_admin_permission( ent, "buildlog" );
-
-	AngleVectors( ent->client->ps.viewangles, forward, right, up );
-
-	if ( ent->client->pers.team != TEAM_NONE &&
-	     ent->client->sess.spectatorState == SPECTATOR_NOT )
-	{
-		G_CalcMuzzlePoint( ent, forward, right, up, start );
-	}
-	else
-	{
-		VectorCopy( ent->client->ps.origin, start );
-	}
-
-	VectorMA( start, 1000, forward, end );
-
-	trap_Trace( &tr, start, nullptr, nullptr, end, ent->s.number, MASK_PLAYERSOLID, 0 );
-	traceEnt = &g_entities[ tr.entityNum ];
-
-	if ( tr.fraction < 1.0f && ( traceEnt->s.eType == ET_BUILDABLE ) )
-	{
-		const char *builder, *buildingName;
-
-		if ( !buildlog &&
-		     ent->client->pers.team != TEAM_NONE &&
-		     ent->client->pers.team != traceEnt->buildableTeam )
-		{
-			ADMP( QQ( N_("^3builder: ^7structure not owned by your team\n" ) ) );
-			return false;
-		}
-
-		if ( buildlog )
-		{
-			// i is only valid if buildlog is set (i.e. actor has that flag)
-			for ( i = 0; i < level.numBuildLogs; i++ )
-			{
-				log = &level.buildLog[( level.buildId - i - 1 ) % MAX_BUILDLOG ];
-
-				if ( log->fate == BF_CONSTRUCT && traceEnt->s.modelindex == log->modelindex )
-				{
-				        VectorSubtract( traceEnt->s.pos.trBase, log->origin, dist );
-
-				        if ( VectorLengthSquared( dist ) < 2.0f )
-				        {
-						break;
-					}
-				}
-			}
-		}
-
-		builder = traceEnt->builtBy ? traceEnt->builtBy->name[ traceEnt->builtBy->nameOffset ] : "<world>";
-		buildingName = BG_Buildable( traceEnt->s.modelindex )->humanName;
-
-		if ( !buildingName )
-		{
-			buildingName = "[unknown building]";
-		}
-
-		if ( buildlog && traceEnt->builtBy && i < level.numBuildLogs )
-		{
-			ADMP( va( "%s %s %s %d", QQ( N_("^3builder: ^7$1$ built by $2$^7, buildlog #$3$\n") ),
-				  Quote( buildingName ), Quote( builder ), MAX_CLIENTS + level.buildId - i - 1 ) );
-		}
-		else if ( traceEnt->builtBy )
-		{
-			ADMP( va( "%s %s %s", QQ( N_("^3builder: ^7$1$ built by $2$^7\n") ),
-				  Quote( buildingName ), Quote( builder ) ) );
-		}
-		else
-		{
-			ADMP( va( "%s %s", QQ( N_("^3builder: ^7$1$ appears to be a layout item\n") ),
-				  Quote( buildingName ) ) );
-		}
-	}
-	else
-	{
-		ADMP( QQ( N_("^3builder: ^7no structure found under crosshair\n") ) );
-	}
-
-	return true;
-}
-
 bool G_admin_pause( gentity_t *ent )
 {
 	if ( !level.pausedTime )
@@ -5142,235 +4933,6 @@ bool G_admin_pause( gentity_t *ent )
 		level.pausedTime = 0;
 	}
 
-	return true;
-}
-
-static const char *const fates[] =
-{
-	N_("^2built^7"),
-	N_("^3deconstructed^7"),
-	N_("^7replaced^7"),
-	N_("^5destroyed^7"),
-	N_("^1TEAMKILLED^7"),
-	N_("^7unpowered^7"),
-	N_("removed")
-};
-bool G_admin_buildlog( gentity_t *ent )
-{
-	char       search[ MAX_NAME_LENGTH ] = { "" };
-	char       s[ MAX_NAME_LENGTH ] = { "" };
-	char       n[ MAX_NAME_LENGTH ];
-	char       stamp[ 8 ];
-	int        id = -1;
-	int        printed = 0;
-	int        time;
-	int        start = MAX_CLIENTS + level.buildId - level.numBuildLogs;
-	int        i = 0, j;
-	int        team;
-	bool   admin;
-	buildLog_t *log;
-
-	admin = !ent || G_admin_permission( ent, "buildlog_admin" );
-	team = admin ? TEAM_NONE : ent->client->pers.team;
-
-	if ( !admin && team == TEAM_NONE )
-	{
-		ADMP( QQ( N_("^3buildlog: ^7spectators have no buildings\n") ) );
-		return false;
-	}
-
-	if ( !level.buildId )
-	{
-		ADMP( QQ( N_("^3buildlog: ^7log is empty\n") ) );
-		return true;
-	}
-
-	if ( trap_Argc() == 3 )
-	{
-		trap_Argv( 2, search, sizeof( search ) );
-		start = atoi( search );
-	}
-
-	if ( trap_Argc() > 1 )
-	{
-		trap_Argv( 1, search, sizeof( search ) );
-
-		for ( i = search[ 0 ] == '-'; isdigit( search[ i ] ); i++ ) {; }
-
-		if ( i && !search[ i ] )
-		{
-			id = atoi( search );
-
-			if ( trap_Argc() == 2 && ( id < 0 || id >= MAX_CLIENTS ) )
-			{
-				start = id;
-				id = -1;
-			}
-			else if ( id < 0 || id >= MAX_CLIENTS ||
-			          level.clients[ id ].pers.connected != CON_CONNECTED )
-			{
-				ADMP( QQ( N_("^3buildlog: ^7invalid client id\n") ) );
-				return false;
-			}
-		}
-		else
-		{
-			G_SanitiseString( search, s, sizeof( s ) );
-		}
-	}
-	else
-	{
-		start = MAX( -MAX_ADMIN_LISTITEMS, -level.buildId );
-	}
-
-	if ( start < 0 )
-	{
-		start = MAX( level.buildId - level.numBuildLogs, start + level.buildId );
-	}
-	else
-	{
-		start -= MAX_CLIENTS;
-	}
-
-	if ( start < level.buildId - level.numBuildLogs || start >= level.buildId )
-	{
-		ADMP( QQ( N_("^3buildlog: ^7invalid build ID\n") ) );
-		return false;
-	}
-
-	if ( ent && ent->client->pers.team != TEAM_NONE )
-	{
-		if ( team == TEAM_NONE )
-		{
-			trap_SendServerCommand( -1,
-			                        va( "print_tr %s %s", QQ( N_("^3buildlog: ^7$1$^7 requested a log of recent building activity\n") ),
-			                            Quote( ent->client->pers.netname ) ) );
-		}
-		else
-		{
-			// FIXME? Send only to team-mates
-			trap_SendServerCommand( -1,
-			                        va( "print_tr %s %s %s", QQ( N_("^3buildlog: ^7$1$^7 requested a log of recent $2$ building activity\n") ),
-			                            Quote( ent->client->pers.netname ), Quote( BG_TeamName( team ) ) ) );
-		}
-	}
-
-	ADMBP_begin();
-
-	for ( i = start; i < level.buildId && printed < MAX_ADMIN_LISTITEMS; i++ )
-	{
-		log = &level.buildLog[ i % MAX_BUILDLOG ];
-
-		if ( id >= 0 && id < MAX_CLIENTS )
-		{
-			if ( log->actor != level.clients[ id ].pers.namelog )
-			{
-				continue;
-			}
-		}
-		else if ( s[ 0 ] )
-		{
-			if ( !log->actor )
-			{
-				continue;
-			}
-
-			for ( j = 0; j < MAX_NAMELOG_NAMES && log->actor->name[ j ][ 0 ]; j++ )
-			{
-				G_SanitiseString( log->actor->name[ j ], n, sizeof( n ) );
-
-				if ( strstr( n, s ) )
-				{
-					break;
-				}
-			}
-
-			if ( j >= MAX_NAMELOG_NAMES || !log->actor->name[ j ][ 0 ] )
-			{
-				continue;
-			}
-		}
-		else if ( !admin && BG_Buildable( log->modelindex )->team != team )
-		{
-			continue;
-		}
-
-		printed++;
-		time = ( log->time - level.startTime ) / 1000;
-		Com_sprintf( stamp, sizeof( stamp ), "%3d:%02d", time / 60, time % 60 );
-		ADMBP( va( "^2%c^7%-3d %s ^7%s^7%s%s%s %s%s%s\n",
-		           log->actor && log->fate != BF_REPLACE && log->fate != BF_UNPOWER ?
-		           '*' : ' ',
-		           i + MAX_CLIENTS,
-		           log->actor && ( log->fate == BF_REPLACE || log->fate == BF_UNPOWER ) ?
-		           "    \\_" : stamp,
-		           BG_Buildable( log->modelindex )->humanName,
-		           log->builtBy && log->fate != BF_CONSTRUCT ? " (built by " : "",
-		           log->builtBy && log->fate != BF_CONSTRUCT ? log->builtBy->name[ log->builtBy->nameOffset ] : "",
-		           log->builtBy && log->fate != BF_CONSTRUCT ? "^7)" : "",
-		           fates[ log->fate ],
-		           log->actor ? " by " : "",
-		           log->actor ?
-		           log->actor->name[ log->actor->nameOffset ] :
-		           "" ) );
-	}
-
-	ADMBP_end();
-
-	ADMP( va( "%s %d %d %d %d %d %s", QQ( N_("^3buildlog: ^7showing $1$ build logs $2$–$3$ of $4$–$5$.  $6$\n") ),
-	           printed, start + MAX_CLIENTS, i + MAX_CLIENTS - 1,
-	           level.buildId + MAX_CLIENTS - level.numBuildLogs,
-	           level.buildId + MAX_CLIENTS - 1,
-	           i < level.buildId ? va( "run 'buildlog %s%s%d' to see more",
-	                                   search, search[ 0 ] ? " " : "", i + MAX_CLIENTS ) : "" ) );
-	return true;
-}
-
-bool G_admin_revert( gentity_t *ent )
-{
-	char       arg[ MAX_TOKEN_CHARS ];
-	char       duration[ MAX_DURATION_LENGTH ];
-	char       time[ MAX_DURATION_LENGTH ];
-	int        id;
-	buildLog_t *log;
-
-	RETURN_IF_INTERMISSION;
-
-	if ( trap_Argc() != 2 )
-	{
-		ADMP( QQ( N_("^3revert: ^7usage: revert [id]\n") ) );
-		return false;
-	}
-
-	trap_Argv( 1, arg, sizeof( arg ) );
-	id = atoi( arg ) - MAX_CLIENTS;
-
-	if ( id < level.buildId - level.numBuildLogs || id >= level.buildId )
-	{
-		ADMP( QQ( N_("^3revert: ^7invalid id\n") ) );
-		return false;
-	}
-
-	log = &level.buildLog[ id % MAX_BUILDLOG ];
-
-	if ( !log->actor || log->fate == BF_REPLACE || log->fate == BF_UNPOWER )
-	{
-		// fixme: then why list them with an id # in build log ? - rez
-		ADMP( QQ( N_("^3revert: ^7you can only revert direct player actions, "
-		      "indicated by ^2* ^7in buildlog\n") ) );
-		return false;
-	}
-
-	G_admin_duration( ( level.time - log->time ) / 1000, time,
-	                  sizeof( time ), duration, sizeof( duration ) );
-	admin_log( arg );
-	AP( va( "print_tr %s %s %d %s %s", ( level.buildId - id ) > 1 ?
-		QQ( N_("^3revert: ^7$1$^7 reverted $2$ changes over the past $3$ $4t$\n") ) :
-		QQ( N_("^3revert: ^7$1$^7 reverted $2$ change over the past $3$ $4t$\n") ),
-		G_quoted_admin_name( ent ),
-	    level.buildId - id,
-	    time, duration ) );
-	G_BuildLogRevert( id );
 	return true;
 }
 

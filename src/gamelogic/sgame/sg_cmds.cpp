@@ -581,9 +581,6 @@ void Cmd_Give_f( gentity_t *ent )
 		{
 			amount = atof( name + strlen("bp") );
 		}
-
-		G_ModifyBuildPoints( (team_t)ent->client->pers.team, amount );
-		G_MarkBuildPointsMined( (team_t)ent->client->pers.team, amount );
 	}
 
 	// give momentum
@@ -638,11 +635,6 @@ void Cmd_Give_f( gentity_t *ent )
 			ent->client->ps.stats[ STAT_STATE ] |= SS_POISONED;
 			ent->client->lastPoisonTime = level.time;
 			ent->client->lastPoisonClient = ent;
-		}
-		else
-		{
-			ent->client->ps.stats[ STAT_STATE ] |= SS_BOOSTED;
-			ent->client->boostedTime = level.time;
 		}
 	}
 
@@ -1631,8 +1623,6 @@ static const struct {
 	{ "spectate",     false, V_ANY,    T_PLAYER,  true,   true,  qyes,   &g_kickVotesPercent },
 	{ "mute",         true,  V_PUBLIC, T_PLAYER,  true,   true,  qyes,   &g_denyVotesPercent },
 	{ "unmute",       true,  V_PUBLIC, T_PLAYER,  false,  true,  qno,    &g_denyVotesPercent },
-	{ "denybuild",    true,  V_TEAM,   T_PLAYER,  true,   true,  qyes,   &g_denyVotesPercent },
-	{ "allowbuild",   true,  V_TEAM,   T_PLAYER,  false,  true,  qno,    &g_denyVotesPercent },
 	{ "extend",       true,  V_PUBLIC, T_OTHER,   false,  false, qno,    &g_extendVotesPercent,      VOTE_REMAIN, &g_extendVotesTime },
 	{ "admitdefeat",  true,  V_TEAM,   T_NONE,    false,  true,  qno,    &g_admitDefeatVotesPercent },
 	{ "draw",         true,  V_PUBLIC, T_NONE,    true,   true,  qyes,   &g_drawVotesPercent,        VOTE_AFTER,  &g_drawVotesAfter,  &g_drawVoteReasonRequired },
@@ -2020,36 +2010,6 @@ vote_is_disabled:
 		Com_sprintf( level.team[ team ].voteDisplayString,
 		             sizeof( level.team[ team ].voteDisplayString ),
 		             N_("Unmute player '%s'"), name );
-		break;
-
-	case VOTE_DENYBUILD:
-		if ( level.clients[ clientNum ].pers.namelog->denyBuild )
-		{
-			trap_SendServerCommand( ent - g_entities,
-			                        va( "print_tr %s %s", QQ( N_("$1$: player already lost building rights\n") ), cmd ) );
-			return;
-		}
-
-		Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ),
-		             "denybuild %d", id );
-		Com_sprintf( level.team[ team ].voteDisplayString,
-		             sizeof( level.team[ team ].voteDisplayString ),
-		             "Take away building rights from '%s'", name );
-		break;
-
-	case VOTE_ALLOWBUILD:
-		if ( !level.clients[ clientNum ].pers.namelog->denyBuild )
-		{
-			trap_SendServerCommand( ent - g_entities,
-			                        va( "print_tr %s %s", QQ( N_("$1$: player already has building rights\n") ), cmd ) );
-			return;
-		}
-
-		Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ),
-		             "allowbuild %d", id );
-		Com_sprintf( level.team[ team ].voteDisplayString,
-		             sizeof( level.team[ team ].voteDisplayString ),
-		             "Allow '%s' to build", name );
 		break;
 
 	case VOTE_EXTEND:
@@ -2440,7 +2400,6 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 	vec3_t    mins, maxs;
 	int       num;
 	gentity_t *other;
-	int       oldBoostTime = -1;
 	vec3_t    oldVel;
 
 	clientNum = ent->client - level.clients;
@@ -2554,16 +2513,6 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 		{
 			int cost;
 
-			//check that we have an overmind
-			if ( !G_ActiveOvermind() )
-			{
-				if ( report )
-				{
-					G_TriggerMenu( clientNum, MN_A_NOOVMND_EVOLVE );
-				}
-				return false;
-			}
-
 			//check there are no humans nearby
 			VectorAdd( ent->client->ps.origin, range, maxs );
 			VectorSubtract( ent->client->ps.origin, range, mins );
@@ -2574,9 +2523,7 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 			{
 				other = &g_entities[ entityList[ i ] ];
 
-				if ( ( other->client && other->client->pers.team == TEAM_HUMANS ) ||
-				     ( other->s.eType == ET_BUILDABLE && other->buildableTeam == TEAM_HUMANS &&
-				       other->powered ) )
+				if ( other->client && other->client->pers.team == TEAM_HUMANS )
 				{
 					if ( report )
 					{
@@ -2633,20 +2580,9 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 					VectorCopy( infestOrigin, ent->s.pos.trBase );
 					VectorCopy( ent->client->ps.velocity, oldVel );
 
-					if ( ent->client->ps.stats[ STAT_STATE ] & SS_BOOSTED )
-					{
-						oldBoostTime = ent->client->boostedTime;
-					}
-
 					ClientSpawn( ent, ent, ent->s.pos.trBase, ent->s.apos.trBase );
 
 					VectorCopy( oldVel, ent->client->ps.velocity );
-
-					if ( oldBoostTime > 0 )
-					{
-						ent->client->boostedTime = oldBoostTime;
-						ent->client->ps.stats[ STAT_STATE ] |= SS_BOOSTED;
-					}
 				}
 				else
 				{
@@ -2694,110 +2630,6 @@ void Cmd_Class_f( gentity_t *ent )
 	}
 }
 
-void Cmd_Deconstruct_f( gentity_t *ent )
-{
-	char      arg[ 32 ];
-	vec3_t    viewOrigin, forward, end;
-	trace_t   trace;
-	gentity_t *buildable;
-	bool  instant;
-
-	// check for revoked building rights
-	if ( ent->client->pers.namelog->denyBuild )
-	{
-		G_TriggerMenu( ent->client->ps.clientNum, MN_B_REVOKED );
-		return;
-	}
-
-	// trace for target
-	BG_GetClientViewOrigin( &ent->client->ps, viewOrigin );
-	AngleVectors( ent->client->ps.viewangles, forward, nullptr, nullptr );
-	VectorMA( viewOrigin, 100, forward, end );
-	trap_Trace( &trace, viewOrigin, nullptr, nullptr, end, ent->s.number, MASK_PLAYERSOLID, 0 );
-	buildable = &g_entities[ trace.entityNum ];
-
-	// check if target is valid
-	if ( trace.fraction >= 1.0f ||
-	     buildable->s.eType != ET_BUILDABLE ||
-	     !G_OnSameTeam( ent, buildable ) )
-	{
-		return;
-	}
-
-	// check for valid build weapon
-	switch ( ent->client->ps.weapon )
-	{
-		case WP_HBUILD:
-		case WP_ABUILD:
-		case WP_ABUILD2:
-			break;
-
-		default:
-			return;
-	}
-
-	// always let the builder prevent the explosion of a buildable
-	if ( buildable->health <= 0 )
-	{
-		G_RewardAttackers( buildable );
-		G_FreeEntity( buildable );
-		return;
-	}
-
-	// check for instant mode
-	if ( trap_Argc() == 2 )
-	{
-		trap_Argv( 1, arg, sizeof( arg ) );
-		instant = !Q_stricmp( arg, "marked" );
-	}
-	else
-	{
-		instant = false;
-	}
-
-	if ( instant && buildable->deconstruct )
-	{
-		if ( !g_cheats.integer )
-		{
-			// check if the buildable is protected from instant deconstruction
-			switch ( buildable->s.modelindex )
-			{
-				case BA_A_OVERMIND:
-				case BA_H_REACTOR:
-					G_TriggerMenu( ent->client->ps.clientNum, MN_B_MAINSTRUCTURE );
-					return;
-
-				case BA_A_SPAWN:
-				case BA_H_SPAWN:
-					if ( level.team[ ent->client->ps.persistant[ PERS_TEAM ] ].numSpawns <= 1 )
-					{
-						G_TriggerMenu( ent->client->ps.clientNum, MN_B_LASTSPAWN );
-						return;
-					}
-					break;
-			}
-
-			// deny if build timer active
-			if ( ent->client->ps.stats[ STAT_MISC ] > 0 )
-			{
-				G_AddEvent( ent, EV_BUILD_DELAY, ent->client->ps.clientNum );
-				return;
-			}
-
-			// add to build timer
-			ent->client->ps.stats[ STAT_MISC ] += BG_Buildable( buildable->s.modelindex )->buildTime / 4;
-		}
-
-		G_Deconstruct( buildable, ent, MOD_DECONSTRUCT );
-	}
-	else
-	{
-		// toggle mark
-		buildable->deconstruct     = !buildable->deconstruct;
-		buildable->deconstructTime = level.time;
-	}
-}
-
 /*
 =================
 Cmd_Ignite_f
@@ -2814,13 +2646,6 @@ void Cmd_Ignite_f( gentity_t *player )
 	VectorMA( viewOrigin, 100, forward, end );
 	trap_Trace( &trace, viewOrigin, nullptr, nullptr, end, player->s.number, MASK_PLAYERSOLID, 0 );
 	target = &g_entities[ trace.entityNum ];
-
-	if ( !target || target->s.eType != ET_BUILDABLE || target->buildableTeam != TEAM_ALIENS )
-	{
-		return;
-	}
-
-	G_IgniteBuildable( target, player );
 }
 
 /*
@@ -2963,597 +2788,6 @@ void Cmd_ToggleItem_f( gentity_t *ent )
 	else
 	{
 		trap_SendServerCommand( ent - g_entities, va( "print_tr %s %s", QQ( N_("You don't have the $1$\n") ), Quote( s ) ) );
-	}
-}
-
-/*
-=================
-Cmd_Sell_f
-=================
-*/
-static bool Cmd_Sell_weapons( gentity_t *ent )
-{
-	int      i;
-	weapon_t selected = BG_GetPlayerWeapon( &ent->client->ps );
-	bool sold = false;
-
-	if ( !BG_PlayerCanChangeWeapon( &ent->client->ps ) )
-	{
-		return false;
-	}
-
-	for ( i = WP_NONE + 1; i < WP_NUM_WEAPONS; i++ )
-	{
-		// guard against selling the HBUILD weapons exploit
-		if ( i == WP_HBUILD && ent->client->ps.stats[ STAT_MISC ] > 0 )
-		{
-			G_TriggerMenu( ent->client->ps.clientNum, MN_H_ARMOURYBUILDTIMER );
-			continue;
-		}
-
-		if ( BG_InventoryContainsWeapon( i, ent->client->ps.stats ) &&
-		     BG_Weapon( i )->purchasable )
-		{
-			ent->client->ps.stats[ STAT_WEAPON ] = WP_NONE;
-
-			// add to funds
-			G_AddCreditToClient( ent->client, ( short ) BG_Weapon( i )->price, false );
-
-			sold = true;
-		}
-
-		// if we have this weapon selected, force a new selection
-		if ( i == selected )
-		{
-			G_ForceWeaponChange( ent, WP_NONE );
-		}
-	}
-
-	return sold;
-}
-
-static bool Cmd_Sell_upgradeItem( gentity_t *ent, upgrade_t item )
-{
-	// check if carried and sellable
-	if ( !BG_InventoryContainsUpgrade( item, ent->client->ps.stats ) ||
-	     !BG_Upgrade( item )->purchasable )
-	{
-		return false;
-	}
-
-	// shouldn't really need to test for this, but just to be safe
-	if ( item == UP_LIGHTARMOUR || item == UP_MEDIUMARMOUR || item == UP_BATTLESUIT )
-	{
-		vec3_t newOrigin;
-
-		if ( !G_RoomForClassChange( ent, PCL_HUMAN_NAKED, newOrigin ) )
-		{
-			G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOROOMARMOURCHANGE );
-			return false;
-		}
-
-		VectorCopy( newOrigin, ent->client->ps.origin );
-		ent->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_NAKED;
-		ent->client->pers.classSelection = PCL_HUMAN_NAKED;
-		ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
-	}
-
-	// remove from inventory
-	BG_RemoveUpgradeFromInventory( item, ent->client->ps.stats );
-
-	// add to funds
-	G_AddCreditToClient( ent->client, ( short ) BG_Upgrade( item )->price, false );
-
-	return true;
-}
-
-static bool Cmd_Sell_upgrades( gentity_t *ent )
-{
-	int      i;
-	bool sold = false;
-
-	for ( i = UP_NONE + 1; i < UP_NUM_UPGRADES; i++ )
-	{
-		sold |= Cmd_Sell_upgradeItem( ent, (upgrade_t) i );
-	}
-
-	return sold;
-}
-
-static bool Cmd_Sell_armour( gentity_t *ent )
-{
-	return Cmd_Sell_upgradeItem( ent, UP_LIGHTARMOUR ) |
-	       Cmd_Sell_upgradeItem( ent, UP_MEDIUMARMOUR ) |
-	       Cmd_Sell_upgradeItem( ent, UP_BATTLESUIT ) |
-	       Cmd_Sell_upgradeItem( ent, UP_RADAR );
-}
-
-static bool Cmd_Sell_internal( gentity_t *ent, const char *s )
-{
-	weapon_t  weapon;
-	upgrade_t upgrade;
-
-	//no armoury nearby
-	if ( !G_BuildableInRange( ent->client->ps.origin, ENTITY_BUY_RANGE, BA_H_ARMOURY ) )
-	{
-		G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOARMOURYHERE );
-		return false;
-	}
-
-	if ( !Q_strnicmp( s, "weapon", 6 ) )
-	{
-		weapon = (weapon_t) ent->client->ps.stats[ STAT_WEAPON ];
-	}
-	else
-	{
-		weapon = BG_WeaponNumberByName( s );
-	}
-
-	upgrade = BG_UpgradeByName( s )->number;
-
-	if ( weapon != WP_NONE )
-	{
-		weapon_t selected = BG_GetPlayerWeapon( &ent->client->ps );
-
-		if ( !BG_PlayerCanChangeWeapon( &ent->client->ps ) )
-		{
-			return false;
-		}
-
-		//are we /allowed/ to sell this?
-		if ( !BG_Weapon( weapon )->purchasable )
-		{
-			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You can't sell this weapon\n") "\"" );
-			return false;
-		}
-
-		//remove weapon if carried
-		if ( BG_InventoryContainsWeapon( weapon, ent->client->ps.stats ) )
-		{
-			//guard against selling the HBUILD weapons exploit
-			if ( weapon == WP_HBUILD && ent->client->ps.stats[ STAT_MISC ] > 0 )
-			{
-				G_TriggerMenu( ent->client->ps.clientNum, MN_H_ARMOURYBUILDTIMER );
-				return false;
-			}
-
-			ent->client->ps.stats[ STAT_WEAPON ] = WP_NONE;
-			// Cancel ghost buildables
-			ent->client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
-
-			//add to funds
-			G_AddCreditToClient( ent->client, ( short ) BG_Weapon( weapon )->price, false );
-		}
-
-		//if we have this weapon selected, force a new selection
-		if ( weapon == selected )
-		{
-			G_ForceWeaponChange( ent, WP_NONE );
-		}
-	}
-	else if ( upgrade != UP_NONE )
-	{
-		//are we /allowed/ to sell this?
-		if ( !BG_Upgrade( upgrade )->purchasable )
-		{
-			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You can't sell this item\n") "\"" );
-			return false;
-		}
-
-		return Cmd_Sell_upgradeItem( ent, upgrade );
-	}
-	else if ( !Q_stricmp( s, "weapons" ) )
-	{
-		return Cmd_Sell_weapons( ent );
-	}
-	else if ( !Q_stricmp( s, "upgrades" ) )
-	{
-		return Cmd_Sell_upgrades( ent );
-	}
-	else if ( !Q_stricmp( s, "armour" ) || !Q_stricmp( s, "armor" ) )
-	{
-		return Cmd_Sell_armour( ent );
-	}
-	else if ( !Q_stricmp( s, "all" ) )
-	{
-		return Cmd_Sell_weapons( ent ) | Cmd_Sell_upgrades( ent );
-	}
-	else
-	{
-		G_TriggerMenu( ent->client->ps.clientNum, MN_H_UNKNOWNITEM );
-	}
-
-	return false;
-}
-
-void Cmd_Sell_f( gentity_t *ent )
-{
-	char     s[ MAX_TOKEN_CHARS ];
-	int      c, args;
-	bool updated = false;
-
-	args = trap_Argc();
-
-	for ( c = 1; c < args; ++c )
-	{
-		trap_Argv( c, s, sizeof( s ) );
-		updated |= Cmd_Sell_internal( ent, s );
-	}
-
-	//update ClientInfo
-	if ( updated )
-	{
-		ClientUserinfoChanged( ent->client->ps.clientNum, false );
-		ent->client->pers.infoChangeTime = level.time;
-	}
-}
-
-/*
-=================
-Cmd_Buy_f
-=================
-*/
-static bool Cmd_Sell_conflictingUpgrades( gentity_t *ent, upgrade_t upgrade )
-{
-	const int  slots = BG_Upgrade( upgrade )->slots;
-	int        i;
-	bool   sold = false;
-	int *const stats = ent->client->ps.stats;
-
-	for ( i = UP_NONE; i < UP_NUM_UPGRADES; i++ )
-	{
-		if ( i != upgrade && BG_InventoryContainsUpgrade( i, stats ) )
-		{
-			int slot = BG_Upgrade( i )->slots;
-
-			if ( slots & slot )
-			{
-				sold |= Cmd_Sell_upgradeItem( ent, (upgrade_t) i );
-			}
-		}
-	}
-
-	return sold;
-}
-
-
-static bool Cmd_Buy_internal( gentity_t *ent, const char *s, bool sellConflicting, bool quiet )
-{
-#define Maybe_TriggerMenu(num, reason) do { if ( !quiet ) G_TriggerMenu( (num), (reason) ); } while ( 0 )
-	weapon_t  weapon;
-	upgrade_t upgrade;
-	vec3_t    newOrigin;
-
-	weapon = BG_WeaponNumberByName( s );
-	upgrade = BG_UpgradeByName( s )->number;
-
-	// check if armoury is in reach
-	if ( !G_BuildableInRange( ent->client->ps.origin, ENTITY_BUY_RANGE, BA_H_ARMOURY ) )
-	{
-		G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOARMOURYHERE );
-
-		return false;
-	}
-
-	if ( weapon != WP_NONE )
-	{
-		//already got this?
-		if ( BG_InventoryContainsWeapon( weapon, ent->client->ps.stats ) )
-		{
-			Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_ITEMHELD );
-			return false;
-		}
-
-		// Only humans can buy stuff
-		if ( BG_Weapon( weapon )->team != TEAM_HUMANS )
-		{
-			goto not_alien;
-		}
-
-		//are we /allowed/ to buy this?
-		if ( !BG_Weapon( weapon )->purchasable )
-		{
-			goto cant_buy;
-		}
-
-		//are we /allowed/ to buy this?
-		if ( !BG_WeaponUnlocked( weapon ) || BG_WeaponDisabled( weapon ) )
-		{
-			goto cant_buy;
-		}
-
-		// In some instances, weapons can't be changed
-		if ( !BG_PlayerCanChangeWeapon( &ent->client->ps ) )
-		{
-			return false;
-		}
-
-		for (;;)
-		{
-			//can afford this?
-			if ( BG_Weapon( weapon )->price > ( short ) ent->client->pers.credit )
-			{
-				// if requested, try to sell then recheck
-				if ( sellConflicting && Cmd_Sell_weapons( ent ) )
-				{
-					continue;
-				}
-
-				Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_NOFUNDS );
-				return false;
-			}
-
-			//have space to carry this?
-			if ( BG_Weapon( weapon )->slots & BG_SlotsForInventory( ent->client->ps.stats ) )
-			{
-				// if requested, try to sell then recheck
-				if ( sellConflicting && Cmd_Sell_weapons( ent ) )
-				{
-					continue;
-				}
-
-				Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_NOSLOTS );
-				return false;
-			}
-
-			break; // okay, can buy this
-		}
-
-		ent->client->ps.stats[ STAT_WEAPON ] = weapon;
-		G_GiveMaxAmmo( ent );
-		G_ForceWeaponChange( ent, weapon );
-
-		//set build delay/pounce etc to 0
-		ent->client->ps.stats[ STAT_MISC ] = 0;
-
-		//subtract from funds
-		G_AddCreditToClient( ent->client, - ( short ) BG_Weapon( weapon )->price, false );
-
-		return true;
-	}
-	else if ( upgrade != UP_NONE )
-	{
-		//already got this?
-		if ( BG_InventoryContainsUpgrade( upgrade, ent->client->ps.stats ) )
-		{
-			Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_ITEMHELD );
-			return false;
-		}
-
-		// Only humans can buy stuff
-		if ( BG_Upgrade( upgrade )->team != TEAM_HUMANS )
-		{
-			goto not_alien;
-		}
-
-		//are we /allowed/ to buy this?
-		if ( !BG_Upgrade( upgrade )->purchasable )
-		{
-			goto cant_buy;
-		}
-
-		//are we /allowed/ to buy this?
-		if ( !BG_UpgradeUnlocked( upgrade ) || BG_UpgradeDisabled( upgrade ) )
-		{
-			goto cant_buy;
-		}
-
-		for (;;)
-		{
-			//can afford this?
-			if ( BG_Upgrade( upgrade )->price > ( short ) ent->client->pers.credit )
-			{
-				// if requested, try to sell then recheck
-				if ( sellConflicting && Cmd_Sell_conflictingUpgrades( ent, upgrade ) )
-				{
-					continue;
-				}
-
-				Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_NOFUNDS );
-				return false;
-			}
-
-			//have space to carry this?
-			if ( BG_Upgrade( upgrade )->slots & BG_SlotsForInventory( ent->client->ps.stats ) )
-			{
-				// if requested, try to sell then recheck
-				if ( sellConflicting && Cmd_Sell_conflictingUpgrades( ent, upgrade ) )
-				{
-					continue;
-				}
-
-				Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_NOSLOTS );
-				return false;
-			}
-
-			break; // okay, can buy this
-		}
-
-		if ( upgrade == UP_LIGHTARMOUR )
-		{
-			if ( !G_RoomForClassChange( ent, PCL_HUMAN_LIGHT, newOrigin ) )
-			{
-				G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOROOMARMOURCHANGE );
-				return false;
-			}
-
-			VectorCopy( newOrigin, ent->client->ps.origin );
-			ent->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_LIGHT;
-			ent->client->pers.classSelection = PCL_HUMAN_LIGHT;
-			ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
-		}
-		else if ( upgrade == UP_MEDIUMARMOUR )
-		{
-			if ( !G_RoomForClassChange( ent, PCL_HUMAN_MEDIUM, newOrigin ) )
-			{
-				G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOROOMARMOURCHANGE );
-				return false;
-			}
-
-			VectorCopy( newOrigin, ent->client->ps.origin );
-			ent->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_MEDIUM;
-			ent->client->pers.classSelection = PCL_HUMAN_MEDIUM;
-			ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
-		}
-		else if ( upgrade == UP_BATTLESUIT )
-		{
-			if ( !G_RoomForClassChange( ent, PCL_HUMAN_BSUIT, newOrigin ) )
-			{
-				G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOROOMARMOURCHANGE );
-				return false;
-			}
-
-			VectorCopy( newOrigin, ent->client->ps.origin );
-			ent->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_BSUIT;
-			ent->client->pers.classSelection = PCL_HUMAN_BSUIT;
-			ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
-		}
-
-		//add to inventory
-		BG_AddUpgradeToInventory( upgrade, ent->client->ps.stats );
-
-		//subtract from funds
-		G_AddCreditToClient( ent->client, - ( short ) BG_Upgrade( upgrade )->price, false );
-
-		return true;
-	}
-	else
-	{
-		G_TriggerMenu( ent->client->ps.clientNum, MN_H_UNKNOWNITEM );
-	}
-
-	return false;
-
-cant_buy:
-	trap_SendServerCommand( ent - g_entities, va( "print_tr \"" N_("You can't buy this item ($1$)\n") "\" %s", Quote( s ) ) );
-	return false;
-
-not_alien:
-	trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You can't buy alien items\n") "\"" );
-	return false;
-}
-
-void Cmd_Buy_f( gentity_t *ent )
-{
-	char     s[ MAX_TOKEN_CHARS ];
-	int      c, args;
-	bool updated = false;
-
-	args = trap_Argc();
-
-	c = 1;
-	trap_Argv( c, s, sizeof( s ) );
-
-	for ( ; c < args; ++c )
-	{
-		trap_Argv( c, s, sizeof( s ) );
-
-		switch ( s[0] )
-		{
-		case '-':
-			updated |= Cmd_Sell_internal( ent, s + 1 );
-			break;
-		case '+':
-			updated |= Cmd_Buy_internal( ent, s + 1, true, false ); // auto-sell if needed
-			break;
-		case '?':
-			updated |= Cmd_Buy_internal( ent, s + 1, false, true ); // quiet mode
-			break;
-		default:
-			updated |= Cmd_Buy_internal( ent, s, false, false );
-			break;
-		}
-	}
-
-	//update ClientInfo
-	if ( updated )
-	{
-		ClientUserinfoChanged( ent->client->ps.clientNum, false );
-		ent->client->pers.infoChangeTime = level.time;
-	}
-}
-
-/*
-=================
-Cmd_Build_f
-=================
-*/
-void Cmd_Build_f( gentity_t *ent )
-{
-	char        s[ MAX_TOKEN_CHARS ];
-	buildable_t buildable;
-	float       dist;
-	vec3_t      origin, normal;
-	int         groundEntNum;
-
-	if ( ent->client->pers.namelog->denyBuild )
-	{
-		G_TriggerMenu( ent->client->ps.clientNum, MN_B_REVOKED );
-		return;
-	}
-
-	if ( ent->client->pers.team == level.surrenderTeam )
-	{
-		G_TriggerMenu( ent->client->ps.clientNum, MN_B_SURRENDER );
-		return;
-	}
-
-	trap_Argv( 1, s, sizeof( s ) );
-
-	buildable = BG_BuildableByName( s )->number;
-
-	if ( buildable != BA_NONE &&
-	     ( ( 1 << ent->client->ps.weapon ) & BG_Buildable( buildable )->buildWeapon ) &&
-	     !BG_BuildableDisabled( buildable ) && BG_BuildableUnlocked( buildable ) )
-	{
-		dynMenu_t err;
-		vec3_t forward, aimDir;
-		itemBuildError_t reason;
-
-		BG_GetClientNormal( &ent->client->ps, normal );
-		AngleVectors( ent->client->ps.viewangles, aimDir, nullptr, nullptr );
-		ProjectPointOnPlane( forward, aimDir, normal);
-		VectorNormalize( forward );
-
-		dist = BG_Class( ent->client->ps.stats[ STAT_CLASS ] )->buildDist * DotProduct( forward, aimDir );
-
-		reason = G_CanBuild( ent, buildable, dist, origin, normal, &groundEntNum );
-		ent->client->ps.stats[ STAT_BUILDABLE ] = BA_NONE | SB_BUILDABLE_FROM_IBE( reason );
-
-		// these are the errors displayed when the builder first selects something to use
-		switch ( reason )
-		{
-			// non-temporary issues won't spawn a blueprint buildable
-			case IBE_DISABLED:
-				err = MN_B_DISABLED;
-				break;
-
-			case IBE_ONEOVERMIND:
-				err = MN_A_ONEOVERMIND;
-				break;
-
-			case IBE_ONEREACTOR:
-				err = MN_H_ONEREACTOR;
-				break;
-
-			// otherwise we don't error for now
-			default:
-				err = MN_NONE;
-				break;
-		}
-
-		if ( err == MN_NONE || ent->client->pers.disableBlueprintErrors )
-		{
-			ent->client->ps.stats[ STAT_BUILDABLE ] |= buildable;
-		}
-		else
-		{
-			G_TriggerMenu( ent->client->ps.clientNum, err );
-		}
-	}
-	else
-	{
-		G_TriggerMenu( ent->client->ps.clientNum, MN_B_CANNOT );
 	}
 }
 
@@ -4508,13 +3742,10 @@ static const commands_t cmds[] =
 	{ "a",               CMD_MESSAGE | CMD_INTERMISSION,      Cmd_AdminMessage_f     },
 	{ "asay",            CMD_MESSAGE | CMD_INTERMISSION,      Cmd_Say_f              },
 	{ "beacon",          CMD_TEAM | CMD_ALIVE,                Cmd_Beacon_f           },
-	{ "build",           CMD_TEAM | CMD_ALIVE,                Cmd_Build_f            },
-	{ "buy",             CMD_HUMAN | CMD_ALIVE,               Cmd_Buy_f              },
 	{ "callteamvote",    CMD_MESSAGE | CMD_TEAM,              Cmd_CallVote_f         },
 	{ "callvote",        CMD_MESSAGE,                         Cmd_CallVote_f         },
 	{ "class",           CMD_TEAM,                            Cmd_Class_f            },
 	{ "damage",          CMD_CHEAT | CMD_ALIVE,               Cmd_Damage_f           },
-	{ "deconstruct",     CMD_TEAM | CMD_ALIVE,                Cmd_Deconstruct_f      },
 	{ "follow",          CMD_SPEC,                            Cmd_Follow_f           },
 	{ "follownext",      CMD_SPEC,                            Cmd_FollowCycle_f      },
 	{ "followprev",      CMD_SPEC,                            Cmd_FollowCycle_f      },
@@ -4542,7 +3773,6 @@ static const commands_t cmds[] =
 	{ "say_area_team",   CMD_MESSAGE | CMD_TEAM | CMD_ALIVE,  Cmd_SayAreaTeam_f      },
 	{ "say_team",        CMD_MESSAGE | CMD_INTERMISSION,      Cmd_Say_f              },
 	{ "score",           CMD_INTERMISSION,                    ScoreboardMessage      },
-	{ "sell",            CMD_HUMAN | CMD_ALIVE,               Cmd_Sell_f             },
 	{ "setviewpos",      CMD_CHEAT_TEAM,                      Cmd_SetViewpos_f       },
 	{ "team",            0,                                   Cmd_Team_f             },
 	{ "teamvote",        CMD_TEAM | CMD_INTERMISSION,         Cmd_Vote_f             },

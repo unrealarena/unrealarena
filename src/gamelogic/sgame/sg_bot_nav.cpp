@@ -119,14 +119,7 @@ float BotGetGoalRadius( gentity_t *self )
 	if ( BotTargetIsEntity( self->botMind->goal ) )
 	{
 		botTarget_t *t = &self->botMind->goal;
-		if ( t->ent->s.modelindex == BA_H_MEDISTAT || t->ent->s.modelindex == BA_A_BOOSTER )
-		{
-			return self->r.maxs[0] + t->ent->r.maxs[0];
-		}
-		else
-		{
-			return RadiusFromBounds2D( t->ent->r.mins, t->ent->r.maxs ) + RadiusFromBounds2D( self->r.mins, self->r.maxs );
-		}
+		return RadiusFromBounds2D( t->ent->r.mins, t->ent->r.maxs ) + RadiusFromBounds2D( self->r.mins, self->r.maxs );
 	}
 	else
 	{
@@ -406,7 +399,7 @@ gentity_t* BotGetPathBlocker( gentity_t *self, const vec3_t dir )
 	VectorMA( self->s.origin, TRACE_LENGTH, dir, end );
 
 	trap_Trace( &trace, self->s.origin, playerMins, playerMaxs, end, self->s.number, MASK_SHOT, 0 );
-	if ( ( trace.fraction < 1.0f && trace.plane.normal[ 2 ] < 0.7f ) || g_entities[ trace.entityNum ].s.eType == ET_BUILDABLE )
+	if ( trace.fraction < 1.0f && trace.plane.normal[ 2 ] < 0.7f )
 	{
 		return &g_entities[trace.entityNum];
 	}
@@ -461,8 +454,7 @@ bool BotShouldJump( gentity_t *self, gentity_t *blocker, const vec3_t dir )
 	trap_Trace( &trace, self->s.origin, playerMins, playerMaxs, end, self->s.number, MASK_SHOT, 0 );
 
 	//if we can jump over it, then jump
-	//note that we also test for a blocking barricade because barricades will collapse to let us through
-	if ( blocker->s.modelindex == BA_A_BARRICADE || trace.fraction == 1.0f )
+	if ( trace.fraction == 1.0f )
 	{
 		return true;
 	}

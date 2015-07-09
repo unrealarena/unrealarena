@@ -119,10 +119,6 @@ team_t G_Team( gentity_t *ent )
 	{
 		return (team_t)ent->client->pers.team;
 	}
-	else if ( ent->s.eType == ET_BUILDABLE )
-	{
-		return ent->buildableTeam;
-	}
 	else
 	{
 		return TEAM_NONE;

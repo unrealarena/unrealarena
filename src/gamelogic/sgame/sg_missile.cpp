@@ -166,137 +166,12 @@ static int ImpactGrenade( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
 
 static int ImpactFlamer( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
 {
-	gentity_t *neighbor = nullptr;
-
-	// ignite alien buildables on direct hit
-	if ( random() < FLAMER_IGNITE_CHANCE )
-	{
-		G_IgniteBuildable( hitEnt, ent->parent );
-	}
-
-	// ignite alien buildables in radius
-	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, trace->endpos, FLAMER_IGNITE_RADIUS ) ) )
-	{
-		// we already handled other, since it might not always be in FLAMER_IGNITE_RADIUS due to BBOX sizes
-		if ( neighbor == hitEnt )
-		{
-			continue;
-		}
-
-		if ( random() < FLAMER_IGNITE_SPLCHANCE )
-		{
-			G_IgniteBuildable( neighbor, ent->parent );
-		}
-	}
-
-	// set the environment on fire
-	if ( hitEnt->s.number == ENTITYNUM_WORLD )
-	{
-		if ( random() < FLAMER_LEAVE_FIRE_CHANCE )
-		{
-			G_SpawnFire( trace->endpos, trace->plane.normal, ent->parent );
-		}
-	}
-
 	return MIB_IMPACT;
 }
 
 static int ImpactFirebombSub( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
 {
-	// ignite alien buildables on direct hit
-	G_IgniteBuildable( hitEnt, ent->parent );
-
-	// set the environment on fire
-	if ( hitEnt->s.number == ENTITYNUM_WORLD )
-	{
-		G_SpawnFire( trace->endpos, trace->plane.normal, ent->parent );
-	}
-
 	return MIB_IMPACT;
-}
-
-static int ImpactLockblock( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
-{
-	vec3_t dir;
-
-	if ( hitEnt->client && hitEnt->client->pers.team == TEAM_HUMANS )
-	{
-		hitEnt->client->ps.stats[ STAT_STATE ] |= SS_BLOBLOCKED;
-		hitEnt->client->lastLockTime = level.time;
-		AngleVectors( hitEnt->client->ps.viewangles, dir, nullptr, nullptr );
-		hitEnt->client->ps.stats[ STAT_VIEWLOCK ] = DirToByte( dir );
-	}
-
-	return MIB_IMPACT;
-}
-
-static int ImpactSlowblob( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
-{
-	gentity_t *neighbor;
-	int       impactFlags = MIB_IMPACT;
-
-	if ( hitEnt->client && hitEnt->client->pers.team == TEAM_HUMANS )
-	{
-		hitEnt->client->ps.stats[ STAT_STATE ] |= SS_SLOWLOCKED;
-		hitEnt->client->lastSlowTime = level.time;
-	}
-	else if ( hitEnt->s.eType == ET_BUILDABLE && hitEnt->buildableTeam == TEAM_ALIENS )
-	{
-		hitEnt->onFire = false;
-		hitEnt->fireImmunityUntil = level.time + ABUILDER_BLOB_FIRE_IMMUNITY;
-
-		impactFlags &= ~MIF_NO_DAMAGE;
-	}
-	else if ( hitEnt->s.number == ENTITYNUM_WORLD )
-	{
-		// put out floor fires in range
-		neighbor = nullptr;
-		while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, trace->endpos,
-		                                                    ABUILDER_BLOB_FIRE_STOP_RANGE ) ) )
-		{
-			if ( neighbor->s.eType == ET_FIRE )
-			{
-				G_FreeEntity( neighbor );
-			}
-		}
-	}
-
-	return impactFlags;
-}
-
-static int ImpactHive( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
-{
-	if ( hitEnt->s.eType == ET_BUILDABLE && hitEnt->s.modelindex == BA_A_HIVE )
-	{
-		if ( !ent->parent )
-		{
-			G_Printf( S_WARNING "Hive missile returned to hive that is not its parent.\n" );
-		}
-		else
-		{
-			ent->parent->active = false;
-		}
-
-		return MIB_FREE;
-	}
-	else
-	{
-		// Prevent a collision with the client when returning.
-		ent->r.ownerNum = hitEnt->s.number;
-
-		ent->think = G_ExplodeMissile;
-		ent->nextthink = level.time + FRAMETIME;
-
-		// Ddamage only humans and do so quietly.
-		if ( hitEnt->client && hitEnt->client->pers.team == TEAM_HUMANS )
-		{
-			return MIF_NO_EFFECT;
-		}
-		else
-		{
-			return MIB_FREE;
-		}
-	}
 }
 
 static int DefaultImpactFunc( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
@@ -334,9 +209,6 @@ static void MissileImpact( gentity_t *ent, trace_t *trace )
 		case MIS_FIREBOMB:     impactFunc = ImpactGrenade;     break;
 		case MIS_FLAMER:       impactFunc = ImpactFlamer;      break;
 		case MIS_FIREBOMB_SUB: impactFunc = ImpactFirebombSub; break;
-		case MIS_LOCKBLOB:     impactFunc = ImpactLockblock;   break;
-		case MIS_SLOWBLOB:     impactFunc = ImpactSlowblob;    break;
-		case MIS_HIVE:         impactFunc = ImpactHive;        break;
 		default:               impactFunc = DefaultImpactFunc; break;
 	}
 
@@ -391,7 +263,7 @@ static void MissileImpact( gentity_t *ent, trace_t *trace )
 		}
 
 		// Add hit event.
-		if ( hitEnt->takedamage && ( hitEnt->s.eType == ET_PLAYER || hitEnt->s.eType == ET_BUILDABLE ) )
+		if ( hitEnt->takedamage && hitEnt->s.eType == ET_PLAYER )
 		{
 			G_AddEvent( ent, EV_MISSILE_HIT_ENTITY, dirAsByte );
 

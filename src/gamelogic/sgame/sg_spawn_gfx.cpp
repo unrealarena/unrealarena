@@ -338,7 +338,7 @@ gfx_shader_mod
 
 void gfx_shader_mod_act( gentity_t *self, gentity_t *other, gentity_t *activator )
 {
-	if ( !self->shaderKey || !self->shaderReplacement || !self->enabled )
+	if ( !self->shaderKey || !self->shaderReplacement )
 	{
 		return;
 	}

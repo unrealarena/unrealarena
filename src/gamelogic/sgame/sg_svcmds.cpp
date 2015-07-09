@@ -155,8 +155,6 @@ void Svcmd_EntityShow_f()
 		G_PrintEntityNameList( selection );
 	}
 
-	G_Printf("State: %s\n", selection->enabled ? "enabled" : "disabled");
-
 	if (selection->groupName)
 	{
 		G_Printf("Member of Group: %s%s\n", selection->groupName, !selection->groupMaster ? " [master]" : "");
@@ -308,82 +306,7 @@ static void Svcmd_ForceTeam_f()
 	G_ChangeTeam( &g_entities[ cl - level.clients ], team );
 }
 
-/*
-===================
-Svcmd_LayoutSave_f
-
-layoutsave <name>
-===================
-*/
-static void Svcmd_LayoutSave_f()
-{
-	char str[ MAX_QPATH ];
-	char str2[ MAX_QPATH - 4 ];
-	char *s;
-	int  i = 0;
-
-	if ( trap_Argc() != 2 )
-	{
-		G_Printf( "usage: layoutsave <name>\n" );
-		return;
-	}
-
-	trap_Argv( 1, str, sizeof( str ) );
-
-	// sanitize name
-	s = &str[ 0 ];
-	str2[ 0 ] = 0;
-
-	while ( *s && i < sizeof( str2 ) - 1 )
-	{
-		if ( isalnum( *s ) || *s == '-' || *s == '_' )
-		{
-			str2[ i++ ] = *s;
-			str2[ i ] = '\0';
-		}
-
-		s++;
-	}
-
-	if ( !str2[ 0 ] )
-	{
-		G_Printf( "layoutsave: invalid name \"%s\"\n", str );
-		return;
-	}
-
-	G_LayoutSave( str2 );
-}
-
 char *ConcatArgs( int start );
-
-/*
-===================
-Svcmd_LayoutLoad_f
-
-layoutload [<name> [<name2> [<name3 [...]]]]
-
-This is just a silly alias for doing:
- set g_layouts "name name2 name3"
- map_restart
-===================
-*/
-static void Svcmd_LayoutLoad_f()
-{
-	char layouts[ MAX_CVAR_VALUE_STRING ];
-	char *s;
-
-	if ( trap_Argc() < 2 )
-	{
-		G_Printf( "usage: layoutload <name> …\n" );
-		return;
-	}
-
-	s = ConcatArgs( 1 );
-	Q_strncpyz( layouts, s, sizeof( layouts ) );
-	trap_Cvar_Set( "g_layouts", layouts );
-	trap_SendConsoleCommand( "map_restart\n" );
-	level.restarted = true;
-}
 
 static void Svcmd_AdmitDefeat_f()
 {
@@ -416,7 +339,6 @@ static void Svcmd_AdmitDefeat_f()
 	}
 
 	level.surrenderTeam = (team_t) team;
-	G_BaseSelfDestruct( (team_t) team );
 }
 
 static void Svcmd_TeamWin_f()
@@ -427,15 +349,6 @@ static void Svcmd_TeamWin_f()
 	trap_Argv( 0, cmd, sizeof( cmd ) );
 
 	team = G_TeamFromString( cmd );
-
-	if ( TEAM_ALIENS == team )
-	{
-		G_BaseSelfDestruct( TEAM_HUMANS );
-	}
-	if ( TEAM_HUMANS == team )
-	{
-		G_BaseSelfDestruct( TEAM_ALIENS );
-	}
 }
 
 static void Svcmd_Evacuation_f()
@@ -702,8 +615,6 @@ static const struct svcmd
 	{ "evacuation",         false, Svcmd_Evacuation_f           },
 	{ "forceTeam",          false, Svcmd_ForceTeam_f            },
 	{ "humanWin",           false, Svcmd_TeamWin_f              },
-	{ "layoutLoad",         false, Svcmd_LayoutLoad_f           },
-	{ "layoutSave",         false, Svcmd_LayoutSave_f           },
 	{ "loadcensors",        false, G_LoadCensors                },
 	{ "m",                  true,  Svcmd_MessageWrapper         },
 	{ "maplog",             true,  Svcmd_MapLogWrapper          },

@@ -43,7 +43,6 @@ struct gentityConditions_s
 	class_t     classes[ PCL_NUM_CLASSES ];
 	weapon_t    weapons[ WP_NUM_WEAPONS ];
 	upgrade_t   upgrades[ UP_NUM_UPGRADES ];
-	buildable_t buildables[ BA_NUM_BUILDABLES ];
 
 	bool negated;
 };
@@ -117,7 +116,7 @@ struct gentity_s
 	const char   *classname;
 	int          spawnflags;
 
-	//entity creation time, i.e. when a building was build or a missile was fired (for diminishing missile damage)
+	//entity creation time, i.e. when a missile was fired (for diminishing missile damage)
 	int          creationTime;
 
 	char         *names[ MAX_ENTITY_ALIASES + 1 ];
@@ -125,8 +124,7 @@ struct gentity_s
 	/**
 	 * is the entity considered active?
 	 * as in 'currently doing something'
-	 * e.g. used for buildables (e.g. medi-stations or hives can be in an active state or being inactive)
-	 * or during executing act() in general
+	 * e.g. used during executing act() in general
 	 */
 	bool     active;
 	/**
@@ -141,67 +139,7 @@ struct gentity_s
 	 */
 	void ( *act )( gentity_t *self, gentity_t *caller, gentity_t *activator );
 
-	/**
-	 * is the entity able to become active?
-	 * e.g. used for buildables to indicate being usable or a stationary weapon being "live"
-	 * or for sensors to indicate being able to sense other entities and fire events
-	 *
-	 * as a reasonable assumption we default to entities being enabled directly after they are spawned,
-	 * since most of the time we want them to be
-	 */
-	bool     enabled;
-
-	/**
-	 * for entities taking a longer time to spawn,
-	 * this boolean indicates when this spawn process was finished
-	 * this can e.g. be indicated by an animation
-	 */
-	bool     spawned;
 	gentity_t    *parent; // the gentity that spawned this one
-
-	/**
-	 * is the buildable getting support by reactor or overmind?
-	 * this is tightly coupled with enabled
-	 * but buildables might be disabled independently of rc/om support
-	 * unpowered buildables are expected to be disabled though
-	 * other entities might also consider the powergrid for behavior changes
-	 */
-	bool     powered;
-	gentity_t    *powerSource;
-
-	/**
-	 * Human buildables compete for power.
-	 * currentSparePower takes temporary influences into account and sets a buildables power state.
-	 * expectedSparePower is a prediction of the static part and is used for limiting new buildables.
-	 *
-	 * currentSparePower  >= 0: Buildable has enough power
-	 * currentSparePower  <  0: Buildable lacks power, will shut down
-	 * expectedSparePower >  0: New buildables can be built in range
-	 */
-	float        currentSparePower;
-	float        expectedSparePower;
-
-	/**
-	 * The amount of momentum this building generated on construction
-	 */
-	float        momentumEarned;
-
-	/**
-	 * Mining structures
-	 */
-	float        mineRate;
-	float        mineEfficiency;
-	float        acquiredBuildPoints;
-
-	/**
-	 * Alien buildables can burn, which is a lot of fun if they are close.
-	 */
-	bool     onFire;
-	int          fireImmunityUntil;
-	int          nextBurnDamage;
-	int          nextBurnSplashDamage;
-	int          nextBurnAction;
-	gentity_t    *fireStarter;
 
 	/*
 	 * targets to aim at
@@ -275,7 +213,6 @@ struct gentity_s
 
 	int          lastHealth;
 	int          health;
-	float        deconHealthFrac;
 
 	float        speed;
 
@@ -338,13 +275,6 @@ struct gentity_s
 	int       waterlevel;
 
 	/*
-	 * Buildable statistics
-	 */
-	int       buildableStatsCount;  // players spawned/healed/killed, posion given
-	int       buildableStatsTotal;  // total damage/healing done
-	float     buildableStatsTotalF; // total resources mined
-
-	/*
 	 * variables that got randomly semantically abused by everyone
 	 * so now we rather name them to indicate the fact, that we cannot imply any meaning by the name
 	 *
@@ -355,25 +285,14 @@ struct gentity_s
 	int       customNumber;
 
 
-	team_t      buildableTeam; // buildable item team
-	struct namelog_s *builtBy; // clientNum of person that built this
-
 	int         pain_debounce_time;
 	int         last_move_time;
 	int         timestamp; // body queue sinking, etc
-	int         shrunkTime; // time when a barricade shrunk or zero
-	gentity_t   *boosterUsed; // the booster an alien is using for healing
-	int         boosterTime; // last time alien used a booster for healing
 	int         healthSourceTime; // last time an alien had contact to a health source
 	int         animTime; // last animation change
 	int         time1000; // timer evaluated every second
 
-	bool    deconstruct; // deconstruct if no BP left
-	int         deconstructTime; // time at which structure marked
 	int         attackTimer, attackLastEvent; // self being attacked
-	int         warnTimer; // nearby building(s) being attacked
-	int         overmindDyingTimer;
-	int         overmindSpawnsTimer;
 	int         nextPhysicsTime; // buildables don't need to check what they're sitting on
 	// every single frame.. so only do it periodically
 	int         clientSpawnTime; // the time until this spawn can spawn a client
@@ -386,28 +305,6 @@ struct gentity_s
 	}           credits[ MAX_CLIENTS ];
 
 	int         killedBy; // clientNum of killer
-
-	vec3_t      buildableAim; // aim vector for buildables
-
-	// turret
-	int         turretNextShot;
-	int         turretLastLOSToTarget;
-	int         turretLastValidTargetTime;
-	int         turretLastTargetSearch;
-	int         turretLastHeadMove;
-	int         turretCurrentDamage;
-	vec3_t      turretDirToTarget;
-	vec3_t      turretBaseDir;
-	bool    turretDisabled;
-	int         turretSafeModeCheckTime;
-	bool    turretSafeMode;
-	int         turretPrepareTime; // when the turret can start locking on and/or firing
-	int         turretLockonTime;  // when the turret can start firing
-
-	// spiker
-	int         spikerRestUntil;
-	float       spikerLastScoring;
-	bool    spikerLastSensing;
 
 	vec4_t      animation; // animated map objects
 
@@ -468,7 +365,6 @@ struct namelog_s
 	unnamed_t        unnamedNumber;
 
 	bool         muted;
-	bool         denyBuild;
 
 	int              score;
 	int              credits;
@@ -542,7 +438,6 @@ struct unlagged_s
 };
 
 #define MAX_UNLAGGED_MARKERS 256
-#define MAX_TRAMPLE_BUILDABLES_TRACKED 20
 
 /**
  * this structure is cleared on each ClientSpawn(),
@@ -584,7 +479,6 @@ struct gclient_s
 	int        respawnTime; // can respawn when time > this
 	int        inactivityTime; // kick players when time > this
 	bool   inactivityWarning; // true if the five seoond warning has been given
-	int        boostedTime; // last time we touched a booster
 
 	int        airOutTime;
 
@@ -602,7 +496,6 @@ struct gclient_s
 	int        lastMedKitTime;
 	int        medKitHealthToRestore;
 	int        medKitIncrementTime;
-	int        lastCreepSlowTime; // time until creep can be removed
 	int        lastCombatTime; // time of last damage received/dealt from/to clients
 	int        lastAmmoRefillTime;
 	int        lastFuelRefillTime;
@@ -614,9 +507,6 @@ struct gclient_s
 
 	float      voiceEnthusiasm;
 	char       lastVoiceCmd[ MAX_VOICE_CMD_LEN ];
-
-	int        trampleBuildablesHitPos;
-	int        trampleBuildablesHit[ MAX_TRAMPLE_BUILDABLES_TRACKED ];
 
 	int        nextCrushTime;
 
@@ -642,29 +532,8 @@ struct spawnQueue_s
 	int front, back;
 };
 
-/**
- * data needed to revert a change in layout
- */
-struct buildLog_s
-{
-	int         time;
-	buildFate_t fate;
-	namelog_t   *actor;
-	namelog_t   *builtBy;
-	team_t      buildableTeam;
-	buildable_t modelindex;
-	float       momentumEarned;
-	bool    deconstruct;
-	int         deconstructTime;
-	vec3_t      origin;
-	vec3_t      angles;
-	vec3_t      origin2;
-	vec3_t      angles2;
-};
-
 #define MAX_SPAWN_VARS       64
 #define MAX_SPAWN_VARS_CHARS 4096
-#define MAX_BUILDLOG         1024
 
 struct level_locals_s
 {
@@ -733,11 +602,6 @@ struct level_locals_s
 	gentity_t        *locationHead; // head of the location list
 	gentity_t        *fakeLocation; // fake location for anything which might need one
 
-	float            mineRate;
-
-	gentity_t        *markedBuildables[ MAX_GENTITIES ];
-	int              numBuildablesForRemoval;
-
 	team_t           lastWin;
 
 	timeWarning_t    timelimitWarning;
@@ -761,12 +625,6 @@ struct level_locals_s
 	int              emoticonCount;
 
 	namelog_t        *namelogs;
-
-	buildLog_t       buildLog[ MAX_BUILDLOG ];
-	int              buildId;
-	int              numBuildLogs;
-
-	bool         overmindMuted;
 
 	int              humanBaseAttackTimer;
 
@@ -795,15 +653,11 @@ struct level_locals_s
 		float            averageNumBots;
 		int              numSamples;
 		int              numAliveClients;
-		float            buildPoints;
-		float            acquiredBuildPoints;
 		float            mainStructAcquiredBP;
-		float            mineEfficiency;
 		int              kills;
 		spawnQueue_t     spawnQueue;
 		bool         locked;
 		float            momentum;
-		int              layoutBuildPoints;
 	} team[ NUM_TEAMS ];
 
 	struct {

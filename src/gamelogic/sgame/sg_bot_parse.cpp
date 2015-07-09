@@ -63,12 +63,6 @@ AIValue_t AIBoxToken( const pc_token_stripped_t *token )
 	}
 }
 
-// functions that are used to provide values to the behavior tree in condition nodes
-static AIValue_t buildingIsDamaged( gentity_t *self, const AIValue_t *params )
-{
-	return AIBoxInt( self->botMind->closestDamagedBuilding.ent != nullptr );
-}
-
 static AIValue_t haveWeapon( gentity_t *self, const AIValue_t *params )
 {
 	return AIBoxInt( BG_InventoryContainsWeapon( AIUnBoxInt( params[ 0 ] ), self->client->ps.stats ) );
@@ -115,22 +109,8 @@ static AIValue_t goalDead( gentity_t *self, const AIValue_t *params )
 	{
 		dead = true;
 	}
-	else if ( goal->ent->s.eType == ET_BUILDABLE && goal->ent->buildableTeam == self->client->pers.team && !goal->ent->powered )
-	{
-		dead = true;
-	}
 
 	return AIBoxInt( dead );
-}
-
-static AIValue_t goalBuildingType( gentity_t *self, const AIValue_t *params )
-{
-	if ( BotGetTargetType( self->botMind->goal ) != ET_BUILDABLE )
-	{
-		return AIBoxInt( BA_NONE );
-	}
-
-	return AIBoxInt( self->botMind->goal.ent->s.modelindex );
 }
 
 static AIValue_t currentWeapon( gentity_t *self, const AIValue_t *params )
@@ -304,11 +284,6 @@ static AIValue_t percentHealth( gentity_t *self, const AIValue_t *params )
 	{
 		health = et.ent->health;
 
-		if ( et.ent->s.eType == ET_BUILDABLE )
-		{
-			maxHealth = BG_Buildable( ( buildable_t ) et.ent->s.modelindex )->health;
-		}
-
 		if ( et.ent->s.eType == ET_PLAYER )
 		{
 			maxHealth = BG_Class( ( class_t ) et.ent->client->ps.stats[ STAT_CLASS ] )->health;
@@ -330,14 +305,12 @@ static const struct AIConditionMap_s
 	{ "alertedToEnemy",    VALUE_INT,   alertedToEnemy,    0 },
 	{ "alienMomentum",   VALUE_INT,   alienMomentum,   0 },
 	{ "baseRushScore",     VALUE_FLOAT, baseRushScore,     0 },
-	{ "buildingIsDamaged", VALUE_INT,   buildingIsDamaged, 0 },
 	{ "canEvolveTo",       VALUE_INT,   botCanEvolveTo,    1 },
 	{ "class",             VALUE_INT,   botClass,          0 },
 	{ "cvarFloat",         VALUE_FLOAT, cvarFloat,         1 },
 	{ "cvarInt",           VALUE_INT,   cvarInt,           1 },
 	{ "directPathTo",      VALUE_INT,   directPathTo,      1 },
 	{ "distanceTo",        VALUE_FLOAT, distanceTo,        1 },
-	{ "goalBuildingType",  VALUE_INT,   goalBuildingType,  0 },
 	{ "goalIsDead",        VALUE_INT,   goalDead,          0 },
 	{ "goalTeam",          VALUE_INT,   goalTeam,          0 },
 	{ "goalType",          VALUE_INT,   goalType,          0 },
@@ -916,11 +889,9 @@ static const struct AIActionMap_s
 	{ "activateUpgrade",   BotActionActivateUpgrade,   1, 1 },
 	{ "aimAtGoal",         BotActionAimAtGoal,         0, 0 },
 	{ "alternateStrafe",   BotActionAlternateStrafe,   0, 0 },
-	{ "buy",               BotActionBuy,               1, 4 },
 	{ "changeGoal",        BotActionChangeGoal,        1, 1 },
 	{ "classDodge",        BotActionClassDodge,        0, 0 },
 	{ "deactivateUpgrade", BotActionDeactivateUpgrade, 1, 1 },
-	{ "equip",             BotActionBuy,               0, 0 },
 	{ "evolve",            BotActionEvolve,            0, 0 },
 	{ "evolveTo",          BotActionEvolveTo,          1, 1 },
 	{ "fight",             BotActionFight,             0, 0 },
@@ -930,7 +901,6 @@ static const struct AIActionMap_s
 	{ "moveInDir",         BotActionMoveInDir,         1, 2 },
 	{ "moveTo",            BotActionMoveTo,            1, 2 },
 	{ "moveToGoal",        BotActionMoveToGoal,        0, 0 },
-	{ "repair",            BotActionRepair,            0, 0 },
 	{ "roam",              BotActionRoam,              0, 0 },
 	{ "roamInRadius",      BotActionRoamInRadius,      2, 2 },
 	{ "rush",              BotActionRush,              0, 0 },
@@ -1271,24 +1241,9 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	// add AIEntitys
 	D( E_NONE );
 	D( E_A_SPAWN );
-	D( E_A_OVERMIND );
-	D( E_A_BARRICADE );
-	D( E_A_ACIDTUBE );
-	D( E_A_TRAPPER );
-	D( E_A_BOOSTER );
-	D( E_A_HIVE );
-	D( E_A_LEECH );
 	D( E_H_SPAWN );
-	D( E_H_MGTURRET );
-	D( E_H_ROCKETPOD );
-	D( E_H_ARMOURY );
-	D( E_H_MEDISTAT );
-	D( E_H_DRILL );
-	D( E_H_REACTOR );
-	D( E_H_REPEATER );
 	D( E_GOAL );
 	D( E_ENEMY );
-	D( E_DAMAGEDBUILDING );
 	D( E_SELF );
 
 	// add player classes
@@ -1311,8 +1266,6 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( MOVE_BACKWARD );
 	D( MOVE_RIGHT );
 	D( MOVE_LEFT );
-
-	D( ET_BUILDABLE );
 
 	// node return status
 	D( STATUS_RUNNING );
