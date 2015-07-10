@@ -444,12 +444,6 @@ static void CG_Draw2D()
 		return;
 	}
 
-	if ( cg.snap->ps.persistant[ PERS_SPECSTATE ] == SPECTATOR_NOT &&
-	     cg.snap->ps.stats[ STAT_HEALTH ] > 0 && !cg.zoomed )
-	{
-		CG_DrawBuildableStatus();
-	}
-
 	// get an up-to-date list of beacons
 	CG_RunBeacons();
 

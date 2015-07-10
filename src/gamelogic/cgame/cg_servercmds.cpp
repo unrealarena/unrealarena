@@ -138,8 +138,6 @@ void CG_ParseServerinfo()
 
 	cgs.timelimit          = atoi( Info_ValueForKey( info, "timelimit" ) );
 	cgs.maxclients         = atoi( Info_ValueForKey( info, "sv_maxclients" ) );
-	cgs.powerReactorRange  = atoi( Info_ValueForKey( info, "g_powerReactorRange" ) );
-	cgs.powerRepeaterRange = atoi( Info_ValueForKey( info, "g_powerRepeaterRange" ) );
 	cgs.momentumHalfLife = atof( Info_ValueForKey( info, "g_momentumHalfLife" ) );
 	cgs.unlockableMinTime  = atof( Info_ValueForKey( info, "g_unlockableMinTime" ) );
 
@@ -423,18 +421,6 @@ void CG_Menu( int menuType, int arg )
 			menu = ROCKETMENU_HUMANSPAWN;
 			break;
 
-		case MN_A_BUILD:
-			menu = ROCKETMENU_ALIENBUILD;
-			break;
-
-		case MN_H_BUILD:
-			menu = ROCKETMENU_HUMANBUILD;
-			break;
-
-		case MN_H_ARMOURY:
-			menu = ROCKETMENU_ARMOURYBUY;
-			break;
-
 		case MN_H_UNKNOWNITEM:
 			shortMsg = "Unknown item";
 			break;
@@ -517,24 +503,6 @@ void CG_Menu( int menuType, int arg )
 
 			//===============================
 
-		case MN_B_NOROOM:
-			longMsg = _("There is no room to build here. Move until the structure turns "
-			          "translucent green, indicating a valid build location.");
-			shortMsg = _("There is no room to build here");
-			break;
-
-		case MN_B_NORMAL:
-			longMsg = _("Cannot build on this surface. The surface is too steep or "
-			          "unsuitable for building. Please choose another site for this "
-			          "structure.");
-			shortMsg = _("Cannot build on this surface");
-			break;
-
-		case MN_B_CANNOT:
-			longMsg = nullptr;
-			shortMsg = _("You cannot build that structure");
-			break;
-
 		case MN_B_LASTSPAWN:
 			longMsg = _("This action would remove your team's last spawn point, "
 			          "which often quickly results in a loss. Try building more "
@@ -542,59 +510,10 @@ void CG_Menu( int menuType, int arg )
 			shortMsg = _("You may not deconstruct the last spawn");
 			break;
 
-		case MN_B_MAINSTRUCTURE:
-			longMsg = _("The main structure is protected against instant removal. "
-			            "When it is marked, you can move it to another place by "
-			            "building it there.");
-			shortMsg = _("You may not deconstruct this structure");
-			break;
-
-		case MN_B_DISABLED:
-			longMsg = _("Building has been disabled on the server for your team.");
-			shortMsg = _("Building has been disabled for your team");
-			break;
-
-		case MN_B_REVOKED:
-			longMsg = _("Your teammates have lost faith in your ability to build "
-			          "for the team. You will not be allowed to build until your "
-			          "team votes to reinstate your building rights.");
-			shortMsg = _("Your building rights have been revoked");
-			break;
-
 		case MN_B_SURRENDER:
 			longMsg = _("Your team has decided to admit defeat and concede the game: "
 			            "There's no point in building anything anymore.");
 			shortMsg = _("Cannot build after admitting defeat");
-			break;
-
-		case MN_H_NOBP:
-			longMsg = _("There are no resources remaining. Free up resources by "
-			            "marking existing buildables for deconstruction.");
-			shortMsg = _("There are no resources remaining");
-			break;
-
-		case MN_H_NOTPOWERED:
-			longMsg = _("This buildable is not powered. Build a Reactor and/or Repeater "
-			          "in order to power it.");
-			shortMsg = _("This buildable is not powered");
-			break;
-
-		case MN_H_NOPOWERHERE:
-			longMsg = _("There is not enough power in this area. Keep a distance to other "
-			            "buildables or build a repeater to increase the local capacity.");
-			shortMsg = _("There is not enough power here");
-			break;
-
-		case MN_H_NOREACTOR:
-			longMsg = _("There is no reactor and the local power supply is insufficient. "
-			            "Build the reactor or a repeater to increase the local capacity.");
-			shortMsg = _("There is no reactor and the local power supply is insufficient");
-			break;
-
-		case MN_H_ONEREACTOR:
-			longMsg = _("There can only be one Reactor. Mark the existing one if you "
-			            "wish to move it.");
-			shortMsg = _("There can only be one Reactor");
 			break;
 
 		case MN_H_NOSLOTS:
@@ -615,28 +534,9 @@ void CG_Menu( int menuType, int arg )
 			shortMsg = _("You already hold this item");
 			break;
 
-		case MN_H_NOARMOURYHERE:
-			longMsg = _("You must be near a powered Armoury in order to purchase "
-			          "weapons, upgrades or ammunition.");
-			shortMsg = _("You must be near a powered Armoury");
-			break;
-
-		case MN_H_NOENERGYAMMOHERE:
-			longMsg = _("You must be near a Reactor or a powered Armoury or Repeater "
-			          "in order to purchase energy ammunition.");
-			shortMsg = _("You must be near a Reactor or a powered Armoury or Repeater");
-			break;
-
 		case MN_H_NOROOMARMOURCHANGE:
 			longMsg = _("There is not enough room here to change armour.");
 			shortMsg = _("Not enough room here to change armour.");
-			break;
-
-		case MN_H_ARMOURYBUILDTIMER:
-			longMsg = _("You are not allowed to buy or sell weapons until your "
-			          "build timer has expired.");
-			shortMsg = _("You can not buy or sell weapons until your build timer "
-			           "expires");
 			break;
 
 		case MN_H_DEADTOCLASS:
@@ -649,30 +549,6 @@ void CG_Menu( int menuType, int arg )
 
 			//===============================
 
-		case MN_A_NOCREEP:
-			longMsg = _("There is no creep here. You must build near existing Eggs or "
-			          "the Overmind. Alien structures will not support themselves.");
-			shortMsg = _("There is no creep here");
-			break;
-
-		case MN_A_NOOVMND:
-			longMsg = _("There is no Overmind. An Overmind must be built to control "
-			          "the structure you tried to place.");
-			shortMsg = _("There is no Overmind");
-			break;
-
-		case MN_A_ONEOVERMIND:
-			longMsg = _("There can only be one Overmind. Deconstruct the existing one if you "
-			          "wish to move it.");
-			shortMsg = _("There can only be one Overmind");
-			break;
-
-		case MN_A_NOBP:
-			longMsg = _("The Overmind cannot control any more structures. Deconstruct existing "
-			          "structures to build more.");
-			shortMsg = _("The Overmind cannot control any more structures");
-			break;
-
 		case MN_A_NOEROOM:
 			longMsg = _("There is no room to evolve here. Move away from walls or other "
 			          "nearby objects and try again.");
@@ -683,12 +559,6 @@ void CG_Menu( int menuType, int arg )
 			longMsg = _("This location is too close to the enemy to evolve. Move away "
 			          "from the enemy's presence and try again.");
 			shortMsg = _("This location is too close to the enemy to evolve");
-			break;
-
-		case MN_A_NOOVMND_EVOLVE:
-			longMsg = _("There is no Overmind. An Overmind must be built to allow "
-			          "you to upgrade.");
-			shortMsg = _("There is no Overmind");
 			break;
 
 		case MN_A_EVOLVEBUILDTIMER:

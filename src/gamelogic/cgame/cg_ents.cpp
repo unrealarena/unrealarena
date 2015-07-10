@@ -1061,10 +1061,6 @@ static void CG_CEntityPVSEnter( centity_t *cent )
 
 	switch ( es->eType )
 	{
-		case ET_BUILDABLE:
-			cent->lastBuildableHealth = es->generic1;
-			break;
-
 		case ET_LIGHTFLARE:
 			cent->lfs.hTest = trap_RegisterVisTest();
 			break;
@@ -1079,18 +1075,11 @@ static void CG_CEntityPVSEnter( centity_t *cent )
 	cent->jetPackPS[ 0 ] = nullptr;
 	cent->jetPackPS[ 1 ] = nullptr;
 	cent->jetPackState = JPS_INACTIVE;
-	cent->buildablePS = nullptr;
-	cent->buildableStatusPS = nullptr;
 	cent->entityPS = nullptr;
 	cent->entityPSMissing = false;
 	cent->missilePS = nullptr;
 	cent->missileTS = nullptr;
 
-	//make sure that the buildable animations are in a consistent state
-	//when a buildable enters the PVS
-	cent->buildableAnim = BANIM_NONE;
-	cent->lerpFrame.animationNumber = BANIM_NONE;
-	cent->oldBuildableAnim = (buildableAnimNumber_t) es->legsAnim;
 	cent->radarVisibility = 0.0f;
 
 	cent->pvsEnterTime = cg.time;
@@ -1218,10 +1207,6 @@ static void CG_AddCEntity( centity_t *cent )
 
 		case ET_PLAYER:
 			CG_Player( cent );
-			break;
-
-		case ET_BUILDABLE:
-			CG_Buildable( cent );
 			break;
 
 		case ET_MISSILE:

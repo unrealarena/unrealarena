@@ -79,21 +79,9 @@ static const struct {
 	{ "[tyrant]",      false, true  }, // trample
 	{ "crushed",       false, true  }, // weight (A) // FIXME
 
-	{ "[granger]",     false, true  }, // granger spit (slowblob)
-	{ "[booster]",     false, true  }, // poison
-	{ "[hive]",        true,  true,  TEAM_ALIENS },
-
 	{ LONGFORM,        true,  false, TEAM_HUMANS }, // H spawn
-	{ "[rocketpod]",   true,  true,  TEAM_HUMANS },
-	{ "[turret]",      true,  true,  TEAM_HUMANS },
-	{ "[reactor]",     true,  true,  TEAM_HUMANS },
 
 	{ LONGFORM,        true,  false, TEAM_ALIENS }, // A spawn
-	{ "[acidtube]",    true,  true,  TEAM_ALIENS },
-	{ "[overmind]",    true,  true,  TEAM_ALIENS },
-	{ "",              true,  false },
-	{ "",              true,  false },
-	{ "",              true,  false },
 };
 
 static void CG_Obituary( entityState_t *ent )
@@ -271,58 +259,6 @@ static void CG_Obituary( entityState_t *ent )
 				message = G_( "%s%s ^7was in the wrong place\n" );
 				break;
 
-			// Building explosions
-
-			case MOD_HSPAWN:
-				message = G_( "%s%s ^7was caught in the explosion\n" );
-				break;
-
-			case MOD_ASPAWN:
-				message = G_( "%s%s ^7was caught in the acid\n" );
-				break;
-
-			// Attacked by a building
-
-			case MOD_MGTURRET:
-				message = G_( "%s%s ^7was gunned down by a turret\n" );
-				messageAssisted = G_( "%s%s ^7was gunned down by a turret; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_ROCKETPOD:
-				message = G_( "%s%s ^7caught a rocket\n" );
-				messageAssisted = G_( "%s%s ^7caught a rocket; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_ATUBE:
-				message = G_( "%s%s ^7was melted by an acid tube\n" );
-				messageAssisted = G_( "%s%s ^7was melted by an acid tube; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_SPIKER:
-				message = G_( "%s%s ^7was flechetted by a spiker\n" );
-				messageAssisted = G_( "%s%s ^7was flechetted by a spiker; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_OVERMIND:
-				message = G_( "%s%s ^7was whipped by the overmind\n" );
-				messageAssisted = G_( "%s%s ^7was whipped by the overmind; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_REACTOR:
-				message = G_( "%s%s ^7was fried by the reactor\n" );
-				messageAssisted = G_( "%s%s ^7was fried by the reactor; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_SLOWBLOB:
-				message = G_( "%s%s ^7couldn't avoid the granger\n" );
-				messageAssisted = G_( "%s%s ^7couldn't avoid the granger; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_SWARM:
-				message = G_( "%s%s ^7was consumed by the swarm\n" );
-				messageAssisted = G_( "%s%s ^7was consumed by the swarm; %s%s^7 assisted\n" );
-				break;
-
 			// Shouldn't happen
 
 			case MOD_TARGET_LASER:
@@ -397,12 +333,6 @@ static void CG_Obituary( entityState_t *ent )
 				message = G_( "%s%s ^7was grilled by %s%s^7's flame\n" );
 				messageAssisted = G_( "%s%s ^7was grilled by %s%s^7's flame; %s%s^7 assisted\n" );
 				messageSuicide = G_( "%s%s ^7was charred to a crisp" );
-				break;
-
-			case MOD_BURN:
-				message = G_( "%s%s ^7was burned by %s%s^7's fire\n" );
-				messageAssisted = G_( "%s%s ^7was burned by %s%s^7's fire; %s%s^7 assisted\n" );
-				messageSuicide = G_( "%s%s ^7was burned to death" );
 				break;
 
 			case MOD_LCANNON:
@@ -616,13 +546,6 @@ void CG_OnPlayerWeaponChange( weapon_t oldWeapon )
 	// Change the HUD to match the weapon. Close the old hud first
 	trap_Rocket_ShowHud( ps->weapon );
 
-	// Rebuild weapon lists if UI is in focus.
-	if ( trap_Key_GetCatcher() == KEYCATCH_UI && ps->persistant[ PERS_TEAM ] == TEAM_HUMANS )
-	{
-		CG_Rocket_BuildArmourySellList( "default" );
-		CG_Rocket_BuildArmouryBuyList( "default" );
-	}
-
 	cg.weaponOffsetsFilter.Reset( );
 
 	cg.predictedPlayerEntity.pe.weapon.animationNumber = -1; //force weapon lerpframe recalculation
@@ -638,14 +561,6 @@ Called on upgrade change
 
 void CG_OnPlayerUpgradeChange()
 {
-	playerState_t *ps = &cg.snap->ps;
-
-	// Rebuild weapon lists if UI is in focus.
-	if ( trap_Key_GetCatcher() == KEYCATCH_UI && ps->persistant[ PERS_TEAM ] == TEAM_HUMANS )
-	{
-		CG_Rocket_BuildArmourySellList( "default" );
-		CG_Rocket_BuildArmouryBuyList( "default" );
-	}
 }
 
 /*
@@ -696,7 +611,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 {
 	entityState_t *es;
 	int           event;
-	vec3_t        dir;
 	const char    *s;
 	int           clientNum;
 	clientInfo_t  *ci;
@@ -1030,17 +944,10 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			CG_PlayerDisconnect( position );
 			break;
 
-		case EV_BUILD_CONSTRUCT:
-			break;
-
-		case EV_BUILD_DESTROY:
-			break;
-
 		case EV_AMMO_REFILL:
 		case EV_CLIPS_REFILL:
 		case EV_FUEL_REFILL:
 			// TODO: Add different sounds for EV_AMMO_REFILL, EV_CLIPS_REFILL, EV_FUEL_REFILL
-			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.repeaterUseSound );
 			break;
 
 		case EV_GRENADE_BOUNCE:
@@ -1074,20 +981,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 		case EV_SHOTGUN:
 			CG_HandleFireShotgun( es );
-			break;
-
-		case EV_HUMAN_BUILDABLE_DYING:
-			CG_HumanBuildableDying( (buildable_t) es->modelindex, position );
-			break;
-
-		case EV_HUMAN_BUILDABLE_EXPLOSION:
-			ByteToDir( es->eventParm, dir );
-			CG_HumanBuildableExplosion( (buildable_t) es->modelindex, position, dir );
-			break;
-
-		case EV_ALIEN_BUILDABLE_EXPLOSION:
-			ByteToDir( es->eventParm, dir );
-			CG_AlienBuildableExplosion( position, dir );
 			break;
 
 		case EV_TESLATRAIL:
@@ -1168,107 +1061,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			es->loopSound = 0;
 			break;
 
-		case EV_BUILD_DELAY:
-			if ( clientNum == cg.predictedPlayerState.clientNum )
-			{
-				trap_S_StartLocalSound( cgs.media.buildableRepairedSound, CHAN_LOCAL_SOUND );
-				cg.lastBuildAttempt = cg.time;
-			}
-
-			break;
-
-		case EV_BUILD_REPAIR:
-			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.buildableRepairSound );
-			break;
-
-		case EV_BUILD_REPAIRED:
-			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.buildableRepairedSound );
-			break;
-
-		case EV_OVERMIND_ATTACK_1:
-		case EV_OVERMIND_ATTACK_2:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
-			{
-				trap_S_StartLocalSound( cgs.media.alienOvermindAttack, CHAN_ANNOUNCER );
-				CG_CenterPrint( va( "^%c%s", "31"[ event - EV_OVERMIND_ATTACK_1 ], _( "The Overmind is under attack!" ) ), 200, GIANTCHAR_WIDTH * 4 );
-			}
-
-			break;
-
-		case EV_OVERMIND_DYING:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
-			{
-				trap_S_StartLocalSound( cgs.media.alienOvermindDying, CHAN_ANNOUNCER );
-				CG_CenterPrint( _( "^1The Overmind is dying!" ), 200, GIANTCHAR_WIDTH * 4 );
-			}
-
-			break;
-
-		case EV_REACTOR_ATTACK_1:
-		case EV_REACTOR_ATTACK_2:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_HUMANS )
-			{
-				CG_CenterPrint( va( "^%c%s", "31"[ event - EV_REACTOR_ATTACK_1 ], _( "The reactor is under attack!" ) ), 200, GIANTCHAR_WIDTH * 4 );
-			}
-
-			break;
-
-		case EV_REACTOR_DYING:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_HUMANS )
-			{
-				CG_CenterPrint( _( "^1The reactor is about to explode!" ), 200, GIANTCHAR_WIDTH * 4 );
-			}
-
-			break;
-
-		case EV_WARN_ATTACK:
-			// if eventParm is non-zero, this is for humans and there's a nearby reactor or repeater, otherwise it's for aliens
-			if ( es->eventParm >= MAX_CLIENTS && es->eventParm < MAX_GENTITIES )
-			{
-				const char *location;
-				bool    base = cg_entities[ es->eventParm ].currentState.modelindex == BA_H_REACTOR;
-				centity_t  *locent = CG_GetLocation( cg_entities[ es->eventParm ].currentState.origin );
-
-				CG_CenterPrint( base ? _( "Our base is under attack!" ) : _( "A forward base is under attack!" ), 200, GIANTCHAR_WIDTH * 4 );
-
-				if ( locent )
-				{
-					location = CG_ConfigString( CS_LOCATIONS + locent->currentState.generic1 );
-				}
-				else
-				{
-					location = CG_ConfigString( CS_LOCATIONS );
-				}
-
-				if ( location && *location )
-				{
-					Com_Printf( _( "%s Under attack – %s\n" ), base ? "[reactor]" : "[repeater]", location );
-				}
-				else
-				{
-					Com_Printf( _( "%s Under attack\n" ), base ? "[reactor]" : "[repeater]" );
-				}
-			}
-			else // this is for aliens, and the overmind is in range
-			{
-				CG_CenterPrint( _( "Our base is under attack!" ), 200, GIANTCHAR_WIDTH * 4 );
-			}
-
-			break;
-
-		case EV_MGTURRET_SPINUP:
-			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.turretSpinupSound );
-			break;
-
-		case EV_OVERMIND_SPAWNS:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
-			{
-				trap_S_StartLocalSound( cgs.media.alienOvermindSpawns, CHAN_ANNOUNCER );
-				CG_CenterPrint( "The Overmind needs spawns!", 200, GIANTCHAR_WIDTH * 4 );
-			}
-
-			break;
-
 		case EV_ALIEN_EVOLVE:
 			trap_S_StartSound( nullptr, es->number, CHAN_BODY, cgs.media.alienEvolveSound );
 			{
@@ -1293,38 +1085,9 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			if ( clientNum == cg.predictedPlayerState.clientNum )
 			{
 				//FIXME: change to "negative" sound
-				trap_S_StartLocalSound( cgs.media.buildableRepairedSound, CHAN_LOCAL_SOUND );
 				cg.lastEvolveAttempt = cg.time;
 			}
 
-			break;
-
-		case EV_ALIEN_ACIDTUBE:
-			{
-				particleSystem_t *ps = CG_SpawnNewParticleSystem( cgs.media.alienAcidTubePS );
-
-				if ( CG_IsParticleSystemValid( &ps ) )
-				{
-					CG_SetAttachmentCent( &ps->attachment, cent );
-					ByteToDir( es->eventParm, dir );
-					CG_SetParticleSystemNormal( ps, dir );
-					CG_AttachToCent( &ps->attachment );
-				}
-			}
-			break;
-
-		case EV_ALIEN_BOOSTER:
-			{
-				particleSystem_t *ps = CG_SpawnNewParticleSystem( cgs.media.alienBoosterPS );
-
-				if ( CG_IsParticleSystemValid( &ps ) )
-				{
-					CG_SetAttachmentCent( &ps->attachment, cent );
-					ByteToDir( es->eventParm, dir );
-					CG_SetParticleSystemNormal( ps, dir );
-					CG_AttachToCent( &ps->attachment );
-				}
-			}
 			break;
 
 		case EV_MEDKIT_USED:

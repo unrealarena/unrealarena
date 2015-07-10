@@ -599,22 +599,6 @@ typedef struct lightFlareStatus_s
 	qhandle_t hTest;
 } lightFlareStatus_t;
 
-typedef struct buildableStatus_s
-{
-	int      lastTime; // Last time status was visible
-	bool visible; // Status is visible?
-} buildableStatus_t;
-
-typedef struct buildableCache_s
-{
-	vec3_t cachedOrigin; // If any of the values differ from their
-	vec3_t cachedAngles; //  cached versions, then the cache is invalid
-	vec3_t cachedNormal;
-	buildable_t cachedType;
-	vec3_t axis[ 3 ];
-	vec3_t origin;
-} buildableCache_t;
-
 //=================================================
 
 #define MAX_CBEACONS 50
@@ -753,18 +737,6 @@ typedef struct centity_s
 	vec3_t                lerpAngles;
 
 	lerpFrame_t           lerpFrame;
-
-	buildableAnimNumber_t buildableAnim; //persistent anim number
-	buildableAnimNumber_t oldBuildableAnim; //to detect when new anims are set
-	bool              buildableIdleAnim; //to check if new idle anim
-	particleSystem_t      *buildablePS;
-	particleSystem_t      *buildableStatusPS; // used for steady effects like fire
-	buildableStatus_t     buildableStatus;
-	buildableCache_t      buildableCache; // so we don't recalculate things
-	float                 lastBuildableHealth;
-	int                   lastBuildableDamageSoundTime;
-
-	vec3_t                overmindEyeAngle;
 
 	lightFlareStatus_t    lfs;
 
@@ -997,19 +969,6 @@ typedef struct
 	sfxHandle_t sound;
 } sound_t;
 
-typedef struct
-{
-	qhandle_t   models[ MAX_BUILDABLE_MODELS ];
-	animation_t animations[ MAX_BUILDABLE_ANIMATIONS ];
-
-	//same number of sounds as animations
-	sound_t  sounds[ MAX_BUILDABLE_ANIMATIONS ];
-
-	qhandle_t buildableIcon;
-
-	bool md5;
-} buildableInfo_t;
-
 //======================================================================
 
 typedef struct
@@ -1039,14 +998,6 @@ typedef struct
 
 typedef struct
 {
-	vec3_t alienBuildablePos[ MAX_GENTITIES ];
-	float  alienBuildableIntensity[ MAX_GENTITIES ];
-	int    numAlienBuildables;
-
-	vec3_t humanBuildablePos[ MAX_GENTITIES ];
-	float  humanBuildableIntensity[ MAX_GENTITIES ];
-	int    numHumanBuildables;
-
 	vec3_t alienClientPos[ MAX_CLIENTS ];
 	float  alienClientIntensity[ MAX_CLIENTS ];
 	int    numAlienClients;
@@ -1275,9 +1226,7 @@ typedef struct
 	char                    currentLoadingLabel[ MAX_LOADING_LABEL_LENGTH ];
 	float                   charModelFraction; // loading percentages
 	float                   mediaFraction;
-	float                   buildablesFraction;
 
-	int                     lastBuildAttempt;
 	int                     lastEvolveAttempt;
 
 	char                    consoleText[ MAX_CONSOLE_TEXT ];
@@ -1299,7 +1248,6 @@ typedef struct
 	float                   chargeMeterValue;
 	qhandle_t               lastHealthCross;
 	float                   healthCrossFade;
-	int                     nearUsableBuildable;
 
 	int                     nextWeaponClickTime;
 
@@ -1433,25 +1381,9 @@ typedef struct
 
 	int selectedAlienSpawnClass;
 
-	int armouryBuyList[3][ ( WP_LUCIFER_CANNON - WP_BLASTER ) + UP_NUM_UPGRADES + 1 ];
-	int selectedArmouryBuyItem[3];
-	int armouryBuyListCount[3];
-
-	int armourySellList[ WP_NUM_WEAPONS + UP_NUM_UPGRADES ];
-	int selectedArmourySellItem;
-	int armourySellListCount;
-
 	int alienEvolveList[ PCL_NUM_CLASSES ];
 	int selectedAlienEvolve;
 	int alienEvolveListCount;
-
-	int humanBuildList[ BA_NUM_BUILDABLES ];
-	int selectedHumanBuild;
-	int humanBuildListCount;
-
-	int alienBuildList[ BA_NUM_BUILDABLES ];
-	int selectedAlienBuild;
-	int alienBuildListCount;
 
 	int beaconList[ NUM_BEACON_TYPES ];
 	int selectedBeacon;
@@ -1504,8 +1436,6 @@ typedef struct
 	qhandle_t crosshairShader[ WP_NUM_WEAPONS ];
 	qhandle_t backTileShader;
 
-	qhandle_t creepShader;
-
 	qhandle_t scannerShader;
 	qhandle_t scannerBlipShader;
 	qhandle_t scannerBlipBldgShader;
@@ -1517,11 +1447,6 @@ typedef struct
 
 	qhandle_t shadowMarkShader;
 	qhandle_t wakeMarkShader;
-
-	// buildable shaders
-	qhandle_t             greenBuildShader;
-	qhandle_t             redBuildShader;
-	qhandle_t             humanSpawningShader;
 
 	qhandle_t             sphereModel;
 	qhandle_t             sphericalCone64Model;
@@ -1544,7 +1469,6 @@ typedef struct
 	sfxHandle_t humanTalkSound;
 	sfxHandle_t landSound;
 	sfxHandle_t fallSound;
-	sfxHandle_t turretSpinupSound;
 
 	sfxHandle_t hardBounceSound1;
 	sfxHandle_t hardBounceSound2;
@@ -1559,19 +1483,7 @@ typedef struct
 
 	sfxHandle_t medkitUseSound;
 
-	sfxHandle_t weHaveEvolved;
 	sfxHandle_t reinforcement;
-
-	sfxHandle_t alienOvermindAttack;
-	sfxHandle_t alienOvermindDying;
-	sfxHandle_t alienOvermindSpawns;
-
-	sfxHandle_t alienBuildableExplosion;
-	sfxHandle_t alienBuildablePrebuild;
-	sfxHandle_t humanBuildableDying;
-	sfxHandle_t humanBuildableExplosion;
-	sfxHandle_t humanBuildablePrebuild;
-	sfxHandle_t humanBuildableDamage[ 4 ];
 
 	sfxHandle_t alienL4ChargePrepare;
 	sfxHandle_t alienL4ChargeStart;
@@ -1589,28 +1501,12 @@ typedef struct
 	qhandle_t   jetpackFlashModel;
 	qhandle_t   radarModel;
 
-	sfxHandle_t repeaterUseSound;
-
-	sfxHandle_t buildableRepairSound;
-	sfxHandle_t buildableRepairedSound;
-
 	qhandle_t   alienEvolvePS;
-	qhandle_t   alienAcidTubePS;
-	qhandle_t   alienBoosterPS;
 
 	sfxHandle_t alienEvolveSound;
 
-	qhandle_t   humanBuildableDamagedPS;
-	qhandle_t   humanBuildableDestroyedPS;
-	qhandle_t   humanBuildableNovaPS;
-	qhandle_t   alienBuildableDamagedPS;
-	qhandle_t   alienBuildableDestroyedPS;
-
 	qhandle_t   alienBleedPS;
 	qhandle_t   humanBleedPS;
-	qhandle_t   alienBuildableBleedPS;
-	qhandle_t   humanBuildableBleedPS;
-	qhandle_t   alienBuildableBurnPS;
 
 	qhandle_t   floorFirePS;
 
@@ -1618,8 +1514,6 @@ typedef struct
 
 	sfxHandle_t lCannonWarningSound;
 	sfxHandle_t lCannonWarningSound2;
-
-	sfxHandle_t rocketpodLockonSound;
 
 	qhandle_t   buildWeaponTimerPie[ 8 ];
 	qhandle_t   healthCross;
@@ -1648,7 +1542,6 @@ typedef struct
 {
 	qhandle_t frameShader;
 	qhandle_t overlayShader;
-	qhandle_t noPowerShader;
 	qhandle_t markedShader;
 	vec4_t    healthSevereColor;
 	vec4_t    healthHighColor;
@@ -1686,8 +1579,6 @@ typedef struct
 	int      timelimit;
 	int      maxclients;
 	char     mapname[ MAX_QPATH ];
-	int      powerReactorRange;
-	int      powerRepeaterRange;
 	float    momentumHalfLife; // used for momentum bar (un)lock markers
 	float    unlockableMinTime;  // used for momentum bar (un)lock markers
 
@@ -1730,9 +1621,6 @@ typedef struct
 	int          cursorY;
 	void         *capturedItem;
 	qhandle_t    activeCursor;
-
-	buildStat_t  alienBuildStat;
-	buildStat_t  humanBuildStat;
 
 	// media
 	cgMedia_t    media;
@@ -1787,7 +1675,6 @@ typedef enum
 typedef enum
 {
   CG_ALTSHADER_DEFAULT, // must be first
-  CG_ALTSHADER_UNPOWERED,
   CG_ALTSHADER_DEAD
 } altShader_t;
 
@@ -1800,7 +1687,6 @@ extern  centity_t           cg_entities[ MAX_GENTITIES ];
 extern  weaponInfo_t        cg_weapons[ 32 ];
 extern  upgradeInfo_t       cg_upgrades[ 32 ];
 extern  classInfo_t         cg_classes[ PCL_NUM_CLASSES ];
-extern  buildableInfo_t     cg_buildables[ BA_NUM_BUILDABLES ];
 
 extern  const vec3_t        cg_shaderColors[ SHC_NUM_SHADER_COLORS ];
 
@@ -1813,7 +1699,6 @@ extern  vmCvar_t            cg_runroll;
 extern  vmCvar_t            cg_swingSpeed;
 extern  vmCvar_t            cg_shadows;
 extern  vmCvar_t            cg_playerShadows;
-extern  vmCvar_t            cg_buildableShadows;
 extern  vmCvar_t            cg_drawTimer;
 extern  vmCvar_t            cg_drawClock;
 extern  vmCvar_t            cg_drawFPS;
@@ -1824,7 +1709,6 @@ extern  vmCvar_t            cg_drawCrosshair;
 extern  vmCvar_t            cg_drawCrosshairHit;
 extern  vmCvar_t            cg_drawCrosshairFriendFoe;
 extern  vmCvar_t            cg_drawCrosshairNames;
-extern  vmCvar_t            cg_drawBuildableHealth;
 extern  vmCvar_t            cg_drawMinimap;
 extern  vmCvar_t            cg_minimapActive;
 extern  vmCvar_t            cg_crosshairSize;
@@ -1892,7 +1776,6 @@ extern  vmCvar_t            cg_debugTrails;
 extern  vmCvar_t            cg_debugPVS;
 extern  vmCvar_t            cg_disableWarningDialogs;
 extern  vmCvar_t            cg_disableUpgradeDialogs;
-extern  vmCvar_t            cg_disableBuildDialogs;
 extern  vmCvar_t            cg_disableCommandDialogs;
 extern  vmCvar_t            cg_disableScannerPlane;
 extern  vmCvar_t            cg_tutorial;
@@ -1904,9 +1787,7 @@ extern  vmCvar_t            cg_rangeMarkerSurfaceOpacity;
 extern  vmCvar_t            cg_rangeMarkerLineOpacity;
 extern  vmCvar_t            cg_rangeMarkerLineThickness;
 extern  vmCvar_t            cg_rangeMarkerForBlueprint;
-extern  vmCvar_t            cg_rangeMarkerBuildableTypes;
 extern  vmCvar_t            cg_rangeMarkerWhenSpectating;
-extern  vmCvar_t            cg_buildableRangeMarkerMask;
 extern  vmCvar_t            cg_binaryShaderScreenScale;
 
 extern  vmCvar_t            cg_painBlendUpRate;
@@ -1947,7 +1828,6 @@ extern vmCvar_t             cg_chatTeamPrefix;
 extern vmCvar_t             cg_animBlend;
 
 extern vmCvar_t             cg_highPolyPlayerModels;
-extern vmCvar_t             cg_highPolyBuildableModels;
 extern vmCvar_t             cg_highPolyWeaponModels;
 extern vmCvar_t             cg_motionblur;
 extern vmCvar_t             cg_motionblurMinSpeed;
@@ -1985,7 +1865,6 @@ void       CG_BuildSpectatorString();
 bool   CG_FileExists( const char *filename );
 void       CG_RemoveNotifyLine();
 void       CG_AddNotifyText();
-void       CG_UpdateBuildableRangeMarkerMask();
 void       CG_RegisterGrading( int slot, const char *str );
 
 //
@@ -2081,19 +1960,6 @@ centity_t   *CG_GetLocation( vec3_t );
 centity_t   *CG_GetPlayerLocation();
 
 void        CG_InitClasses();
-
-//
-// cg_buildable.c
-//
-void     CG_GhostBuildable( int buildableInfo );
-void     CG_Buildable( centity_t *cent );
-void     CG_BuildableStatusParse( const char *filename, buildStat_t *bs );
-void     CG_DrawBuildableStatus();
-void     CG_InitBuildables();
-void     CG_HumanBuildableDying( buildable_t buildable, vec3_t origin );
-void     CG_HumanBuildableExplosion( buildable_t buildable, vec3_t origin, vec3_t dir );
-void     CG_AlienBuildableExplosion( vec3_t origin, vec3_t dir );
-bool CG_GetBuildableRangeMarkerProperties( buildable_t bType, rangeMarker_t *rmType, float *range, vec3_t rgb );
 
 //
 // cg_animation.c
@@ -2368,8 +2234,6 @@ int CG_Rocket_GetDataSourceIndex( const char *dataSource, const char *table );
 void CG_Rocket_FilterDataSource( const char *dataSource, const char *table, const char *filter );
 void CG_Rocket_BuildServerInfo();
 void CG_Rocket_BuildServerList( const char *args );
-void CG_Rocket_BuildArmourySellList( const char *table );
-void CG_Rocket_BuildArmouryBuyList( const char *table );
 void CG_Rocket_BuildPlayerList( const char *table );
 
 //

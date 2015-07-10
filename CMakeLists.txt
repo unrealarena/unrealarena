@@ -907,7 +907,6 @@ set( GAMESHAREDLIST
 set( CGAMELIST
   ${GAMELOGIC_DIR}/cgame/cg_api.cpp
   ${GAMELOGIC_DIR}/cgame/cg_consolecmds.cpp
-  ${GAMELOGIC_DIR}/cgame/cg_buildable.cpp
   ${GAMELOGIC_DIR}/cgame/cg_animation.cpp
   ${GAMELOGIC_DIR}/cgame/cg_animmapobj.cpp
   ${GAMELOGIC_DIR}/cgame/cg_draw.cpp
