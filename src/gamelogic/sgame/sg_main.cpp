@@ -55,7 +55,6 @@ vmCvar_t           g_showHelpOnConnection;
 
 vmCvar_t           g_timelimit;
 vmCvar_t           g_friendlyFire;
-vmCvar_t           g_friendlyBuildableFire;
 vmCvar_t           g_dretchPunt;
 vmCvar_t           g_password;
 vmCvar_t           g_needpass;
@@ -68,8 +67,6 @@ vmCvar_t           g_inactivity;
 vmCvar_t           g_debugMove;
 vmCvar_t           g_debugDamage;
 vmCvar_t           g_debugKnockback;
-vmCvar_t           g_debugTurrets;
-vmCvar_t           g_debugFire;
 vmCvar_t           g_motd;
 vmCvar_t           g_synchronousClients;
 vmCvar_t           g_warmup;
@@ -104,33 +101,12 @@ vmCvar_t           pmove_accurate;
 vmCvar_t           g_minNameChangePeriod;
 vmCvar_t           g_maxNameChanges;
 
-vmCvar_t           g_initialBuildPoints;
-vmCvar_t           g_initialMineRate;
-vmCvar_t           g_mineRateHalfLife;
-vmCvar_t           g_minimumMineRate;
-vmCvar_t           g_buildPointLossFraction;
-
 vmCvar_t           g_debugMomentum;
 vmCvar_t           g_momentumHalfLife;
 vmCvar_t           g_momentumRewardDoubleTime;
 vmCvar_t           g_unlockableMinTime;
 vmCvar_t           g_momentumBaseMod;
 vmCvar_t           g_momentumKillMod;
-vmCvar_t           g_momentumBuildMod;
-vmCvar_t           g_momentumDeconMod;
-vmCvar_t           g_momentumDestroyMod;
-
-vmCvar_t           g_humanAllowBuilding;
-vmCvar_t           g_alienAllowBuilding;
-
-vmCvar_t           g_powerCompetitionRange;
-vmCvar_t           g_powerBaseSupply;
-vmCvar_t           g_powerReactorSupply;
-vmCvar_t           g_powerReactorRange;
-vmCvar_t           g_powerRepeaterSupply;
-vmCvar_t           g_powerRepeaterRange;
-
-vmCvar_t           g_alienOffCreepRegenHalfLife;
 
 vmCvar_t           g_teamImbalanceWarnings;
 vmCvar_t           g_freeFundPeriod;
@@ -139,7 +115,6 @@ vmCvar_t           g_unlagged;
 
 vmCvar_t           g_disabledEquipment;
 vmCvar_t           g_disabledClasses;
-vmCvar_t           g_disabledBuildables;
 vmCvar_t           g_disabledVoteCalls;
 
 vmCvar_t           g_debugMapRotation;
@@ -194,13 +169,10 @@ vmCvar_t           g_geoip;
 
 vmCvar_t           g_debugEntities;
 
-vmCvar_t           g_instantBuilding;
-
 
 // <bot stuff>
 
 // bot buy cvars
-vmCvar_t g_bot_buy;
 vmCvar_t g_bot_rifle;
 vmCvar_t g_bot_painsaw;
 vmCvar_t g_bot_shotgun;
@@ -225,7 +197,6 @@ vmCvar_t g_bot_attackStruct;
 vmCvar_t g_bot_roam;
 vmCvar_t g_bot_rush;
 vmCvar_t g_bot_repair;
-vmCvar_t g_bot_build;
 vmCvar_t g_bot_retreat;
 vmCvar_t g_bot_fov;
 vmCvar_t g_bot_chasetime;
@@ -234,7 +205,6 @@ vmCvar_t g_bot_infinite_funds;
 vmCvar_t g_bot_numInGroup;
 vmCvar_t g_bot_persistent;
 vmCvar_t g_bot_debug;
-vmCvar_t g_bot_buildLayout;
 
 //</bot stuff>
 
@@ -340,17 +310,14 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_debugMove,                   "g_debugMove",                   "0",                                0,                                               0, false           },
 	{ &g_debugDamage,                 "g_debugDamage",                 "0",                                0,                                               0, false           },
 	{ &g_debugKnockback,              "g_debugKnockback",              "0",                                0,                                               0, false           },
-	{ &g_debugTurrets,                "g_debugTurrets",                "0",                                0,                                               0, false           },
 	{ &g_debugMomentum,               "g_debugMomentum",               "0",                                0,                                               0, false           },
 	{ &g_debugMapRotation,            "g_debugMapRotation",            "0",                                0,                                               0, false           },
 	{ &g_debugVoices,                 "g_debugVoices",                 "0",                                0,                                               0, false           },
 	{ &g_debugEntities,               "g_debugEntities",               "0",                                0,                                               0, false           },
-	{ &g_debugFire,                   "g_debugFire",                   "0",                                0,                                               0, false           },
 
 	// gameplay: basic
 	{ &g_timelimit,                   "timelimit",                     "45",                               CVAR_SERVERINFO,                                 0, true            },
 	{ &g_friendlyFire,                "g_friendlyFire",                "1",                                CVAR_SERVERINFO,                                 0, true            },
-	{ &g_friendlyBuildableFire,       "g_friendlyBuildableFire",       "1",                                CVAR_SERVERINFO,                                 0, true            },
 
 	// gameplay: team balance
 	{ &g_teamForceBalance,            "g_teamForceBalance",            "0",                                0,                                               0, true            },
@@ -358,40 +325,18 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_warmup,                      "g_warmup",                      "10",                               0,                                               0, true            },
 	{ &g_doWarmup,                    "g_doWarmup",                    "0",                                0,                                               0, true            },
 
-	// gameplay: mining
-	{ &g_initialBuildPoints,          "g_initialBuildPoints",          DEFAULT_INITIAL_BUILD_POINTS,       0,                                               0, false           },
-	{ &g_initialMineRate,             "g_initialMineRate",             DEFAULT_INITIAL_MINE_RATE,          0,                                               0, false           },
-	{ &g_mineRateHalfLife,            "g_mineRateHalfLife",            DEFAULT_MINE_RATE_HALF_LIFE,        0,                                               0, false           },
-	{ &g_minimumMineRate,             "g_minimumMineRate",             DEFAULT_MINIMUM_MINE_RATE,          0,                                               0, false           },
-	{ &g_buildPointLossFraction,      "g_buildPointLossFraction",      DEFAULT_BP_LOSS_FRAC,               0,                                               0, false           },
-
 	// gameplay: momentum
 	{ &g_unlockableMinTime,           "g_unlockableMinTime",           DEFAULT_UNLOCKABLE_MIN_TIME,        CVAR_SERVERINFO,                                 0, false           },
 	{ &g_momentumHalfLife,            "g_momentumHalfLife",            DEFAULT_MOMENTUM_HALF_LIFE,         CVAR_SERVERINFO,                                 0, false           },
 	{ &g_momentumRewardDoubleTime,    "g_momentumRewardDoubleTime",    DEFAULT_CONF_REWARD_DOUBLE_TIME,    0,                                               0, false           },
 	{ &g_momentumBaseMod,             "g_momentumBaseMod",             DEFAULT_MOMENTUM_BASE_MOD,          0,                                               0, false           },
 	{ &g_momentumKillMod,             "g_momentumKillMod",             DEFAULT_MOMENTUM_KILL_MOD,          0,                                               0, false           },
-	{ &g_momentumBuildMod,            "g_momentumBuildMod",            DEFAULT_MOMENTUM_BUILD_MOD,         0,                                               0, false           },
-	{ &g_momentumDeconMod,            "g_momentumDeconMod",            DEFAULT_MOMENTUM_DECON_MOD,         0,                                               0, false           },
-	{ &g_momentumDestroyMod,          "g_momentumDestroyMod",          DEFAULT_MOMENTUM_DESTROY_MOD,       0,                                               0, false           },
-
-	// gameplay: buildable power
-	{ &g_powerCompetitionRange,       "g_powerCompetitionRange",       "320",                              0,                                               0, false           },
-	{ &g_powerBaseSupply,             "g_powerBaseSupply",             "20",                               0,                                               0, false           },
-	{ &g_powerReactorSupply,          "g_powerReactorSupply",          "30",                               0,                                               0, false           },
-	{ &g_powerReactorRange,           "g_powerReactorRange",           "1000",                             CVAR_SERVERINFO,                                 0, false           },
-	{ &g_powerRepeaterSupply,         "g_powerRepeaterSupply",         "20",                               0,                                               0, false           },
-	{ &g_powerRepeaterRange,          "g_powerRepeaterRange",          "500",                              CVAR_SERVERINFO,                                 0, false           },
 
 	// gameplay: limits
-	{ &g_humanAllowBuilding,          "g_humanAllowBuilding",          "1",                                0,                                               0, false           },
-	{ &g_alienAllowBuilding,          "g_alienAllowBuilding",          "1",                                0,                                               0, false           },
 	{ &g_disabledEquipment,           "g_disabledEquipment",           "",                                 CVAR_SYSTEMINFO,                                 0, false           },
 	{ &g_disabledClasses,             "g_disabledClasses",             "",                                 CVAR_SYSTEMINFO,                                 0, false           },
-	{ &g_disabledBuildables,          "g_disabledBuildables",          "",                                 CVAR_SYSTEMINFO,                                 0, false           },
 
 	// gameplay: misc
-	{ &g_alienOffCreepRegenHalfLife,  "g_alienOffCreepRegenHalfLife",  "0",                                0,                                               0, false           },
 	{ &g_freeFundPeriod,              "g_freeFundPeriod",              DEFAULT_FREEKILL_PERIOD,            0,                                               0, true            },
 	{ &g_sayAreaRange,                "g_sayAreaRange",                "1000",                             0,                                               0, true            },
 	{ &g_speed,                       "g_speed",                       "320",                              0,                                               0, true            },
@@ -403,10 +348,7 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_showKillerHP,                "g_showKillerHP",                "0",                                0,                                               0, false           },
 	{ &g_combatCooldown,              "g_combatCooldown",              "15",                               0,                                               0, false           },
 
-	{ &g_instantBuilding,             "g_instantBuilding",             "0",                                0,                                               0, true            },
-
 	// bots: buying
-	{ &g_bot_buy, "g_bot_buy", "1",  CVAR_NORESTART, 0, false },
 	{ &g_bot_rifle, "g_bot_rifle", "1",  CVAR_NORESTART, 0, false },
 	{ &g_bot_painsaw, "g_bot_painsaw", "1",  CVAR_NORESTART, 0, false },
 	{ &g_bot_shotgun, "g_bot_shotgun", "1",  CVAR_NORESTART, 0, false },
@@ -431,15 +373,13 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_bot_roam, "g_bot_roam", "1",  CVAR_NORESTART, 0, false },
 	{ &g_bot_rush, "g_bot_rush", "1",  CVAR_NORESTART, 0, false },
 	{ &g_bot_repair, "g_bot_repair", "1",  CVAR_NORESTART, 0, false },
-	{ &g_bot_build, "g_bot_build", "1",  CVAR_NORESTART, 0, false },
 	{ &g_bot_retreat, "g_bot_retreat", "1",  CVAR_NORESTART, 0, false },
 	{ &g_bot_fov, "g_bot_fov", "125",  CVAR_NORESTART, 0, false },
 	{ &g_bot_chasetime, "g_bot_chasetime", "5000",  CVAR_NORESTART, 0, false },
 	{ &g_bot_reactiontime, "g_bot_reactiontime", "500",  CVAR_NORESTART, 0, false },
 	{ &g_bot_infinite_funds, "g_bot_infinite_funds", "0",  CVAR_NORESTART, 0, false },
 	{ &g_bot_numInGroup, "g_bot_numInGroup", "3",  CVAR_NORESTART, 0, false },
-	{ &g_bot_debug, "g_bot_debug", "0",  CVAR_NORESTART, 0, false },
-	{ &g_bot_buildLayout, "g_bot_buildLayout", "botbuild",  CVAR_NORESTART, 0, false }
+	{ &g_bot_debug, "g_bot_debug", "0",  CVAR_NORESTART, 0, false }
 };
 
 static const size_t gameCvarTableSize = ARRAY_LEN( gameCvarTable );
@@ -845,9 +785,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart, bool inClient )
 
 	trap_SetConfigstring( CS_INTERMISSION, "0" );
 
-	// test to see if a custom buildable layout will be loaded
-	G_LayoutSelect();
-
 	// this has to be flipped after the first UpdateCvars
 	level.spawning = true;
 
@@ -858,9 +795,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart, bool inClient )
 	G_SpawnFakeEntities();
 
 	BaseClustering::Init();
-
-	// load up a custom building layout if there is one
-	G_LayoutLoad();
 
 	// setup bot code
 	G_BotInit();
@@ -890,18 +824,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart, bool inClient )
 
 	level.voices = BG_VoiceInit();
 	BG_PrintVoices( level.voices, g_debugVoices.integer );
-
-	// Give both teams some build points to start out with.
-	for ( int team = TEAM_NONE + 1; team < NUM_TEAMS; team++ )
-	{
-		int startBP = std::max( 0, g_initialBuildPoints.integer -
-		                        level.team[ (team_t)team ].layoutBuildPoints );
-
-		G_ModifyBuildPoints( (team_t)team, (float)startBP );
-		G_MarkBuildPointsMined( (team_t)team, (float)startBP );
-
-		level.team[ (team_t)team ].mainStructAcquiredBP = std::max( (float)startBP, FLT_EPSILON );
-	}
 
 	G_Printf( "-----------------------------------\n" );
 
@@ -1400,31 +1322,9 @@ Counts the number of spawns for each team
 */
 void G_CountSpawns()
 {
-	int       i;
-	gentity_t *ent;
-
 	//I guess this could be changed into one function call per team
 	level.team[ TEAM_ALIENS ].numSpawns = 0;
 	level.team[ TEAM_HUMANS ].numSpawns = 0;
-
-	for ( i = MAX_CLIENTS, ent = g_entities + i; i < level.num_entities; i++, ent++ )
-	{
-		if ( !ent->inuse || ent->s.eType != ET_BUILDABLE || ent->health <= 0 )
-		{
-			continue;
-			// is it really useful? Seriously?
-		}
-
-		//TODO create a function to check if a building is a spawn
-		if( ent->s.modelindex == BA_A_SPAWN )
-		{
-			level.team[ TEAM_ALIENS ].numSpawns++;
-		}
-		else if ( ent->s.modelindex == BA_H_SPAWN )
-		{
-			level.team[ TEAM_HUMANS ].numSpawns++;
-		}
-	}
 }
 
 /*
@@ -1971,9 +1871,6 @@ static void G_LogGameplayStats( int state )
 			             "# Format:  %i\n"
 			             "#\n"
 			             "# g_momentumHalfLife:        %4i\n"
-			             "# g_initialBuildPoints:      %4i\n"
-			             "# g_initialMineRate:         %4i\n"
-			             "# g_mineRateHalfLife:        %4i\n"
 			             "#\n"
 			             "#  1  2  3    4    5    6    7    8    9   10   11   12   13   14   15   16\n"
 			             "#  T #A #H AMom HMom  LMR  AME  HME  ABP  HBP ABRV HBRV ACre HCre AVal HVal\n"
@@ -1983,23 +1880,16 @@ static void G_LogGameplayStats( int state )
 			             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
 			             t.tm_hour, t.tm_min, t.tm_sec,
 			             LOG_GAMEPLAY_STATS_VERSION,
-			             g_momentumHalfLife.integer,
-			             g_initialBuildPoints.integer,
-			             g_initialMineRate.integer,
-			             g_mineRateHalfLife.integer );
+			             g_momentumHalfLife.integer );
 
 			break;
 		}
 		case LOG_GAMEPLAY_STATS_BODY:
 		{
 			int    time;
-			float  LMR;
 			int    team;
 			int    num[ NUM_TEAMS ];
 			int    Mom[ NUM_TEAMS ];
-			int    ME [ NUM_TEAMS ];
-			int    BP [ NUM_TEAMS ];
-			int    BRV[ NUM_TEAMS ];
 			int    Cre[ NUM_TEAMS ];
 			int    Val[ NUM_TEAMS ];
 
@@ -2009,25 +1899,19 @@ static void G_LogGameplayStats( int state )
 			}
 
 			time = level.matchTime / 1000;
-			LMR  = level.mineRate; // float
 
 			for( team = TEAM_NONE + 1; team < NUM_TEAMS; team++ )
 			{
 				num[ team ] = level.team[ team ].numClients;
 				Mom[ team ] = ( int )level.team[ team ].momentum;
-				ME [ team ] = ( int )level.team[ team ].mineEfficiency;
-				BP [ team ] = G_GetBuildPointsInt( (team_t)team );
 			}
 
-			G_GetBuildableResourceValue( BRV );
 			GetAverageCredits( Cre, Val );
 
 			Com_sprintf( logline, sizeof( logline ),
-			             "%4i %2i %2i %4i %4i %4.1f %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i\n",
+			             "%4i %2i %2i %4i %4i %4i %4i %4i %4i\n",
 			             time, num[ TEAM_ALIENS ], num[ TEAM_HUMANS ], Mom[ TEAM_ALIENS ], Mom[ TEAM_HUMANS ],
-			             LMR, ME[ TEAM_ALIENS ], ME[ TEAM_HUMANS ], BP[ TEAM_ALIENS ], BP[ TEAM_HUMANS ],
-			             BRV[ TEAM_ALIENS ], BRV[ TEAM_HUMANS ], Cre[ TEAM_ALIENS ], Cre[ TEAM_HUMANS ],
-			             Val[ TEAM_ALIENS ], Val[ TEAM_HUMANS ] );
+			             Cre[ TEAM_ALIENS ], Cre[ TEAM_HUMANS ], Val[ TEAM_ALIENS ], Val[ TEAM_HUMANS ] );
 			break;
 		}
 		case LOG_GAMEPLAY_STATS_FOOTER:
@@ -2424,6 +2308,9 @@ void CheckExitRules()
 			level.timelimitWarning = TW_PASSED;
 		}
 	}
+
+	// FIXME
+	return;
 
 	if ( level.unconditionalWin == TEAM_HUMANS ||
 	     ( level.unconditionalWin != TEAM_ALIENS &&
@@ -2911,12 +2798,6 @@ void G_RunFrame( int levelTime )
 			continue;
 		}
 
-		if ( ent->s.eType == ET_BUILDABLE )
-		{
-			G_BuildableThink( ent, msec );
-			continue;
-		}
-
 		if ( ent->s.eType == ET_CORPSE || ent->physicsObject )
 		{
 			G_Physics( ent, msec );
@@ -2955,8 +2836,6 @@ void G_RunFrame( int levelTime )
 	G_UnlaggedStore();
 
 	G_CountSpawns();
-	G_SetHumanBuildablePowerState();
-	G_MineBuildPoints();
 	G_DecreaseMomentum();
 	G_CalculateAvgPlayers();
 	G_SpawnClients( TEAM_ALIENS );

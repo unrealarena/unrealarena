@@ -625,44 +625,6 @@ static void CG_Rocket_DrawPlayerWallclimbing()
 	trap_Rocket_SetClass( "inactive", !wallwalking );
 }
 
-static void CG_Rocket_DrawUsableBuildable()
-{
-	vec3_t        view, point;
-	trace_t       trace;
-	entityState_t *es;
-
-	AngleVectors( cg.refdefViewAngles, view, nullptr, nullptr );
-	VectorMA( cg.refdef.vieworg, 64, view, point );
-	CG_Trace( &trace, cg.refdef.vieworg, nullptr, nullptr,
-			  point, cg.predictedPlayerState.clientNum, MASK_SHOT, 0 );
-
-	es = &cg_entities[ trace.entityNum ].currentState;
-
-	if ( es->eType == ET_BUILDABLE && BG_Buildable( es->modelindex )->usable &&
-			cg.predictedPlayerState.persistant[ PERS_TEAM ] == BG_Buildable( es->modelindex )->team )
-	{
-		//hack to prevent showing the usable buildable when you aren't carrying an energy weapon
-		if ( ( es->modelindex == BA_H_REACTOR || es->modelindex == BA_H_REPEATER ) &&
-				( !BG_Weapon( cg.snap->ps.weapon )->usesEnergy ||
-				  BG_Weapon( cg.snap->ps.weapon )->infiniteAmmo ) )
-		{
-			cg.nearUsableBuildable = BA_NONE;
-			trap_Rocket_SetInnerRML( "", 0 );
-			return;
-		}
-
-		trap_Rocket_SetInnerRML( va( "<img class='usable_buildable' src='%s' />", CG_Rocket_GetAttribute( "src" ) ), 0 );
-		cg.nearUsableBuildable = es->modelindex;
-	}
-
-	else
-	{
-		// Clear the old image if there was one.
-		trap_Rocket_SetInnerRML( "", 0 );
-		cg.nearUsableBuildable = BA_NONE;
-	}
-}
-
 static void CG_Rocket_DrawLocation()
 {
 	const char *location;
@@ -1032,22 +994,6 @@ static void CG_ScanForCrosshairEntity()
 	if ( trace.entityNum >= MAX_CLIENTS )
 	{
 		// we have a non-client entity
-
-		// set friend/foe if it's a living buildable
-		if ( targetState->eType == ET_BUILDABLE && targetState->generic1 > 0 )
-		{
-			targetTeam = BG_Buildable( targetState->modelindex )->team;
-
-			if ( targetTeam == ownTeam && ownTeam != TEAM_NONE )
-			{
-				cg.crosshairFriend = true;
-			}
-
-			else if ( targetTeam != TEAM_NONE )
-			{
-				cg.crosshairFoe = true;
-			}
-		}
 
 		// set more stuff if requested
 		if ( cg_drawEntityInfo.integer && targetState->eType )
@@ -2107,9 +2053,6 @@ static INLINE qhandle_t CG_GetUnlockableIcon( int num )
 		case UNLT_UPGRADE:
 			return cg_upgrades[ index ].upgradeIcon;
 
-		case UNLT_BUILDABLE:
-			return cg_buildables[ index ].buildableIcon;
-
 		case UNLT_CLASS:
 			return cg_classes[ index ].classIcon;
 	}
@@ -2373,42 +2316,6 @@ static void CG_Rocket_DrawNumSpawns()
 	trap_Rocket_SetInnerRML( s, 0 );
 }
 
-void CG_Rocket_DrawPredictedRGSRate()
-{
-	playerState_t  *ps = &cg.snap->ps;
-	buildable_t   buildable = ( buildable_t )( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
-	char color;
-	int  delta = ps->stats[ STAT_PREDICTION ];
-
-	if ( buildable != BA_H_DRILL && buildable != BA_A_LEECH )
-	{
-		trap_Rocket_SetInnerRML( "", 0 );
-		return;
-	}
-
-	if ( delta < 0 )
-	{
-		color = COLOR_RED;
-	}
-
-	else if ( delta < 10 )
-	{
-		color = COLOR_ORANGE;
-	}
-
-	else if ( delta < 50 )
-	{
-		color = COLOR_YELLOW;
-	}
-
-	else
-	{
-		color = COLOR_GREEN;
-	}
-
-	trap_Rocket_SetInnerRML( va( "^%c%+d%%", color, delta ), RP_QUAKE );
-}
-
 static void CG_Rocket_DrawWarmup()
 {
 	int   sec = 0;
@@ -2632,7 +2539,6 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "momentum_bar", &CG_Rocket_DrawPlayerMomentumBar, ELEMENT_BOTH },
 	{ "motd", &CG_Rocket_DrawMOTD, ELEMENT_ALL },
 	{ "numSpawns", &CG_Rocket_DrawNumSpawns, ELEMENT_DEAD },
-	{ "predictedMineEfficiency", &CG_Rocket_DrawPredictedRGSRate, ELEMENT_BOTH },
 	{ "progress_value", &CG_Rocket_DrawProgressValue, ELEMENT_ALL },
 	{ "spawnPos", &CG_Rocket_DrawSpawnQueuePosition, ELEMENT_DEAD },
 	{ "speedometer", &CG_Rocket_DrawSpeedGraph, ELEMENT_GAME },
@@ -2641,7 +2547,6 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "timer", &CG_Rocket_DrawTimer, ELEMENT_GAME },
 	{ "tutorial", &CG_Rocket_DrawTutorial, ELEMENT_GAME },
 	{ "unlocked_items", &CG_Rocket_DrawPlayerUnlockedItems, ELEMENT_BOTH },
-	{ "usable_buildable", &CG_Rocket_DrawUsableBuildable, ELEMENT_HUMANS },
 	{ "votes", &CG_Rocket_DrawVote, ELEMENT_GAME },
 	{ "votes_team", &CG_Rocket_DrawTeamVote, ELEMENT_BOTH },
 	{ "wallwalk", &CG_Rocket_DrawPlayerWallclimbing, ELEMENT_ALIENS },

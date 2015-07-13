@@ -41,11 +41,8 @@ static bind_t bindings[] =
 	{ "+attack",        N_( "Primary Attack" ),                        { -1, -1 } },
 	{ "+attack2",       N_( "Secondary Attack" ),                      { -1, -1 } },
 	{ "reload",         N_( "Reload" ),                                { -1, -1 } },
-	{ "buy ammo",       N_( "Buy Ammo" ),                              { -1, -1 } },
 	{ "itemact medkit", N_( "Use Medkit" ),                            { -1, -1 } },
 	{ "+activate",      N_( "Use Structure/Evolve" ),                  { -1, -1 } },
-	{ "modcase alt \"/deconstruct marked\" /deconstruct",
-                            N_( "Deconstruct Structure" ),                 { -1, -1 } },
 	{ "weapprev",       N_( "Previous Upgrade" ),                      { -1, -1 } },
 	{ "weapnext",       N_( "Next Upgrade" ),                          { -1, -1 } },
 	{ "toggleconsole",  N_( "Toggle Console" ),                        { -1, -1 } },
@@ -131,113 +128,6 @@ static const char *CG_KeyNameForCommand( const char *command )
 }
 
 #define MAX_TUTORIAL_TEXT 4096
-
-/*
-===============
-CG_BuildableInRange
-===============
-*/
-static entityState_t *CG_BuildableInRange( playerState_t *ps, float *healthFraction )
-{
-	vec3_t        view, point;
-	trace_t       trace;
-	entityState_t *es;
-	int           health;
-
-	AngleVectors( cg.refdefViewAngles, view, nullptr, nullptr );
-	VectorMA( cg.refdef.vieworg, 64, view, point );
-	CG_Trace( &trace, cg.refdef.vieworg, nullptr, nullptr, point, ps->clientNum, MASK_SHOT, 0 );
-
-	es = &cg_entities[ trace.entityNum ].currentState;
-
-	if ( healthFraction )
-	{
-		health = es->generic1;
-		*healthFraction = ( float ) health / BG_Buildable( es->modelindex )->health;
-	}
-
-	if ( es->eType == ET_BUILDABLE &&
-	     ps->persistant[ PERS_TEAM ] == BG_Buildable( es->modelindex )->team )
-	{
-		return es;
-	}
-	else
-	{
-		return nullptr;
-	}
-}
-
-/*
-===============
-CG_BuilderText
-===============
-*/
-static void CG_BuilderText( char *text, playerState_t *ps )
-{
-	buildable_t   buildable = (buildable_t) ( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
-	entityState_t *es;
-
-	if ( buildable > BA_NONE )
-	{
-		const char *item = _( BG_Buildable( buildable )->humanName );
-		Q_strcat( text, MAX_TUTORIAL_TEXT,
-		          va( _( "Press %s to place the %s\n"),
-		              CG_KeyNameForCommand( "+attack" ), item ) );
-		Q_strcat( text, MAX_TUTORIAL_TEXT,
-		          va( _( "Press %s to cancel placing the %s\n" ),
-		              CG_KeyNameForCommand( "+attack2" ), item ) );
-	}
-	else
-	{
-		Q_strcat( text, MAX_TUTORIAL_TEXT,
-		          va( _( "Press %s to build a structure\n" ),
-		              CG_KeyNameForCommand( "+attack" ) ) );
-	}
-
-	if ( ( es = CG_BuildableInRange( ps, nullptr ) ) )
-	{
-		const char *key = CG_KeyNameForCommand( "modcase alt \"/deconstruct marked\" /deconstruct" );
-
-		if ( es->eFlags & EF_B_MARKED )
-		{
-			Q_strcat( text, MAX_TUTORIAL_TEXT,
-					  va( _( "Press %s to unmark this structure for replacement\n" ), key ) );
-		}
-		else
-		{
-			Q_strcat( text, MAX_TUTORIAL_TEXT,
-					  va( _( "Press %s to mark this structure for replacement\n" ), key ) );
-		}
-	}
-}
-
-/*
-===============
-CG_AlienBuilderText
-===============
-*/
-static void CG_AlienBuilderText( char *text, playerState_t *ps )
-{
-	CG_BuilderText( text, ps );
-
-	if ( ( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK ) == BA_NONE )
-	{
-		Q_strcat( text, MAX_TUTORIAL_TEXT,
-		          va( _( "Press %s to swipe\n" ),
-		              CG_KeyNameForCommand( "+attack2" ) ) );
-	}
-
-	if ( ps->stats[ STAT_CLASS ] == PCL_ALIEN_BUILDER0_UPG )
-	{
-		Q_strcat( text, MAX_TUTORIAL_TEXT,
-		          va( _( "Press %s to launch a projectile\n" ),
-		              CG_KeyNameForCommand( "+useitem" ) ) );
-
-		Q_strcat( text, MAX_TUTORIAL_TEXT,
-		          va( _( "Press %s to walk on walls\n" ),
-		              CG_KeyNameForCommand( "+movedown" ) ) );
-	}
-}
 
 /*
 ===============
@@ -339,16 +229,6 @@ static void CG_AlienLevel4Text( char *text, playerState_t *ps )
 
 /*
 ===============
-CG_HumanCkitText
-===============
-*/
-static void CG_HumanCkitText( char *text, playerState_t *ps )
-{
-	CG_BuilderText( text, ps );
-}
-
-/*
-===============
 CG_HumanText
 ===============
 */
@@ -370,27 +250,6 @@ static void CG_HumanText( char *text, playerState_t *ps )
 	if ( !ps->ammo && !ps->clips && !BG_Weapon( ps->weapon )->infiniteAmmo )
 	{
 		//no ammo
-		switch ( ps->weapon )
-		{
-			case WP_MACHINEGUN:
-			case WP_CHAINGUN:
-			case WP_SHOTGUN:
-			case WP_FLAMER:
-				Q_strcat( text, MAX_TUTORIAL_TEXT,
-				          _( "Find an Armoury for more ammo\n" ) );
-				break;
-
-			case WP_LAS_GUN:
-			case WP_PULSE_RIFLE:
-			case WP_MASS_DRIVER:
-			case WP_LUCIFER_CANNON:
-				Q_strcat( text, MAX_TUTORIAL_TEXT,
-				          _( "Find an Armoury, Reactor, or Repeater for more ammo\n" ) );
-				break;
-
-			default:
-				break;
-		}
 	}
 	else
 	{
@@ -439,7 +298,6 @@ static void CG_HumanText( char *text, playerState_t *ps )
 				break;
 
 			case WP_HBUILD:
-				CG_HumanCkitText( text, ps );
 				break;
 
 			default:
@@ -463,26 +321,6 @@ static void CG_HumanText( char *text, playerState_t *ps )
 		          va( _( "Press %s to use your %s\n" ),
 		              CG_KeyNameForCommand( "itemact medkit" ),
 		              _( BG_Upgrade( UP_MEDKIT )->humanName ) ) );
-	}
-
-	switch ( cg.nearUsableBuildable )
-	{
-		case BA_H_ARMOURY:
-			Q_strcat( text, MAX_TUTORIAL_TEXT,
-			          va( _( "Press %s to buy equipment upgrades at the %s\n" ),
-			              CG_KeyNameForCommand( "+activate" ),
-			              _( BG_Buildable( cg.nearUsableBuildable )->humanName ) ) );
-			break;
-
-		case BA_NONE:
-			break;
-
-		default:
-			Q_strcat( text, MAX_TUTORIAL_TEXT,
-			          va( _( "Press %s to use the %s\n" ),
-			              CG_KeyNameForCommand( "+activate" ),
-			              _( BG_Buildable( cg.nearUsableBuildable )->humanName ) ) );
-			break;
 	}
 
 	Q_strcat( text, MAX_TUTORIAL_TEXT,
@@ -594,7 +432,6 @@ const char *CG_TutorialText()
 			{
 				case PCL_ALIEN_BUILDER0:
 				case PCL_ALIEN_BUILDER0_UPG:
-					CG_AlienBuilderText( text, ps );
 					break;
 
 				case PCL_ALIEN_LEVEL0:

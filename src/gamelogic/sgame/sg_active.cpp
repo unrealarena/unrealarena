@@ -472,11 +472,6 @@ void  G_TouchTriggers( gentity_t *ent )
 			continue;
 		}
 
-		if ( !hit->enabled )
-		{
-			continue;
-		}
-
 		// ignore most entities if a spectator
 		if ( ent->client->sess.spectatorState != SPECTATOR_NOT && hit->s.eType != ET_TELEPORTER )
 		{
@@ -630,7 +625,6 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		client->ps.stats[ STAT_STAMINA ] = 0;
 		client->ps.stats[ STAT_FUEL ] = 0;
 		client->ps.stats[ STAT_MISC ] = 0;
-		client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
 		client->ps.stats[ STAT_CLASS ] = PCL_NONE;
 		client->ps.weapon = WP_NONE;
 
@@ -807,22 +801,20 @@ static void BeaconAutoTag( gentity_t *self, int timePassed )
 
 	for ( target = nullptr; ( target = G_IterateEntities( target ) ); )
 	{
-		// Tag entity directly hit and entities in human radar range, make sure the latter are also
-		// in vis and, for buildables, are in a line of sight.
+		// Tag entity directly hit and entities in human radar range,
+		// make sure the latter are also in vis
 		if( ( target == traceEnt ) ||
 		    ( team == TEAM_HUMANS &&
 		      BG_InventoryContainsUpgrade( UP_RADAR, client->ps.stats ) &&
 		      Distance( self->s.origin, target->s.origin ) < RADAR_RANGE &&
 		      Beacon::EntityTaggable( target->s.number, team, false ) &&
-		      trap_InPVSIgnorePortals( self->s.origin, target->s.origin ) &&
-		      ( target->s.eType != ET_BUILDABLE ||
-		        G_LineOfSight( self, target, MASK_SOLID, false ) ) ) )
+		      trap_InPVSIgnorePortals( self->s.origin, target->s.origin ) ) )
 		{
 			target->tagScore     += timePassed;
 			target->tagScoreTime  = level.time;
 
 			if( target->tagScore > 1000 )
-				Beacon::Tag( target, team, ( target->s.eType == ET_BUILDABLE ) );
+				Beacon::Tag( target, team, false );
 
 			client->ps.stats[ STAT_TAGSCORE ] = Math::Clamp(
 				target->tagScore, client->ps.stats[ STAT_TAGSCORE ], 1000 );
@@ -841,8 +833,6 @@ void ClientTimerActions( gentity_t *ent, int msec )
 {
 	playerState_t *ps;
 	gclient_t     *client;
-	int           i;
-	buildable_t   buildable;
 
 	if ( !ent || !ent->client )
 	{
@@ -882,65 +872,6 @@ void ClientTimerActions( gentity_t *ent, int msec )
 			}
 		}
 
-		// Building related
-		switch ( weapon )
-		{
-			case WP_ABUILD:
-			case WP_ABUILD2:
-			case WP_HBUILD:
-				buildable = (buildable_t) ( client->ps.stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
-
-				// Set validity bit on buildable
-				if ( buildable > BA_NONE )
-				{
-					vec3_t forward, aimDir, normal;
-					vec3_t dummy, dummy2;
-					int dummy3;
-					int dist;
-
-					BG_GetClientNormal( &client->ps,normal );
-					AngleVectors( client->ps.viewangles, aimDir, nullptr, nullptr );
-					ProjectPointOnPlane( forward, aimDir, normal );
-					VectorNormalize( forward );
-
-					dist = BG_Class( ent->client->ps.stats[ STAT_CLASS ] )->buildDist * DotProduct( forward, aimDir );
-
-					client->ps.stats[ STAT_BUILDABLE ] &= ~SB_BUILDABLE_STATE_MASK;
-					client->ps.stats[ STAT_BUILDABLE ] |= SB_BUILDABLE_FROM_IBE( G_CanBuild( ent, buildable, dist, dummy, dummy2, &dummy3 ) );
-
-					if ( buildable == BA_H_DRILL || buildable == BA_A_LEECH )
-					{
-						client->ps.stats[ STAT_PREDICTION ] =
-							( int )( G_RGSPredictEfficiencyDelta( dummy, ( team_t )ps->persistant[ PERS_TEAM ] ) * 100.0f );
-					}
-
-					// Let the client know which buildables will be removed by building
-					for ( i = 0; i < MAX_MISC; i++ )
-					{
-						if ( i < level.numBuildablesForRemoval )
-						{
-							client->ps.misc[ i ] = level.markedBuildables[ i ]->s.number;
-						}
-						else
-						{
-							client->ps.misc[ i ] = 0;
-						}
-					}
-				}
-				else
-				{
-					for ( i = 0; i < MAX_MISC; i++ )
-					{
-						client->ps.misc[ i ] = 0;
-					}
-				}
-
-				break;
-
-			default:
-				break;
-		}
-
 		BeaconAutoTag( ent, 100 );
 
 		// replenish human health
@@ -957,23 +888,6 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		if ( client->ps.stats[ STAT_FUEL ] < JETPACK_FUEL_REFUEL )
 		{
 			G_FindFuel( ent );
-		}
-
-		// remove orphaned tags for enemy structures when the structure's death was confirmed
-		{
-			gentity_t *other = nullptr;
-			while ( ( other = G_IterateEntities( other ) ) )
-			{
-				if ( other->s.eType == ET_BEACON &&
-				     other->s.modelindex == BCT_TAG &&
-				     ( other->s.eFlags & EF_BC_ENEMY ) &&
-				     !other->tagAttachment &&
-				     ent->client->pers.team == other->s.generic1 &&
-				     G_LineOfSight( ent, other, CONTENTS_SOLID, true ) )
-				{
-					Beacon::Delete( other, true );
-				}
-			}
 		}
 	}
 
@@ -1591,7 +1505,7 @@ static void G_UnlaggedDetectCollisions( gentity_t *ent )
 static int FindAlienHealthSource( gentity_t *self )
 {
 	int       ret = 0, closeTeammates = 0;
-	float     distance, minBoosterDistance = FLT_MAX;
+	float     distance;
 	bool  needsHealing;
 	gentity_t *ent;
 
@@ -1603,9 +1517,7 @@ static int FindAlienHealthSource( gentity_t *self )
 	needsHealing = self->client->ps.stats[ STAT_HEALTH ] <
 	               BG_Class( self->client->ps.stats[ STAT_CLASS ] )->health;
 
-	self->boosterUsed = nullptr;
-
-	for ( ent = nullptr; ( ent = G_IterateEntities( ent, nullptr, true, 0, nullptr ) ); )
+	for ( ent = nullptr; ( ent = G_IterateEntities( ent, nullptr, 0, nullptr ) ); )
 	{
 		if ( !G_OnSameTeam( self, ent ) ) continue;
 		if ( ent->health <= 0 )           continue;
@@ -1618,33 +1530,6 @@ static int FindAlienHealthSource( gentity_t *self )
 			closeTeammates++;
 			ret |= ( closeTeammates > 1 ) ? SS_HEALING_4X : SS_HEALING_2X;
 		}
-		else if ( ent->s.eType == ET_BUILDABLE && ent->spawned && ent->powered )
-		{
-			if ( ent->s.modelindex == BA_A_BOOSTER && ent->powered &&
-			     distance < REGEN_BOOSTER_RANGE )
-			{
-				// Booster healing
-				ret |= SS_HEALING_8X;
-
-				// The closest booster used will play an effect
-				if ( needsHealing && distance < minBoosterDistance )
-				{
-					minBoosterDistance = distance;
-					self->boosterUsed  = ent;
-				}
-			}
-			else if ( distance < BG_Buildable( ent->s.modelindex )->creepSize )
-			{
-				// Creep healing
-				ret |= SS_HEALING_4X;
-			}
-			else if ( ( ent->s.modelindex == BA_A_OVERMIND || ent->s.modelindex == BA_A_SPAWN ) &&
-			          distance < CREEP_BASESIZE )
-			{
-				// Base healing
-				ret |= SS_HEALING_2X;
-			}
-		}
 	}
 
 	if ( ret & SS_HEALING_8X ) ret |= SS_HEALING_4X;
@@ -1653,11 +1538,6 @@ static int FindAlienHealthSource( gentity_t *self )
 	if ( ret )
 	{
 		self->healthSourceTime = level.time;
-
-		if ( self->boosterUsed )
-		{
-			self->boosterTime = level.time;
-		}
 	}
 
 	return ret;
@@ -1709,17 +1589,7 @@ static void G_ReplenishAlienHealth( gentity_t *self )
 		}
 		else
 		{
-			if ( g_alienOffCreepRegenHalfLife.value < 1 )
-			{
-				modifier = 1.0f;
-			}
-			else
-			{
-				// Exponentially decrease healing rate when not on creep. ln(2) ~= 0.6931472
-				modifier = exp( ( 0.6931472f / ( 1000.0f * g_alienOffCreepRegenHalfLife.value ) ) *
-				                ( self->healthSourceTime - level.time ) );
-				modifier = MAX( modifier, ALIEN_REGEN_NOCREEP_MIN );
-			}
+			modifier = 1.0f;
 		}
 
 		interval = ( int )( 1000.0f / ( regenBaseRate * modifier ) );
@@ -1851,58 +1721,15 @@ void ClientThink_real( gentity_t *self )
 	{
 		client->ps.pm_type = PM_DEAD;
 	}
-	else if ( client->ps.stats[ STAT_STATE ] & SS_BLOBLOCKED )
-	{
-		client->ps.pm_type = PM_GRABBED;
-	}
 	else
 	{
 		client->ps.pm_type = PM_NORMAL;
-	}
-
-	if ( ( client->ps.stats[ STAT_STATE ] & SS_BLOBLOCKED ) &&
-	     client->lastLockTime + LOCKBLOB_LOCKTIME < level.time )
-	{
-		client->ps.stats[ STAT_STATE ] &= ~SS_BLOBLOCKED;
 	}
 
 	if ( ( client->ps.stats[ STAT_STATE ] & SS_SLOWLOCKED ) &&
 	     client->lastSlowTime + ABUILDER_BLOB_TIME < level.time )
 	{
 		client->ps.stats[ STAT_STATE ] &= ~SS_SLOWLOCKED;
-	}
-
-	// Is power/creep available for the client's team?
-	if ( client->pers.team == TEAM_HUMANS && G_ActiveReactor() )
-	{
-		client->ps.eFlags |= EF_POWER_AVAILABLE;
-	}
-	else if ( client->pers.team == TEAM_ALIENS && G_ActiveOvermind() )
-	{
-		client->ps.eFlags |= EF_POWER_AVAILABLE;
-	}
-	else
-	{
-		client->ps.eFlags &= ~EF_POWER_AVAILABLE;
-	}
-
-	// Update boosted state flags
-	client->ps.stats[ STAT_STATE ] &= ~SS_BOOSTEDWARNING;
-
-	if ( client->ps.stats[ STAT_STATE ] & SS_BOOSTED )
-	{
-		if ( level.time - client->boostedTime != BOOST_TIME )
-		{
-			client->ps.stats[ STAT_STATE ] &= ~SS_BOOSTEDNEW;
-		}
-		if ( level.time - client->boostedTime >= BOOST_TIME )
-		{
-			client->ps.stats[ STAT_STATE ] &= ~SS_BOOSTED;
-		}
-		else if ( level.time - client->boostedTime >= BOOST_WARN_TIME )
-		{
-			client->ps.stats[ STAT_STATE ] |= SS_BOOSTEDWARNING;
-		}
 	}
 
 	if ( (client->ps.stats[ STAT_STATE ] & SS_POISONED) &&
@@ -1979,12 +1806,6 @@ void ClientThink_real( gentity_t *self )
 	{
 		client->ps.speed = g_speed.value *
 		                   BG_Class( client->ps.stats[ STAT_CLASS ] )->speed;
-	}
-
-	// unset creepslowed flag if it's time
-	if ( client->lastCreepSlowTime + CREEP_TIMEOUT < level.time )
-	{
-		client->ps.stats[ STAT_STATE ] &= ~SS_CREEPSLOWED;
 	}
 
 	// unset level1slow flag if it's time
@@ -2085,18 +1906,9 @@ void ClientThink_real( gentity_t *self )
 			break;
 
 		case WP_ALEVEL4:
-
-			// If not currently in a trample, reset the trample bookkeeping data
-			if ( !( client->ps.pm_flags & PMF_CHARGE ) && client->trampleBuildablesHitPos )
-			{
-				client->trampleBuildablesHitPos = 0;
-				memset( client->trampleBuildablesHit, 0, sizeof( client->trampleBuildablesHit ) );
-			}
-
 			break;
 
 		case WP_HBUILD:
-			G_CheckCkitRepair( self );
 			break;
 
 		default:
@@ -2163,7 +1975,6 @@ void ClientThink_real( gentity_t *self )
 		ent = &g_entities[ trace.entityNum ];
 
 		if ( ent && ent->use &&
-		     ( !ent->buildableTeam   || ent->buildableTeam   == client->pers.team ) &&
 		     ( !ent->conditions.team || ent->conditions.team == client->pers.team ) )
 		{
 			if ( g_debugEntities.integer > 1 )
@@ -2178,7 +1989,7 @@ void ClientThink_real( gentity_t *self )
 			// no entity in front of player - do a small area search
 			for ( ent = nullptr; ( ent = G_IterateEntitiesWithinRadius( ent, client->ps.origin, ENTITY_USE_RANGE ) ); )
 			{
-				if ( ent && ent->use && ent->buildableTeam == client->pers.team)
+				if ( ent && ent->use )
 				{
 					if ( g_debugEntities.integer > 1 )
 					{
@@ -2206,9 +2017,6 @@ void ClientThink_real( gentity_t *self )
 			}
 		}
 	}
-
-	client->ps.persistant[ PERS_BP ] = G_GetBuildPointsInt( (team_t) client->pers.team );
-	client->ps.persistant[ PERS_MARKEDBP ] = G_GetMarkedBuildPointsInt( (team_t) client->pers.team );
 
 	if ( client->ps.persistant[ PERS_BP ] < 0 )
 	{

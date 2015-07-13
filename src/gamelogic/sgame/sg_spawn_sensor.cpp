@@ -51,17 +51,10 @@ void InitBrushSensor( gentity_t *self )
 
 void sensor_act(gentity_t *self, gentity_t *other, gentity_t *activator)
 {
-	// if we wanted to tell the cgame about our deactivation, this would be the way to do it
-	// self->s.eFlags ^= EF_NODRAW;
-	// but unless we have to, we rather not share the information, so "patched" clients cannot do anything with it either
-	self->enabled = !self->enabled;
 }
 
 void sensor_reset( gentity_t *self )
 {
-	// SPAWN_DISABLED?
-	self->enabled = !(self->spawnflags & SPF_SPAWN_DISABLED);
-
 	// NEGATE?
 	self->conditions.negated = !!( self->spawnflags & 2 );
 }
@@ -307,77 +300,6 @@ void SP_sensor_end( gentity_t *self )
 /*
 =================================================================================
 
-sensor_buildable
-
-=================================================================================
-*/
-
-bool sensor_buildable_match( gentity_t *self, gentity_t *activator )
-{
-	int i = 0;
-
-	if ( !activator )
-	{
-		return false;
-	}
-
-	//if there is no buildable list every buildable triggers
-	if ( self->conditions.buildables[ i ] == BA_NONE )
-	{
-		return true;
-	}
-	else
-	{
-		//otherwise check against the list
-		for ( i = 0; self->conditions.buildables[ i ] != BA_NONE; i++ )
-		{
-			if ( activator->s.modelindex == self->conditions.buildables[ i ] )
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-void sensor_buildable_touch( gentity_t *self, gentity_t *activator, trace_t *trace )
-{
-	//sanity check
-	if ( !activator || !(activator->s.eType == ET_BUILDABLE) )
-	{
-		return;
-	}
-
-	self->activator = activator;
-
-	if ( self->nextthink )
-	{
-		return; // can't retrigger until the wait is over
-	}
-
-	if( sensor_buildable_match( self, activator ) == !self->conditions.negated )
-	{
-		G_FireEntity( self, activator );
-		trigger_checkWaitForReactivation( self );
-	}
-}
-
-void SP_sensor_buildable( gentity_t *self )
-{
-	SP_WaitFields(self, 0.5f, 0);
-	SP_ConditionFields( self );
-
-	self->touch = sensor_buildable_touch;
-	self->act = sensor_act;
-	self->reset = sensor_reset;
-
-	InitBrushSensor( self );
-}
-
-/*
-=================================================================================
-
 sensor_player
 
 =================================================================================
@@ -528,106 +450,16 @@ sensor_support
 
 void sensor_support_think( gentity_t *self )
 {
-	if(!self->enabled)
-	{
-		self->nextthink = level.time + SENSOR_POLL_PERIOD * 5;
-		return;
-	}
-
-	//TODO check the difference between G_FindCreep and G_FindPower
-	switch (self->conditions.team) {
-		case TEAM_HUMANS:
-			self->powered = false;
-			break;
-		case TEAM_ALIENS:
-			self->powered = G_FindCreep( self );
-			break;
-		case TEAM_ALL:
-			self->powered = G_FindCreep( self );
-			break;
-		default:
-			G_Printf(S_ERROR "missing team field for %s\n", etos( self ));
-			G_FreeEntity( self );
-			break;
-	}
-
-	if(self->powered)
-		G_FireEntity( self, self->powerSource );
-
 	self->nextthink = level.time + SENSOR_POLL_PERIOD;
 }
 
 void sensor_support_reset( gentity_t *self )
 {
-	self->enabled = !(self->spawnflags & SPF_SPAWN_DISABLED);
-	//if(self->enabled)
 	self->nextthink = level.time + SENSOR_POLL_PERIOD;
 }
 
 void SP_sensor_support( gentity_t *self )
 {
 	self->think = sensor_support_think;
-	self->reset = sensor_support_reset;
-}
-
-/*
-=================================================================================
-
-sensor_power
-
-=================================================================================
-*/
-
-
-void sensor_power_think( gentity_t *self )
-{
-	if(!self->enabled)
-	{
-		self->nextthink = level.time + SENSOR_POLL_PERIOD * 5;
-		return;
-	}
-
-	self->powered = false; //TODO: Reuse or remove this sensor
-
-	if(self->powered)
-		G_FireEntity( self, self->powerSource );
-
-	self->nextthink = level.time + SENSOR_POLL_PERIOD;
-}
-
-void SP_sensor_power( gentity_t *self )
-{
-	self->think = sensor_power_think;
-	self->reset = sensor_support_reset;
-}
-
-/*
-=================================================================================
-
-sensor_creep
-
-=================================================================================
-*/
-
-
-void sensor_creep_think( gentity_t *self )
-{
-	if(!self->enabled)
-	{
-		self->nextthink = level.time + SENSOR_POLL_PERIOD * 5;
-		return;
-	}
-
-	self->powered = G_FindCreep( self );
-
-	if(self->powered)
-		G_FireEntity( self, self->powerSource );
-
-	self->nextthink = level.time + SENSOR_POLL_PERIOD;
-}
-
-void SP_sensor_creep( gentity_t *self )
-{
-	self->think = sensor_creep_think;
 	self->reset = sensor_support_reset;
 }

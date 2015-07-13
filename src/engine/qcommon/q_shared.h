@@ -2337,8 +2337,6 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 		ET_PLAYER,
 		ET_ITEM,
 
-		ET_BUILDABLE,       // buildable type
-
 		ET_LOCATION,
 
 		ET_MISSILE,

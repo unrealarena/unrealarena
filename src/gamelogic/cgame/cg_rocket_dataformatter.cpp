@@ -133,82 +133,6 @@ static void CG_Rocket_DFServerLabel( int handle, const char *data )
 	trap_Rocket_DataFormatterFormattedData( handle, *data ? ++str : "&nbsp;", false );
 }
 
-static void CG_Rocket_DFCMArmouryBuyWeapon( int handle, const char *data )
-{
-	weapon_t weapon = (weapon_t) atoi( Info_ValueForKey( data, "1" ) );
-	const char *Class = "";
-	const char *Icon = "";
-	const char *action = "";
-	playerState_t *ps = &cg.snap->ps;
-	int credits = ps->persistant[ PERS_CREDIT ];
-	weapon_t currentweapon = BG_PrimaryWeapon( ps->stats );
-	credits += BG_Weapon( currentweapon )->price;
-
-	if( BG_InventoryContainsWeapon( weapon, cg.predictedPlayerState.stats ) ){
-		Class = "active";
-		action =  va( "onClick='exec \"sell %s\"'", BG_Weapon( weapon )->name );
-		//Check mark icon. UTF-8 encoding of \uf00c
-		Icon = "<icon class=\"current\">\xEF\x80\x8C</icon>";
-	}
-	else if ( !BG_WeaponUnlocked( weapon ) || BG_WeaponDisabled( weapon ) )
-	{
-		Class = "locked";
-		//Padlock icon. UTF-8 encoding of \uf023
-		Icon = "<icon>\xEF\x80\xA3</icon>";
-	}
-
-	else if(BG_Weapon( weapon )->price > credits){
-
-		Class = "expensive";
-		//$1 bill icon. UTF-8 encoding of \uf0d6
-		Icon = "<icon>\xEF\x83\x96</icon>";
-	}
-	else
-	{
-		Class = "available";
-		action =  va( "onClick='exec \"buy +%s\"'", BG_Weapon( weapon )->name );
-	}
-
-	trap_Rocket_DataFormatterFormattedData( handle, va( "<button class='armourybuy %s' onMouseover='setDS armouryBuyList weapons %s' %s>%s<img src='/%s'/></button>", Class, Info_ValueForKey( data, "2" ), action, Icon, CG_GetShaderNameFromHandle( cg_weapons[ weapon ].ammoIcon )), false );
-}
-
-static void CG_Rocket_DFCMArmouryBuyUpgrade( int handle, const char *data )
-{
-	upgrade_t upgrade = (upgrade_t) atoi( Info_ValueForKey( data, "1" ) );
-	const char *Class = "";
-	const char *Icon = "";
-	const char *action = "";
-	playerState_t *ps = &cg.snap->ps;
-	int credits = ps->persistant[ PERS_CREDIT ];
-
-	if( BG_InventoryContainsUpgrade( upgrade, cg.predictedPlayerState.stats ) ){
-		Class = "active";
-		action =  va( "onClick='exec \"sell %s\"'", BG_Upgrade( upgrade )->name );
-		//Check mark icon. UTF-8 encoding of \uf00c
-		Icon = "<icon class=\"current\">\xEF\x80\x8C</icon>";
-	}
-
-	else if ( !BG_UpgradeUnlocked( upgrade ) || BG_UpgradeDisabled( upgrade ) )
-	{
-		Class = "locked";
-		//Padlock icon. UTF-8 encoding of \uf023
-		Icon = "<icon>\xEF\x80\xA3</icon>";
-	}
-	else if(BG_Upgrade( upgrade )->price > credits){
-
-		Class = "expensive";
-		//$1 bill icon. UTF-8 encoding of \uf0d6
-		Icon = "<icon>\xEF\x83\x96</icon>";
-	}
-	else
-	{
-		Class = "available";
-		action =  va( "onClick='exec \"buy +%s\"'", BG_Upgrade( upgrade )->name );
-	}
-
-	trap_Rocket_DataFormatterFormattedData( handle, va( "<button class='armourybuy %s' onMouseover='setDS armouryBuyList upgrades %s' %s>%s<img src='/%s'/></button>", Class, Info_ValueForKey( data, "2" ), action, Icon, CG_GetShaderNameFromHandle( cg_upgrades[ upgrade ].upgradeIcon)), false );
-}
-
 static void CG_Rocket_DFGWeaponDamage( int handle, const char *data )
 {
 	weapon_t weapon = (weapon_t) atoi( Info_ValueForKey( data, "1" ) );
@@ -331,70 +255,6 @@ static void CG_Rocket_DFGearOrReady( int handle, const char *data )
 	}
 }
 
-static void CG_Rocket_DFCMAlienBuildables( int handle, const char *data )
-{
-	buildable_t buildable = ( buildable_t ) atoi( Info_ValueForKey( data, "1" ) );
-	const char *Class = "";
-	const char *Icon = "";
-	const char *action = "";
-	int value, valueMarked;
-
-	value = cg.snap->ps.persistant[ PERS_BP ];
-	valueMarked = cg.snap->ps.persistant[ PERS_MARKEDBP ];
-
-	if ( BG_BuildableDisabled( buildable ) || !BG_BuildableUnlocked( buildable ) )
-	{
-		Class = "locked";
-		//Padlock icon. UTF-8 encoding of \uf023
-		Icon = "<icon>\xEF\x80\xA3</icon>";
-	}
-	else if ( BG_Buildable( buildable )->buildPoints > value + valueMarked )
-	{
-		Class = "expensive";
-		//$1 bill icon. UTF-8 encoding of \uf0d6
-		Icon = "<icon>\xEF\x83\x96</icon>";
-	}
-	else
-	{
-		Class = "available";
-		action = va( "onClick='exec \"build %s\"; hide %s'", BG_Buildable( buildable )->name, rocketInfo.menu[ ROCKETMENU_ALIENBUILD ].id );
-	}
-
-	trap_Rocket_DataFormatterFormattedData( handle, va( "<button class='%s' onMouseover='setDS alienBuildList default %s' %s>%s<img src='/%s'/></button>", Class, Info_ValueForKey( data, "2" ), action, Icon, CG_GetShaderNameFromHandle( cg_buildables[ buildable ].buildableIcon ) ), false );
-}
-
-static void CG_Rocket_DFCMHumanBuildables( int handle, const char *data )
-{
-	buildable_t buildable = ( buildable_t ) atoi( Info_ValueForKey( data, "1" ) );
-	const char *Class = "";
-	const char *Icon = "";
-	const char *action = "";
-	int value, valueMarked;
-
-	value = cg.snap->ps.persistant[ PERS_BP ];
-	valueMarked = cg.snap->ps.persistant[ PERS_MARKEDBP ];
-
-	if ( BG_BuildableDisabled( buildable ) || !BG_BuildableUnlocked( buildable ) )
-	{
-		Class = "locked";
-		//Padlock icon. UTF-8 encoding of \uf023
-		Icon = "<icon>\xEF\x80\xA3</icon>";
-	}
-	else if ( BG_Buildable( buildable )->buildPoints > value + valueMarked )
-	{
-		Class = "expensive";
-		//$1 bill icon. UTF-8 encoding of \uf0d6
-		Icon = "<icon>\xEF\x83\x96</icon>";
-	}
-	else
-	{
-		Class = "available";
-		action = va( "onClick='exec \"build %s\"; hide %s'", BG_Buildable( buildable )->name, rocketInfo.menu[ ROCKETMENU_HUMANBUILD ].id );
-	}
-
-	trap_Rocket_DataFormatterFormattedData( handle, va( "<button class='%s' onMouseover='setDS humanBuildList default %s' %s>%s<img src='/%s'/></button>", Class, Info_ValueForKey( data, "2" ), action, Icon, CG_GetShaderNameFromHandle( cg_buildables[ buildable ].buildableIcon ) ), false );
-}
-
 static void CG_Rocket_DFCMAlienEvolve( int handle, const char *data )
 {
 	class_t alienClass = (class_t) atoi( Info_ValueForKey( data, "1" ) );
@@ -457,12 +317,8 @@ typedef struct
 static const dataFormatterCmd_t dataFormatterCmdList[] =
 {
 	{ "ClassName", &CG_Rocket_DFClassName },
-	{ "CMAlienBuildables", &CG_Rocket_DFCMAlienBuildables },
 	{ "CMAlienEvolve", &CG_Rocket_DFCMAlienEvolve },
-	{ "CMArmouryBuyUpgrades", &CG_Rocket_DFCMArmouryBuyUpgrade },
-	{ "CMArmouryBuyWeapons", &CG_Rocket_DFCMArmouryBuyWeapon },
 	{ "CMBeacons", &CG_Rocket_DFCMBeacons },
-	{ "CMHumanBuildables", &CG_Rocket_DFCMHumanBuildables },
 	{ "GearOrReady", &CG_Rocket_DFGearOrReady },
 	{ "GWeaponDamage", &CG_Rocket_DFGWeaponDamage },
 	{ "GWeaponRange", &CG_Rocket_DFGWeaponRange },

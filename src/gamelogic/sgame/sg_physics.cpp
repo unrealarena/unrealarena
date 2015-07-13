@@ -43,15 +43,7 @@ static void G_Bounce( gentity_t *ent, trace_t *trace )
 	dot = DotProduct( velocity, trace->plane.normal );
 	VectorMA( velocity, -2 * dot, trace->plane.normal, ent->s.pos.trDelta );
 
-	if ( ent->s.eType == ET_BUILDABLE )
-	{
-		minNormal = BG_Buildable( ent->s.modelindex )->minNormal;
-		invert = BG_Buildable( ent->s.modelindex )->invertNormal;
-	}
-	else
-	{
-		minNormal = 0.707f;
-	}
+	minNormal = 0.707f;
 
 	// cut the velocity to keep from bouncing forever
 	if ( ( trace->plane.normal[ 2 ] >= minNormal ||
@@ -97,15 +89,7 @@ void G_Physics( gentity_t *ent, int msec )
 	// if groundentity has been set to ENTITYNUM_NONE, it may have been pushed off an edge
 	if ( ent->s.groundEntityNum == ENTITYNUM_NONE )
 	{
-		if ( ent->s.eType == ET_BUILDABLE )
-		{
-			if ( ent->s.pos.trType != BG_Buildable( ent->s.modelindex )->traj )
-			{
-				ent->s.pos.trType = BG_Buildable( ent->s.modelindex )->traj;
-				ent->s.pos.trTime = level.time;
-			}
-		}
-		else if ( ent->s.pos.trType != TR_GRAVITY )
+		if ( ent->s.pos.trType != TR_GRAVITY )
 		{
 			ent->s.pos.trType = TR_GRAVITY;
 			ent->s.pos.trTime = level.time;

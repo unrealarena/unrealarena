@@ -47,7 +47,6 @@ typedef struct unlagged_s          unlagged_t;
 typedef struct gclient_s           gclient_t;
 typedef struct damageRegion_s      damageRegion_t;
 typedef struct spawnQueue_s        spawnQueue_t;
-typedef struct buildLog_s          buildLog_t;
 typedef struct level_locals_s      level_locals_t;
 typedef struct commands_s          commands_t;
 typedef struct zap_s               zap_t;
@@ -71,25 +70,11 @@ typedef enum
 	TW_PASSED
 } timeWarning_t;
 
-// fate of a buildable
-typedef enum
-{
-	BF_CONSTRUCT,
-	BF_DECONSTRUCT,
-	BF_REPLACE,
-	BF_DESTROY,
-	BF_TEAMKILL,
-	BF_UNPOWER,
-	BF_AUTO
-} buildFate_t;
-
 typedef enum {
 	VOTE_KICK,
 	VOTE_SPECTATE,
 	VOTE_MUTE,
 	VOTE_UNMUTE,
-	VOTE_DENYBUILD,
-	VOTE_ALLOWBUILD,
 	VOTE_EXTEND,
 	VOTE_ADMIT_DEFEAT,
 	VOTE_DRAW,

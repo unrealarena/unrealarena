@@ -907,7 +907,6 @@ set( GAMESHAREDLIST
 set( CGAMELIST
   ${GAMELOGIC_DIR}/cgame/cg_api.cpp
   ${GAMELOGIC_DIR}/cgame/cg_consolecmds.cpp
-  ${GAMELOGIC_DIR}/cgame/cg_buildable.cpp
   ${GAMELOGIC_DIR}/cgame/cg_animation.cpp
   ${GAMELOGIC_DIR}/cgame/cg_animmapobj.cpp
   ${GAMELOGIC_DIR}/cgame/cg_draw.cpp
@@ -950,7 +949,6 @@ set( CGAMELIST
 set( SGAMELIST
   ${GAMELOGIC_DIR}/sgame/sg_active.cpp
   ${GAMELOGIC_DIR}/sgame/sg_api.cpp
-  ${GAMELOGIC_DIR}/sgame/sg_buildpoints.cpp
   ${GAMELOGIC_DIR}/sgame/sg_client.cpp
   ${GAMELOGIC_DIR}/sgame/sg_cmds.cpp
   ${GAMELOGIC_DIR}/sgame/sg_combat.cpp
@@ -962,7 +960,6 @@ set( SGAMELIST
   ${GAMELOGIC_DIR}/sgame/sg_local.h
   ${GAMELOGIC_DIR}/sgame/sg_public.h
   ${GAMELOGIC_DIR}/sgame/sg_physics.cpp
-  ${GAMELOGIC_DIR}/sgame/sg_buildable.cpp
   ${GAMELOGIC_DIR}/sgame/sg_main.cpp
   ${GAMELOGIC_DIR}/sgame/sg_missile.cpp
   ${GAMELOGIC_DIR}/sgame/sg_session.cpp

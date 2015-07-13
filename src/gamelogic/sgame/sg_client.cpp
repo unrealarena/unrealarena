@@ -195,57 +195,6 @@ gentity_t *G_SelectRandomFurthestSpawnPoint( vec3_t avoidPoint, vec3_t origin, v
 }
 
 /*
-================
-G_SelectSpawnBuildable
-
-find the nearest buildable of the right type that is
-spawned/healthy/unblocked etc.
-================
-*/
-static gentity_t *G_SelectSpawnBuildable( vec3_t preference, buildable_t buildable )
-{
-	gentity_t *search = nullptr;
-	gentity_t *spot = nullptr;
-
-	while ( ( search = G_IterateEntitiesOfClass( search, BG_Buildable( buildable )->entityName ) ) != nullptr )
-	{
-		if ( !search->spawned )
-		{
-			continue;
-		}
-
-		if ( search->health <= 0 )
-		{
-			continue;
-		}
-
-		if ( search->s.groundEntityNum == ENTITYNUM_NONE )
-		{
-			continue;
-		}
-
-		if ( search->clientSpawnTime > 0 )
-		{
-			continue;
-		}
-
-		if ( G_CheckSpawnPoint( search->s.number, search->s.origin,
-		                        search->s.origin2, buildable, nullptr ) != nullptr )
-		{
-			continue;
-		}
-
-		if ( !spot || DistanceSquared( preference, search->s.origin ) <
-		     DistanceSquared( preference, spot->s.origin ) )
-		{
-			spot = search;
-		}
-	}
-
-	return spot;
-}
-
-/*
 ===========
 G_SelectUnvanquishedSpawnPoint
 
@@ -265,11 +214,11 @@ gentity_t *G_SelectUnvanquishedSpawnPoint( team_t team, vec3_t preference, vec3_
 
 	if ( team == TEAM_ALIENS )
 	{
-		spot = G_SelectSpawnBuildable( preference, BA_A_SPAWN );
+		// spot = G_SelectSpawnBuildable( preference, BA_A_SPAWN );
 	}
 	else if ( team == TEAM_HUMANS )
 	{
-		spot = G_SelectSpawnBuildable( preference, BA_H_SPAWN );
+		// spot = G_SelectSpawnBuildable( preference, BA_H_SPAWN );
 	}
 
 	//no available spots
@@ -280,11 +229,11 @@ gentity_t *G_SelectUnvanquishedSpawnPoint( team_t team, vec3_t preference, vec3_
 
 	if ( team == TEAM_ALIENS )
 	{
-		G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_A_SPAWN, origin );
+		// G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_A_SPAWN, origin );
 	}
 	else if ( team == TEAM_HUMANS )
 	{
-		G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_H_SPAWN, origin );
+		// G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_H_SPAWN, origin );
 	}
 
 	VectorCopy( spot->s.angles, angles );
@@ -1599,22 +1548,6 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		}
 
 		spawnPoint = spawn;
-
-		if ( spawnPoint->s.eType == ET_BUILDABLE )
-		{
-			G_SetBuildableAnim( spawnPoint, BANIM_SPAWN1, true );
-
-			spawnPoint->buildableStatsCount++;
-
-			if ( spawnPoint->buildableTeam == TEAM_ALIENS )
-			{
-				spawnPoint->clientSpawnTime = ALIEN_SPAWN_REPEAT_TIME;
-			}
-			else if ( spawnPoint->buildableTeam == TEAM_HUMANS )
-			{
-				spawnPoint->clientSpawnTime = HUMAN_SPAWN_REPEAT_TIME;
-			}
-		}
 	}
 
 	// toggle the teleport bit so the client knows to not lerp
@@ -1729,7 +1662,6 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	client->ps.stats[ STAT_STAMINA ] = STAMINA_MAX;
 	client->ps.stats[ STAT_FUEL ]    = JETPACK_FUEL_MAX;
 	client->ps.stats[ STAT_CLASS ] = ent->client->pers.classSelection;
-	client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
 	client->ps.stats[ STAT_PREDICTION ] = 0;
 	client->ps.stats[ STAT_STATE ] = 0;
 

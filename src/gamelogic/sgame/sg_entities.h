@@ -98,12 +98,9 @@ Maryland 20850 USA.
 #define S_POS_TARGET              "pos_target"
 #define S_POS_LOCATION            "pos_location"
 
-#define S_SENSOR_CREEP            "sensor_creep"
 #define S_SENSOR_END              "sensor_end"
-#define S_SENSOR_BUILDABLE        "sensor_buildable"
 #define S_SENSOR_TIMER            "sensor_timer"
 #define S_SENSOR_PLAYER           "sensor_player"
-#define S_SENSOR_POWER            "sensor_power"
 #define S_SENSOR_SUPPORT          "sensor_support"
 #define S_SENSOR_START            "sensor_start"
 #define S_SENSOR_STAGE            "sensor_stage"
@@ -168,10 +165,6 @@ typedef enum
 	ECA_USE,
 	ECA_RESET,
 
-	ECA_ENABLE,
-	ECA_DISABLE,
-	ECA_TOGGLE
-
 } gentityCallActionType_t;
 
 typedef enum
@@ -189,9 +182,6 @@ typedef enum
 	ON_REACH,
 	ON_RESET,
 	ON_TOUCH,
-
-	ON_ENABLE,
-	ON_DISABLE,
 
 	ON_SPAWN
 
@@ -230,7 +220,7 @@ const char *etos( const gentity_t *entity );
 void       G_PrintEntityNameList( gentity_t *entity );
 
 //search, select, iterate
-gentity_t  *G_IterateEntities( gentity_t *entity, const char *classname, bool skipdisabled, size_t fieldofs, const char *match );
+gentity_t  *G_IterateEntities( gentity_t *entity, const char *classname, size_t fieldofs, const char *match );
 gentity_t  *G_IterateEntities( gentity_t *entity );
 gentity_t  *G_IterateEntitiesOfClass( gentity_t *entity, const char *classname );
 gentity_t  *G_IterateEntitiesWithField( gentity_t *entity, size_t fieldofs, const char *match );

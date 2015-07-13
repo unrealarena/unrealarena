@@ -370,8 +370,6 @@ void G_BotThink( gentity_t *self )
 	while ( trap_BotGetServerCommand( self->client->ps.clientNum, buf, sizeof( buf ) ) );
 
 	BotSearchForEnemy( self );
-	BotFindClosestBuildings( self );
-	BotFindDamagedFriendlyStructure( self );
 
 	//use medkit when hp is low
 	if ( self->health < BOT_USEMEDKIT_HP && BG_InventoryContainsUpgrade( UP_MEDKIT, self->client->ps.stats ) )

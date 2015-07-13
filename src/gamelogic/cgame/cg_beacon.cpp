@@ -314,48 +314,6 @@ static int CompareBeaconsByDist( const void *a, const void *b )
  */
 static void MarkRelevantBeacons()
 {
-	const playerState_t *ps = &cg.predictedPlayerState;
-	int team = ps->persistant[ PERS_TEAM ];
-	bool lowammo, energy;
-
-	lowammo = BG_PlayerLowAmmo( ps, &energy );
-
-	for( int beaconNum = 0, tofind = 3; beaconNum < cg.beaconCount && tofind; beaconNum++ )
-	{
-		cbeacon_t *beacon = cg.beacons[ beaconNum ];
-
-		// Only tagged buildables are relevant so far.
-		if( beacon->type != BCT_TAG ||
-		    ( beacon->flags & EF_BC_TAG_PLAYER ) ||
-		    ( beacon->flags & EF_BC_DYING ) )
-		{
-			continue;
-		}
-
-		// Find a health source.
-		if( tofind & 1 )
-		{
-			if( ( team == TEAM_ALIENS && beacon->data == BA_A_BOOSTER ) ||
-			    ( team == TEAM_HUMANS && beacon->data == BA_H_MEDISTAT ) )
-			{
-				if( ps->stats[ STAT_HEALTH ] < ps->stats[ STAT_MAX_HEALTH ] / 2 )
-					beacon->type = BCT_HEALTH;
-				tofind &= ~1;
-			}
-		}
-
-		// Find an ammo source.
-		if( tofind & 2 )
-		{
-			if( team == TEAM_HUMANS && ( beacon->data == BA_H_ARMOURY ||
-			    ( energy && ( beacon->data == BA_H_REPEATER || beacon->data == BA_H_REACTOR ) ) ) )
-			{
-				if( lowammo )
-					beacon->type = BCT_AMMO;
-				tofind &= ~2;
-			}
-		}
-	}
 }
 
 static void SetHighlightedBeacon()
@@ -701,17 +659,13 @@ qhandle_t CG_BeaconIcon( const cbeacon_t *b )
 qhandle_t CG_BeaconDescriptiveIcon( const cbeacon_t *b )
 {
 	if ( b->type == BCT_TAG ) {
-		if( b->flags & EF_BC_TAG_PLAYER ) {
-			switch ( TargetTeam( b ) ) {
-				case TEAM_ALIENS:
-					return cg_classes[ b->data ].classIcon;
-				case TEAM_HUMANS:
-					return cg_weapons[ b->data ].weaponIcon;
-				default:
-					return CG_BeaconIcon( b );
-			}
-		} else {
-			return cg_buildables[ b->data ].buildableIcon;
+		switch ( TargetTeam( b ) ) {
+			case TEAM_ALIENS:
+				return cg_classes[ b->data ].classIcon;
+			case TEAM_HUMANS:
+				return cg_weapons[ b->data ].weaponIcon;
+			default:
+				return CG_BeaconIcon( b );
 		}
 	} else {
 		return CG_BeaconIcon( b );
@@ -731,20 +685,15 @@ const char *CG_BeaconName( const cbeacon_t *b, char *out, size_t len )
 	switch( b->type )
 	{
 		case BCT_TAG:
-			if( b->flags & EF_BC_TAG_PLAYER ) {
-				if ( ownTeam == TEAM_NONE || ownTeam == beaconTeam ) {
-					return strncpy( out, cgs.clientinfo[ b->target ].name, len ); // Player name
-				} else if ( beaconTeam == TEAM_ALIENS ) {
-					return strncpy( out, BG_ClassModelConfig( b->data )->humanName, len ); // Class name
-				} else if ( beaconTeam == TEAM_HUMANS ) {
-					// TODO: Display "Light//Chewy/Canned Food" for different armor types.
-					return strncpy( out, "Food", len );
-				} else {
-					return strncpy( out, "???", len );
-				}
+			if ( ownTeam == TEAM_NONE || ownTeam == beaconTeam ) {
+				return strncpy( out, cgs.clientinfo[ b->target ].name, len ); // Player name
+			} else if ( beaconTeam == TEAM_ALIENS ) {
+				return strncpy( out, BG_ClassModelConfig( b->data )->humanName, len ); // Class name
+			} else if ( beaconTeam == TEAM_HUMANS ) {
+				// TODO: Display "Light//Chewy/Canned Food" for different armor types.
+				return strncpy( out, "Food", len );
 			} else {
-				// Display buildable name for all teams.
-				return strncpy( out, BG_Buildable( b->data )->humanName, len );
+				return strncpy( out, "???", len );
 			}
 			break;
 

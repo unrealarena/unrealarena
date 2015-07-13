@@ -135,76 +135,6 @@ static void CG_CompleteClass()
 	}
 }
 
-static void CG_CompleteBuy_internal( bool negatives )
-{
-	int i;
-
-	for( i = 0; i < UP_NUM_UPGRADES; i++ )
-	{
-		const upgradeAttributes_t *item = BG_Upgrade( i );
-		if ( item->purchasable && item->team == TEAM_HUMANS )
-		{
-			trap_CompleteCallback( item->name );
-
-			if ( negatives )
-			{
-				trap_CompleteCallback( va( "-%s", item->name ) );
-			}
-		}
-	}
-
-	trap_CompleteCallback( "grenade" ); // called "gren" elsewhere, so special-case it
-
-	if ( negatives )
-	{
-		trap_CompleteCallback( "-grenade" );
-
-		i = BG_GetPlayerWeapon( &cg.snap->ps );
-
-	}
-
-	for( i = 0; i < WP_NUM_WEAPONS; i++ )
-	{
-		const weaponAttributes_t *item = BG_Weapon( i );
-		if ( item->purchasable && item->team == TEAM_HUMANS )
-		{
-			trap_CompleteCallback( item->name );
-
-			if ( negatives )
-			{
-				trap_CompleteCallback( va( "-%s", BG_Weapon( i )->name ) );
-			}
-		}
-	}
-}
-
-static void CG_CompleteBuy()
-{
-	if( cgs.clientinfo[ cg.clientNum ].team != TEAM_HUMANS )
-	{
-		return;
-	}
-
-	trap_CompleteCallback( "-all" );
-	trap_CompleteCallback( "-weapons" );
-	trap_CompleteCallback( "-upgrades" );
-	CG_CompleteBuy_internal( true );
-}
-
-static void CG_CompleteSell()
-{
-	if( cgs.clientinfo[ cg.clientNum ].team != TEAM_HUMANS )
-	{
-		return;
-	}
-
-	trap_CompleteCallback( "all" );
-	trap_CompleteCallback( "weapons" );
-	trap_CompleteCallback( "upgrades" );
-	CG_CompleteBuy_internal( false );
-}
-
-
 static void CG_CompleteBeacon()
 {
 	int i;
@@ -213,20 +143,6 @@ static void CG_CompleteBeacon()
 	{
 		const beaconAttributes_t *item = BG_Beacon( i );
 		if ( !( item->flags & BCF_RESERVED ) )
-		{
-			trap_CompleteCallback( item->name );
-		}
-	}
-}
-
-static void CG_CompleteBuild()
-{
-	int i;
-
-	for ( i = 0; i < BA_NUM_BUILDABLES; i++ )
-	{
-		const buildableAttributes_t *item = BG_Buildable( i );
-		if ( item->team == cgs.clientinfo[ cg.clientNum ].team )
 		{
 			trap_CompleteCallback( item->name );
 		}
@@ -284,7 +200,7 @@ static void CG_CompleteTeamVote()
 	unsigned           i = 0;
 	static const char vote[][ 16 ] =
 	{
-		"kick", "spectate", "denybuild", "allowbuild", "admitdefeat", "poll"
+		"kick", "spectate", "admitdefeat", "poll"
 	};
 
 	for( i = 0; i < ARRAY_LEN( vote ); i++ )
@@ -426,15 +342,11 @@ static const struct
 	{ "asay",             0,                       0                },
 	{ "beacon",           0,                       CG_CompleteBeacon },
 	{ "beaconMenu",       CG_BeaconMenu_f,         0                },
-	{ "build",            0,                       CG_CompleteBuild },
-	{ "buy",              0,                       CG_CompleteBuy   },
 	{ "callteamvote",     0,                       CG_CompleteTeamVote },
 	{ "callvote",         0,                       CG_CompleteVote  },
 	{ "class",            0,                       CG_CompleteClass },
 	{ "clientlist",       CG_ClientList_f,         0                },
 	{ "damage",           0,                       0                },
-	{ "deconstruct",      0,                       0                },
-	{ "destroy",          0,                       0                },
 	{ "destroyTestPS",    CG_DestroyTestPS_f,      0                },
 	{ "destroyTestTS",    CG_DestroyTestTS_f,      0                },
 	{ "follow",           0,                       CG_CompleteName  },
@@ -472,7 +384,6 @@ static const struct
 	{ "say_area",         0,                       0                },
 	{ "say_area_team",    0,                       0                },
 	{ "say_team",         0,                       0                },
-	{ "sell",             0,                       CG_CompleteSell  },
 	{ "setviewpos",       0,                       0                },
 	{ "showScores",       CG_ShowScores_f,         0                },
 	{ "sizedown",         CG_SizeDown_f,           0                },

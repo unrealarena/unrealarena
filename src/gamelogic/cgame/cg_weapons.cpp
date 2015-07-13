@@ -1881,12 +1881,6 @@ void CG_AddViewWeapon( playerState_t *ps )
 		return;
 	}
 
-	// draw a prospective buildable infront of the player
-	if ( ( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK ) > BA_NONE )
-	{
-		CG_GhostBuildable( ps->stats[ STAT_BUILDABLE ] );
-	}
-
 	// no gun if in third person view
 	if ( cg.renderingThirdPerson )
 	{
@@ -2479,23 +2473,6 @@ static void DrawEntityHitEffect( vec3_t origin, vec3_t normal, int targetNum )
 			return;
 		}
 	}
-	else if ( target->currentState.eType == ET_BUILDABLE )
-	{
-		team = BG_Buildable( target->currentState.modelindex )->team;
-
-		if ( team == TEAM_ALIENS )
-		{
-			psHandle = cgs.media.alienBuildableBleedPS;
-		}
-		else if ( team == TEAM_HUMANS )
-		{
-			psHandle = cgs.media.humanBuildableBleedPS;
-		}
-		else
-		{
-			return;
-		}
-	}
 	else
 	{
 		return;
@@ -2632,8 +2609,7 @@ static void ShotgunPattern( vec3_t origin, vec3_t origin2, int seed, int attacke
 			dummy.otherEntityNum2 = attackerNum;
 			dummy.torsoAnim       = 0; // Make sure it is not used uninitialized
 
-			if ( cg_entities[ tr.entityNum ].currentState.eType == ET_PLAYER ||
-			     cg_entities[ tr.entityNum ].currentState.eType == ET_BUILDABLE )
+			if ( cg_entities[ tr.entityNum ].currentState.eType == ET_PLAYER )
 			{
 				CG_HandleWeaponHitEntity( &dummy, tr.endpos );
 			}
@@ -2757,11 +2733,6 @@ void CG_HandleWeaponHitEntity( entityState_t *es, vec3_t origin )
 	{
 		PlayHitSound( origin, wim->impactFleshSound );
 	}
-	else if ( victim->currentState.eType == ET_BUILDABLE &&
-			  BG_Buildable( victim->currentState.modelindex )->team == TEAM_ALIENS )
-	{
-		PlayHitSound( origin, wim->impactFleshSound );
-	}
 	else
 	{
 		PlayHitSound( origin, wim->impactSound );
@@ -2845,11 +2816,6 @@ void CG_HandleMissileHitEntity( entityState_t *es, vec3_t origin )
 
 	// sound
 	if ( victim->currentState.eType == ET_PLAYER )
-	{
-		PlayHitSound( origin, ma->impactFleshSound );
-	}
-	else if ( victim->currentState.eType == ET_BUILDABLE &&
-			  BG_Buildable( victim->currentState.modelindex )->team == TEAM_ALIENS )
 	{
 		PlayHitSound( origin, ma->impactFleshSound );
 	}

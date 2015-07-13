@@ -625,15 +625,7 @@ namespace BaseClustering {
 			float baseRadius = std::max(averageDistance + standardDeviation, MININUM_BASE_RADIUS);
 
 			// Find out if it's an outpost or main base.
-			bool mainBase = false;
-			for (const EntityClustering::cluster_type::record_type& record : cluster) {
-				gentity_t* ent = record.first;
-
-				// TODO: Use G_IsMainStructure when merged.
-				if (ent->s.modelindex2 == BA_A_OVERMIND || ent->s.modelindex2 == BA_H_REACTOR) {
-					mainBase = true;
-				}
-			}
+			bool mainBase = true;
 
 			// Trace from mean buildable's origin towards cluster center, so that the beacon does
 			// not spawn inside a wall. Then use MoveTowardsRoom on the trace results.

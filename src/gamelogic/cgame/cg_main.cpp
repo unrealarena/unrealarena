@@ -32,7 +32,6 @@ centity_t       cg_entities[ MAX_GENTITIES ];
 weaponInfo_t    cg_weapons[ 32 ];
 upgradeInfo_t   cg_upgrades[ 32 ];
 classInfo_t     cg_classes[ PCL_NUM_CLASSES ];
-buildableInfo_t cg_buildables[ BA_NUM_BUILDABLES ];
 
 vmCvar_t        cg_teslaTrailTime;
 vmCvar_t        cg_centertime;
@@ -41,7 +40,6 @@ vmCvar_t        cg_runroll;
 vmCvar_t        cg_swingSpeed;
 vmCvar_t        cg_shadows;
 vmCvar_t        cg_playerShadows;
-vmCvar_t        cg_buildableShadows;
 vmCvar_t        cg_drawTimer;
 vmCvar_t        cg_drawClock;
 vmCvar_t        cg_drawFPS;
@@ -52,7 +50,6 @@ vmCvar_t        cg_drawCrosshair;
 vmCvar_t        cg_drawCrosshairHit;
 vmCvar_t        cg_drawCrosshairFriendFoe;
 vmCvar_t        cg_drawCrosshairNames;
-vmCvar_t        cg_drawBuildableHealth;
 vmCvar_t        cg_drawMinimap;
 vmCvar_t        cg_minimapActive;
 vmCvar_t        cg_crosshairSize;
@@ -119,7 +116,6 @@ vmCvar_t        cg_debugTrails;
 vmCvar_t        cg_debugPVS;
 vmCvar_t        cg_disableWarningDialogs;
 vmCvar_t        cg_disableUpgradeDialogs;
-vmCvar_t        cg_disableBuildDialogs;
 vmCvar_t        cg_disableCommandDialogs;
 vmCvar_t        cg_disableScannerPlane;
 vmCvar_t        cg_tutorial;
@@ -131,9 +127,7 @@ vmCvar_t        cg_rangeMarkerSurfaceOpacity;
 vmCvar_t        cg_rangeMarkerLineOpacity;
 vmCvar_t        cg_rangeMarkerLineThickness;
 vmCvar_t        cg_rangeMarkerForBlueprint;
-vmCvar_t        cg_rangeMarkerBuildableTypes;
 vmCvar_t        cg_rangeMarkerWhenSpectating;
-vmCvar_t        cg_buildableRangeMarkerMask;
 vmCvar_t        cg_binaryShaderScreenScale;
 
 vmCvar_t        cg_painBlendUpRate;
@@ -177,7 +171,6 @@ vmCvar_t        cg_animSpeed;
 vmCvar_t        cg_animBlend;
 
 vmCvar_t        cg_highPolyPlayerModels;
-vmCvar_t        cg_highPolyBuildableModels;
 vmCvar_t        cg_highPolyWeaponModels;
 vmCvar_t        cg_motionblur;
 vmCvar_t        cg_motionblurMinSpeed;
@@ -207,7 +200,6 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_viewsize,                    "cg_viewsize",                    "100",          0                            },
 	{ &cg_shadows,                     "cg_shadows",                     "1",            CVAR_LATCH                   },
 	{ &cg_playerShadows,               "cg_playerShadows",               "1",            0                            },
-	{ &cg_buildableShadows,            "cg_buildableShadows",            "0",            0                            },
 	{ &cg_draw2D,                      "cg_draw2D",                      "1",            0                            },
 	{ &cg_drawTimer,                   "cg_drawTimer",                   "1",            0                            },
 	{ &cg_drawClock,                   "cg_drawClock",                   "0",            0                            },
@@ -219,7 +211,6 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_drawCrosshairHit,            "cg_drawCrosshairHit",            "1",            0                            },
 	{ &cg_drawCrosshairFriendFoe,      "cg_drawCrosshairFriendFoe",      "0",            0                            },
 	{ &cg_drawCrosshairNames,          "cg_drawCrosshairNames",          "1",            0                            },
-	{ &cg_drawBuildableHealth,         "cg_drawBuildableHealth",         "1",            0                            },
 	{ &cg_drawMinimap,                 "cg_drawMinimap",                 "1",            0                            },
 	{ &cg_minimapActive,               "cg_minimapActive",               "0",            0                            },
 	{ &cg_crosshairSize,               "cg_crosshairSize",               "1",            0                            },
@@ -284,7 +275,6 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_debugPVS,                    "cg_debugPVS",                    "0",            CVAR_CHEAT                   },
 	{ &cg_disableWarningDialogs,       "cg_disableWarningDialogs",       "0",            0                            },
 	{ &cg_disableUpgradeDialogs,       "cg_disableUpgradeDialogs",       "0",            0                            },
-	{ &cg_disableBuildDialogs,         "cg_disableBuildDialogs",         "0",            0                            },
 	{ &cg_disableCommandDialogs,       "cg_disableCommandDialogs",       "0",            0                            },
 	{ &cg_disableScannerPlane,         "cg_disableScannerPlane",         "0",            0                            },
 	{ &cg_tutorial,                    "cg_tutorial",                    "1",            0                            },
@@ -296,9 +286,7 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_rangeMarkerLineOpacity,      "cg_rangeMarkerLineOpacity",      "0.4",          0                            },
 	{ &cg_rangeMarkerLineThickness,    "cg_rangeMarkerLineThickness",    "4.0",          0                            },
 	{ &cg_rangeMarkerForBlueprint,     "cg_rangeMarkerForBlueprint",     "1",            0                            },
-	{ &cg_rangeMarkerBuildableTypes,   "cg_rangeMarkerBuildableTypes",   "support",      0                            },
 	{ &cg_rangeMarkerWhenSpectating,   "cg_rangeMarkerWhenSpectating",   "0",            0                            },
-	{ &cg_buildableRangeMarkerMask,    "cg_buildableRangeMarkerMask",    "",             0                            },
 	{ &cg_binaryShaderScreenScale,     "cg_binaryShaderScreenScale",     "1.0",          0                            },
 
 	{ &cg_hudFiles,                    "cg_hudFiles",                    "ui/hud.txt",   0                            },
@@ -345,7 +333,6 @@ static const cvarTable_t cvarTable[] =
 
 	{ &cg_chatTeamPrefix,              "cg_chatTeamPrefix",              "1",            0                            },
 	{ &cg_highPolyPlayerModels,        "cg_highPolyPlayerModels",        "1",            CVAR_LATCH                   },
-	{ &cg_highPolyBuildableModels,     "cg_highPolyBuildableModels",     "1",            CVAR_LATCH                   },
 	{ &cg_highPolyWeaponModels,        "cg_highPolyWeaponModels",        "1",            CVAR_LATCH                   },
 	{ &cg_motionblur,                  "cg_motionblur",                  "0.05",         0                            },
 	{ &cg_motionblurMinSpeed,          "cg_motionblurMinSpeed",          "600",          0                            },
@@ -400,9 +387,6 @@ these should refer only to playerstates that belong to the client, not the follo
 static void CG_SetPVars()
 {
 	playerState_t *ps;
-	char          buffer[ MAX_CVAR_VALUE_STRING ];
-	int           i;
-	bool      first;
 
 	if ( !cg.snap )
 	{
@@ -458,26 +442,6 @@ static void CG_SetPVars()
 	trap_Cvar_Set( "p_maxhp", va( "%d", ps->stats[ STAT_MAX_HEALTH ] ) );
 	trap_Cvar_Set( "p_ammo", va( "%d", ps->ammo ) );
 	trap_Cvar_Set( "p_clips", va( "%d", ps->clips ) );
-
-	// set p_availableBuildings to a space-separated list of buildings
-	first = true;
-	*buffer = 0;
-
-	for ( i = BA_NONE; i < BA_NUM_BUILDABLES; ++i )
-	{
-		const buildableAttributes_t *buildable = BG_Buildable( i );
-
-		if ( buildable->team == ps->persistant[ PERS_TEAM ] &&
-		     BG_BuildableUnlocked( i ) &&
-		     (buildable->buildWeapon & ( 1 << ps->stats[ STAT_WEAPON ] ) ) )
-
-		{
-			Q_strcat( buffer, sizeof( buffer ), first ? buildable->name : va( " %s", buildable->name ) );
-			first = false;
-		}
-	}
-
-	trap_Cvar_Set( "p_availableBuildings", buffer );
 }
 
 /*
@@ -497,126 +461,6 @@ static void CG_SetUIVars()
 
 	trap_Cvar_Set( "ui_carriage", va( "%d %d %d", cg.snap->ps.stats[ STAT_WEAPON ],
 	               cg.snap->ps.stats[ STAT_ITEMS ], cg.snap->ps.persistant[ PERS_CREDIT ] ) );
-}
-
-/*
-================
-CG_UpdateBuildableRangeMarkerMask
-================
-*/
-void CG_UpdateBuildableRangeMarkerMask()
-{
-	static int btmc = 0;
-	static int spmc = 0;
-
-	if ( cg_rangeMarkerBuildableTypes.modificationCount != btmc ||
-	     cg_rangeMarkerWhenSpectating.modificationCount != spmc )
-	{
-		int         brmMask;
-		char        buffer[ MAX_CVAR_VALUE_STRING ];
-		char        *p, *q;
-		buildable_t buildable;
-
-		brmMask = cg_rangeMarkerWhenSpectating.integer ? ( 1 << BA_NONE ) : 0;
-
-		if ( !cg_rangeMarkerBuildableTypes.string[ 0 ] )
-		{
-			goto empty;
-		}
-
-		Q_strncpyz( buffer, cg_rangeMarkerBuildableTypes.string, sizeof( buffer ) );
-		p = &buffer[ 0 ];
-
-		for ( ;; )
-		{
-			q = strchr( p, ',' );
-
-			if ( q )
-			{
-				*q = '\0';
-			}
-
-			while ( *p == ' ' )
-			{
-				++p;
-			}
-
-			buildable = BG_BuildableByName( p )->number;
-
-			if ( buildable != BA_NONE )
-			{
-				brmMask |= 1 << buildable;
-			}
-			else if ( !Q_stricmp( p, "all" ) )
-			{
-				brmMask |= ( 1 << BA_A_OVERMIND ) | ( 1 << BA_A_SPAWN ) | ( 1 << BA_A_ACIDTUBE ) |
-				           ( 1 << BA_A_TRAPPER ) | ( 1 << BA_A_HIVE ) | ( 1 << BA_A_LEECH ) |
-				           ( 1 << BA_A_BOOSTER ) | ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) |
-				           ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) | ( 1 << BA_H_DRILL );
-			}
-			else if ( !Q_stricmp( p, "none" ) )
-			{
-				brmMask = 0;
-			}
-			else
-			{
-				char *pp;
-				int  only;
-
-				if ( !Q_strnicmp( p, "alien", 5 ) )
-				{
-					pp = p + 5;
-					only = ( 1 << BA_A_OVERMIND ) | ( 1 << BA_A_SPAWN ) |
-					       ( 1 << BA_A_ACIDTUBE ) | ( 1 << BA_A_TRAPPER ) | ( 1 << BA_A_HIVE ) | ( 1 << BA_A_LEECH ) | ( 1 << BA_A_BOOSTER );
-				}
-				else if ( !Q_strnicmp( p, "human", 5 ) )
-				{
-					pp = p + 5;
-					only = ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) |
-					       ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) | ( 1 << BA_H_DRILL );
-				}
-				else
-				{
-					pp = p;
-					only = ~0;
-				}
-
-				if ( pp != p && !*pp )
-				{
-					brmMask |= only;
-				}
-				else if ( !Q_stricmp( pp, "support" ) )
-				{
-					brmMask |= only & ( ( 1 << BA_A_OVERMIND ) | ( 1 << BA_A_SPAWN ) | ( 1 << BA_A_LEECH ) | ( 1 << BA_A_BOOSTER ) |
-					                    ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) | ( 1 << BA_H_DRILL ) );
-				}
-				else if ( !Q_stricmp( pp, "offensive" ) )
-				{
-					brmMask |= only & ( ( 1 << BA_A_ACIDTUBE ) | ( 1 << BA_A_TRAPPER ) | ( 1 << BA_A_HIVE ) |
-					                    ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) );
-				}
-				else
-				{
-					Com_Printf( S_WARNING "unknown buildable or group: %s\n", p );
-				}
-			}
-
-			if ( q )
-			{
-				p = q + 1;
-			}
-			else
-			{
-				break;
-			}
-		}
-
-empty:
-		trap_Cvar_Set( "cg_buildableRangeMarkerMask", va( "%i", brmMask ) );
-
-		btmc = cg_rangeMarkerBuildableTypes.modificationCount;
-		spmc = cg_rangeMarkerWhenSpectating.modificationCount;
-	}
 }
 
 void CG_NotifyHooks()
@@ -670,7 +514,6 @@ void CG_UpdateCvars()
 	// check for modifications here
 	CG_SetPVars();
 	CG_SetUIVars();
-	CG_UpdateBuildableRangeMarkerMask();
 }
 
 int CG_CrosshairPlayer()
@@ -896,7 +739,6 @@ CG_UpdateLoadingProgress
 enum {
 	LOADBAR_MEDIA,
 	LOADBAR_CHARACTER_MODELS,
-	LOADBAR_BUILDABLES
 } typedef loadingBar_t;
 
 static void CG_UpdateLoadingProgress( loadingBar_t progressBar, float progress, const char *label )
@@ -910,9 +752,6 @@ static void CG_UpdateLoadingProgress( loadingBar_t progressBar, float progress, 
 			break;
 		case LOADBAR_CHARACTER_MODELS:
 			cg.charModelFraction = progress;
-			break;
-		case LOADBAR_BUILDABLES:
-			cg.buildablesFraction = progress;
 			break;
 		default:
 			break;
@@ -940,7 +779,6 @@ enum {
 	LOAD_WEAPONS,
 	LOAD_UPGRADES,
 	LOAD_CLASSES,
-	LOAD_BUILDINGS,
 	LOAD_REMAINING,
 	LOAD_DONE
 } typedef cgLoadingStep_t;
@@ -972,7 +810,7 @@ static void CG_UpdateLoadingStep( cgLoadingStep_t step )
 	switch (step) {
 		case LOAD_START:
 			cg.loading = true;
-			cg.mediaFraction = cg.charModelFraction = cg.buildablesFraction = 0.0f;
+			cg.mediaFraction = cg.charModelFraction = 0.0f;
 			break;
 
 		case LOAD_TRAILS:
@@ -1000,13 +838,8 @@ static void CG_UpdateLoadingStep( cgLoadingStep_t step )
 		case LOAD_CLASSES:
 			CG_UpdateLoadingProgress( LOADBAR_MEDIA, 0.95f, choose("Charging battery packs", "Replicating alien DNA", "Packing tents for jetcampers", nullptr) );
 			break;
-		case LOAD_BUILDINGS:
-			cg.mediaFraction = 1.0f;
-			CG_UpdateLoadingProgress( LOADBAR_BUILDABLES, 0.0f, choose("Finishing construction", "Adding turret spam", "Awakening the overmind", nullptr) );
-			break;
-
 		case LOAD_DONE:
-			cg.mediaFraction = cg.charModelFraction = cg.buildablesFraction = 1.0f;
+			cg.mediaFraction = cg.charModelFraction = 1.0f;
 			Q_strncpyz(cg.currentLoadingLabel, "Done!", sizeof( cg.currentLoadingLabel ) );
 			trap_UpdateScreen();
 			cg.loading = false;
@@ -1030,18 +863,12 @@ static void CG_RegisterSounds()
 	char       name[ MAX_QPATH ];
 	const char *soundName;
 
-	cgs.media.weHaveEvolved = trap_S_RegisterSound( "sound/announcements/overmindevolved.wav", true );
 	cgs.media.reinforcement = trap_S_RegisterSound( "sound/announcements/reinforcement.wav", true );
-
-	cgs.media.alienOvermindAttack = trap_S_RegisterSound( "sound/announcements/overmindattack.wav", true );
-	cgs.media.alienOvermindDying = trap_S_RegisterSound( "sound/announcements/overminddying.wav", true );
-	cgs.media.alienOvermindSpawns = trap_S_RegisterSound( "sound/announcements/overmindspawns.wav", true );
 
 	cgs.media.alienL4ChargePrepare = trap_S_RegisterSound( "sound/player/level4/charge_prepare.wav", true );
 	cgs.media.alienL4ChargeStart = trap_S_RegisterSound( "sound/player/level4/charge_start.wav", true );
 
 	cgs.media.selectSound = trap_S_RegisterSound( "sound/weapons/change.wav", false );
-	cgs.media.turretSpinupSound = trap_S_RegisterSound( "sound/buildables/mgturret/spinup.wav", false );
 	cgs.media.weaponEmptyClick = trap_S_RegisterSound( "sound/weapons/click.wav", false );
 
 	cgs.media.talkSound = trap_S_RegisterSound( "sound/misc/talk.wav", false );
@@ -1093,31 +920,11 @@ static void CG_RegisterSounds()
 
 	cgs.media.alienEvolveSound = trap_S_RegisterSound( "sound/player/alienevolve.wav", false );
 
-	cgs.media.alienBuildableExplosion = trap_S_RegisterSound( "sound/buildables/alien/explosion.wav", false );
-	cgs.media.alienBuildablePrebuild = trap_S_RegisterSound( "sound/buildables/alien/prebuild.wav", false );
-
-	cgs.media.humanBuildableDying = trap_S_RegisterSound( "sound/buildables/human/dying.wav", false );
-	cgs.media.humanBuildableExplosion = trap_S_RegisterSound( "sound/buildables/human/explosion.wav", false );
-	cgs.media.humanBuildablePrebuild = trap_S_RegisterSound( "sound/buildables/human/prebuild.wav", false );
-
-	for ( i = 0; i < 4; i++ )
-	{
-		cgs.media.humanBuildableDamage[ i ] = trap_S_RegisterSound(
-		                                        va( "sound/buildables/human/damage%d.wav", i ), false );
-	}
-
 	cgs.media.hardBounceSound1 = trap_S_RegisterSound( "sound/misc/hard_bounce1.wav", false );
 	cgs.media.hardBounceSound2 = trap_S_RegisterSound( "sound/misc/hard_bounce2.wav", false );
 
-	cgs.media.repeaterUseSound = trap_S_RegisterSound( "sound/buildables/repeater/use.wav", false );
-
-	cgs.media.buildableRepairSound = trap_S_RegisterSound( "sound/buildables/human/repair.wav", false );
-	cgs.media.buildableRepairedSound = trap_S_RegisterSound( "sound/buildables/human/repaired.wav", false );
-
 	cgs.media.lCannonWarningSound = trap_S_RegisterSound( "models/weapons/lcannon/warning.wav", false );
 	cgs.media.lCannonWarningSound2 = trap_S_RegisterSound( "models/weapons/lcannon/warning2.wav", false );
-
-	cgs.media.rocketpodLockonSound = trap_S_RegisterSound( "sound/rocketpod/lockon.wav", false );
 
 	cgs.media.timerBeaconExpiredSound = trap_S_RegisterSound( "sound/feedback/beacon-timer-expired.ogg", false );
 }
@@ -1229,8 +1036,6 @@ static void CG_RegisterGraphics()
 	cgs.media.connectionShader = trap_R_RegisterShader("gfx/2d/net",
 							   (RegisterShaderFlags_t) RSF_DEFAULT);
 
-	cgs.media.creepShader = trap_R_RegisterShader("creep", (RegisterShaderFlags_t) RSF_DEFAULT);
-
 	cgs.media.scannerBlipShader = trap_R_RegisterShader("gfx/2d/blip",
 							    (RegisterShaderFlags_t) RSF_DEFAULT);
 
@@ -1248,14 +1053,6 @@ static void CG_RegisterGraphics()
 
 	cgs.media.backTileShader = trap_R_RegisterShader("console",
 							 (RegisterShaderFlags_t) RSF_DEFAULT);
-
-	// building shaders
-	cgs.media.greenBuildShader = trap_R_RegisterShader("gfx/misc/greenbuild",
-							   (RegisterShaderFlags_t) RSF_DEFAULT);
-	cgs.media.redBuildShader = trap_R_RegisterShader("gfx/misc/redbuild",
-							 (RegisterShaderFlags_t) RSF_DEFAULT);
-	cgs.media.humanSpawningShader = trap_R_RegisterShader("models/buildables/humanSpawning",
-							      (RegisterShaderFlags_t) RSF_DEFAULT);
 
 	for ( i = 0; i < 8; i++ )
 	{
@@ -1305,20 +1102,8 @@ static void CG_RegisterGraphics()
 							 (RegisterShaderFlags_t) RSF_DEFAULT);
 
 	cgs.media.alienEvolvePS = CG_RegisterParticleSystem( "alienEvolvePS" );
-	cgs.media.alienAcidTubePS = CG_RegisterParticleSystem( "alienAcidTubePS" );
-	cgs.media.alienBoosterPS = CG_RegisterParticleSystem( "alienBoosterPS" );
 
 	cgs.media.jetPackThrustPS = CG_RegisterParticleSystem( "jetPackAscendPS" );
-
-	cgs.media.humanBuildableDamagedPS = CG_RegisterParticleSystem( "humanBuildableDamagedPS" );
-	cgs.media.alienBuildableDamagedPS = CG_RegisterParticleSystem( "alienBuildableDamagedPS" );
-	cgs.media.humanBuildableDestroyedPS = CG_RegisterParticleSystem( "humanBuildableDestroyedPS" );
-	cgs.media.humanBuildableNovaPS = CG_RegisterParticleSystem( "humanBuildableNovaPS" );
-	cgs.media.alienBuildableDestroyedPS = CG_RegisterParticleSystem( "alienBuildableDestroyedPS" );
-
-	cgs.media.humanBuildableBleedPS = CG_RegisterParticleSystem( "humanBuildableBleedPS" );
-	cgs.media.alienBuildableBleedPS = CG_RegisterParticleSystem( "alienBuildableBleedPS" );
-	cgs.media.alienBuildableBurnPS  = CG_RegisterParticleSystem( "alienBuildableBurnPS" );
 
 	cgs.media.floorFirePS = CG_RegisterParticleSystem( "floorFirePS" );
 
@@ -1349,9 +1134,6 @@ static void CG_RegisterGraphics()
 		cgs.media.binaryShaders[ i ].b3 = trap_R_RegisterShader(va("gfx/binary/%03i_B3", i),
 									(RegisterShaderFlags_t) RSF_DEFAULT);
 	}
-
-	CG_BuildableStatusParse( "ui/assets/human/buildstat.cfg", &cgs.humanBuildStat );
-	CG_BuildableStatusParse( "ui/assets/alien/buildstat.cfg", &cgs.alienBuildStat );
 
 	cgs.media.beaconIconArrow = trap_R_RegisterShader( "gfx/2d/beacons/arrow", RSF_DEFAULT );
 	cgs.media.beaconNoTarget = trap_R_RegisterShader( "gfx/2d/beacons/no-target", RSF_DEFAULT );
@@ -1638,7 +1420,6 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 	( 480.0f * cgs.glconfig.vidWidth ) );
 
 	// load a few needed things before we do any screen updates
-	trap_R_SetAltShaderTokens( "unpowered,destroyed" );
 	cgs.media.whiteShader = trap_R_RegisterShader("white", (RegisterShaderFlags_t) RSF_DEFAULT);
 	cgs.media.charsetShader = trap_R_RegisterShader("gfx/2d/bigchars",
 							(RegisterShaderFlags_t) RSF_DEFAULT);
@@ -1705,7 +1486,7 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 	CG_UpdateLoadingStep( LOAD_CONFIGS );
 	BG_InitAllConfigs();
 
-	// load weapons upgrades and buildings after configs
+	// load weapons upgrades after configs
 	CG_UpdateLoadingStep( LOAD_WEAPONS );
 	CG_InitWeapons();
 
@@ -1714,9 +1495,6 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 
 	CG_UpdateLoadingStep( LOAD_CLASSES );
 	CG_InitClasses();
-
-	CG_UpdateLoadingStep( LOAD_BUILDINGS );
-	CG_InitBuildables();
 
 	CG_UpdateLoadingStep( LOAD_REMAINING );
 

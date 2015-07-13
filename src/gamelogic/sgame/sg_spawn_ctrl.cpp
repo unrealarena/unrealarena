@@ -45,9 +45,6 @@ ctrl_relay
 
 void target_relay_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
 {
-	if (!self->enabled)
-		return;
-
 	if ( ( self->spawnflags & 1 ) && activator && activator->client &&
 	     activator->client->pers.team != TEAM_HUMANS )
 	{
@@ -80,14 +77,10 @@ void target_relay_act( gentity_t *self, gentity_t *caller, gentity_t *activator 
 
 void ctrl_relay_reset( gentity_t *self )
 {
-	self->enabled = !(self->spawnflags & SPF_SPAWN_DISABLED);
 }
 
 void ctrl_relay_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
 {
-	if (!self->enabled)
-		return;
-
 	if ( !self->config.wait.time )
 	{
 		G_EventFireEntity( self, activator, ON_ACT );
@@ -135,9 +128,6 @@ ctrl_limited
 
 void ctrl_limited_act(gentity_t *self, gentity_t *other, gentity_t *activator)
 {
-	if (!self->enabled)
-		return;
-
 	G_FireEntity( self, activator );
 	if ( self->count <= 1 )
 	{
@@ -149,8 +139,6 @@ void ctrl_limited_act(gentity_t *self, gentity_t *other, gentity_t *activator)
 
 void ctrl_limited_reset( gentity_t *self )
 {
-	self->enabled = !(self->spawnflags & SPF_SPAWN_DISABLED);
-
 	G_ResetIntField(&self->count, true, self->config.amount, self->eclass->config.amount, 1);
 }
 

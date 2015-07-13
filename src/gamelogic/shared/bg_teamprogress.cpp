@@ -73,7 +73,6 @@ static const char *UnlockableHumanName( unlockable_t *unlockable )
 	{
 		case UNLT_WEAPON:    return BG_Weapon( unlockable->num )->humanName;
 		case UNLT_UPGRADE:   return BG_Upgrade( unlockable->num )->humanName;
-		case UNLT_BUILDABLE: return BG_Buildable( unlockable->num )->humanName;
 		case UNLT_CLASS:     return BG_ClassModelConfig( unlockable->num )->humanName;
 	}
 
@@ -88,7 +87,6 @@ static bool Disabled( unlockable_t *unlockable )
 	{
 		case UNLT_WEAPON:    return BG_WeaponDisabled( unlockable->num );
 		case UNLT_UPGRADE:   return BG_UpgradeDisabled( unlockable->num );
-		case UNLT_BUILDABLE: return BG_BuildableDisabled( unlockable->num );
 		case UNLT_CLASS:     return BG_ClassDisabled( unlockable->num );
 	}
 
@@ -152,10 +150,6 @@ static void InformUnlockableStatusChanges( int *statusChanges, int count )
 	switch ( cg.snap->ps.persistant[ PERS_TEAM ] )
 	{
 		case TEAM_ALIENS:
-			if ( unlocked )
-			{
-				trap_S_StartLocalSound( cgs.media.weHaveEvolved, CHAN_ANNOUNCER );
-			}
 			break;
 
 		case TEAM_HUMANS:
@@ -256,8 +250,7 @@ void BG_InitUnlockackables()
 
 	unlockablesTypeOffset[ UNLT_WEAPON ]    = 0;
 	unlockablesTypeOffset[ UNLT_UPGRADE ]   = WP_NUM_WEAPONS;
-	unlockablesTypeOffset[ UNLT_BUILDABLE ] = unlockablesTypeOffset[ UNLT_UPGRADE ]   + UP_NUM_UPGRADES;
-	unlockablesTypeOffset[ UNLT_CLASS ]     = unlockablesTypeOffset[ UNLT_BUILDABLE ] + BA_NUM_BUILDABLES;
+	unlockablesTypeOffset[ UNLT_CLASS ]     = unlockablesTypeOffset[ UNLT_UPGRADE ] + UP_NUM_UPGRADES;
 
 #ifdef BUILD_SGAME
 	G_UpdateUnlockables();
@@ -315,11 +308,6 @@ void BG_ImportUnlockablesFromMask( int team, int mask )
 			case UNLT_UPGRADE:
 				currentTeam     = TEAM_HUMANS;
 				unlockThreshold = BG_Upgrade( itemNum )->unlockThreshold;
-				break;
-
-			case UNLT_BUILDABLE:
-				currentTeam     = BG_Buildable( itemNum )->team;
-				unlockThreshold = BG_Buildable( itemNum )->unlockThreshold;
 				break;
 
 			case UNLT_CLASS:
@@ -426,13 +414,6 @@ bool BG_UpgradeUnlocked( int upgrade )
 	CheckStatusKnowledge( UNLT_UPGRADE, upgrade);
 
 	return Unlocked( UNLT_UPGRADE, upgrade);
-}
-
-bool BG_BuildableUnlocked( int buildable )
-{
-	CheckStatusKnowledge( UNLT_BUILDABLE, buildable);
-
-	return Unlocked( UNLT_BUILDABLE, buildable);
 }
 
 bool BG_ClassUnlocked( int class_ )
@@ -571,11 +552,6 @@ void G_UpdateUnlockables()
 			case UNLT_UPGRADE:
 				team            = TEAM_HUMANS;
 				unlockThreshold = BG_Upgrade( itemNum )->unlockThreshold;
-				break;
-
-			case UNLT_BUILDABLE:
-				team            = BG_Buildable( itemNum )->team;
-				unlockThreshold = BG_Buildable( itemNum )->unlockThreshold;
 				break;
 
 			case UNLT_CLASS:

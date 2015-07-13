@@ -471,22 +471,6 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 			cmd->upmove = 0;
 		}
 
-		// Apply creepslow modifier
-		// TODO: Move modifer into upgrade/class config files of armour items/classes
-		if ( pm->ps->stats[ STAT_STATE ] & SS_CREEPSLOWED )
-		{
-			if ( BG_InventoryContainsUpgrade( UP_LIGHTARMOUR, pm->ps->stats ) ||
-			     BG_InventoryContainsUpgrade( UP_MEDIUMARMOUR, pm->ps->stats ) ||
-			     BG_InventoryContainsUpgrade( UP_BATTLESUIT,  pm->ps->stats ) )
-			{
-				modifier *= CREEP_ARMOUR_MODIFIER;
-			}
-			else
-			{
-				modifier *= CREEP_MODIFIER;
-			}
-		}
-
 		// Apply level1 slow modifier
 		if ( pm->ps->stats[ STAT_STATE2 ] & SS2_LEVEL1SLOW )
 		{
@@ -2196,11 +2180,6 @@ Returns an event number appropriate for the groundsurface
 */
 static int PM_FootstepForSurface()
 {
-	if ( pm->ps->stats[ STAT_STATE ] & SS_CREEPSLOWED )
-	{
-		return EV_FOOTSTEP_SQUELCH;
-	}
-
 	if ( pml.groundTrace.surfaceFlags & SURF_NOSTEPS )
 	{
 		return 0;
@@ -3632,9 +3611,6 @@ static void PM_BeginWeaponChange( int weapon )
 	pm->ps->weaponstate = WEAPON_DROPPING;
 	pm->ps->weaponTime += 200;
 	pm->ps->persistant[ PERS_NEWWEAPON ] = weapon;
-
-	//reset build weapon
-	pm->ps->stats[ STAT_BUILDABLE ] = BA_NONE;
 
 	if ( !( pm->ps->persistant[ PERS_STATE ] & PS_NONSEGMODEL ) )
 	{
