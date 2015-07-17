@@ -1,7 +1,7 @@
 /*
  * Daemon GPL source code
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  id Software
+ * Copyright (C) 1999-2010  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

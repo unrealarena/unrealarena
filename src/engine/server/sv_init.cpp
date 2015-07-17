@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  id Software Inc.
+ * Copyright (C) 1999-2010  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
