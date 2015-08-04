@@ -542,7 +542,7 @@ void CG_OnPlayerWeaponChange( weapon_t oldWeapon )
 	playerState_t *ps = &cg.snap->ps;
 
 	// Change the HUD to match the weapon. Close the old hud first
-	trap_Rocket_ShowHud( ps->weapon );
+	Rocket_ShowHud( ps->weapon );
 
 	cg.weaponOffsetsFilter.Reset( );
 
@@ -559,6 +559,7 @@ Called on upgrade change
 
 void CG_OnPlayerUpgradeChange()
 {
+	playerState_t *ps = &cg.snap->ps;
 }
 
 /*
@@ -575,7 +576,7 @@ void CG_OnMapRestart()
 	CG_HideScores_f();
 
 	// hide any other menus
-	trap_Rocket_DocumentAction( "", "blurall" );
+	Rocket_DocumentAction( "", "blurall" );
 }
 
 /*
