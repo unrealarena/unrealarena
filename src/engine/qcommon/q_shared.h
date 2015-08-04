@@ -38,7 +38,7 @@
 #define PRODUCT_VERSION         "0.1-1"
 
 #define ENGINE_NAME             "Daemon Engine"
-#define ENGINE_VERSION          "0.40"
+#define ENGINE_VERSION          "0.41"
 
 #define RSQRT_PRECISE 1
 
@@ -2355,7 +2355,7 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 		ET_MODELDOOR,
 		ET_LIGHTFLARE,
 		ET_LEV2_ZAP_CHAIN,
-		
+
 		ET_BEACON,
 
 		ET_EVENTS       // any of the EV_* events can be added freestanding
