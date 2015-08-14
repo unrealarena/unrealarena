@@ -43,10 +43,9 @@
 // player teams
 typedef enum
 {
-  TEAM_ALL = -1,
   TEAM_NONE,
-  TEAM_ALIENS,
-  TEAM_HUMANS,
+  TEAM_Q,
+  TEAM_U,
 
   NUM_TEAMS
 } team_t;
@@ -241,7 +240,6 @@ typedef enum
 #define SCA_TAKESFALLDAMAGE 0x00000002
 #define SCA_CANZOOM         0x00000004
 #define SCA_FOVWARPS        0x00000008
-#define SCA_ALIENSENSE      0x00000010
 #define SCA_CANUSELADDERS   0x00000020
 #define SCA_WALLJUMPER      0x00000040
 
@@ -515,9 +513,6 @@ typedef enum
 
   EV_MEDKIT_USED,
 
-  EV_ALIEN_EVOLVE,
-  EV_ALIEN_EVOLVE_FAILED,
-
   EV_STOPLOOPINGSOUND,
   EV_TAUNT,
 
@@ -536,10 +531,10 @@ typedef enum
 
   MN_WELCOME,
   MN_TEAM,
-  MN_A_TEAMFULL,
-  MN_H_TEAMFULL,
-  MN_A_TEAMLOCKED,
-  MN_H_TEAMLOCKED,
+  MN_Q_TEAMFULL,
+  MN_U_TEAMFULL,
+  MN_Q_TEAMLOCKED,
+  MN_U_TEAMLOCKED,
   MN_PLAYERLIMIT,
   MN_WARMUP,
 
@@ -548,37 +543,13 @@ typedef enum
   MN_CMD_CHEAT_TEAM,
   MN_CMD_TEAM,
   MN_CMD_SPEC,
-  MN_CMD_ALIEN,
-  MN_CMD_HUMAN,
+  MN_CMD_Q,
+  MN_CMD_U,
   MN_CMD_ALIVE,
-
-  //alien stuff
-  MN_A_CLASS,
-  MN_A_INFEST,
-  MN_A_NOEROOM,
-  MN_A_TOOCLOSE,
-  MN_A_EVOLVEBUILDTIMER,
-  MN_A_CANTEVOLVE,
-  MN_A_EVOLVEWALLWALK,
-  MN_A_UNKNOWNCLASS,
-  MN_A_CLASSNOTSPAWN,
-  MN_A_CLASSNOTALLOWED,
-  MN_A_CLASSLOCKED,
 
   //shared build
   MN_B_LASTSPAWN,
   MN_B_SURRENDER,
-
-  //human stuff
-  MN_H_SPAWN,
-  MN_H_UNKNOWNITEM,
-  MN_H_NOSLOTS,
-  MN_H_NOFUNDS,
-  MN_H_ITEMHELD,
-  MN_H_NOENERGYAMMOHERE,
-  MN_H_NOROOMARMOURCHANGE,
-  MN_H_DEADTOCLASS,
-  MN_H_UNKNOWNSPAWNITEM,
 } dynMenu_t;
 
 // animations
@@ -746,32 +717,10 @@ typedef struct animation_s
 typedef enum
 {
   PCL_NONE,
-
-  //builder classes
-  PCL_ALIEN_BUILDER0,
-  PCL_ALIEN_BUILDER0_UPG,
-
-  //offensive classes
-  PCL_ALIEN_LEVEL0,
-  PCL_ALIEN_LEVEL1,
-  PCL_ALIEN_LEVEL2,
-  PCL_ALIEN_LEVEL2_UPG,
-  PCL_ALIEN_LEVEL3,
-  PCL_ALIEN_LEVEL3_UPG,
-  PCL_ALIEN_LEVEL4,
-
-  //human class
-  PCL_HUMAN_NAKED,
-  PCL_HUMAN_LIGHT,
-  PCL_HUMAN_MEDIUM,
-  PCL_HUMAN_BSUIT,
-
+  PCL_Q,
+  PCL_U,
   PCL_NUM_CLASSES
 } class_t;
-// convenience bitmasks
-#define PCL_ALIEN_CLASSES ( ( 1 << PCL_HUMAN_NAKED ) - ( 1 << PCL_ALIEN_BUILDER0 ) )
-#define PCL_HUMAN_CLASSES ( ( 1 << PCL_NUM_CLASSES ) - ( 1 << PCL_HUMAN_NAKED ) )
-#define PCL_ALL_CLASSES   ( PCL_ALIEN_CLASSES | PCL_HUMAN_CLASSES )
 
 // spectator state
 typedef enum
@@ -823,7 +772,6 @@ typedef enum
   MOD_FLAMER_SPLASH,
   MOD_GRENADE,
   MOD_FIREBOMB,
-  MOD_WEIGHT_H,
   MOD_WATER,
   MOD_SLIME,
   MOD_LAVA,
@@ -833,18 +781,7 @@ typedef enum
   MOD_SUICIDE,
   MOD_TARGET_LASER,
   MOD_TRIGGER_HURT,
-
-  MOD_ABUILDER_CLAW,
-  MOD_LEVEL0_BITE,
-  MOD_LEVEL1_CLAW,
-  MOD_LEVEL3_CLAW,
-  MOD_LEVEL3_POUNCE,
-  MOD_LEVEL3_BOUNCEBALL,
-  MOD_LEVEL2_CLAW,
-  MOD_LEVEL2_ZAP,
-  MOD_LEVEL4_CLAW,
-  MOD_LEVEL4_TRAMPLE,
-  MOD_WEIGHT_A,
+  MOD_WEIGHT,
 
   MOD_POISON,
 
@@ -1144,7 +1081,6 @@ team_t                      BG_ClassTeam( int pClass );
 bool                    BG_ClassHasAbility( int pClass, int ability );
 
 int                         BG_ClassCanEvolveFromTo(int from, int to, int credits);
-bool                    BG_AlienCanEvolve(int from, int credits);
 
 weapon_t                  BG_WeaponNumberByName( const char *name );
 const weaponAttributes_t  *BG_WeaponByName( const char *name );
@@ -1255,10 +1191,6 @@ bool BG_UpgradeDisabled( int upgrade );
 bool BG_ClassDisabled( int class_ );
 
 weapon_t BG_PrimaryWeapon( int stats[] );
-
-// Friendly Fire Flags
-#define FFF_HUMANS             1
-#define FFF_ALIENS             2
 
 // bg_voice.c
 #define MAX_VOICES             8

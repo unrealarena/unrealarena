@@ -387,7 +387,7 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 
 	staminaJumpCost = BG_Class( pm->ps->stats[ STAT_CLASS ] )->staminaJumpCost;
 
-	if ( pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS && pm->ps->pm_type == PM_NORMAL )
+	if ( pm->ps->persistant[ PERS_TEAM ] == TEAM_U && pm->ps->pm_type == PM_NORMAL )
 	{
 		bool wasSprinting, sprint;
 
@@ -447,20 +447,6 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 		if ( sprint && !usercmdButtonPressed( cmd->buttons, BUTTON_WALKING ) )
 		{
 			modifier *= BG_Class( pm->ps->stats[ STAT_CLASS ] )->sprintMod;
-		}
-		else
-		{
-			modifier *= HUMAN_JOG_MODIFIER;
-		}
-
-		// Apply modfiers for strafing and going backwards
-		if ( cmd->forwardmove < 0 )
-		{
-			modifier *= HUMAN_BACK_MODIFIER;
-		}
-		else if ( cmd->rightmove )
-		{
-			modifier *= HUMAN_SIDE_MODIFIER;
 		}
 
 		// Cancel jump if low on stamina
@@ -1158,148 +1144,6 @@ static bool PM_CheckWallJump()
  */
 static bool PM_CheckJetpack()
 {
-	static const vec3_t thrustDir = { 0.0f, 0.0f, 1.0f };
-	int                 sideVelocity;
-
-	if ( pm->ps->pm_type != PM_NORMAL ||
-	     pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS ||
-	     !BG_InventoryContainsUpgrade( UP_JETPACK, pm->ps->stats ) )
-	{
-		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
-		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_WARM;
-		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ENABLED;
-
-		return false;
-	}
-
-	// enable jetpack when in air
-	if ( pm->ps->groundEntityNum == ENTITYNUM_NONE &&
-	     !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ENABLED ) )
-	{
-		if ( pm->debugLevel > 0 )
-		{
-			Com_Printf( "[PM_CheckJetpack] " S_COLOR_CYAN "Jetpack enabled\n" );
-		}
-
-		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ENABLED;
-		PM_AddEvent( EV_JETPACK_ENABLE );
-
-		return false;
-	}
-
-	// if jump key not held stop active thrust
-	if ( pm->cmd.upmove < 10 )
-	{
-		if ( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
-		{
-			if ( pm->debugLevel > 0 && pm->cmd.upmove < 10 )
-			{
-				Com_Printf( "[PM_CheckJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (jump key released)\n" );
-			}
-
-			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
-			PM_AddEvent( EV_JETPACK_STOP );
-		}
-
-		return false;
-	}
-
-	// sanity check that jetpack is enabled at this point
-	if ( !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ENABLED ) )
-	{
-		if ( pm->debugLevel > 0 )
-		{
-			Com_Printf( "[PM_CheckJetpack] " S_COLOR_RED "Can't start jetpack thrust (jetpack not enabled)\n" );
-		}
-
-		return false;
-	}
-
-	// check ignite conditions
-	if ( !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_WARM ) )
-	{
-		sideVelocity = sqrt( pm->ps->velocity[ 0 ] * pm->ps->velocity[ 0 ] +
-		                     pm->ps->velocity[ 1 ] * pm->ps->velocity[ 1 ] );
-
-		// we got off ground by jumping and are not yet in free fall, where free fall is defined as
-		// (1) fall speed bigger than sideways speed (not strafe jumping)
-		// (2) fall speed bigger than jump magnitude (not jumping up and down on solid ground)
-		if ( ( pm->ps->pm_flags & PMF_JUMPED ) && !( -pm->ps->velocity[ 2 ] > sideVelocity &&
-		     -pm->ps->velocity[ 2 ] > BG_Class( pm->ps->stats[ STAT_CLASS ] )->jumpMagnitude ) )
-		{
-			// require the jump key to be held since the jump
-			if ( !( pm->ps->pm_flags & PMF_JUMP_HELD ) )
-			{
-				return false;
-			}
-
-			// minimum fuel required to start from a jump
-			if ( pm->ps->stats[ STAT_FUEL ] < JETPACK_FUEL_LOW )
-			{
-				return false;
-			}
-
-			// wait until at highest spot
-			if ( !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE ) && pm->ps->velocity[ 2 ] > 0.0f )
-			{
-				return false;
-			}
-		}
-
-		// use some fuel for ignition
-		pm->ps->stats[ STAT_FUEL ] -= JETPACK_FUEL_IGNITE;
-		if ( pm->ps->stats[ STAT_FUEL ] < 0 ) pm->ps->stats[ STAT_FUEL ] = 0;
-
-		// ignite
-		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_WARM;
-		PM_AddEvent( EV_JETPACK_IGNITE );
-	}
-
-	// stop thrusting if completely out of fuel
-	if ( pm->ps->stats[ STAT_FUEL ] < JETPACK_FUEL_USAGE )
-	{
-		if ( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
-		{
-			if ( pm->debugLevel > 0 )
-			{
-				Com_Printf( "[PM_CheckJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (out of fuel)\n" );
-			}
-
-			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
-			PM_AddEvent( EV_JETPACK_STOP );
-		}
-
-		return false;
-	}
-
-	// start thrusting if possible
-	if ( !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE ) )
-	{
-		// minimum fuel required
-		if ( pm->ps->stats[ STAT_FUEL ] < JETPACK_FUEL_STOP )
-		{
-			return false;
-		}
-
-		if ( pm->debugLevel > 0 )
-		{
-			Com_Printf( "[PM_CheckJetpack] " S_COLOR_GREEN "Jetpack thrust started\n" );
-		}
-
-		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ACTIVE;
-		PM_AddEvent( EV_JETPACK_START );
-	}
-
-	// clear the jumped flag as the reason we are in air now is the jetpack
-	pm->ps->pm_flags &= ~PMF_JUMPED;
-
-	// thrust
-	PM_Accelerate( thrustDir, JETPACK_TARGETSPEED, JETPACK_ACCELERATION );
-
-	// remove fuel
-	pm->ps->stats[ STAT_FUEL ] -= pml.msec * JETPACK_FUEL_USAGE;
-	if ( pm->ps->stats[ STAT_FUEL ] < 0 ) pm->ps->stats[ STAT_FUEL ] = 0;
-
 	return true;
 }
 
@@ -1309,20 +1153,6 @@ static bool PM_CheckJetpack()
  */
 static bool PM_CheckJetpackRestoreFuel()
 {
-	// don't restore fuel when full or jetpack active
-	if ( pm->ps->stats[ STAT_FUEL ] == JETPACK_FUEL_MAX ||
-	     pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
-	{
-		return false;
-	}
-
-	pm->ps->stats[ STAT_FUEL ] += pml.msec * JETPACK_FUEL_RESTORE;
-
-	if ( pm->ps->stats[ STAT_FUEL ] > JETPACK_FUEL_MAX )
-	{
-		pm->ps->stats[ STAT_FUEL ] = JETPACK_FUEL_MAX;
-	}
-
 	return true;
 }
 
@@ -1331,62 +1161,6 @@ static bool PM_CheckJetpackRestoreFuel()
  */
 static void PM_LandJetpack( bool force )
 {
-	float angle, sideVelocity;
-
-	// when low on fuel, always force a landing
-	if ( pm->ps->stats[ STAT_FUEL ] < JETPACK_FUEL_LOW )
-	{
-		force = true;
-	}
-
-	sideVelocity = sqrt( pml.previous_velocity[ 0 ] * pml.previous_velocity[ 0 ] +
-	                     pml.previous_velocity[ 1 ] * pml.previous_velocity[ 1 ] );
-
-	angle = atan2( -pml.previous_velocity[ 2 ], sideVelocity );
-
-	// allow the player to jump instead of land for some impacts
-	if ( !force )
-	{
-		if ( angle > 0.0f && angle < M_PI_4 ) // 45°
-		{
-			if ( pm->debugLevel > 0 )
-			{
-				Com_Printf( "[PM_LandJetpack] Landing ignored (hit surface at %.0f°)\n", RAD2DEG( angle ) );
-			}
-
-			return;
-		}
-	}
-
-	if ( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
-	{
-		if ( pm->debugLevel > 0 )
-		{
-			Com_Printf( "[PM_LandJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (hit surface at %.0f°)%s\n", RAD2DEG( angle ),
-			            force ? S_COLOR_RED " (FORCED)" : "" );
-		}
-
-		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
-
-		PM_AddEvent( EV_JETPACK_STOP );
-
-		// HACK: mark the jump key held so there is no immediate jump on landing
-		pm->ps->pm_flags |= PMF_JUMP_HELD;
-	}
-
-	if ( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ENABLED )
-	{
-		if ( pm->debugLevel > 0 )
-		{
-			Com_Printf( "[PM_LandJetpack] " S_COLOR_YELLOW "Jetpack disabled (hit surface at %.0f°)%s\n", RAD2DEG( angle ),
-			            force ? S_COLOR_RED " (FORCED)" : "" );
-		}
-
-		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_WARM;
-		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ENABLED;
-
-		PM_AddEvent( EV_JETPACK_DISABLE );
-	}
 }
 
 static bool PM_CheckJump()
@@ -1414,22 +1188,6 @@ static bool PM_CheckJump()
 		return false;
 	}
 
-	// can't jump and pounce at the same time
-	// TODO: This prevents jumps in an unintuitive manner, since the charge
-	//       meter has nothing to do with the land time.
-	if ( ( pm->ps->stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL3 ||
-	       pm->ps->stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL3_UPG ) &&
-	     pm->ps->stats[ STAT_MISC ] > 0 )
-	{
-		return false;
-	}
-
-	// can't jump and charge at the same time
-	if ( pm->ps->stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL4 && pm->ps->stats[ STAT_MISC ] > 0 )
-	{
-		return false;
-	}
-
 	// don't allow jump until all buttons are up (?)
 	if ( pm->ps->pm_flags & PMF_RESPAWNED )
 	{
@@ -1452,23 +1210,14 @@ static bool PM_CheckJump()
 	jetpackJump     = false;
 
 	// humans need stamina or jetpack to jump
-	if ( ( pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS ) &&
+	if ( ( pm->ps->persistant[ PERS_TEAM ] == TEAM_U ) &&
 	     ( pm->ps->stats[ STAT_STAMINA ] < staminaJumpCost ) )
 	{
-		// use jetpack instead of stamina to take off
-		if ( BG_InventoryContainsUpgrade( UP_JETPACK, pm->ps->stats ) &&
-		     pm->ps->stats[ STAT_FUEL ] > JETPACK_FUEL_LOW )
-		{
-			jetpackJump = true;
-		}
-		else
-		{
-			return false;
-		}
+		return false;
 	}
 
 	// take some stamina off
-	if ( !jetpackJump && pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS )
+	if ( !jetpackJump && pm->ps->persistant[ PERS_TEAM ] == TEAM_U )
 	{
 		pm->ps->stats[ STAT_STAMINA ] -= staminaJumpCost;
 	}
@@ -1493,18 +1242,6 @@ static bool PM_CheckJump()
 
 	// retrieve jump magnitude
 	magnitude = BG_Class( pm->ps->stats[ STAT_CLASS ] )->jumpMagnitude;
-
-	// if jetpack is active or being used for the jump, scale down jump magnitude
-	if ( jetpackJump || pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
-	{
-		if ( pm->debugLevel > 0 )
-		{
-			Com_Printf( "[PM_CheckJump] Using jetpack: Decreasing jump magnitude to %.0f%%\n",
-			            JETPACK_JUMPMAG_REDUCTION * 100.0f );
-		}
-
-		magnitude *= JETPACK_JUMPMAG_REDUCTION;
-	}
 
 	// sanity clip velocity Z
 	if ( pm->ps->velocity[ 2 ] < 0.0f )
@@ -4607,62 +4344,6 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 	}
 }
 
-static void PM_HumanStaminaEffects()
-{
-	const classAttributes_t *ca;
-	int      *stats;
-	bool crouching, stopped, walking;
-
-	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS )
-	{
-		return;
-	}
-
-	stats     = pm->ps->stats;
-	ca        = BG_Class( stats[ STAT_CLASS ] );
-	stopped   = ( pm->cmd.forwardmove == 0 && pm->cmd.rightmove == 0 );
-	crouching = ( pm->ps->pm_flags & PMF_DUCKED );
-	walking   = usercmdButtonPressed( pm->cmd.buttons, BUTTON_WALKING );
-
-	// Use/Restore stamina
-	if ( stats[ STAT_STATE2 ] & SS2_JETPACK_WARM )
-	{
-		stats[ STAT_STAMINA ] += ( int )( pml.msec * ca->staminaJogRestore * 0.001f );
-	}
-	else if ( stopped )
-	{
-		stats[ STAT_STAMINA ] += ( int )( pml.msec * ca->staminaStopRestore * 0.001f );
-	}
-	else if ( ( stats[ STAT_STATE ] & SS_SPEEDBOOST ) && !walking && !crouching ) // walk/crouch overrides sprint
-	{
-		stats[ STAT_STAMINA ] -= ( int )( pml.msec * ca->staminaSprintCost * 0.001f );
-	}
-	else if ( walking || crouching )
-	{
-		stats[ STAT_STAMINA ] += ( int )( pml.msec * ca->staminaWalkRestore * 0.001f );
-	}
-	else // assume jogging
-	{
-		stats[ STAT_STAMINA ] += ( int )( pml.msec * ca->staminaJogRestore * 0.001f );
-	}
-
-	// Remove stamina based on status effects
-	if ( stats[ STAT_STATE2 ] & SS2_LEVEL1SLOW )
-	{
-		stats[ STAT_STAMINA ] -= pml.msec * STAMINA_LEVEL1SLOW_TAKE;
-	}
-
-	// Check stamina limits
-	if ( stats[ STAT_STAMINA ] > STAMINA_MAX )
-	{
-		stats[ STAT_STAMINA ] = STAMINA_MAX;
-	}
-	else if ( stats[ STAT_STAMINA ] < 0 )
-	{
-		stats[ STAT_STAMINA ] = 0;
-	}
-}
-
 /*
 ================
 PmoveSingle
@@ -4881,9 +4562,6 @@ void PmoveSingle( pmove_t *pmove )
 
 	// restore jetpack fuel if possible
 	PM_CheckJetpackRestoreFuel();
-
-	// restore or remove stamina
-	PM_HumanStaminaEffects();
 
 	PM_Animate();
 

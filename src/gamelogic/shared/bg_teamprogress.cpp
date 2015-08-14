@@ -146,10 +146,10 @@ static void InformUnlockableStatusChanges( int *statusChanges, int count )
 	// TODO: Add sound for items being locked for each team
 	switch ( cg.snap->ps.persistant[ PERS_TEAM ] )
 	{
-		case TEAM_ALIENS:
+		case TEAM_Q:
 			break;
 
-		case TEAM_HUMANS:
+		case TEAM_U:
 		default:
 			if ( unlocked )
 			{
@@ -302,14 +302,14 @@ void BG_ImportUnlockablesFromMask( int team, int mask )
 				unlockThreshold = BG_Weapon( itemNum )->unlockThreshold;
 				break;
 
-			case UNLT_UPGRADE:
-				currentTeam     = TEAM_HUMANS;
-				unlockThreshold = BG_Upgrade( itemNum )->unlockThreshold;
+			case UNLT_CLASS:
+				currentTeam     = TEAM_Q;
+				unlockThreshold = BG_Class( itemNum )->unlockThreshold;
 				break;
 
-			case UNLT_CLASS:
-				currentTeam     = TEAM_ALIENS;
-				unlockThreshold = BG_Class( itemNum )->unlockThreshold;
+			case UNLT_UPGRADE:
+				currentTeam     = TEAM_U;
+				unlockThreshold = BG_Upgrade( itemNum )->unlockThreshold;
 				break;
 
 			default:
@@ -381,11 +381,6 @@ void BG_ImportUnlockablesFromMask( int team, int mask )
 
 int BG_UnlockablesMask( int team )
 {
-	if ( unlockablesTeamKnowledge != team && unlockablesTeamKnowledge != TEAM_ALL )
-	{
-		Com_Error( ERR_FATAL, "G_GetUnlockablesMask: Requested mask for a team with unknown unlockable status" );
-	}
-
 	return unlockablesMask[ team ];
 }
 
@@ -546,14 +541,14 @@ void G_UpdateUnlockables()
 				unlockThreshold = BG_Weapon( itemNum )->unlockThreshold;
 				break;
 
-			case UNLT_UPGRADE:
-				team            = TEAM_HUMANS;
-				unlockThreshold = BG_Upgrade( itemNum )->unlockThreshold;
+			case UNLT_CLASS:
+				team            = TEAM_Q;
+				unlockThreshold = BG_Class( itemNum )->unlockThreshold;
 				break;
 
-			case UNLT_CLASS:
-				team            = TEAM_ALIENS;
-				unlockThreshold = BG_Class( itemNum )->unlockThreshold;
+			case UNLT_UPGRADE:
+				team            = TEAM_U;
+				unlockThreshold = BG_Upgrade( itemNum )->unlockThreshold;
 				break;
 
 			default:
@@ -586,7 +581,6 @@ void G_UpdateUnlockables()
 
 	// GAME knows about all teams
 	unlockablesDataAvailable = true;
-	unlockablesTeamKnowledge = TEAM_ALL;
 
 	// generate masks for network transmission
 	UpdateUnlockablesMask();

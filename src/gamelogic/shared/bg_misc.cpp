@@ -44,76 +44,9 @@ typedef struct
 
 static classData_t bg_classData[] =
 {
-	{
-		PCL_NONE, //int     number;
-		"spectator", //char    *name;
-		WP_NONE //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_BUILDER0, //int     number;
-		"builder", //char    *name;
-		WP_ABUILD //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_BUILDER0_UPG, //int     number;
-		"builderupg", //char    *name;
-		WP_ABUILD2 //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_LEVEL0, //int     number;
-		"level0", //char    *name;
-		WP_ALEVEL0 //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_LEVEL1, //int     number;
-		"level1", //char    *name;
-		WP_ALEVEL1 //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_LEVEL2, //int     number;
-		"level2", //char    *name;
-		WP_ALEVEL2 //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_LEVEL2_UPG, //int     number;
-		"level2upg", //char    *name;
-		WP_ALEVEL2_UPG //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_LEVEL3, //int     number;
-		"level3", //char    *name;
-		WP_ALEVEL3 //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_LEVEL3_UPG, //int     number;
-		"level3upg", //char    *name;
-		WP_ALEVEL3_UPG //weapon_t  startWeapon;
-	},
-	{
-		PCL_ALIEN_LEVEL4, //int     number;
-		"level4", //char    *name;
-		WP_ALEVEL4 //weapon_t  startWeapon;
-	},
-	{
-		PCL_HUMAN_NAKED, //int     number;
-		"human_naked", //char    *name;
-		WP_NONE //special-cased in g_client.c          //weapon_t  startWeapon;
-	},
-    {
-		PCL_HUMAN_LIGHT, //int     number;
-		"human_light", //char    *name;
-		WP_NONE //special-cased in g_client.c          //weapon_t  startWeapon;
-	},
-    {
-		PCL_HUMAN_MEDIUM, //int     number;
-		"human_medium", //char    *name;
-		WP_NONE //special-cased in g_client.c          //weapon_t  startWeapon;
-	},
-	{
-		PCL_HUMAN_BSUIT, //int     number;
-		"human_bsuit", //char    *name;
-		WP_NONE //special-cased in g_client.c          //weapon_t  startWeapon;
-	}
+	{ PCL_NONE, "spectator", WP_NONE },
+	{ PCL_Q,    "qplayer",   WP_NONE },
+	{ PCL_U,    "uplayer",   WP_NONE }
 };
 
 static const size_t bg_numClasses = ARRAY_LEN( bg_classData );
@@ -270,19 +203,6 @@ int BG_ClassCanEvolveFromTo( int from, int to, int credits )
 	fromCost = BG_Class( from )->cost;
 	toCost = BG_Class( to )->cost;
 
-	// classes w/o a cost are for spawning only
-	if ( toCost == 0 )
-	{
-		// (adv.) granger may evolve into adv. granger or dretch at no cost
-		if ( ( from == PCL_ALIEN_BUILDER0 || from == PCL_ALIEN_BUILDER0_UPG ) &&
-		     ( to == PCL_ALIEN_BUILDER0_UPG || to == PCL_ALIEN_LEVEL0 ) )
-		{
-			return 0;
-		}
-
-		return -1;
-	}
-
 	// don't allow devolving
 	if ( toCost <= fromCost )
 	{
@@ -297,26 +217,6 @@ int BG_ClassCanEvolveFromTo( int from, int to, int credits )
 	}
 
 	return evolveCost;
-}
-
-/*
-==============
-BG_AlienCanEvolve
-==============
-*/
-bool BG_AlienCanEvolve( int from, int credits )
-{
-	int to;
-
-	for ( to = PCL_NONE + 1; to < PCL_NUM_CLASSES; to++ )
-	{
-		if ( BG_ClassCanEvolveFromTo( from, to, credits ) >= 0 )
-		{
-			return true;
-		}
-	}
-
-	return false;
 }
 
 /*
@@ -657,7 +557,6 @@ typedef struct
 
 static const meansOfDeathData_t bg_meansOfDeathData[] =
 {
-	{ MOD_ABUILDER_CLAW, "MOD_ABUILDER_CLAW" },
 	{ MOD_UNKNOWN, "MOD_UNKNOWN" },
 	{ MOD_SHOTGUN, "MOD_SHOTGUN" },
 	{ MOD_BLASTER, "MOD_BLASTER" },
@@ -673,7 +572,6 @@ static const meansOfDeathData_t bg_meansOfDeathData[] =
 	{ MOD_FLAMER_SPLASH, "MOD_FLAMER_SPLASH" },
 	{ MOD_GRENADE, "MOD_GRENADE" },
 	{ MOD_FIREBOMB, "MOD_FIREBOMB" },
-	{ MOD_WEIGHT_H, "MOD_WEIGHT_H" },
 	{ MOD_WATER, "MOD_WATER" },
 	{ MOD_SLIME, "MOD_SLIME" },
 	{ MOD_LAVA, "MOD_LAVA" },
@@ -683,17 +581,7 @@ static const meansOfDeathData_t bg_meansOfDeathData[] =
 	{ MOD_SUICIDE, "MOD_SUICIDE" },
 	{ MOD_TARGET_LASER, "MOD_TARGET_LASER" },
 	{ MOD_TRIGGER_HURT, "MOD_TRIGGER_HURT" },
-	{ MOD_ABUILDER_CLAW, "MOD_ABUILDER_CLAW" },
-	{ MOD_LEVEL0_BITE, "MOD_LEVEL0_BITE" },
-	{ MOD_LEVEL1_CLAW, "MOD_LEVEL1_CLAW" },
-	{ MOD_LEVEL3_CLAW, "MOD_LEVEL3_CLAW" },
-	{ MOD_LEVEL3_POUNCE, "MOD_LEVEL3_POUNCE" },
-	{ MOD_LEVEL3_BOUNCEBALL, "MOD_LEVEL3_BOUNCEBALL" },
-	{ MOD_LEVEL2_CLAW, "MOD_LEVEL2_CLAW" },
-	{ MOD_LEVEL2_ZAP, "MOD_LEVEL2_ZAP" },
-	{ MOD_LEVEL4_CLAW, "MOD_LEVEL4_CLAW" },
-	{ MOD_LEVEL4_TRAMPLE, "MOD_LEVEL4_TRAMPLE" },
-	{ MOD_WEIGHT_A, "MOD_WEIGHT_A" },
+	{ MOD_WEIGHT, "MOD_WEIGHT" },
 	{ MOD_POISON, "MOD_POISON" },
 	{ MOD_REPLACE, "MOD_REPLACE" }
 };
@@ -1118,9 +1006,6 @@ static const char *const eventnames[] =
 
   "EV_MEDKIT_USED",
 
-  "EV_ALIEN_EVOLVE",
-  "EV_ALIEN_EVOLVE_FAILED",
-
   "EV_STOPLOOPINGSOUND",
   "EV_TAUNT",
 
@@ -1489,7 +1374,7 @@ bool BG_InventoryContainsWeapon( int weapon, const int stats[] )
 	// humans always have a blaster
 	// HACK: Determine team by checking for STAT_CLASS since we merged STAT_TEAM into PERS_TEAM
 	//       This hack will vanish as soon as the blast isn't the only possible sidearm weapon anymore
-	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_HUMANS && weapon == WP_BLASTER )
+	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_U && weapon == WP_BLASTER )
 	{
 		return true;
 	}
@@ -1512,7 +1397,7 @@ int BG_SlotsForInventory( int stats[] )
 
 	// HACK: Determine team by checking for STAT_CLASS since we merged STAT_TEAM into PERS_TEAM
 	//       This hack will vanish as soon as the blast isn't the only possible sidearm weapon anymore
-	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_HUMANS )
+	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_U )
 	{
 		slots |= BG_Weapon( WP_BLASTER )->slots;
 	}
@@ -1722,7 +1607,11 @@ int BG_GetValueOfPlayer( playerState_t *ps )
 
 	switch ( ps->persistant[ PERS_TEAM ] )
 	{
-		case TEAM_HUMANS:
+		case TEAM_Q:
+			price += BG_Class( ps->stats[ STAT_CLASS ] )->cost;
+			break;
+
+		case TEAM_U:
 			// Add upgrade price
 			for ( upgradeNum = UP_NONE + 1; upgradeNum < UP_NUM_UPGRADES; upgradeNum++ )
 			{
@@ -1741,10 +1630,6 @@ int BG_GetValueOfPlayer( playerState_t *ps )
 				}
 			}
 
-			break;
-
-		case TEAM_ALIENS:
-			price += BG_Class( ps->stats[ STAT_CLASS ] )->cost;
 			break;
 
 		default:
@@ -1776,7 +1661,6 @@ bool BG_PlayerCanChangeWeapon( playerState_t *ps )
 BG_GetPlayerWeapon
 
 Returns the players current weapon or the weapon they are switching to.
-Only needs to be used for human weapons.
 =================
 */
 weapon_t BG_GetPlayerWeapon( playerState_t *ps )
@@ -2386,14 +2270,14 @@ const char *BG_TeamName( int team )
 		return N_("spectator");
 	}
 
-	if ( team == TEAM_ALIENS )
+	if ( team == TEAM_Q )
 	{
-		return N_("alien");
+		return N_("q");
 	}
 
-	if ( team == TEAM_HUMANS )
+	if ( team == TEAM_U)
 	{
-		return N_("human");
+		return N_("u");
 	}
 
 	return "<team>";
@@ -2406,14 +2290,14 @@ const char *BG_TeamNamePlural( int team )
 		return N_("spectators");
 	}
 
-	if ( team == TEAM_ALIENS )
+	if ( team == TEAM_Q )
 	{
-		return N_("aliens");
+		return N_("q");
 	}
 
-	if ( team == TEAM_HUMANS )
+	if ( team == TEAM_U )
 	{
-		return N_("humans");
+		return N_("u");
 	}
 
 	return "<team>";

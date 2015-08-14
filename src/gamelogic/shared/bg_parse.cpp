@@ -346,13 +346,13 @@ bool BG_ReadWholeFile( const char *filename, char *buffer, int size)
 
 static team_t ParseTeam(const char* token)
 {
-	if ( !Q_strnicmp( token, "alien", 5 ) ) // alien(s)
+	if ( !Q_strnicmp( token, "q", 1 ) )
 	{
-		return TEAM_ALIENS;
+		return TEAM_Q;
 	}
-	else if ( !Q_strnicmp( token, "human", 5 ) ) // human(s)
+	else if ( !Q_strnicmp( token, "u", 1 ) )
 	{
-		return TEAM_HUMANS;
+		return TEAM_U;
 	}
 	else if ( !Q_stricmp( token, "none" ) )
 	{
@@ -692,10 +692,6 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		{
 			ca->abilities |= SCA_FOVWARPS;
 		}
-		else if ( !Q_stricmp( token, "alienSense" ) )
-		{
-			ca->abilities |= SCA_ALIENSENSE;
-		}
 		else if ( !Q_stricmp( token, "canUseLadders" ) )
 		{
 			ca->abilities |= SCA_CANUSELADDERS;
@@ -853,7 +849,7 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 	}
 
 	// check for missing mandatory fields for the human team
-	if ( ca->team == TEAM_HUMANS )
+	if ( ca->team == TEAM_U )
 	{
 		if      ( !( defined & SPRINTMOD ) )          { token = "sprintMod"; }
 		else if ( !( defined & STAMINAJUMPCOST ) )    { token = "staminaJumpCost"; }
@@ -865,7 +861,7 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 
 		if ( token )
 		{
-			Com_Printf( S_ERROR "%s (mandatory for human team) not defined in %s\n",
+			Com_Printf( S_ERROR "%s (mandatory for U team) not defined in %s\n",
 			            token, filename );
 		}
 	}

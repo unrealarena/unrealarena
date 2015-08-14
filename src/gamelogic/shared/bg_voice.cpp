@@ -1,26 +1,24 @@
 /*
-===========================================================================
-Copyright (C) 1999-2005 Id Software, Inc.
-Copyright (C) 2000-2009 Darklegion Development
-Copyright (C) 2008      Tony J. White
+ * Daemon GPL source code
+ * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2008  Tony J. White
+ * Copyright (C) 2000-2009  Darklegion Development
+ * Copyright (C) 1999-2005  Id Software, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-This file is part of Daemon.
-
-Daemon is free software; you can redistribute it
-and/or modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
-
-Daemon is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Daemon; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-===========================================================================
-*/
 
 // bg_voice.c -- both games voice functions
 #include "engine/qcommon/q_shared.h"
@@ -181,13 +179,13 @@ static bool BG_VoiceParseTrack( int handle, voiceTrack_t *voiceTrack )
 					voiceTrack->team = 0;
 				}
 
-				if ( !Q_stricmp( token.string, "humans" ) )
+				if ( !Q_stricmp( token.string, "q" ) )
 				{
-					voiceTrack->team |= 1 << TEAM_HUMANS;
+					voiceTrack->team |= 1 << TEAM_Q;
 				}
-				else if ( !Q_stricmp( token.string, "aliens" ) )
+				else if ( !Q_stricmp( token.string, "u" ) )
 				{
-					voiceTrack->team |= 1 << TEAM_ALIENS;
+					voiceTrack->team |= 1 << TEAM_U;
 				}
 				else
 				{
@@ -224,15 +222,15 @@ static bool BG_VoiceParseTrack( int handle, voiceTrack_t *voiceTrack )
 
 				if ( !Q_stricmp( token.string, "all" ) )
 				{
-					modelno = PCL_ALL_CLASSES;
+					modelno = PCL_Q | PCL_U;
 				}
-				else if ( !Q_stricmp( token.string, "humans" ) )
+				else if ( !Q_stricmp( token.string, "qplayer" ) )
 				{
-					modelno = PCL_HUMAN_CLASSES;
+					modelno = PCL_Q;
 				}
-				else if ( !Q_stricmp( token.string, "aliens" ) )
+				else if ( !Q_stricmp( token.string, "uplayer" ) )
 				{
-					modelno = PCL_ALIEN_CLASSES;
+					modelno = PCL_U;
 				}
 				else if ( !Q_stricmp( token.string, "-" ) ) // this must be outside quotation marks
 				{
