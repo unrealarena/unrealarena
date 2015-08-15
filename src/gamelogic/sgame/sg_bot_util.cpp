@@ -271,8 +271,8 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 	gentity_t *bestInvisibleEnemy = nullptr;
 	gentity_t *target;
 	team_t    team = BotGetEntityTeam( self );
-	bool  hasRadar = ( team == TEAM_ALIENS ) ||
-	                     ( team == TEAM_HUMANS && BG_InventoryContainsUpgrade( UP_RADAR, self->client->ps.stats ) );
+	bool  hasRadar = ( team == TEAM_Q ) ||
+	                     ( team == TEAM_U && BG_InventoryContainsUpgrade( UP_RADAR, self->client->ps.stats ) );
 
 	for ( target = g_entities; target < &g_entities[level.num_entities - 1]; target++ )
 	{
@@ -283,12 +283,7 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 			continue;
 		}
 
-		if ( DistanceSquared( self->s.origin, target->s.origin ) > Square( ALIENSENSE_RANGE ) )
-		{
-			continue;
-		}
-
-		if ( target->s.eType == ET_PLAYER && self->client->pers.team == TEAM_HUMANS
+		if ( target->s.eType == ET_PLAYER && self->client->pers.team == TEAM_U
 		    && BotAimAngle( self, target->s.origin ) > g_bot_fov.value / 2 )
 		{
 			continue;
@@ -326,7 +321,6 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 gentity_t* BotFindClosestEnemy( gentity_t *self )
 {
 	gentity_t* closestEnemy = nullptr;
-	float minDistance = Square( ALIENSENSE_RANGE );
 	gentity_t *target;
 
 	for ( target = g_entities; target < &g_entities[level.num_entities - 1]; target++ )
@@ -365,11 +359,6 @@ gentity_t* BotFindClosestEnemy( gentity_t *self )
 			}
 		}
 		newDistance = DistanceSquared( self->s.origin, target->s.origin );
-		if ( newDistance <= minDistance )
-		{
-			minDistance = newDistance;
-			closestEnemy = target;
-		}
 	}
 	return closestEnemy;
 }
@@ -806,20 +795,20 @@ void BotGetIdealAimLocation( gentity_t *self, botTarget_t target, vec3_t aimLoca
 	//get the position of the target
 	BotGetTargetPos( target, aimLocation );
 
-	if ( BotTargetIsEntity( target ) && BotGetTargetTeam( target ) == TEAM_HUMANS )
-	{
-
-		//aim at head
-		aimLocation[2] += target.ent->r.maxs[2] * 0.85;
-
-	}
-	else if ( BotGetTargetTeam( target ) == TEAM_ALIENS )
+	if ( BotGetTargetTeam( target ) == TEAM_Q )
 	{
 		//make lucifer cannons aim ahead based on the target's velocity
 		if ( self->client->ps.weapon == WP_LUCIFER_CANNON && self->botMind->botSkill.level >= 5 )
 		{
 			VectorMA( aimLocation, Distance( self->s.origin, aimLocation ) / LCANNON_SPEED, target.ent->s.pos.trDelta, aimLocation );
 		}
+	}
+	else if ( BotTargetIsEntity( target ) && BotGetTargetTeam( target ) == TEAM_U )
+	{
+
+		//aim at head
+		aimLocation[2] += target.ent->r.maxs[2] * 0.85;
+
 	}
 }
 
@@ -1083,36 +1072,10 @@ void BotFireWeapon( weaponMode_t mode, usercmd_t *botCmdBuffer )
 }
 void BotClassMovement( gentity_t *self, bool inAttackRange )
 {
-	usercmd_t *botCmdBuffer = &self->botMind->cmdBuffer;
-
 	switch ( self->client->ps.stats[STAT_CLASS] )
 	{
-		case PCL_ALIEN_LEVEL0:
+		case PCL_Q:
 			BotStrafeDodge( self );
-			break;
-		case PCL_ALIEN_LEVEL1:
-			break;
-		case PCL_ALIEN_LEVEL2:
-		case PCL_ALIEN_LEVEL2_UPG:
-			if ( self->botMind->nav.directPathToGoal )
-			{
-				if ( self->client->time1000 % 300 == 0 )
-				{
-					BotJump( self );
-				}
-				BotStrafeDodge( self );
-			}
-			break;
-		case PCL_ALIEN_LEVEL3:
-			break;
-		case PCL_ALIEN_LEVEL3_UPG:
-			break;
-		case PCL_ALIEN_LEVEL4:
-			//use rush to approach faster
-			if ( !inAttackRange )
-			{
-				BotFireWeapon( WPM_SECONDARY, botCmdBuffer );
-			}
 			break;
 		default:
 			break;
@@ -1170,22 +1133,6 @@ float CalcAimPitch( gentity_t *self, botTarget_t target, vec_t launchSpeed )
 	//convert to degrees (ps.viewangles units)
 	angle = RAD2DEG( angle );
 	return angle;
-}
-float CalcPounceAimPitch( gentity_t *self, botTarget_t target )
-{
-	vec_t speed = ( self->client->ps.stats[STAT_CLASS] == PCL_ALIEN_LEVEL3 ) ? LEVEL3_POUNCE_JUMP_MAG : LEVEL3_POUNCE_JUMP_MAG_UPG;
-	return CalcAimPitch( self, target, speed );
-
-	//in usrcmd angles, a positive angle is down, so multiply angle by -1
-	// botCmdBuffer->angles[PITCH] = ANGLE2SHORT(-angle);
-}
-float CalcBarbAimPitch( gentity_t *self, botTarget_t target )
-{
-	vec_t speed = LEVEL3_BOUNCEBALL_SPEED;
-	return CalcAimPitch( self, target, speed );
-
-	//in usrcmd angles, a positive angle is down, so multiply angle by -1
-	//botCmdBuffer->angles[PITCH] = ANGLE2SHORT(-angle);
 }
 
 void BotFireWeaponAI( gentity_t *self )
@@ -1252,31 +1199,10 @@ void BotFireWeaponAI( gentity_t *self )
 			}
 			break;
 		case WP_ALEVEL3:
-			if ( distance > LEVEL3_CLAW_RANGE && self->client->ps.stats[ STAT_MISC ] < LEVEL3_POUNCE_TIME )
-			{
-				botCmdBuffer->angles[PITCH] = ANGLE2SHORT( -CalcPounceAimPitch( self, self->botMind->goal ) ); //compute and apply correct aim pitch to hit target
-				BotFireWeapon( WPM_SECONDARY, botCmdBuffer ); //goon pounce
-			}
-			else
-			{
-				BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
-			}
+			BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
 			break;
 		case WP_ALEVEL3_UPG:
-			if ( self->client->ps.ammo > 0 && distance > LEVEL3_CLAW_UPG_RANGE )
-			{
-				botCmdBuffer->angles[PITCH] = ANGLE2SHORT( -CalcBarbAimPitch( self, self->botMind->goal ) ); //compute and apply correct aim pitch to hit target
-				BotFireWeapon( WPM_TERTIARY, botCmdBuffer ); //goon barb
-			}
-			else if ( distance > LEVEL3_CLAW_UPG_RANGE && self->client->ps.stats[ STAT_MISC ] < LEVEL3_POUNCE_TIME_UPG )
-			{
-				botCmdBuffer->angles[PITCH] = ANGLE2SHORT( -CalcPounceAimPitch( self, self->botMind->goal ) ); //compute and apply correct aim pitch to hit target
-				BotFireWeapon( WPM_SECONDARY, botCmdBuffer ); //goon pounce
-			}
-			else
-			{
-				BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
-			}
+			BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
 			break;
 		case WP_ALEVEL4:
 			if ( distance > LEVEL4_CLAW_RANGE && self->client->ps.stats[STAT_MISC] < LEVEL4_TRAMPLE_CHARGE_MAX )
@@ -1307,7 +1233,7 @@ bool BotEvolveToClass( gentity_t *ent, class_t newClass )
 	class_t currentClass = ent->client->pers.classSelection;
 	int numLevels;
 	int entityList[ MAX_GENTITIES ];
-	vec3_t range = { AS_OVER_RT3, AS_OVER_RT3, AS_OVER_RT3 };
+	vec3_t range = { 1000.0f, 1000.0f, 1000.0f };
 	vec3_t mins, maxs;
 	int num;
 	gentity_t *other;
@@ -1336,7 +1262,7 @@ bool BotEvolveToClass( gentity_t *ent, class_t newClass )
 		{
 			other = &g_entities[ entityList[ i ] ];
 
-			if ( other->client && other->client->pers.team == TEAM_HUMANS )
+			if ( other->client && other->client->pers.team == TEAM_U )
 			{
 				return false;
 			}
@@ -1391,7 +1317,7 @@ void BotSetSkillLevel( gentity_t *self, int skill )
 {
 	self->botMind->botSkill.level = skill;
 	//different aim for different teams
-	if ( self->botMind->botTeam == TEAM_HUMANS )
+	if ( self->botMind->botTeam == TEAM_U )
 	{
 		self->botMind->botSkill.aimSlowness = ( float ) skill / 10;
 		self->botMind->botSkill.aimShake = 10 - skill;

@@ -216,11 +216,11 @@ static int GetClientMass( gentity_t *ent )
 {
 	int entMass = 100;
 
-	if ( ent->client->pers.team == TEAM_ALIENS )
+	if ( ent->client->pers.team == TEAM_Q )
 	{
 		entMass = BG_Class( ent->client->pers.classSelection )->health;
 	}
-	else if ( ent->client->pers.team == TEAM_HUMANS )
+	else if ( ent->client->pers.team == TEAM_U )
 	{
 		if ( BG_InventoryContainsUpgrade( UP_BATTLESUIT, ent->client->ps.stats ) )
 		{
@@ -370,7 +370,6 @@ void ClientImpacts( gentity_t *ent, pmove_t *pm )
 		}
 
 		// deal impact and weight damage
-		G_ImpactAttack( ent, other );
 		G_WeightAttack( ent, other );
 
 		// tyrant trample
@@ -539,7 +538,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 
 	// Check to see if we are in the spawn queue
 	// Also, do some other checks and updates which players need while spectating
-	if ( team == TEAM_ALIENS || team == TEAM_HUMANS )
+	if ( team == TEAM_Q || team == TEAM_U )
 	{
 		client->ps.persistant[ PERS_UNLOCKABLES ] = BG_UnlockablesMask( client->pers.team );
 		queued = G_SearchSpawnQueue( &level.team[ team ].spawnQueue, ent - g_entities );
@@ -563,11 +562,11 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		}
 
 		//be sure that only valid team "numbers" can be used.
-		assert(team == TEAM_ALIENS || team == TEAM_HUMANS);
+		assert(team == TEAM_Q || team == TEAM_U);
 		G_RemoveFromSpawnQueue( &level.team[ team ].spawnQueue, client->ps.clientNum );
 
 		client->pers.classSelection = PCL_NONE;
-		client->pers.humanItemSelection = WP_NONE;
+		client->pers.weapon = WP_NONE;
 		client->ps.stats[ STAT_CLASS ] = PCL_NONE;
 		client->ps.pm_flags &= ~PMF_QUEUED;
 		queued = false;
@@ -585,14 +584,6 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		if ( team == TEAM_NONE )
 		{
 			G_TriggerMenu( client->ps.clientNum, MN_TEAM );
-		}
-		else if ( team == TEAM_ALIENS )
-		{
-			G_TriggerMenu( client->ps.clientNum, MN_A_CLASS );
-		}
-		else if ( team == TEAM_HUMANS )
-		{
-			G_TriggerMenu( client->ps.clientNum, MN_H_SPAWN );
 		}
 	}
 
@@ -648,7 +639,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		if ( client->ps.pm_flags & PMF_QUEUED )
 		{
 			/* team must exist, or there will be a sigsegv */
-			assert(team == TEAM_HUMANS || team == TEAM_ALIENS);
+			assert(team == TEAM_Q || team == TEAM_U);
 			client->ps.persistant[ PERS_SPAWNQUEUE ] = level.team[ team ].numSpawns;
 			client->ps.persistant[ PERS_SPAWNQUEUE ] |= G_GetPosInSpawnQueue( &level.team[ team ].spawnQueue,
 			                                                                  client->ps.clientNum ) << 8;
@@ -716,66 +707,6 @@ bool ClientInactivityTimer( gentity_t *ent, bool active )
 	return true;
 }
 
-static void G_ReplenishHumanHealth( gentity_t *self )
-{
-	gclient_t *client;
-	int       remainingStartupTime;
-
-	if ( !self )
-	{
-		return;
-	}
-
-	client = self->client;
-
-	if ( !client || client->pers.team != TEAM_HUMANS )
-	{
-		return;
-	}
-
-	// check if medikit is active
-	if ( !( client->ps.stats[ STAT_STATE ] & SS_HEALING_4X ) )
-	{
-		return;
-	}
-
-	// stop if client is fully healed
-	if ( self->health >= client->ps.stats[ STAT_MAX_HEALTH ] )
-	{
-		client->medKitHealthToRestore = 0;
-		client->ps.stats[ STAT_STATE ] &= ~SS_HEALING_4X;
-
-		return;
-	}
-
-	// stop if client is dead or medikit is depleted
-	if ( client->medKitHealthToRestore <= 0 || client->ps.pm_type == PM_DEAD )
-	{
-		client->medKitHealthToRestore = 0;
-		client->ps.stats[ STAT_STATE ] &= ~SS_HEALING_4X;
-
-		return;
-	}
-
-	remainingStartupTime = MEDKIT_STARTUP_TIME - ( level.time - client->lastMedKitTime );
-
-	// increase heal rate during startup
-	if ( remainingStartupTime > 0 )
-	{
-		if ( level.time < client->medKitIncrementTime )
-		{
-			return;
-		}
-		else
-		{
-			client->medKitIncrementTime = level.time + ( remainingStartupTime / MEDKIT_STARTUP_SPEED );
-		}
-	}
-
-	// heal
-	client->medKitHealthToRestore -= G_Heal( self, 1 );
-}
-
 static void BeaconAutoTag( gentity_t *self, int timePassed )
 {
 	gentity_t *traceEnt, *target;
@@ -802,7 +733,7 @@ static void BeaconAutoTag( gentity_t *self, int timePassed )
 		// Tag entity directly hit and entities in human radar range,
 		// make sure the latter are also in vis
 		if( ( target == traceEnt ) ||
-		    ( team == TEAM_HUMANS &&
+		    ( team == TEAM_U &&
 		      BG_InventoryContainsUpgrade( UP_RADAR, client->ps.stats ) &&
 		      Distance( self->s.origin, target->s.origin ) < RADAR_RANGE &&
 		      Beacon::EntityTaggable( target->s.number, team, false ) &&
@@ -871,45 +802,22 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		}
 
 		BeaconAutoTag( ent, 100 );
-
-		// replenish human health
-		G_ReplenishHumanHealth( ent );
-
-		// refill weapon ammo
-		if ( ent->client->lastAmmoRefillTime + HUMAN_AMMO_REFILL_PERIOD < level.time &&
-		     ps->weaponTime == 0 )
-		{
-			G_FindAmmo( ent );
-		}
-
-		// refill jetpack fuel
-		if ( client->ps.stats[ STAT_FUEL ] < JETPACK_FUEL_REFUEL )
-		{
-			G_FindFuel( ent );
-		}
 	}
 
 	while ( client->time1000 >= 1000 )
 	{
 		client->time1000 -= 1000;
 
-		// deal poison damage
-		if ( client->ps.stats[ STAT_STATE ] & SS_POISONED )
-		{
-			G_Damage( ent, client->lastPoisonClient, client->lastPoisonClient, nullptr,
-			          nullptr, ALIEN_POISON_DMG, DAMAGE_NO_LOCDAMAGE, MOD_POISON );
-		}
-
 		// turn off life support when a team admits defeat
-		if ( client->pers.team == TEAM_ALIENS &&
-		     level.surrenderTeam == TEAM_ALIENS )
+		if ( client->pers.team == TEAM_Q &&
+		     level.surrenderTeam == TEAM_Q )
 		{
 			G_Damage( ent, nullptr, nullptr, nullptr, nullptr,
 			          BG_Class( client->ps.stats[ STAT_CLASS ] )->regenRate,
 			          DAMAGE_NO_ARMOR, MOD_SUICIDE );
 		}
-		else if ( client->pers.team == TEAM_HUMANS &&
-		          level.surrenderTeam == TEAM_HUMANS )
+		else if ( client->pers.team == TEAM_U &&
+		          level.surrenderTeam == TEAM_U )
 		{
 			G_Damage( ent, nullptr, nullptr, nullptr, nullptr, 5, DAMAGE_NO_ARMOR, MOD_SUICIDE );
 		}
@@ -930,11 +838,11 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		     client->pers.aliveSeconds % g_freeFundPeriod.integer == 0 )
 		{
 			// Give clients some credit periodically
-			if ( client->pers.team == TEAM_ALIENS )
+			if ( client->pers.team == TEAM_Q )
 			{
 				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
 			}
-			else if ( client->pers.team == TEAM_HUMANS )
+			else if ( client->pers.team == TEAM_U )
 			{
 				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
 			}
@@ -944,16 +852,6 @@ void ClientTimerActions( gentity_t *ent, int msec )
 	while ( client->time10000 >= 10000 )
 	{
 		client->time10000 -= 10000;
-
-		if ( ent->client->ps.weapon == WP_ABUILD ||
-		     ent->client->ps.weapon == WP_ABUILD2 )
-		{
-			G_AddCreditsToScore( ent, ALIEN_BUILDER_SCOREINC );
-		}
-		else if ( ent->client->ps.weapon == WP_HBUILD )
-		{
-			G_AddCreditsToScore( ent, HUMAN_BUILDER_SCOREINC );
-		}
 	}
 
 	// Regenerate Adv. Dragoon barbs
@@ -1496,117 +1394,6 @@ static void G_UnlaggedDetectCollisions( gentity_t *ent )
 	G_UnlaggedOff();
 }
 
-/**
- * @brief Attempt to find a health source for an alien.
- * @return A mask of SS_HEALING_* flags.
- */
-static int FindAlienHealthSource( gentity_t *self )
-{
-	int       ret = 0, closeTeammates = 0;
-	float     distance;
-	bool  needsHealing;
-	gentity_t *ent;
-
-	if ( !self || !self->client )
-	{
-		return 0;
-	}
-
-	needsHealing = self->client->ps.stats[ STAT_HEALTH ] <
-	               BG_Class( self->client->ps.stats[ STAT_CLASS ] )->health;
-
-	for ( ent = nullptr; ( ent = G_IterateEntities( ent, nullptr, 0, nullptr ) ); )
-	{
-		if ( !G_OnSameTeam( self, ent ) ) continue;
-		if ( ent->health <= 0 )           continue;
-
-		distance = Distance( ent->s.origin, self->s.origin );
-
-		if ( ent->client && self != ent && distance < REGEN_TEAMMATE_RANGE &&
-		     G_LineOfSight( self, ent, MASK_SOLID, false ) )
-		{
-			closeTeammates++;
-			ret |= ( closeTeammates > 1 ) ? SS_HEALING_4X : SS_HEALING_2X;
-		}
-	}
-
-	if ( ret & SS_HEALING_8X ) ret |= SS_HEALING_4X;
-	if ( ret & SS_HEALING_4X ) ret |= SS_HEALING_2X;
-
-	if ( ret )
-	{
-		self->healthSourceTime = level.time;
-	}
-
-	return ret;
-}
-
-// TODO: Synchronize
-static void G_ReplenishAlienHealth( gentity_t *self )
-{
-	gclient_t *client;
-	float     regenBaseRate, modifier;
-	int       count, interval;
-	bool  wasHealing;
-
-	client = self->client;
-
-	// Check if client is an alien and has the healing ability
-	if ( !client || client->pers.team != TEAM_ALIENS ||
-	     self->health <= 0 || level.surrenderTeam == client->pers.team )
-	{
-		return;
-	}
-
-	regenBaseRate = BG_Class( client->ps.stats[ STAT_CLASS ] )->regenRate;
-
-	if ( regenBaseRate <= 0 )
-	{
-		return;
-	}
-
-	wasHealing = client->ps.stats[ STAT_STATE ] & SS_HEALING_2X;
-
-	// Check for health sources
-	client->ps.stats[ STAT_STATE ] &= ~( SS_HEALING_2X | SS_HEALING_4X | SS_HEALING_8X );
-	client->ps.stats[ STAT_STATE ] |= FindAlienHealthSource( self );
-
-	if ( self->nextRegenTime < level.time )
-	{
-		if      ( client->ps.stats[ STAT_STATE ] & SS_HEALING_8X )
-		{
-			modifier = 8.0f;
-		}
-		else if ( client->ps.stats[ STAT_STATE ] & SS_HEALING_4X )
-		{
-			modifier = 4.0f;
-		}
-		else if ( client->ps.stats[ STAT_STATE ] & SS_HEALING_2X )
-		{
-			modifier = 2.0f;
-		}
-		else
-		{
-			modifier = 1.0f;
-		}
-
-		interval = ( int )( 1000.0f / ( regenBaseRate * modifier ) );
-
-		// If recovery interval is less than frametime, compensate by healing more
-		count = 1 + ( level.time - self->nextRegenTime ) / interval;
-
-		G_Heal( self, count );
-
-		self->nextRegenTime = level.time + count * interval;
-	}
-	else if ( !wasHealing && client->ps.stats[ STAT_STATE ] & SS_HEALING_2X )
-	{
-		// Don't immediately start regeneration to prevent players from quickly
-		// hopping in and out of a creep area to increase their heal rate
-		self->nextRegenTime = level.time + ( 1000 / regenBaseRate );
-	}
-}
-
 /*
 ==============
 ClientThink_real
@@ -1730,12 +1517,6 @@ void ClientThink_real( gentity_t *self )
 		client->ps.stats[ STAT_STATE ] &= ~SS_SLOWLOCKED;
 	}
 
-	if ( (client->ps.stats[ STAT_STATE ] & SS_POISONED) &&
-	     client->lastPoisonTime + ALIEN_POISON_TIME < level.time )
-	{
-		client->ps.stats[ STAT_STATE ] &= ~SS_POISONED;
-	}
-
 	// copy global gravity to playerstate
 	client->ps.gravity = g_gravity.value;
 
@@ -1769,9 +1550,6 @@ void ClientThink_real( gentity_t *self )
 			G_AddEvent( self, EV_MEDKIT_USED, 0 );
 		}
 	}
-
-	// Replenish alien health
-	G_ReplenishAlienHealth( self );
 
 	// Throw human grenade
 	if ( BG_InventoryContainsUpgrade( UP_GRENADE, client->ps.stats ) &&
@@ -1997,20 +1775,6 @@ void ClientThink_real( gentity_t *self )
 					ent->use( ent, self, self ); // other and activator are the same in this context
 
 					break;
-				}
-			}
-
-			if ( !ent && client->pers.team == TEAM_ALIENS )
-			{
-				if ( BG_AlienCanEvolve( client->ps.stats[ STAT_CLASS ], client->pers.credit ) )
-				{
-					// no nearby objects and alien - show class menu
-					G_TriggerMenu( client->ps.clientNum, MN_A_INFEST );
-				}
-				else
-				{
-					// flash frags
-					G_AddEvent( self, EV_ALIEN_EVOLVE_FAILED, 0 );
 				}
 			}
 		}

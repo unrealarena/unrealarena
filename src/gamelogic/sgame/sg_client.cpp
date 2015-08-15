@@ -43,8 +43,7 @@ void G_AddCreditToClient( gclient_t *client, short credit, bool cap )
 
 	if ( cap && credit > 0 )
 	{
-		capAmount = client->pers.team == TEAM_ALIENS ?
-		            ALIEN_MAX_CREDITS : HUMAN_MAX_CREDITS;
+		capAmount = 2000;
 
 		if ( client->pers.credit < capAmount )
 		{
@@ -204,19 +203,19 @@ gentity_t *G_SelectUnvanquishedSpawnPoint( team_t team, vec3_t preference, vec3_
 	gentity_t *spot = nullptr;
 
 	/* team must exist, or there will be a sigsegv */
-	assert(team == TEAM_HUMANS || team == TEAM_ALIENS);
+	assert(team == TEAM_Q || team == TEAM_U);
 	if( level.team[ team ].numSpawns <= 0 )
 	{
 		return nullptr;
 	}
 
-	if ( team == TEAM_ALIENS )
+	if ( team == TEAM_Q )
 	{
-		// spot = G_SelectSpawnBuildable( preference, BA_A_SPAWN );
+		// spot = G_SelectSpawnBuildable( preference, BA_Q_SPAWN );
 	}
-	else if ( team == TEAM_HUMANS )
+	else if ( team == TEAM_U )
 	{
-		// spot = G_SelectSpawnBuildable( preference, BA_H_SPAWN );
+		// spot = G_SelectSpawnBuildable( preference, BA_U_SPAWN );
 	}
 
 	//no available spots
@@ -225,13 +224,13 @@ gentity_t *G_SelectUnvanquishedSpawnPoint( team_t team, vec3_t preference, vec3_
 		return nullptr;
 	}
 
-	if ( team == TEAM_ALIENS )
+	if ( team == TEAM_Q )
 	{
-		// G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_A_SPAWN, origin );
+		// G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_Q_SPAWN, origin );
 	}
-	else if ( team == TEAM_HUMANS )
+	else if ( team == TEAM_U )
 	{
-		// G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_H_SPAWN, origin );
+		// G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_U_SPAWN, origin );
 	}
 
 	VectorCopy( spot->s.angles, angles );
@@ -258,26 +257,26 @@ gentity_t *G_SelectSpectatorSpawnPoint( vec3_t origin, vec3_t angles )
 
 /*
 ===========
-G_SelectAlienLockSpawnPoint
+G_SelectQLockSpawnPoint
 
 Historical wrapper which should be removed. See G_SelectLockSpawnPoint.
 ===========
 */
-gentity_t *G_SelectAlienLockSpawnPoint( vec3_t origin, vec3_t angles )
+gentity_t *G_SelectQLockSpawnPoint( vec3_t origin, vec3_t angles )
 {
-	return G_SelectLockSpawnPoint(origin, angles, S_POS_ALIEN_INTERMISSION );
+	return G_SelectLockSpawnPoint(origin, angles, S_POS_Q_INTERMISSION );
 }
 
 /*
 ===========
-G_SelectHumanLockSpawnPoint
+G_SelectULockSpawnPoint
 
 Historical wrapper which should be removed. See G_SelectLockSpawnPoint.
 ===========
 */
-gentity_t *G_SelectHumanLockSpawnPoint( vec3_t origin, vec3_t angles )
+gentity_t *G_SelectULockSpawnPoint( vec3_t origin, vec3_t angles )
 {
-	return G_SelectLockSpawnPoint(origin, angles, S_POS_HUMAN_INTERMISSION );
+	return G_SelectLockSpawnPoint(origin, angles, S_POS_U_INTERMISSION );
 }
 
 /*
@@ -380,13 +379,13 @@ static void SpawnCorpse( gentity_t *ent )
 	body->s.clientNum = ent->client->ps.stats[ STAT_CLASS ];
 	body->nonSegModel = ent->client->ps.persistant[ PERS_STATE ] & PS_NONSEGMODEL;
 
-	if ( ent->client->pers.team == TEAM_HUMANS )
+	if ( ent->client->pers.team == TEAM_Q )
 	{
-		body->classname = "humanCorpse";
+		body->classname = "qCorpse";
 	}
 	else
 	{
-		body->classname = "alienCorpse";
+		body->classname = "uCorpse";
 	}
 
 	body->s.misc = MAX_CLIENTS;
@@ -959,8 +958,8 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 		//model details to that of the spawning class or the info change will not be
 		//registered and an axis appears instead of the player model. There is zero chance
 		//the player can spawn with the battlesuit, hence this choice.
-		Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( PCL_HUMAN_BSUIT )->modelName,
-		             BG_ClassModelConfig( PCL_HUMAN_BSUIT )->skinName );
+		Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( PCL_U )->modelName,
+					 BG_ClassModelConfig( PCL_U )->skinName );
 	}
 	else
 	{
@@ -1478,7 +1477,6 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	int                teamLocal;
 	int                eventSequence;
 	char               userinfo[ MAX_INFO_STRING ];
-	vec3_t             up = { 0.0f, 0.0f, 1.0f };
 	int                maxAmmo, maxClips;
 	weapon_t           weapon;
 
@@ -1529,13 +1527,13 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		{
 			spawnPoint = G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
 		}
-		else if ( teamLocal == TEAM_ALIENS )
+		else if ( teamLocal == TEAM_Q )
 		{
-			spawnPoint = G_SelectAlienLockSpawnPoint( spawn_origin, spawn_angles );
+			spawnPoint = G_SelectQLockSpawnPoint( spawn_origin, spawn_angles );
 		}
-		else if ( teamLocal == TEAM_HUMANS )
+		else if ( teamLocal == TEAM_U )
 		{
-			spawnPoint = G_SelectHumanLockSpawnPoint( spawn_origin, spawn_angles );
+			spawnPoint = G_SelectULockSpawnPoint( spawn_origin, spawn_angles );
 		}
 	}
 	else
@@ -1631,10 +1629,10 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	}
 
 	// clear entity values
-	if ( ent->client->pers.classSelection == PCL_HUMAN_NAKED )
+	if ( ent->client->pers.classSelection == PCL_U )
 	{
 		BG_AddUpgradeToInventory( UP_MEDKIT, client->ps.stats );
-		weapon = client->pers.humanItemSelection;
+		weapon = client->pers.weapon;
 	}
 	else if ( client->sess.spectatorState == SPECTATOR_NOT )
 	{
@@ -1657,8 +1655,6 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	client->ps.persistant[ PERS_TEAM ] = client->pers.team;
 
 	// TODO: Check whether stats can be cleared at once instead of per field
-	client->ps.stats[ STAT_STAMINA ] = STAMINA_MAX;
-	client->ps.stats[ STAT_FUEL ]    = JETPACK_FUEL_MAX;
 	client->ps.stats[ STAT_CLASS ] = ent->client->pers.classSelection;
 	client->ps.stats[ STAT_PREDICTION ] = 0;
 	client->ps.stats[ STAT_STATE ] = 0;
@@ -1686,36 +1682,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, client->ps.origin );
 
-	//give aliens some spawn velocity
-	if ( client->sess.spectatorState == SPECTATOR_NOT &&
-	     client->pers.team == TEAM_ALIENS )
-	{
-		if ( ent == spawn )
-		{
-			//evolution particle system
-			G_AddPredictableEvent( ent, EV_ALIEN_EVOLVE, DirToByte( up ) );
-		}
-		else
-		{
-			spawn_angles[ YAW ] += 180.0f;
-			AngleNormalize360( spawn_angles[ YAW ] );
-
-			if ( spawnPoint->s.origin2[ 2 ] > 0.0f )
-			{
-				vec3_t forward, dir;
-
-				AngleVectors( spawn_angles, forward, nullptr, nullptr );
-				VectorAdd( spawnPoint->s.origin2, forward, dir );
-				VectorNormalize( dir );
-				VectorScale( dir, BG_Class( ent->client->pers.classSelection )->jumpMagnitude,
-				             client->ps.velocity );
-			}
-
-			G_AddPredictableEvent( ent, EV_PLAYER_RESPAWN, 0 );
-		}
-	}
-	else if ( client->sess.spectatorState == SPECTATOR_NOT &&
-	          client->pers.team == TEAM_HUMANS )
+	if ( client->sess.spectatorState == SPECTATOR_NOT && ( client->pers.team == TEAM_Q || client->pers.team == TEAM_U ) )
 	{
 		spawn_angles[ YAW ] += 180.0f;
 		AngleNormalize360( spawn_angles[ YAW ] );
@@ -1732,7 +1699,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		trap_LinkEntity( ent );
 
 		// force the base weapon up
-		if ( client->pers.team == TEAM_HUMANS )
+		if ( client->pers.team == TEAM_U )
 		{
 			G_ForceWeaponChange( ent, weapon );
 		}

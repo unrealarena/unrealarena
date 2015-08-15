@@ -512,7 +512,7 @@ to the rest of the behavior tree
 
 AINodeStatus_t BotActionFireWeapon( gentity_t *self, AIGenericNode_t *node ) 
 {
-	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && self->client->pers.team == TEAM_HUMANS )
+	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && self->client->pers.team == TEAM_U )
 	{
 		G_ForceWeaponChange( self, WP_BLASTER );
 	}
@@ -684,7 +684,7 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 		return STATUS_FAILURE;
 	}
 
-	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && myTeam == TEAM_HUMANS )
+	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && myTeam == TEAM_U )
 	{
 		G_ForceWeaponChange( self, WP_BLASTER );
 	}
@@ -692,12 +692,6 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 	if ( BG_GetPlayerWeapon( &self->client->ps ) == WP_HBUILD )
 	{
 		G_ForceWeaponChange( self, WP_BLASTER );
-	}
-
-	//aliens have radar so they will always 'see' the enemy if they are in radar range
-	if ( myTeam == TEAM_ALIENS && DistanceToGoalSquared( self ) <= Square( ALIENSENSE_RANGE ) )
-	{
-		self->botMind->enemyLastSeen = level.time;
 	}
 
 	if ( !BotTargetIsVisible( self, self->botMind->goal, CONTENTS_SOLID ) )
@@ -725,7 +719,7 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 		bool inAttackRange = BotTargetInAttackRange( self, self->botMind->goal );
 		self->botMind->enemyLastSeen = level.time;
 
-		if ( ( inAttackRange && myTeam == TEAM_HUMANS ) || self->botMind->nav.directPathToGoal )
+		if ( ( inAttackRange && myTeam == TEAM_U ) || self->botMind->nav.directPathToGoal )
 		{
 			BotAimAtEnemy( self );
 
@@ -736,35 +730,14 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 				BotFireWeaponAI( self );
 			}
 
-			if ( myTeam == TEAM_HUMANS )
-			{
-				if ( self->botMind->botSkill.level >= 3 && DistanceToGoalSquared( self ) < Square( MAX_HUMAN_DANCE_DIST )
-				        && ( DistanceToGoalSquared( self ) > Square( MIN_HUMAN_DANCE_DIST ) || self->botMind->botSkill.level < 5 )
-				        && self->client->ps.weapon != WP_PAIN_SAW )
-				{
-					BotMoveInDir( self, MOVE_BACKWARD );
-				}
-				else if ( DistanceToGoalSquared( self ) <= Square( MIN_HUMAN_DANCE_DIST ) ) //we wont hit this if skill < 5
-				{
-					//we will be moving toward enemy, strafe too
-					//the result: we go around the enemy
-					BotAlternateStrafe( self );
-				}
-				else if ( DistanceToGoalSquared( self ) >= Square( MAX_HUMAN_DANCE_DIST ) && self->client->ps.weapon != WP_PAIN_SAW )
-				{
-					if ( DistanceToGoalSquared( self ) - Square( MAX_HUMAN_DANCE_DIST ) < 100 )
-					{
-						BotStandStill( self );
-					}
-
-					BotStrafeDodge( self );
-				}
-
-				BotSprint( self, true );
-			}
-			else if ( myTeam == TEAM_ALIENS )
+			if ( myTeam == TEAM_Q )
 			{
 				BotClassMovement( self, inAttackRange );
+			}
+			else if ( myTeam == TEAM_U )
+			{
+				BotStandStill( self );
+				BotSprint( self, true );
 			}
 		}
 		else
@@ -969,58 +942,6 @@ AINodeStatus_t BotActionEvolve ( gentity_t *self, AIGenericNode_t *node )
 	if ( !g_bot_evolve.integer )
 	{
 		return status;
-	}
-
-	if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL4 ) && g_bot_level4.integer )
-	{
-		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL4 ) )
-		{
-			status = STATUS_SUCCESS;
-		}
-	}
-	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL3_UPG ) && g_bot_level3upg.integer )
-	{
-		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL3_UPG ) )
-		{
-			status = STATUS_SUCCESS;
-		}
-	}
-	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL3 ) &&
-	          ( !BG_ClassUnlocked( PCL_ALIEN_LEVEL3_UPG ) ||!g_bot_level2upg.integer ||
-	            !g_bot_level3upg.integer ) && g_bot_level3.integer )
-	{
-		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL3 ) )
-		{
-			status = STATUS_SUCCESS;
-		}
-	}
-	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL2_UPG ) && g_bot_level2upg.integer )
-	{
-		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL2_UPG ) )
-		{
-			status = STATUS_SUCCESS;
-		}
-	}
-	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL2 ) && g_bot_level2.integer )
-	{
-		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL2 ) )
-		{
-			status = STATUS_SUCCESS;
-		}
-	}
-	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL1 ) && g_bot_level1.integer )
-	{
-		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL1 ) )
-		{
-			status = STATUS_SUCCESS;
-		}
-	}
-	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL0 ) )
-	{
-		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL0 ) )
-		{
-			status = STATUS_SUCCESS;
-		}
 	}
 
 	return status;

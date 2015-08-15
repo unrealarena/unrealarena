@@ -232,16 +232,6 @@ static AIValue_t botCanEvolveTo( gentity_t *self, const AIValue_t *params )
 	return AIBoxInt( BotCanEvolveToClass( self, c ) );
 }
 
-static AIValue_t humanMomentum( gentity_t *self, const AIValue_t *params )
-{
-	return AIBoxInt( level.team[ TEAM_HUMANS ].momentum );
-}
-
-static AIValue_t alienMomentum( gentity_t *self, const AIValue_t *params )
-{
-	return AIBoxInt( level.team[ TEAM_ALIENS ].momentum );
-}
-
 static AIValue_t randomChance( gentity_t *self, const AIValue_t *params )
 {
 	return AIBoxFloat( random() );
@@ -301,7 +291,6 @@ static const struct AIConditionMap_s
 } conditionFuncs[] =
 {
 	{ "alertedToEnemy",    VALUE_INT,   alertedToEnemy,    0 },
-	{ "alienMomentum",   VALUE_INT,   alienMomentum,   0 },
 	{ "baseRushScore",     VALUE_FLOAT, baseRushScore,     0 },
 	{ "canEvolveTo",       VALUE_INT,   botCanEvolveTo,    1 },
 	{ "class",             VALUE_INT,   botClass,          0 },
@@ -315,7 +304,6 @@ static const struct AIConditionMap_s
 	{ "haveUpgrade",       VALUE_INT,   haveUpgrade,       1 },
 	{ "haveWeapon",        VALUE_INT,   haveWeapon,        1 },
 	{ "healScore",         VALUE_FLOAT, healScore,         0 },
-	{ "humanMomentum",   VALUE_INT,   humanMomentum,   0 },
 	{ "inAttackRange",     VALUE_INT,   inAttackRange,     1 },
 	{ "isVisible",         VALUE_INT,   isVisible,         1 },
 	{ "percentAmmo",       VALUE_FLOAT, percentAmmo,       0 },
@@ -1232,33 +1220,22 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( WP_HBUILD );
 
 	// add teams
-	D( TEAM_ALIENS );
-	D( TEAM_HUMANS );
+	D( TEAM_Q );
+	D( TEAM_U );
 	D( TEAM_NONE );
 
 	// add AIEntitys
 	D( E_NONE );
-	D( E_A_SPAWN );
-	D( E_H_SPAWN );
+	D( E_Q_SPAWN );
+	D( E_U_SPAWN );
 	D( E_GOAL );
 	D( E_ENEMY );
 	D( E_SELF );
 
 	// add player classes
 	D( PCL_NONE );
-	D( PCL_ALIEN_BUILDER0 );
-	D( PCL_ALIEN_BUILDER0_UPG );
-	D( PCL_ALIEN_LEVEL0 );
-	D( PCL_ALIEN_LEVEL1 );
-	D( PCL_ALIEN_LEVEL2 );
-	D( PCL_ALIEN_LEVEL2_UPG );
-	D( PCL_ALIEN_LEVEL3 );
-	D( PCL_ALIEN_LEVEL3_UPG );
-	D( PCL_ALIEN_LEVEL4 );
-	D( PCL_HUMAN_NAKED );
-	D( PCL_HUMAN_LIGHT );
-	D( PCL_HUMAN_MEDIUM );
-	D( PCL_HUMAN_BSUIT );
+	D( PCL_Q );
+	D( PCL_U );
 	
 	D( MOVE_FORWARD );
 	D( MOVE_BACKWARD );

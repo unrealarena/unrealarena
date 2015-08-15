@@ -437,7 +437,7 @@ namespace Beacon //this should eventually become a class
 			BG_MoveOriginToBBOXCenter( center, mins, maxs );
 
 			// Also update weapon for humans.
-			if( parent->client->pers.team == TEAM_HUMANS )
+			if( parent->client->pers.team == TEAM_U )
 			{
 				ent->s.bc_data = BG_GetPlayerWeapon( &parent->client->ps );
 			}
@@ -451,10 +451,10 @@ namespace Beacon //this should eventually become a class
 	 */
 	void UpdateTags( gentity_t *ent )
 	{
-		if( ent->alienTag )
-			UpdateTagLocation( ent->alienTag, ent );
-		if( ent->humanTag )
-			UpdateTagLocation( ent->humanTag, ent );
+		if( ent->qTag )
+			UpdateTagLocation( ent->qTag, ent );
+		if( ent->uTag )
+			UpdateTagLocation( ent->uTag, ent );
 	}
 
 	/**
@@ -462,28 +462,28 @@ namespace Beacon //this should eventually become a class
 	 */
 	void DetachTags( gentity_t *ent )
 	{
-		if ( ent->alienTag  )
+		if ( ent->qTag  )
 		{
-			if ( ( ent->alienTag->s.eFlags & EF_BC_ENEMY ) &&
-			     !( ent->alienTag->s.eFlags & EF_BC_TAG_PLAYER ) )
+			if ( ( ent->qTag->s.eFlags & EF_BC_ENEMY ) &&
+			     !( ent->qTag->s.eFlags & EF_BC_TAG_PLAYER ) )
 			{
-				ent->alienTag->tagAttachment = nullptr;
-				ent->alienTag = nullptr;
+				ent->qTag->tagAttachment = nullptr;
+				ent->qTag = nullptr;
 			}
 			else
-				Delete( ent->alienTag, true );
+				Delete( ent->qTag, true );
 		}
 
-		if ( ent->humanTag  )
+		if ( ent->uTag  )
 		{
-			if ( ( ent->humanTag->s.eFlags & EF_BC_ENEMY ) &&
-			     !( ent->humanTag->s.eFlags & EF_BC_TAG_PLAYER ) )
+			if ( ( ent->uTag->s.eFlags & EF_BC_ENEMY ) &&
+			     !( ent->uTag->s.eFlags & EF_BC_TAG_PLAYER ) )
 			{
-				ent->humanTag->tagAttachment = nullptr;
-				ent->humanTag = nullptr;
+				ent->uTag->tagAttachment = nullptr;
+				ent->uTag = nullptr;
 			}
 			else
-				Delete( ent->humanTag, true );
+				Delete( ent->uTag, true );
 		}
 	}
 
@@ -492,8 +492,8 @@ namespace Beacon //this should eventually become a class
 	 */
 	void DeleteTags( gentity_t *ent )
 	{
-		Delete( ent->alienTag );
-		Delete( ent->humanTag );
+		Delete( ent->qTag );
+		Delete( ent->uTag );
 	}
 
 	/**
@@ -516,7 +516,7 @@ namespace Beacon //this should eventually become a class
 
 	static inline bool CheckRefreshTag( gentity_t *ent, team_t team )
 	{
-		gentity_t *existingTag = ( team == TEAM_ALIENS ) ? ent->alienTag : ent->humanTag;
+		gentity_t *existingTag = ( team == TEAM_Q ) ? ent->qTag : ent->uTag;
 
 		if( existingTag )
 			RefreshTag( existingTag );
@@ -653,8 +653,8 @@ namespace Beacon //this should eventually become a class
 
 		// Get the beacon attachment owned by the tagging team.
 		switch( team ) {
-			case TEAM_ALIENS: attachment = &ent->alienTag; break;
-			case TEAM_HUMANS: attachment = &ent->humanTag; break;
+			case TEAM_Q: attachment = &ent->qTag; break;
+			case TEAM_U: attachment = &ent->uTag; break;
 			default:                                       return;
 		}
 
@@ -671,10 +671,10 @@ namespace Beacon //this should eventually become a class
 				player     = true;
 				BG_ClassBoundingBox( ent->client->pers.classSelection, mins, maxs, nullptr, nullptr, nullptr );
 
-				// Set beacon data to class (aliens) or weapon (humans).
+				// Set beacon data to class (Q team) or weapon (U team).
 				switch( targetTeam ) {
-					case TEAM_ALIENS: data = ent->client->ps.stats[ STAT_CLASS ];    break;
-					case TEAM_HUMANS: data = BG_GetPlayerWeapon( &ent->client->ps ); break;
+					case TEAM_Q: data = ent->client->ps.stats[ STAT_CLASS ];    break;
+					case TEAM_U: data = BG_GetPlayerWeapon( &ent->client->ps ); break;
 					default:                                                         return;
 				}
 

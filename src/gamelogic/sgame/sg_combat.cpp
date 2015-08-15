@@ -47,7 +47,6 @@ static const char *const modNames[] =
 	"MOD_FLAMER_SPLASH",
 	"MOD_GRENADE",
 	"MOD_FIREBOMB",
-	"MOD_WEIGHT_H",
 	"MOD_WATER",
 	"MOD_SLIME",
 	"MOD_LAVA",
@@ -57,18 +56,7 @@ static const char *const modNames[] =
 	"MOD_SUICIDE",
 	"MOD_TARGET_LASER",
 	"MOD_TRIGGER_HURT",
-
-	"MOD_ABUILDER_CLAW",
-	"MOD_LEVEL0_BITE",
-	"MOD_LEVEL1_CLAW",
-	"MOD_LEVEL3_CLAW",
-	"MOD_LEVEL3_POUNCE",
-	"MOD_LEVEL3_BOUNCEBALL",
-	"MOD_LEVEL2_CLAW",
-	"MOD_LEVEL2_ZAP",
-	"MOD_LEVEL4_CLAW",
-	"MOD_LEVEL4_TRAMPLE",
-	"MOD_WEIGHT_A",
+	"MOD_WEIGHT",
 
 	"MOD_POISON",
 
@@ -367,34 +355,11 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 	// FIXME if ( attacker )
 	if ( attacker && attacker->client )
 	{
-		if ( ( attacker == self || G_OnSameTeam( self, attacker ) ) )
-		{
-			//punish team kills and suicides
-			if ( attacker->client->pers.team == TEAM_ALIENS )
-			{
-				G_AddCreditToClient( attacker->client, -ALIEN_TK_SUICIDE_PENALTY, true );
-				G_AddCreditsToScore( attacker, -ALIEN_TK_SUICIDE_PENALTY );
-			}
-			else if ( attacker->client->pers.team == TEAM_HUMANS )
-			{
-				G_AddCreditToClient( attacker->client, -HUMAN_TK_SUICIDE_PENALTY, true );
-				G_AddCreditsToScore( attacker, -HUMAN_TK_SUICIDE_PENALTY );
-			}
-		}
-		else if ( g_showKillerHP.integer )
+		if ( g_showKillerHP.integer )
 		{
 			trap_SendServerCommand( self - g_entities, va( "print_tr %s %s %3i", QQ( N_("Your killer, $1$^7, had $2$ HP.\n") ),
 			                        Quote( killerName ),
 			                        attacker->health ) );
-		}
-
-		if ( self->client->pers.team == TEAM_ALIENS )
-		{
-			G_AddCreditsToScore( self, -ALIEN_TK_SUICIDE_PENALTY );
-		}
-		else if ( self->client->pers.team == TEAM_HUMANS )
-		{
-			G_AddCreditsToScore( self, -HUMAN_TK_SUICIDE_PENALTY );
 		}
 	}
 
@@ -1108,32 +1073,6 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 			{
 				return;
 			}
-
-			// don't do friendly damage on movement attacks
-			switch ( mod )
-			{
-				case MOD_LEVEL3_POUNCE:
-				case MOD_LEVEL4_TRAMPLE:
-					return;
-
-				default:
-					break;
-			}
-
-			// if dretchpunt is enabled and this is a dretch, do dretchpunt instead of damage
-			if ( g_dretchPunt.integer && target->client && target->client->ps.stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL0 )
-			{
-				vec3_t dir, push;
-
-				VectorSubtract( target->r.currentOrigin, attacker->r.currentOrigin, dir );
-				VectorNormalizeFast( dir );
-				VectorScale( dir, ( damage * 10.0f ), push );
-				push[ 2 ] = 64.0f;
-
-				VectorAdd( target->client->ps.velocity, push, target->client->ps.velocity );
-
-				return;
-			}
 		}
 	}
 
@@ -1163,7 +1102,6 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 		}
 
 		// drain jetpack fuel
-		client->ps.stats[ STAT_FUEL ] -= damage * JETPACK_FUEL_PER_DMG;
 		if ( client->ps.stats[ STAT_FUEL ] < 0 )
 		{
 			client->ps.stats[ STAT_FUEL ] = 0;
@@ -1200,10 +1138,6 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 	}
 
 	target->lastDamageTime = level.time;
-
-	// TODO: gentity_t->nextRegenTime only affects alien clients, remove it and use lastDamageTime
-	// Optionally (if needed for some reason), move into client struct and add "Alien" to name
-	target->nextRegenTime = level.time + ALIEN_CLIENT_REGEN_WAIT;
 
 	// handle non-self damage
 	if ( attacker != target )

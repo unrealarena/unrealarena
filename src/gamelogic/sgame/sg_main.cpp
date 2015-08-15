@@ -812,8 +812,8 @@ void G_InitGame( int levelTime, int randomSeed, int restart, bool inClient )
 
 	G_InitMapRotations();
 
-	G_InitSpawnQueue( &level.team[ TEAM_ALIENS ].spawnQueue );
-	G_InitSpawnQueue( &level.team[ TEAM_HUMANS ].spawnQueue );
+	G_InitSpawnQueue( &level.team[ TEAM_Q ].spawnQueue );
+	G_InitSpawnQueue( &level.team[ TEAM_U ].spawnQueue );
 
 	if ( g_debugMapRotation.integer )
 	{
@@ -834,8 +834,8 @@ void G_InitGame( int levelTime, int randomSeed, int restart, bool inClient )
 
 	if ( g_lockTeamsAtStart.integer )
 	{
-		level.team[ TEAM_ALIENS ].locked = true;
-		level.team[ TEAM_HUMANS ].locked = true;
+		level.team[ TEAM_Q ].locked = true;
+		level.team[ TEAM_U ].locked = true;
 		trap_Cvar_Set( "g_lockTeamsAtStart", "0" );
 	}
 
@@ -1281,7 +1281,7 @@ void G_SpawnClients( team_t team )
 	spawnQueue_t *sq = nullptr;
 	int          numSpawns = 0;
 
-	assert(team == TEAM_ALIENS || team == TEAM_HUMANS);
+	assert(team == TEAM_Q || team == TEAM_U);
 	sq = &level.team[ team ].spawnQueue;
 
 	numSpawns = level.team[ team ].numSpawns;
@@ -1321,8 +1321,8 @@ Counts the number of spawns for each team
 void G_CountSpawns()
 {
 	//I guess this could be changed into one function call per team
-	level.team[ TEAM_ALIENS ].numSpawns = 0;
-	level.team[ TEAM_HUMANS ].numSpawns = 0;
+	level.team[ TEAM_Q ].numSpawns = 0;
+	level.team[ TEAM_U ].numSpawns = 0;
 }
 
 /*
@@ -1470,7 +1470,6 @@ void CalculateRanks()
 	}
 
 	// voting code expects level.team[ TEAM_NONE ].numPlayers to be all players, spectating or playing
-	// TODO: Use TEAM_ALL or the latter version for this everywhere
 	level.team[ TEAM_NONE ].numPlayers += level.numPlayingPlayers;
 
 	P[ clientNum ] = '\0';
@@ -1799,7 +1798,7 @@ static void GetAverageCredits( int teamCredits[], int teamValue[] )
 	gclient_t *client;
 	int       team;
 
-	for ( team = TEAM_ALIENS ; team < NUM_TEAMS ; ++team)
+	for ( team = TEAM_Q; team < NUM_TEAMS ; ++team)
 	{
 		teamCnt[ team ] = 0;
 		teamCredits[ team ] = 0;
@@ -1823,7 +1822,7 @@ static void GetAverageCredits( int teamCredits[], int teamValue[] )
 		teamCnt[ team ]++;
 	}
 
-	for ( team = TEAM_ALIENS ; team < NUM_TEAMS ; ++team)
+	for ( team = TEAM_Q; team < NUM_TEAMS ; ++team)
 	{
 		teamCredits[ team ] = ( teamCnt[ team ] == 0 ) ? 0 : ( teamCredits[ team ] / teamCnt[ team ] );
 		teamValue[ team ] = ( teamCnt[ team ] == 0 ) ? 0 : ( teamValue[ team ] / teamCnt[ team ] );
@@ -1908,8 +1907,8 @@ static void G_LogGameplayStats( int state )
 
 			Com_sprintf( logline, sizeof( logline ),
 			             "%4i %2i %2i %4i %4i %4i %4i %4i %4i\n",
-			             time, num[ TEAM_ALIENS ], num[ TEAM_HUMANS ], Mom[ TEAM_ALIENS ], Mom[ TEAM_HUMANS ],
-			             Cre[ TEAM_ALIENS ], Cre[ TEAM_HUMANS ], Val[ TEAM_ALIENS ], Val[ TEAM_HUMANS ] );
+			             time, num[ TEAM_Q ], num[ TEAM_U ], Mom[ TEAM_Q ], Mom[ TEAM_U ],
+			             Cre[ TEAM_Q ], Cre[ TEAM_U ], Val[ TEAM_Q ], Val[ TEAM_U ] );
 			break;
 		}
 		case LOG_GAMEPLAY_STATS_FOOTER:
@@ -1919,12 +1918,12 @@ static void G_LogGameplayStats( int state )
 
 			switch ( level.lastWin )
 			{
-				case TEAM_ALIENS:
-					winner = "Aliens";
+				case TEAM_Q:
+					winner = "Q";
 					break;
 
-				case TEAM_HUMANS:
-					winner = "Humans";
+				case TEAM_U:
+					winner = "U";
 					break;
 
 				default:
@@ -1940,15 +1939,15 @@ static void G_LogGameplayStats( int state )
 			             "# Match duration:  %i:%02i\n"
 			             "# Winning team:    %s\n"
 			             "# Average Players: %.1f + %.1f\n"
-			             "# Average Aliens:  %.1f + %.1f\n"
-			             "# Average Humans:  %.1f + %.1f\n"
+			             "# Average Q team:  %.1f + %.1f\n"
+			             "# Average U team:  %.1f + %.1f\n"
 			             "#\n",
 			             min, sec,
 			             winner,
-			             level.team[ TEAM_ALIENS ].averageNumPlayers + level.team[ TEAM_HUMANS ].averageNumPlayers,
-			             level.team[ TEAM_ALIENS ].averageNumBots    + level.team[ TEAM_HUMANS ].averageNumBots,
-			             level.team[ TEAM_ALIENS ].averageNumPlayers, level.team[ TEAM_ALIENS ].averageNumBots,
-			             level.team[ TEAM_HUMANS ].averageNumPlayers, level.team[ TEAM_HUMANS ].averageNumBots);
+			             level.team[ TEAM_Q ].averageNumPlayers + level.team[ TEAM_U ].averageNumPlayers,
+			             level.team[ TEAM_Q ].averageNumBots    + level.team[ TEAM_U ].averageNumBots,
+			             level.team[ TEAM_Q ].averageNumPlayers, level.team[ TEAM_Q ].averageNumBots,
+			             level.team[ TEAM_U ].averageNumPlayers, level.team[ TEAM_U ].averageNumBots);
 			break;
 		}
 		default:
@@ -1991,12 +1990,12 @@ void G_SendGameStat( team_t team )
 
 	switch ( team )
 	{
-		case TEAM_ALIENS:
-			teamChar = 'A';
+		case TEAM_Q:
+			teamChar = 'Q';
 			break;
 
-		case TEAM_HUMANS:
-			teamChar = 'H';
+		case TEAM_U:
+			teamChar = 'U';
 			break;
 
 		case TEAM_NONE:
@@ -2008,12 +2007,12 @@ void G_SendGameStat( team_t team )
 	}
 
 	Com_sprintf( data, BIG_INFO_STRING,
-	             "%s %s T:%c A:%f H:%f M:%s D:%d CL:%d",
+	             "%s %s T:%c Q:%f U:%f M:%s D:%d CL:%d",
 	             Q3_VERSION,
 	             g_tag.string,
 	             teamChar,
-	             level.team[ TEAM_ALIENS ].averageNumClients,
-	             level.team[ TEAM_HUMANS ].averageNumClients,
+	             level.team[ TEAM_Q ].averageNumClients,
+	             level.team[ TEAM_U ].averageNumClients,
 	             map,
 	             level.matchTime,
 	             level.numConnectedClients );
@@ -2037,12 +2036,12 @@ void G_SendGameStat( team_t team )
 
 		switch ( cl->pers.team )
 		{
-			case TEAM_ALIENS:
-				teamChar = 'A';
+			case TEAM_Q:
+				teamChar = 'Q';
 				break;
 
-			case TEAM_HUMANS:
-				teamChar = 'H';
+			case TEAM_U:
+				teamChar = 'U';
 				break;
 
 			case TEAM_NONE:
@@ -2310,33 +2309,31 @@ void CheckExitRules()
 	// FIXME
 	return;
 
-	if ( level.unconditionalWin == TEAM_HUMANS ||
-	     ( level.unconditionalWin != TEAM_ALIENS &&
-	       ( level.time > level.startTime + 1000 ) &&
-	       ( level.team[ TEAM_ALIENS ].numSpawns == 0 ) &&
-	       ( level.team[ TEAM_ALIENS ].numAliveClients == 0 ) ) )
+	if ( level.unconditionalWin == TEAM_Q ||
+	      ( level.unconditionalWin != TEAM_U &&
+	        ( level.time > level.startTime + 1000 ) &&
+	        ( level.team[ TEAM_U ].numSpawns == 0 ) &&
+	        ( level.team[ TEAM_U ].numAliveClients == 0 ) ) )
 	{
-		//humans win
-		level.lastWin = TEAM_HUMANS;
-		trap_SendServerCommand( -1, "print_tr \"" N_("Humans win\n") "\"" );
-		trap_SetConfigstring( CS_WINNER, "Humans Win" );
-		G_notify_sensor_end( TEAM_HUMANS );
-		LogExit( "Humans win." );
-		G_MapLog_Result( 'h' );
+		level.lastWin = TEAM_Q;
+		trap_SendServerCommand( -1, "print_tr \"" N_("Q team win\n") "\"" );
+		trap_SetConfigstring( CS_WINNER, "Q Team Win" );
+		G_notify_sensor_end( TEAM_Q );
+		LogExit( "Q team win." );
+		G_MapLog_Result( 'q' );
 	}
-	else if ( level.unconditionalWin == TEAM_ALIENS ||
-	          ( level.unconditionalWin != TEAM_HUMANS &&
-	            ( level.time > level.startTime + 1000 ) &&
-	            ( level.team[ TEAM_HUMANS ].numSpawns == 0 ) &&
-	            ( level.team[ TEAM_HUMANS ].numAliveClients == 0 ) ) )
+	else if ( level.unconditionalWin == TEAM_U ||
+	     ( level.unconditionalWin != TEAM_Q &&
+	       ( level.time > level.startTime + 1000 ) &&
+	       ( level.team[ TEAM_Q ].numSpawns == 0 ) &&
+	       ( level.team[ TEAM_Q ].numAliveClients == 0 ) ) )
 	{
-		//aliens win
-		level.lastWin = TEAM_ALIENS;
-		trap_SendServerCommand( -1, "print_tr \"" N_("Aliens win\n") "\"" );
-		trap_SetConfigstring( CS_WINNER, "Aliens Win" );
-		G_notify_sensor_end( TEAM_ALIENS );
-		LogExit( "Aliens win." );
-		G_MapLog_Result( 'a' );
+		level.lastWin = TEAM_U;
+		trap_SendServerCommand( -1, "print_tr \"" N_("U team win\n") "\"" );
+		trap_SetConfigstring( CS_WINNER, "U Team Win" );
+		G_notify_sensor_end( TEAM_U );
+		LogExit( "U team win." );
+		G_MapLog_Result( 'u' );
 	}
 }
 
@@ -2836,8 +2833,8 @@ void G_RunFrame( int levelTime )
 	G_CountSpawns();
 	G_DecreaseMomentum();
 	G_CalculateAvgPlayers();
-	G_SpawnClients( TEAM_ALIENS );
-	G_SpawnClients( TEAM_HUMANS );
+	G_SpawnClients( TEAM_Q );
+	G_SpawnClients( TEAM_U );
 	G_UpdateZaps( msec );
 	Beacon::Frame( );
 

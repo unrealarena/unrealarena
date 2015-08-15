@@ -565,10 +565,10 @@ namespace BaseClustering {
 	using namespace Clustering;
 
 	typedef enum baseClusteringLayer_e {
-		BCL_ALIEN_FRIENDLY,
-		BCL_ALIEN_ENEMY,
-		BCL_HUMAN_FRIENDLY,
-		BCL_HUMAN_ENEMY,
+		BCL_Q_FRIENDLY,
+		BCL_U_FRIENDLY,
+		BCL_Q_ENEMY,
+		BCL_U_ENEMY,
 
 		NUM_BC_LAYERS
 	} baseClusteringLayer_t;
@@ -580,8 +580,8 @@ namespace BaseClustering {
 	 * @return Clustering identifier by team and enemy flag.
 	 */
 	static inline baseClusteringLayer_t GetClusteringLayer(team_t team, bool enemy) {
-		if (team == TEAM_ALIENS) return enemy ? BCL_ALIEN_ENEMY : BCL_ALIEN_FRIENDLY;
-		if (team == TEAM_HUMANS) return enemy ? BCL_HUMAN_ENEMY : BCL_HUMAN_FRIENDLY;
+		if (team == TEAM_Q) return enemy ? BCL_Q_ENEMY : BCL_Q_FRIENDLY;
+		if (team == TEAM_U) return enemy ? BCL_U_ENEMY : BCL_U_FRIENDLY;
 		return NUM_BC_LAYERS;
 	}
 
@@ -589,8 +589,8 @@ namespace BaseClustering {
 	 * @return The team that receives information about the bases.
 	 */
 	static inline team_t GetInformedTeam(baseClusteringLayer_t layer) {
-		if (layer == BCL_ALIEN_FRIENDLY || layer == BCL_ALIEN_ENEMY) return TEAM_ALIENS;
-		if (layer == BCL_HUMAN_FRIENDLY || layer == BCL_HUMAN_ENEMY) return TEAM_HUMANS;
+		if (layer == BCL_Q_FRIENDLY || layer == BCL_Q_ENEMY) return TEAM_Q;
+		if (layer == BCL_U_FRIENDLY || layer == BCL_U_ENEMY) return TEAM_U;
 		return TEAM_NONE;
 	}
 
@@ -598,7 +598,7 @@ namespace BaseClustering {
 	 * @return Whether the clustering is of enemy bases.
 	 */
 	static inline bool MarksEnemyBase(baseClusteringLayer_t layer) {
-		if (layer == BCL_ALIEN_ENEMY || layer == BCL_HUMAN_ENEMY) return true;
+		if (layer == BCL_Q_ENEMY || layer == BCL_U_ENEMY) return true;
 		return false;
 	}
 

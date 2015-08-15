@@ -177,35 +177,7 @@ bool G_RefillAmmo( gentity_t *self, bool triggerEvent )
  */
 bool G_RefillFuel( gentity_t *self, bool triggerEvent )
 {
-	if ( !self || !self->client )
-	{
-		return false;
-	}
-
-	// needs a human with jetpack
-	if ( self->client->ps.persistant[ PERS_TEAM ] != TEAM_HUMANS ||
-	     !BG_InventoryContainsUpgrade( UP_JETPACK, self->client->ps.stats ) )
-	{
-		return false;
-	}
-
-	if ( self->client->ps.stats[ STAT_FUEL ] != JETPACK_FUEL_MAX )
-	{
-		self->client->ps.stats[ STAT_FUEL ] = JETPACK_FUEL_MAX;
-
-		self->client->lastFuelRefillTime = level.time;
-
-		if ( triggerEvent )
-		{
-			G_AddEvent( self, EV_FUEL_REFILL, 0 );
-		}
-
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return false;
 }
 
 /**
@@ -477,7 +449,7 @@ static void FireLevel1Melee( gentity_t *self )
 	gentity_t *target;
 
 	target = FireMelee( self, LEVEL1_CLAW_RANGE, LEVEL1_CLAW_WIDTH, LEVEL1_CLAW_WIDTH,
-	                    LEVEL1_CLAW_DMG, MOD_LEVEL1_CLAW );
+	                    LEVEL1_CLAW_DMG, MOD_UNKNOWN );
 
 	if ( target && target->client && target->takedamage )
 	{
@@ -917,7 +889,7 @@ bool G_CheckVenomAttack( gentity_t *self )
 
 	SendMeleeHitEvent( self, traceEnt, &tr );
 
-	G_Damage( traceEnt, self, self, forward, tr.endpos, damage, 0, MOD_LEVEL0_BITE );
+	G_Damage( traceEnt, self, self, forward, tr.endpos, damage, 0, MOD_UNKNOWN );
 
 	self->client->ps.weaponTime += LEVEL0_BITE_REPEAT;
 
@@ -966,7 +938,7 @@ static void FindZapChainTargets( zap_t *zap )
 		distance = Distance( ent->s.origin, enemy->s.origin );
 
 		if ( enemy->client &&
-		     enemy->client->pers.team == TEAM_HUMANS &&
+		     enemy->client->pers.team == TEAM_U &&
 		     enemy->health > 0 && // only chain to living targets
 		     distance <= LEVEL2_AREAZAP_CHAIN_RANGE )
 		{
@@ -1035,7 +1007,7 @@ static void CreateNewZap( gentity_t *creator, gentity_t *target )
 		if ( target->health > 0 )
 		{
 			G_Damage( target, creator, creator, forward, target->s.origin, LEVEL2_AREAZAP_DMG,
-			          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL2_ZAP );
+			          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
 
 			FindZapChainTargets( zap );
 
@@ -1044,7 +1016,7 @@ static void CreateNewZap( gentity_t *creator, gentity_t *target )
 				G_Damage( zap->targets[ i ], target, zap->creator, forward, target->s.origin,
 				          LEVEL2_AREAZAP_DMG * ( 1 - powf( ( zap->distances[ i ] /
 				                                 LEVEL2_AREAZAP_CHAIN_RANGE ), LEVEL2_AREAZAP_CHAIN_FALLOFF ) ) + 1,
-				          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL2_ZAP );
+				          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
 			}
 		}
 
@@ -1129,7 +1101,7 @@ static void FireAreaZap( gentity_t *ent )
 		return;
 	}
 
-	if ( traceEnt->client && traceEnt->client->pers.team == TEAM_HUMANS )
+	if ( traceEnt->client && traceEnt->client->pers.team == TEAM_U )
 	{
 		CreateNewZap( ent, traceEnt );
 	}
@@ -1194,7 +1166,7 @@ bool G_CheckPounceAttack( gentity_t *self )
 	damage = payload * LEVEL3_POUNCE_DMG / timeMax;
 	self->client->pmext.pouncePayload = 0;
 	G_Damage( traceEnt, self, self, forward, tr.endpos, damage,
-	          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL3_POUNCE );
+	          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
 
 	return true;
 }
@@ -1238,7 +1210,7 @@ void G_ChargeAttack( gentity_t *self, gentity_t *victim )
 	         LEVEL4_TRAMPLE_DURATION;
 
 	G_Damage( victim, self, self, forward, victim->s.origin, damage,
-	          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL4_TRAMPLE );
+	          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
 
 	self->client->ps.weaponTime += LEVEL4_TRAMPLE_REPEAT;
 }
@@ -1253,64 +1225,7 @@ GENERIC
 
 static INLINE meansOfDeath_t ModWeight( const gentity_t *self )
 {
-	return self->client->pers.team == TEAM_HUMANS ? MOD_WEIGHT_H : MOD_WEIGHT_A;
-}
-
-void G_ImpactAttack( gentity_t *self, gentity_t *victim )
-{
-	float  impactVelocity, impactEnergy;
-	vec3_t knockbackDir;
-	int    attackerMass, impactDamage;
-
-	// self must be a client
-	if ( !self->client )
-	{
-		return;
-	}
-
-	// ignore invincible targets
-	if ( !victim->takedamage )
-	{
-		return;
-	}
-
-	// don't do friendly fire
-	if ( G_OnSameTeam( self, victim ) )
-	{
-		return;
-	}
-
-	// attacker must be above victim
-	if ( self->client->ps.origin[ 2 ] + self->r.mins[ 2 ] <
-	     victim->s.origin[ 2 ] + victim->r.maxs[ 2 ] )
-	{
-		return;
-	}
-
-	// allow the granger airlifting ritual
-	if ( victim->client && victim->client->ps.stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE &&
-	     ( self->client->pers.classSelection == PCL_ALIEN_BUILDER0 ||
-	       self->client->pers.classSelection == PCL_ALIEN_BUILDER0_UPG ) )
-	{
-		return;
-	}
-
-	// calculate impact damage
-	attackerMass = BG_Class( self->client->pers.classSelection )->mass;
-	impactVelocity = fabs( self->client->pmext.fallImpactVelocity[ 2 ] ) * QU_TO_METER; // in m/s
-	impactEnergy = attackerMass * impactVelocity * impactVelocity; // in J
-	impactDamage = ( int )( impactEnergy * IMPACTDMG_JOULE_TO_DAMAGE );
-
-	// deal impact damage to clients, use a threshold for friendly fire
-	if ( impactDamage > 0 )
-	{
-		// calculate knockback direction
-		VectorSubtract( victim->s.origin, self->client->ps.origin, knockbackDir );
-		VectorNormalize( knockbackDir );
-
-		G_Damage( victim, self, self, knockbackDir, victim->s.origin, impactDamage,
-		          DAMAGE_NO_LOCDAMAGE, ModWeight( self ) );
-	}
+	return MOD_WEIGHT;
 }
 
 void G_WeightAttack( gentity_t *self, gentity_t *victim )
@@ -1413,27 +1328,27 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 
 				case WP_ALEVEL3:
 					FireMelee( self, LEVEL3_CLAW_RANGE, LEVEL3_CLAW_WIDTH, LEVEL3_CLAW_WIDTH,
-					           LEVEL3_CLAW_DMG, MOD_LEVEL3_CLAW );
+					           LEVEL3_CLAW_DMG, MOD_UNKNOWN );
 					break;
 
 				case WP_ALEVEL3_UPG:
 					FireMelee( self, LEVEL3_CLAW_UPG_RANGE, LEVEL3_CLAW_WIDTH, LEVEL3_CLAW_WIDTH,
-					           LEVEL3_CLAW_DMG, MOD_LEVEL3_CLAW );
+					           LEVEL3_CLAW_DMG, MOD_UNKNOWN );
 					break;
 
 				case WP_ALEVEL2:
 					FireMelee( self, LEVEL2_CLAW_RANGE, LEVEL2_CLAW_WIDTH, LEVEL2_CLAW_WIDTH,
-					           LEVEL2_CLAW_DMG, MOD_LEVEL2_CLAW );
+					           LEVEL2_CLAW_DMG, MOD_UNKNOWN );
 					break;
 
 				case WP_ALEVEL2_UPG:
 					FireMelee( self, LEVEL2_CLAW_U_RANGE, LEVEL2_CLAW_WIDTH, LEVEL2_CLAW_WIDTH,
-					           LEVEL2_CLAW_DMG, MOD_LEVEL2_CLAW );
+					           LEVEL2_CLAW_DMG, MOD_UNKNOWN );
 					break;
 
 				case WP_ALEVEL4:
 					FireMelee( self, LEVEL4_CLAW_RANGE, LEVEL4_CLAW_WIDTH, LEVEL4_CLAW_HEIGHT,
-					           LEVEL4_CLAW_DMG, MOD_LEVEL4_CLAW );
+					           LEVEL4_CLAW_DMG, MOD_UNKNOWN );
 					break;
 
 				case WP_BLASTER:
