@@ -1852,7 +1852,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 			break;
 
 		case 1:
-			if ( BG_Weapon( weapon )->team == TEAM_ALIENS )
+			if ( BG_Weapon( weapon )->team == TEAM_Q )
 			{
 				drawGun = false;
 			}
@@ -2028,7 +2028,7 @@ static bool CG_UpgradeSelectable( upgrade_t upgrade )
 CG_DrawItemSelect
 ===================
 */
-void CG_DrawHumanInventory()
+void CG_DrawUInventory()
 {
 	int           i;
 	int           items[ 64 ];
@@ -2457,13 +2457,13 @@ static void DrawEntityHitEffect( vec3_t origin, vec3_t normal, int targetNum )
 	{
 		team = cgs.clientinfo[ targetNum ].team;
 
-		if ( team == TEAM_ALIENS )
+		if ( team == TEAM_Q )
 		{
-			psHandle = cgs.media.alienBleedPS;
+			psHandle = cgs.media.qBleedPS;
 		}
-		else if ( team == TEAM_HUMANS )
+		else if ( team == TEAM_U )
 		{
-			psHandle = cgs.media.humanBleedPS;
+			psHandle = cgs.media.uBleedPS;
 		}
 		else
 		{

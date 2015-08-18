@@ -514,11 +514,11 @@ static void CG_PainBlend()
 		return;
 	}
 
-	if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+	if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_Q )
 	{
 		VectorSet( color, 0.43f, 0.8f, 0.37f );
 	}
-	else if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_HUMANS )
+	else if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_U )
 	{
 		VectorSet( color, 0.8f, 0.0f, 0.0f );
 	}

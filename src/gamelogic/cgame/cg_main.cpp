@@ -168,8 +168,8 @@ vmCvar_t        ui_currentClass;
 vmCvar_t        ui_carriage;
 vmCvar_t        ui_dialog;
 vmCvar_t        ui_voteActive;
-vmCvar_t        ui_alienTeamVoteActive;
-vmCvar_t        ui_humanTeamVoteActive;
+vmCvar_t        ui_qTeamVoteActive;
+vmCvar_t        ui_uTeamVoteActive;
 vmCvar_t        ui_unlockables;
 vmCvar_t        ui_momentumHalfLife;
 vmCvar_t        ui_unlockablesMinTime;
@@ -195,13 +195,7 @@ vmCvar_t        cg_motionblur;
 vmCvar_t        cg_motionblurMinSpeed;
 vmCvar_t        cg_spawnEffects;
 
-vmCvar_t        cg_fov_builder;
-vmCvar_t        cg_fov_level0;
-vmCvar_t        cg_fov_level1;
-vmCvar_t        cg_fov_level2;
-vmCvar_t        cg_fov_level3;
-vmCvar_t        cg_fov_level4;
-vmCvar_t        cg_fov_human;
+vmCvar_t        cg_fov;
 
 vmCvar_t        ui_chatPromptColors;
 vmCvar_t        cg_sayCommand;
@@ -311,9 +305,9 @@ static const cvarTable_t cvarTable[] =
 
 	{ &cg_hudFiles,                    "cg_hudFiles",                    "ui/hud.txt",   0                            },
 	{ &cg_hudFilesEnable,              "cg_hudFilesEnable",              "0",            0                            },
-	{ nullptr,                            "cg_alienConfig",                 "",             0                            },
-	{ nullptr,                            "cg_humanConfig",                 "",             0                            },
-	{ nullptr,                            "cg_spectatorConfig",             "",             0                            },
+	{ nullptr,                         "cg_qConfig",                     "",             0                            },
+	{ nullptr,                         "cg_uConfig",                     "",             0                            },
+	{ nullptr,                         "cg_spectatorConfig",             "",             0                            },
 
 	{ &cg_painBlendUpRate,             "cg_painBlendUpRate",             "10.0",         0                            },
 	{ &cg_painBlendDownRate,           "cg_painBlendDownRate",           "0.5",          0                            },
@@ -357,13 +351,7 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_motionblur,                  "cg_motionblur",                  "0.05",         0                            },
 	{ &cg_motionblurMinSpeed,          "cg_motionblurMinSpeed",          "600",          0                            },
 	{ &cg_spawnEffects,                "cg_spawnEffects",                "1",            0                            },
-	{ &cg_fov_builder,                 "cg_fov_builder",                 "0",            0                            },
-	{ &cg_fov_level0,                  "cg_fov_level0",                  "0",            0                            },
-	{ &cg_fov_level1,                  "cg_fov_level1",                  "0",            0                            },
-	{ &cg_fov_level2,                  "cg_fov_level2",                  "0",            0                            },
-	{ &cg_fov_level3,                  "cg_fov_level3",                  "0",            0                            },
-	{ &cg_fov_level4,                  "cg_fov_level4",                  "0",            0                            },
-	{ &cg_fov_human,                   "cg_fov_human",                   "0",            0                            },
+	{ &cg_fov,                         "cg_fov",                         "0",            0                            },
 
 	{ &ui_chatPromptColors,            "ui_chatPromptColors",            "1",            0                            },
 
@@ -427,8 +415,8 @@ static void CG_SetPVars()
 
 	switch ( ps->persistant[ PERS_TEAM ] )
 	{
-		case TEAM_ALIENS:
-		case TEAM_HUMANS:
+		case TEAM_Q:
+		case TEAM_U:
 			break;
 
 		default:
@@ -887,15 +875,12 @@ static void CG_RegisterSounds()
 
 	cgs.media.reinforcement = trap_S_RegisterSound( "sound/announcements/reinforcement.wav", true );
 
-	cgs.media.alienL4ChargePrepare = trap_S_RegisterSound( "sound/player/level4/charge_prepare.wav", true );
-	cgs.media.alienL4ChargeStart = trap_S_RegisterSound( "sound/player/level4/charge_start.wav", true );
-
 	cgs.media.selectSound = trap_S_RegisterSound( "sound/weapons/change.wav", false );
 	cgs.media.weaponEmptyClick = trap_S_RegisterSound( "sound/weapons/click.wav", false );
 
 	cgs.media.talkSound = trap_S_RegisterSound( "sound/misc/talk.wav", false );
-	cgs.media.alienTalkSound = trap_S_RegisterSound( "sound/misc/alien_talk.wav", false );
-	cgs.media.humanTalkSound = trap_S_RegisterSound( "sound/misc/human_talk.wav", false );
+	cgs.media.qTalkSound = trap_S_RegisterSound( "sound/misc/q_talk.wav", false );
+	cgs.media.uTalkSound = trap_S_RegisterSound( "sound/misc/u_talk.wav", false );
 	cgs.media.landSound = trap_S_RegisterSound( "sound/player/land1.wav", false );
 
 	cgs.media.watrInSound = trap_S_RegisterSound( "sound/player/watr_in.wav", false );
@@ -939,8 +924,6 @@ static void CG_RegisterSounds()
 	cgs.media.jetpackThrustLoopSound = trap_S_RegisterSound( "sound/upgrades/jetpack/hi.wav", false );
 
 	cgs.media.medkitUseSound = trap_S_RegisterSound( "sound/upgrades/medkit/medkit.wav", false );
-
-	cgs.media.alienEvolveSound = trap_S_RegisterSound( "sound/player/alienevolve.wav", false );
 
 	cgs.media.hardBounceSound1 = trap_S_RegisterSound( "sound/misc/hard_bounce1.wav", false );
 	cgs.media.hardBounceSound2 = trap_S_RegisterSound( "sound/misc/hard_bounce2.wav", false );
@@ -1123,14 +1106,12 @@ static void CG_RegisterGraphics()
 	cgs.media.wakeMarkShader = trap_R_RegisterShader("gfx/marks/wake",
 							 (RegisterShaderFlags_t) RSF_DEFAULT);
 
-	cgs.media.alienEvolvePS = CG_RegisterParticleSystem( "alienEvolvePS" );
-
 	cgs.media.jetPackThrustPS = CG_RegisterParticleSystem( "jetPackAscendPS" );
 
 	cgs.media.floorFirePS = CG_RegisterParticleSystem( "floorFirePS" );
 
-	cgs.media.alienBleedPS = CG_RegisterParticleSystem( "alienBleedPS" );
-	cgs.media.humanBleedPS = CG_RegisterParticleSystem( "humanBleedPS" );
+	cgs.media.qBleedPS = CG_RegisterParticleSystem( "qBleedPS" );
+	cgs.media.uBleedPS = CG_RegisterParticleSystem( "uBleedPS" );
 
 	cgs.media.sphereModel = trap_R_RegisterModel( "models/generic/sphere.md3" );
 	cgs.media.sphericalCone64Model = trap_R_RegisterModel( "models/generic/sphericalCone64.md3" );
@@ -1315,22 +1296,6 @@ static void CG_RegisterClients()
 	cgs.media.jetpackFlashModel = trap_R_RegisterModel( "models/players/human_base/jetpack_flash.md3" );
 	cgs.media.radarModel = trap_R_RegisterModel( "models/players/human_base/battpack.md3" ); // HACK: Use old battpack
 
-	CG_RegisterWeaponAnimation(
-	    &cgs.media.jetpackAnims[ JANIM_NONE ],
-	    "models/players/human_base/jetpack.iqm:idle",
-	    false, false, false );
-
-
-	CG_RegisterWeaponAnimation(
-	    &cgs.media.jetpackAnims[ JANIM_SLIDEOUT ],
-	    "models/players/human_base/jetpack.iqm:slideout",
-	    false, false, false );
-
-	CG_RegisterWeaponAnimation(
-	    &cgs.media.jetpackAnims[ JANIM_SLIDEIN ],
-	    "models/players/human_base/jetpack.iqm:slidein",
-	    false, false, false );
-
 	cg.charModelFraction = 1.0f;
 	trap_UpdateScreen();
 
@@ -1470,12 +1435,12 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 	Q_strncpyz( cgs.voteString[ TEAM_NONE ],
 	            CG_ConfigString( CS_VOTE_STRING + TEAM_NONE ),
 	            sizeof( cgs.voteString ) );
-	Q_strncpyz( cgs.voteString[ TEAM_ALIENS ],
-	            CG_ConfigString( CS_VOTE_STRING + TEAM_ALIENS ),
-	            sizeof( cgs.voteString[ TEAM_ALIENS ] ) );
-	Q_strncpyz( cgs.voteString[ TEAM_HUMANS ],
-	            CG_ConfigString( CS_VOTE_STRING + TEAM_HUMANS ),
-	            sizeof( cgs.voteString[ TEAM_HUMANS ] ) );
+	Q_strncpyz( cgs.voteString[ TEAM_Q ],
+	            CG_ConfigString( CS_VOTE_STRING + TEAM_Q ),
+	            sizeof( cgs.voteString[ TEAM_Q ] ) );
+	Q_strncpyz( cgs.voteString[ TEAM_U ],
+	            CG_ConfigString( CS_VOTE_STRING + TEAM_U ),
+	            sizeof( cgs.voteString[ TEAM_U ] ) );
 
 	// check version
 	s = CG_ConfigString( CS_GAME_VERSION );

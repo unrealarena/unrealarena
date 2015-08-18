@@ -1,25 +1,23 @@
 /*
-===========================================================================
-Copyright (C) 1999-2005 Id Software, Inc.
-Copyright (C) 2000-2009 Darklegion Development
+ * Daemon GPL source code
+ * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2000-2009  Darklegion Development
+ * Copyright (C) 1999-2005  Id Software, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-This file is part of Daemon.
-
-Daemon is free software; you can redistribute it
-and/or modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
-
-Daemon is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Daemon; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-===========================================================================
-*/
 
 // cg_view.c -- setup all the parameters (position, angle, etc)
 // for a 3D rendering
@@ -804,8 +802,7 @@ void CG_OffsetFirstPersonView()
 		}
 	}
 
-	// this *feels* more realisitic for humans <- this comment feels very descriptive
-	if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_HUMANS &&
+	if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_U &&
 	     cg.predictedPlayerState.pm_type == PM_NORMAL )
 	{
 		angles[ PITCH ] += cg.bobfracsin * bob2 * 0.5;
@@ -1384,7 +1381,7 @@ static void CG_ChooseCgradingEffectAndFade( const playerState_t* ps, qhandle_t* 
 {
 	int health = ps->stats[ STAT_HEALTH ];
 	int team = ps->persistant[ PERS_TEAM ];
-	bool playing = team == TEAM_HUMANS || team == TEAM_ALIENS;
+	bool playing = team == TEAM_Q || team == TEAM_U;
 
 	//the player has spawned once and is dead or in the intermission
 	if ( cg_spawnEffects.integer && ( health <= 0 || (playing && cg.snap->ps.persistant[ PERS_SPECSTATE ] != SPECTATOR_NOT) ) )

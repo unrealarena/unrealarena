@@ -656,8 +656,8 @@ typedef struct
 
 	// drawing
 	vec4_t        colorNeutral;
-	vec4_t        colorAlien;
-	vec4_t        colorHuman;
+	vec4_t        colorQ;
+	vec4_t        colorU;
 	float         fadeInAlpha;
 	float         fadeInScale;
 
@@ -997,13 +997,13 @@ typedef struct
 
 typedef struct
 {
-	vec3_t alienClientPos[ MAX_CLIENTS ];
-	float  alienClientIntensity[ MAX_CLIENTS ];
-	int    numAlienClients;
+	vec3_t qClientPos[ MAX_CLIENTS ];
+	float  qClientIntensity[ MAX_CLIENTS ];
+	int    qClients;
 
-	vec3_t humanClientPos[ MAX_CLIENTS ];
-	float  humanClientIntensity[ MAX_CLIENTS ];
-	int    numHumanClients;
+	vec3_t uClientPos[ MAX_CLIENTS ];
+	float  uClientIntensity[ MAX_CLIENTS ];
+	int    uClients;
 
 	int    lastUpdateTime;
 	vec3_t origin;
@@ -1376,13 +1376,9 @@ typedef struct
 
 	int selectedTeamIndex;
 
-	int selectedHumanSpawnItem;
+	int selectedQSpawnClass;
 
-	int selectedAlienSpawnClass;
-
-	int alienEvolveList[ PCL_NUM_CLASSES ];
-	int selectedAlienEvolve;
-	int alienEvolveListCount;
+	int selectedUSpawnItem;
 
 	int beaconList[ NUM_BEACON_TYPES ];
 	int selectedBeacon;
@@ -1465,8 +1461,8 @@ typedef struct
 	sfxHandle_t selectSound;
 	sfxHandle_t footsteps[ FOOTSTEP_TOTAL ][ 4 ];
 	sfxHandle_t talkSound;
-	sfxHandle_t alienTalkSound;
-	sfxHandle_t humanTalkSound;
+	sfxHandle_t qTalkSound;
+	sfxHandle_t uTalkSound;
 	sfxHandle_t landSound;
 	sfxHandle_t fallSound;
 
@@ -1485,9 +1481,6 @@ typedef struct
 
 	sfxHandle_t reinforcement;
 
-	sfxHandle_t alienL4ChargePrepare;
-	sfxHandle_t alienL4ChargeStart;
-
 	qhandle_t   cursor;
 	qhandle_t   selectCursor;
 	qhandle_t   sizeCursor;
@@ -1501,12 +1494,8 @@ typedef struct
 	qhandle_t   jetpackFlashModel;
 	qhandle_t   radarModel;
 
-	qhandle_t   alienEvolvePS;
-
-	sfxHandle_t alienEvolveSound;
-
-	qhandle_t   alienBleedPS;
-	qhandle_t   humanBleedPS;
+	qhandle_t   qBleedPS;
+	qhandle_t   uBleedPS;
 
 	qhandle_t   floorFirePS;
 
@@ -1666,8 +1655,8 @@ typedef enum
 	ELEMENT_ALL,
 	ELEMENT_GAME,
 	ELEMENT_LOADING,
-	ELEMENT_HUMANS,
-	ELEMENT_ALIENS,
+	ELEMENT_Q,
+	ELEMENT_U,
 	ELEMENT_DEAD,
 	ELEMENT_BOTH,
 } rocketElementType_t;
@@ -1809,8 +1798,8 @@ extern  vmCvar_t            ui_currentClass;
 extern  vmCvar_t            ui_carriage;
 extern  vmCvar_t            ui_dialog;
 extern  vmCvar_t            ui_voteActive;
-extern  vmCvar_t            ui_alienTeamVoteActive;
-extern  vmCvar_t            ui_humanTeamVoteActive;
+extern  vmCvar_t            ui_qTeamVoteActive;
+extern  vmCvar_t            ui_uTeamVoteActive;
 extern  vmCvar_t            ui_unlockables;
 
 extern vmCvar_t             cg_debugRandom;
@@ -2040,7 +2029,7 @@ void CG_HandleMissileHitWall( entityState_t *es, vec3_t origin );
 
 void CG_AddViewWeapon( playerState_t *ps );
 void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent );
-void CG_DrawHumanInventory();
+void CG_DrawUInventory();
 void CG_DrawItemSelectText();
 float CG_ChargeProgress();
 

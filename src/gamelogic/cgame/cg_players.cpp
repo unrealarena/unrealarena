@@ -342,17 +342,7 @@ static bool CG_RegisterPlayerAnimation( clientInfo_t *ci, const char *modelName,
 	char filename[ MAX_QPATH ], newModelName[ MAX_QPATH ];
 	int  frameRate;
 
-	// special handling for human_(naked|light|medium)
-	if ( !Q_stricmp( modelName, "human_naked"   ) ||
-	     !Q_stricmp( modelName, "human_light"   ) ||
-	     !Q_stricmp( modelName, "human_medium" ) )
-	{
-		Q_strncpyz( newModelName, "human_nobsuit_common", sizeof( newModelName ) );
-	}
-	else
-	{
-		Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
-	}
+	Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
 
 	if ( iqm )
 	{
@@ -409,17 +399,7 @@ static bool CG_DeriveAnimationDelta( const char *modelName, weapon_t weapon, cli
 	char newModelName[ MAX_QPATH ];
 	static refSkeleton_t base, delta;
 
-	// special handling for human_(naked|light|medium)
-	if ( !Q_stricmp( modelName, "human_naked"   ) ||
-		!Q_stricmp( modelName, "human_light"   ) ||
-		!Q_stricmp( modelName, "human_medium" ) )
-	{
-		Q_strncpyz( newModelName, "human_nobsuit_common", sizeof( newModelName ) );
-	}
-	else
-	{
-		Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
-	}
+	Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
 
 	if ( iqm )
 	{
@@ -926,7 +906,7 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 
 		ci->weaponAdjusted = 0;
 
-		// If model is not an alien, load human animations
+		// If model is not a qplayer, load uplayer animations
 		if ( ci->gender != GENDER_NEUTER )
 		{
 			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_IDLE, "idle", true, false, false, iqm ) )
@@ -1076,7 +1056,7 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 				ci->animations[ TORSO_RAISE ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			// TODO: Don't assume WP_BLASTER is first human weapon
+			// TODO: Don't assume WP_BLASTER is first U team weapon
 			for ( i = TORSO_GESTURE_BLASTER, j = WP_BLASTER; i <= TORSO_GESTURE_CKIT; i++, j++ )
 			{
 				if ( i == TORSO_GESTURE ) { continue; }
@@ -1088,17 +1068,17 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 				}
 			}
 
-			// TODO: Don't assume WP_BLASTER is first human weapon
+			// TODO: Don't assume WP_BLASTER is first U team weapon
 			for ( i = WP_BLASTER; i < WP_NUM_WEAPONS; i++ )
 			{
-				if ( BG_Weapon( i )->team != TEAM_HUMANS || !BG_Weapon( i )->purchasable ) { continue; }
+				if ( BG_Weapon( i )->team != TEAM_U || !BG_Weapon( i )->purchasable ) { continue; }
 				CG_DeriveAnimationDelta( modelName, (weapon_t)i, ci, iqm );
 			}
 
 		}
 		else
 		{
-			// Load Alien animations
+			// Load qplayer animations
 			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_STAND, "stand", true, false, false, iqm ) )
 			{
 				Com_Printf( "Failed to load standing animation file %s\n", filename );
@@ -1979,11 +1959,11 @@ static void CG_PlayerMD5Animation( centity_t *cent )
 
 /*
 ===============
-CG_PlayerMD5AlienAnimation
+CG_PlayerMD5QAnimation
 ===============
 */
 
-static void CG_PlayerMD5AlienAnimation( centity_t *cent )
+static void CG_PlayerMD5QAnimation( centity_t *cent )
 {
 	clientInfo_t  *ci;
 	int           clientNum;
@@ -3247,7 +3227,7 @@ void CG_Player( centity_t *cent )
 		}
 		else
 		{
-			CG_PlayerMD5AlienAnimation( cent );
+			CG_PlayerMD5QAnimation( cent );
 		}
 
 		// add the talk baloon or disconnect icon
@@ -3339,7 +3319,7 @@ void CG_Player( centity_t *cent )
 			{
 
 				// seems only to happen when switching from an MD3 model to an MD5 model
-				// while spectating (switching between players on the human team)
+				// while spectating (switching between players on the U team)
 				// - don't treat as fatal, but doing so will (briefly?) cause rendering
 				// glitches if chasing; also, brief spam
 				CG_Printf( "[skipnotify]WARNING: cent->pe.legs.skeleton.numBones != cent->pe.torso.skeleton.numBones\n" );
@@ -3394,7 +3374,7 @@ void CG_Player( centity_t *cent )
 			QuatFromAngles( rotation, -cent->lerpAngles[ 0 ], 0, 0 );
 			QuatMultiply0( body.skeleton.bones[ ci->rightShoulderBone ].t.rot, rotation );
 
-			// Relationships are emphirically derived. They will probably need to be changed upon changes to the human model
+			// Relationships are emphirically derived. They will probably need to be changed upon changes to the uplayer model
 			QuatFromAngles( rotation, cent->lerpAngles[ 0 ], cent->lerpAngles[ 0 ] < 0 ? -cent->lerpAngles[ 0 ] / 9 : -cent->lerpAngles[ 0 ] / ( 8 - ( 5 * ( cent->lerpAngles[ 0 ] / 90 ) ) )  , 0 );
 			QuatMultiply0( body.skeleton.bones[ ci->leftShoulderBone ].t.rot, rotation );
 		}
