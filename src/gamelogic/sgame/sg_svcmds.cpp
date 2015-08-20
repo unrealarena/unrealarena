@@ -308,15 +308,15 @@ static void Svcmd_AdmitDefeat_f()
 	trap_Argv( 1, teamNum, sizeof( teamNum ) );
 	team = G_TeamFromString( teamNum );
 
-	if ( team == TEAM_ALIENS )
+	if ( team == TEAM_Q )
 	{
-		G_TeamCommand( TEAM_ALIENS, "cp \"Hivemind Link Broken\" 1" );
-		trap_SendServerCommand( -1, "print_tr \"" N_("Alien team has admitted defeat\n") "\"" );
+		G_TeamCommand( TEAM_Q, "cp \"Hivemind Link Broken\" 1" );
+		trap_SendServerCommand( -1, "print_tr \"" N_("Q team has admitted defeat\n") "\"" );
 	}
-	else if ( team == TEAM_HUMANS )
+	else if ( team == TEAM_U )
 	{
-		G_TeamCommand( TEAM_HUMANS, "cp \"Life Support Terminated\" 1" );
-		trap_SendServerCommand( -1, "print_tr \"" N_("Human team has admitted defeat\n") "\"" );
+		G_TeamCommand( TEAM_U, "cp \"Life Support Terminated\" 1" );
+		trap_SendServerCommand( -1, "print_tr \"" N_("U team has admitted defeat\n") "\"" );
 	}
 	else
 	{
@@ -531,7 +531,7 @@ static void Svcmd_PrintQueue_f()
 	trap_Argv( 1, teamName, sizeof( teamName ) );
 
 	team = G_TeamFromString(teamName);
-	if ( TEAM_ALIENS == team || TEAM_HUMANS == team )
+	if ( TEAM_Q == team || TEAM_U == team )
 	{
 		G_PrintSpawnQueue( &level.team[ team ].spawnQueue );
 	}
@@ -589,7 +589,6 @@ static const struct svcmd
 	{ "a",                  true,  Svcmd_MessageWrapper         },
 	{ "admitDefeat",        false, Svcmd_AdmitDefeat_f          },
 	{ "advanceMapRotation", false, Svcmd_G_AdvanceMapRotation_f },
-	{ "alienWin",           false, Svcmd_TeamWin_f              },
 	{ "asay",               true,  Svcmd_MessageWrapper         },
 	{ "chat",               true,  Svcmd_MessageWrapper         },
 	{ "cp",                 true,  Svcmd_CenterPrint_f          },
@@ -600,16 +599,17 @@ static const struct svcmd
 	{ "entityShow",         false, Svcmd_EntityShow_f           },
 	{ "evacuation",         false, Svcmd_Evacuation_f           },
 	{ "forceTeam",          false, Svcmd_ForceTeam_f            },
-	{ "humanWin",           false, Svcmd_TeamWin_f              },
 	{ "loadcensors",        false, G_LoadCensors                },
 	{ "m",                  true,  Svcmd_MessageWrapper         },
-	{ "maplog",             true,  Svcmd_MapLogWrapper          },
 	{ "mapRotation",        false, Svcmd_MapRotation_f          },
+	{ "maplog",             true,  Svcmd_MapLogWrapper          },
 	{ "pr",                 false, Svcmd_Pr_f                   },
 	{ "printqueue",         false, Svcmd_PrintQueue_f           },
+	{ "qWin",               false, Svcmd_TeamWin_f              },
 	{ "say",                true,  Svcmd_MessageWrapper         },
 	{ "say_team",           true,  Svcmd_TeamMessage_f          },
 	{ "stopMapRotation",    false, G_StopMapRotation            },
+	{ "uWin",               false, Svcmd_TeamWin_f              },
 };
 
 /*

@@ -85,13 +85,13 @@ void CG_ClientList_f()
 
 		switch ( ci->team )
 		{
-			case TEAM_ALIENS:
-				Com_Printf( "%2d " S_COLOR_RED "A   " S_COLOR_WHITE "%s\n", i,
+			case TEAM_Q:
+				Com_Printf( "%2d " S_COLOR_RED "Q   " S_COLOR_WHITE "%s\n", i,
 				            ci->name );
 				break;
 
-			case TEAM_HUMANS:
-				Com_Printf( "%2d " S_COLOR_CYAN "H   " S_COLOR_WHITE "%s\n", i,
+			case TEAM_U:
+				Com_Printf( "%2d " S_COLOR_BLUE "U   " S_COLOR_WHITE "%s\n", i,
 				            ci->name );
 				break;
 
@@ -116,17 +116,11 @@ static void CG_ReloadHud_f()
 
 static void CG_CompleteClass()
 {
-	int i = 0;
-
-	if ( cgs.clientinfo[ cg.clientNum ].team == TEAM_ALIENS )
+	if ( cgs.clientinfo[ cg.clientNum ].team == TEAM_Q )
 	{
-		// TODO: Add iterator for alien/human classes
-		for ( i = PCL_ALIEN_BUILDER0; i < PCL_HUMAN_NAKED; i++ )
-		{
-			trap_CompleteCallback( BG_Class( i )->name );
-		}
+		trap_CompleteCallback( BG_Class( PCL_Q )->name );
 	}
-	else if ( cgs.clientinfo[ cg.clientNum ].team == TEAM_HUMANS )
+	else if ( cgs.clientinfo[ cg.clientNum ].team == TEAM_U )
 	{
 		trap_CompleteCallback( BG_Weapon( WP_HBUILD )->name );
 		trap_CompleteCallback( BG_Weapon( WP_MACHINEGUN )->name );
@@ -225,7 +219,7 @@ static void CG_CompleteItem()
 {
 	int i = 0;
 
-	if( cgs.clientinfo[ cg.clientNum ].team == TEAM_ALIENS )
+	if( cgs.clientinfo[ cg.clientNum ].team == TEAM_Q )
 	{
 		return;
 	}
@@ -244,7 +238,7 @@ static void CG_CompleteItem()
 	for( i = 0; i < WP_NUM_WEAPONS; i++ )
 	{
 		const weaponAttributes_t *item = BG_Weapon( i );
-		if( item->team == TEAM_HUMANS )
+		if( item->team == TEAM_U )
 		{
 			trap_CompleteCallback( item->name );
 		}

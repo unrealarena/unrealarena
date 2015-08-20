@@ -94,13 +94,13 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	{
 		"bot",          G_admin_bot,         false, "bot",
 		N_("Add/Del/Spec bots"),
-		N_("[^5add|del|spec|unspec^7] [^5name|all^7] [^5aliens/humans^7] (^5skill^7)")
+		N_("[^5add|del|spec|unspec^7] [^5name|all^7] [^5q/u^7] (^5skill^7)")
 	},
 
 	{
 		"cancelvote",   G_admin_endvote,     false, "cancelvote",
 		N_("cancel a vote taking place"),
-		"(^5a|h^7)"
+		"(^5q|u^7)"
 	},
 
 	{
@@ -173,7 +173,7 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	{
 		"lock",         G_admin_lock,        false, "lock",
 		N_("lock a team to prevent anyone from joining it"),
-		"[^3a|h^7]"
+		"[^3q|u^7]"
 	},
 
 	{
@@ -203,7 +203,7 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	{
 		"passvote",     G_admin_endvote,     false, "passvote",
 		N_("pass a vote currently taking place"),
-		"(^5a|h^7)"
+		"(^5q|u^7)"
 	},
 
 	{
@@ -215,7 +215,7 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	{
 		"putteam",      G_admin_putteam,     false, "putteam",
 		N_("move a player to a specified team"),
-		N_("[^3name|slot#^7] [^3h|a|s^7]")
+		N_("[^3name|slot#^7] [^3q|u|s^7]")
 	},
 
 	{
@@ -296,7 +296,7 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	{
 		"unlock",       G_admin_lock,        false, "lock",
 		N_("unlock a locked team"),
-		N_("[^3a|h^7]")
+		N_("[^3q|u^7]")
 	},
 
 	{
@@ -2972,7 +2972,7 @@ bool G_admin_putteam( gentity_t *ent )
 
 	if ( trap_Argc() < 3 )
 	{
-		ADMP( QQ( N_("^3putteam: ^7usage: putteam [name] [h|a|s]\n") ) );
+		ADMP( QQ( N_("^3putteam: ^7usage: putteam [name] [q|u|s]\n") ) );
 		return false;
 	}
 
@@ -3578,13 +3578,13 @@ bool G_admin_listplayers( gentity_t *ent )
 		{
 			t = toupper( * ( BG_TeamName( p->pers.team ) ) );
 
-			if ( p->pers.team == TEAM_HUMANS )
-			{
-				c = COLOR_CYAN;
-			}
-			else if ( p->pers.team == TEAM_ALIENS )
+			if ( p->pers.team == TEAM_Q )
 			{
 				c = COLOR_RED;
+			}
+			else if ( p->pers.team == TEAM_U )
+			{
+				c = COLOR_BLUE;
 			}
 			else
 			{
@@ -4224,13 +4224,13 @@ bool G_admin_restart( gentity_t *ent )
 				continue;
 			}
 
-			if ( cl->pers.team == TEAM_HUMANS )
+			if ( cl->pers.team == TEAM_Q )
 			{
-				cl->sess.restartTeam = TEAM_ALIENS;
+				cl->sess.restartTeam = TEAM_U;
 			}
-			else if ( cl->pers.team == TEAM_ALIENS )
+			else if ( cl->pers.team == TEAM_U )
 			{
-				cl->sess.restartTeam = TEAM_HUMANS;
+				cl->sess.restartTeam = TEAM_Q;
 			}
 		}
 
@@ -4501,7 +4501,7 @@ namelog_t *G_NamelogFromString( gentity_t *ent, char *s )
 bool G_admin_lock( gentity_t *ent )
 {
 	char     command[ MAX_ADMIN_CMD_LEN ];
-	char     teamName[ sizeof( "aliens" ) ];
+	char     teamName[ sizeof( "u" ) ];
 	team_t   team;
 	bool lock, fail = false;
 
@@ -4511,7 +4511,7 @@ bool G_admin_lock( gentity_t *ent )
 
 	if ( trap_Argc() < 2 )
 	{
-		ADMP( va( "%s %s", QQ( N_("^3$1$: ^7usage: $1$ [a|h]\n") ), command ) );
+		ADMP( va( "%s %s", QQ( N_("^3$1$: ^7usage: $1$ [q|u]\n") ), command ) );
 		return false;
 	}
 
@@ -4519,7 +4519,7 @@ bool G_admin_lock( gentity_t *ent )
 	trap_Argv( 1, teamName, sizeof( teamName ) );
 	team = G_TeamFromString( teamName );
 
-	if ( team == TEAM_ALIENS || team== TEAM_HUMANS )
+	if ( team == TEAM_Q || team== TEAM_U )
 	{
 		if ( level.team[ team ].locked == lock )
 		{
@@ -5185,9 +5185,9 @@ bool G_admin_bot( gentity_t *ent )
 	int i;
 	int clientNum;
 
-	static const char bot_usage[] = QQ( N_( "^3bot: ^7usage: bot add [^5name|*^7] [^5aliens|humans^7] (^5skill^7) (^5behavior^7)\n"
+	static const char bot_usage[] = QQ( N_( "^3bot: ^7usage: bot add [^5name|*^7] [^5q|u^7] (^5skill^7) (^5behavior^7)\n"
 	                                        "            bot [^5del|spec|unspec^7] [^5name|all^7]\n"
-	                                        "            bot names [^5aliens|humans^7] [^5names…^7]\n"
+	                                        "            bot names [^5q|u^7] [^5names…^7]\n"
 	                                        "            bot names [^5clear|list^7]\n" ) );
 
 	if ( trap_Argc() < min_args )
@@ -5245,19 +5245,19 @@ bool G_admin_bot( gentity_t *ent )
 			trap_Argv( 5, behavior, sizeof( behavior ) );
 		}
 		//choose team
-		if ( !Q_stricmp( team, "humans" ) || !Q_stricmp( team, "h" ) )
+		if ( !Q_stricmp( team, "q" ) )
 		{
-			if ( !G_BotAdd( name, TEAM_HUMANS, skill_int, behavior ) )
+			if ( !G_BotAdd( name, TEAM_Q, skill_int, behavior ) )
 			{
-				ADMP( QQ( "Can't add a bot\n" ) );
+				ADMP( QQ( N_( "Can't add a bot\n" ) ) );
 				return false;
 			}
 		}
-		else if ( !Q_stricmp( team, "aliens" ) || !Q_stricmp( team, "a" ) )
+		else if ( !Q_stricmp( team, "u" ) )
 		{
-			if ( !G_BotAdd( name, TEAM_ALIENS, skill_int, behavior ) )
+			if ( !G_BotAdd( name, TEAM_U, skill_int, behavior ) )
 			{
-				ADMP( QQ( N_( "Can't add a bot\n" ) ) );
+				ADMP( QQ( "Can't add a bot\n" ) );
 				return false;
 			}
 		}
@@ -5357,15 +5357,15 @@ bool G_admin_bot( gentity_t *ent )
 	}
 	else if ( !Q_stricmp( arg1, "names" ) )
 	{
-		if ( !Q_stricmp( name, "humans" ) || !Q_stricmp( name, "h" ) )
+		if ( !Q_stricmp( name, "q" ) )
 		{
-			i = G_BotAddNames( TEAM_HUMANS, 3, trap_Argc() );
-			ADMP( va( "%s %d", Quote( P_( "added $1$ human bot name\n", "added $1$ human bot names\n", i ) ), i ) );
+			i = G_BotAddNames( TEAM_Q, 3, trap_Argc() );
+			ADMP( va( "%s %d", Quote( P_( "added $1$ Q bot name\n", "added $1$ Q bot names\n", i ) ), i ) );
 		}
-		else if ( !Q_stricmp( name, "aliens" ) || !Q_stricmp( name, "a" ) )
+		else if ( !Q_stricmp( name, "u" ) )
 		{
-			i = G_BotAddNames( TEAM_ALIENS, 3, trap_Argc() );
-			ADMP( va( "%s %d", Quote( P_( "added $1$ alien bot name\n", "added $1$ alien bot names\n", i ) ), i ) );
+			i = G_BotAddNames( TEAM_U, 3, trap_Argc() );
+			ADMP( va( "%s %d", Quote( P_( "added $1$ U bot name\n", "added $1$ U bot names\n", i ) ), i ) );
 		}
 		else if ( !Q_stricmp( name, "clear" ) || !Q_stricmp( name, "c" ) )
 		{

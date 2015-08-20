@@ -306,7 +306,7 @@ class ClipsHudElement : public TextHudElement
 {
 public:
 	ClipsHudElement( const Rocket::Core::String& tag ) :
-		TextHudElement( tag, ELEMENT_HUMANS ),
+		TextHudElement( tag, ELEMENT_U ),
 		clips( 0 ) {}
 
 	virtual void DoOnRender()
@@ -790,25 +790,6 @@ static void CG_Rocket_DrawCreditsValue()
 	int value = ps->persistant[ PERS_CREDIT ];;
 
 	Rocket_SetInnerRML( va( "%d", value ), 0 );
-}
-
-static void CG_Rocket_DrawAlienEvosValue()
-{
-	playerState_t *ps = &cg.snap->ps;
-	float value = ps->persistant[ PERS_CREDIT ];;
-
-	value /= ( float ) CREDITS_PER_EVO;
-
-	Rocket_SetInnerRML( va( "%1.1f", value ), 0 );
-}
-
-static void CG_Rocket_DrawStaminaValue()
-{
-	playerState_t *ps = &cg.snap->ps;
-	float         stamina = ps->stats[ STAT_STAMINA ];
-	int           percent = 100 * ( stamina / ( float ) STAMINA_MAX );
-
-	Rocket_SetInnerRML( va( "%d", percent ), 0 );
 }
 
 static void CG_Rocket_DrawWeaponIcon()
@@ -1488,7 +1469,7 @@ void CG_Rocket_DrawPlayerHealthCross()
 
 	else if ( cg.snap->ps.stats[ STAT_STATE ] & SS_HEALING_4X )
 	{
-		if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+		if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_Q )
 		{
 			shader = cgs.media.healthCross2X;
 		}
@@ -1507,7 +1488,7 @@ void CG_Rocket_DrawPlayerHealthCross()
 	// Pick the alpha value
 	Vector4Copy( ref_color, color );
 
-	if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_HUMANS &&
+	if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_U &&
 			cg.snap->ps.stats[ STAT_HEALTH ] < 10 )
 	{
 		color[ 0 ] = 1.0f;
@@ -1558,28 +1539,6 @@ void CG_Rocket_DrawPlayerHealthCross()
 	CG_DrawPic( rect.x, rect.y, rect.w, rect.h, shader );
 	trap_R_SetColor( nullptr );
 
-}
-
-void CG_Rocket_DrawAlienBarbs()
-{
-	int numBarbs = cg.snap->ps.ammo;
-	char base[ MAX_STRING_CHARS ];
-	char rml[ MAX_STRING_CHARS ] = { 0 };
-
-	if ( !numBarbs )
-	{
-		Rocket_SetInnerRML( "", 0 );
-		return;
-	}
-
-	Com_sprintf( base, sizeof( base ), "<img class='barbs' src='%s' />", CG_Rocket_GetAttribute( "src" ) );
-
-	for ( ; numBarbs > 0; numBarbs-- )
-	{
-		Q_strcat( rml, sizeof( rml ), base );
-	}
-
-	Rocket_SetInnerRML( rml, 0 );
 }
 
 /*
@@ -2726,8 +2685,7 @@ typedef struct
 // THESE MUST BE ALPHABETIZED
 static const elementRenderCmd_t elementRenderCmdList[] =
 {
-	{ "ammo_stack", &CG_DrawPlayerAmmoStack, ELEMENT_HUMANS },
-	{ "barbs", &CG_Rocket_DrawAlienBarbs, ELEMENT_ALIENS },
+	{ "ammo_stack", &CG_DrawPlayerAmmoStack, ELEMENT_U },
 	{ "beacon_age", &CG_Rocket_DrawBeaconAge, ELEMENT_GAME },
 	{ "beacon_distance", &CG_Rocket_DrawBeaconDistance, ELEMENT_GAME },
 	{ "beacon_icon", &CG_Rocket_DrawBeaconIcon, ELEMENT_GAME },
@@ -2736,10 +2694,10 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "beacon_owner", &CG_Rocket_DrawBeaconOwner, ELEMENT_GAME },
 	{ "center_print", &CG_Rocket_DrawCenterPrint, ELEMENT_GAME },
 	{ "chattype", &CG_Rocket_DrawChatType, ELEMENT_ALL },
-	{ "clip_stack", &CG_DrawPlayerClipsStack, ELEMENT_HUMANS },
+	{ "clip_stack", &CG_DrawPlayerClipsStack, ELEMENT_U },
 	{ "clock", &CG_Rocket_DrawClock, ELEMENT_ALL },
 	{ "connecting", &CG_Rocket_DrawConnectText, ELEMENT_ALL },
-	{ "credits", &CG_Rocket_DrawCreditsValue, ELEMENT_HUMANS },
+	{ "credits", &CG_Rocket_DrawCreditsValue, ELEMENT_U },
 	{ "crosshair", &CG_Rocket_DrawCrosshair, ELEMENT_BOTH },
 	{ "crosshair_name", &CG_Rocket_DrawCrosshairNames, ELEMENT_GAME },
 	{ "downloadCompletedSize", &CG_Rocket_DrawDownloadCompletedSize, ELEMENT_ALL },
@@ -2747,14 +2705,13 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "downloadSpeed", &CG_Rocket_DrawDownloadSpeed, ELEMENT_ALL },
 	{ "downloadTime", &CG_Rocket_DrawDownloadTime, ELEMENT_ALL },
 	{ "downloadTotalSize", &CG_Rocket_DrawDownloadTotalSize, ELEMENT_ALL },
-	{ "evos", &CG_Rocket_DrawAlienEvosValue, ELEMENT_ALIENS },
 	{ "follow", &CG_Rocket_DrawFollow, ELEMENT_GAME },
 	{ "health", &CG_Rocket_DrawPlayerHealth, ELEMENT_BOTH },
 	{ "health_cross", &CG_Rocket_DrawPlayerHealthCross, ELEMENT_BOTH },
 	{ "hostname", &CG_Rocket_DrawHostname, ELEMENT_ALL },
-	{ "inventory", &CG_DrawHumanInventory, ELEMENT_HUMANS },
-	{ "itemselect_text", &CG_DrawItemSelectText, ELEMENT_HUMANS },
-	{ "jetpack", &CG_Rocket_HaveJetpck, ELEMENT_HUMANS },
+	{ "inventory", &CG_DrawUInventory, ELEMENT_U },
+	{ "itemselect_text", &CG_DrawItemSelectText, ELEMENT_U },
+	{ "jetpack", &CG_Rocket_HaveJetpck, ELEMENT_U },
 	{ "lagometer", &CG_Rocket_DrawLagometer, ELEMENT_GAME },
 	{ "levelname", &CG_Rocket_DrawLevelName, ELEMENT_ALL },
 	{ "levelshot", &CG_Rocket_DrawLevelshot, ELEMENT_ALL },
@@ -2769,14 +2726,13 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "progress_value", &CG_Rocket_DrawProgressValue, ELEMENT_ALL },
 	{ "spawnPos", &CG_Rocket_DrawSpawnQueuePosition, ELEMENT_DEAD },
 	{ "speedometer", &CG_Rocket_DrawSpeedGraph, ELEMENT_GAME },
-	{ "stamina", &CG_Rocket_DrawStaminaValue, ELEMENT_HUMANS },
-	{ "stamina_bolt", &CG_Rocket_DrawStaminaBolt, ELEMENT_HUMANS },
+	{ "stamina_bolt", &CG_Rocket_DrawStaminaBolt, ELEMENT_U },
 	{ "timer", &CG_Rocket_DrawTimer, ELEMENT_GAME },
 	{ "tutorial", &CG_Rocket_DrawTutorial, ELEMENT_GAME },
 	{ "unlocked_items", &CG_Rocket_DrawPlayerUnlockedItems, ELEMENT_BOTH },
 	{ "votes", &CG_Rocket_DrawVote, ELEMENT_GAME },
 	{ "votes_team", &CG_Rocket_DrawTeamVote, ELEMENT_BOTH },
-	{ "wallwalk", &CG_Rocket_DrawPlayerWallclimbing, ELEMENT_ALIENS },
+	{ "wallwalk", &CG_Rocket_DrawPlayerWallclimbing, ELEMENT_Q },
 	{ "warmup_time", &CG_Rocket_DrawWarmup, ELEMENT_GAME },
 	{ "weapon_icon", &CG_Rocket_DrawWeaponIcon, ELEMENT_BOTH },
 };

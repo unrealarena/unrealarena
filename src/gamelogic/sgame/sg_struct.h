@@ -316,7 +316,7 @@ struct gentity_s
 	qhandle_t   obstacleHandle;
 	botMemory_t *botMind;
 
-	gentity_t   *alienTag, *humanTag;
+	gentity_t   *qTag, *uTag;
 	gentity_t   **tagAttachment;
 	int         tagScore;
 	int         tagScoreTime;
@@ -390,7 +390,7 @@ struct clientPersistant_s
 
 	class_t           classSelection; // player class (copied to ent->client->ps.stats[ STAT_CLASS ] once spawned)
 	float             evolveHealthFraction;
-	weapon_t          humanItemSelection; // humans have a starting item
+	weapon_t          weapon; // starting item
 
 	int               teamChangeTime; // level.time of last team change
 	namelog_t         *namelog;
@@ -622,7 +622,7 @@ struct level_locals_s
 
 	namelog_t        *namelogs;
 
-	int              humanBaseAttackTimer;
+	int              baseAttackTimer;
 
 	struct
 	{

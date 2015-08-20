@@ -86,9 +86,6 @@ int        BotValueOfWeapons( gentity_t *self );
 int        BotValueOfUpgrades( gentity_t *self );
 
 // alien bots
-#define AS_OVER_RT3         ((ALIENSENSE_RANGE*0.5f)/M_ROOT3)
-float    CalcPounceAimPitch( gentity_t *self, botTarget_t target );
-float    CalcBarbAimPitch( gentity_t *self, botTarget_t target );
 bool BotCanEvolveToClass( gentity_t *self, class_t newClass );
 bool BotEvolveToClass( gentity_t *ent, class_t newClass );
 float    CalcAimPitch( gentity_t *self, botTarget_t target, vec_t launchSpeed );
@@ -146,9 +143,4 @@ bool BotPathIsWalkable( gentity_t *self, botTarget_t target );
 //used for clamping distance to heal structure when deciding whether to go heal
 #define MAX_HEAL_DIST 2000.0f
 
-//how far away we can be before we stop going forward when fighting an alien
-#define MAX_HUMAN_DANCE_DIST 300.0f
-
-//how far away we can be before we try to go around an alien when fighting an alien
-#define MIN_HUMAN_DANCE_DIST 100.0f
 #endif

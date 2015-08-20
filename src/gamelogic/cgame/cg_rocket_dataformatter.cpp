@@ -232,49 +232,13 @@ static void CG_Rocket_DFGearOrReady( int handle, const char *data )
 			rml = va( "<img src='/%s'/>", CG_GetShaderNameFromHandle( cg_weapons[ s->weapon ].weaponIcon ) );
 		}
 
-		if ( s && s->team == cg.predictedPlayerState.persistant[ PERS_TEAM ] && s->team == TEAM_HUMANS && s->upgrade != UP_NONE )
+		if ( s && s->team == cg.predictedPlayerState.persistant[ PERS_TEAM ] && s->team == TEAM_U && s->upgrade != UP_NONE )
 		{
 			rml = va( "%s<img src='/%s'/>", rml, CG_GetShaderNameFromHandle( cg_upgrades[ s->upgrade ].upgradeIcon ) );
 		}
 
 		Rocket_DataFormatterFormattedData( handle, rml, false );
 	}
-}
-
-static void CG_Rocket_DFCMAlienEvolve( int handle, const char *data )
-{
-	class_t alienClass = (class_t) atoi( Info_ValueForKey( data, "1" ) );
-	const char *Class = "";
-	const char *Icon = "";
-	const char *action = "";
-	int cost = BG_ClassCanEvolveFromTo( cg.predictedPlayerState.stats[ STAT_CLASS ], alienClass, cg.predictedPlayerState.persistant[ PERS_CREDIT ] );
-
-	if( cg.predictedPlayerState.stats[ STAT_CLASS ] == alienClass )
-	{
-		Class = "active";
-		//Check mark icon. UTF-8 encoding of \uf00c
-		Icon = "<icon class=\"current\">\xEF\x80\x8C</icon>";
-	}
-	else if ( !BG_ClassUnlocked( alienClass ) || BG_ClassDisabled( alienClass ) )
-	{
-		Class = "locked";
-		//Padlock icon. UTF-8 encoding of \uf023
-		Icon = "<icon>\xEF\x80\xA3</icon>";
-	}
-	else if ( cost == -1 )
-	{
-
-		Class = "expensive";
-		//$1 bill icon. UTF-8 encoding of \uf0d6
-		Icon = "<icon>\xEF\x83\x96</icon>";
-	}
-	else
-	{
-		Class = "available";
-		action =  va( "onClick='exec \"class %s\"; hide %s'", BG_Class( alienClass )->name, rocketInfo.menu[ ROCKETMENU_ALIENEVOLVE ].id );
-	}
-
-	Rocket_DataFormatterFormattedData( handle, va( "<button class='alienevo %s' onMouseover='setDS alienEvolveList alienClasss %s' %s>%s<img src='/%s'/></button>", Class, Info_ValueForKey( data, "2" ), action, Icon, CG_GetShaderNameFromHandle( cg_classes[ alienClass ].classIcon )), false );
 }
 
 static void CG_Rocket_DFCMBeacons( int handle, const char *data )
@@ -303,7 +267,6 @@ typedef struct
 static const dataFormatterCmd_t dataFormatterCmdList[] =
 {
 	{ "ClassName", &CG_Rocket_DFClassName },
-	{ "CMAlienEvolve", &CG_Rocket_DFCMAlienEvolve },
 	{ "CMBeacons", &CG_Rocket_DFCMBeacons },
 	{ "GearOrReady", &CG_Rocket_DFGearOrReady },
 	{ "GWeaponDamage", &CG_Rocket_DFGWeaponDamage },

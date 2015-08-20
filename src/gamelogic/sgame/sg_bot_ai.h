@@ -27,8 +27,8 @@
 typedef enum
 {
 	E_NONE,
-	E_A_SPAWN,
-	E_H_SPAWN,
+	E_Q_SPAWN,
+	E_U_SPAWN,
 	E_GOAL,
 	E_ENEMY,
 	E_SELF

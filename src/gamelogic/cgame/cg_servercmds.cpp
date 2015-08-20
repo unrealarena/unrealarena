@@ -111,7 +111,7 @@ static void CG_ParseTeamInfo()
 		cgs.clientinfo[ client ].curWeaponClass = atoi( CG_Argv( ++i ) );
 		cgs.clientinfo[ client ].credit         = atoi( CG_Argv( ++i ) );
 
-		if( cg.snap->ps.persistant[ PERS_TEAM ] != TEAM_ALIENS )
+		if( cg.snap->ps.persistant[ PERS_TEAM ] != TEAM_Q )
 		{
 			cgs.clientinfo[ client ].upgrade = atoi( CG_Argv( ++i ) );
 		}
@@ -277,15 +277,15 @@ static void CG_ConfigStringModified()
 		{
 			trap_Cvar_Set( "ui_voteActive", cgs.voteTime[ TEAM_NONE ] ? "1" : "0" );
 		}
-		else if ( num - CS_VOTE_TIME == TEAM_ALIENS )
+		else if ( num - CS_VOTE_TIME == TEAM_Q )
 		{
-			trap_Cvar_Set( "ui_alienTeamVoteActive",
-			               cgs.voteTime[ TEAM_ALIENS ] ? "1" : "0" );
+			trap_Cvar_Set( "ui_qTeamVoteActive",
+			               cgs.voteTime[ TEAM_Q ] ? "1" : "0" );
 		}
-		else if ( num - CS_VOTE_TIME == TEAM_HUMANS )
+		else if ( num - CS_VOTE_TIME == TEAM_U )
 		{
-			trap_Cvar_Set( "ui_humanTeamVoteActive",
-			               cgs.voteTime[ TEAM_HUMANS ] ? "1" : "0" );
+			trap_Cvar_Set( "ui_uTeamVoteActive",
+			               cgs.voteTime[ TEAM_U ] ? "1" : "0" );
 		}
 	}
 	else if ( num >= CS_VOTE_YES && num < CS_VOTE_YES + NUM_TEAMS )
@@ -411,40 +411,28 @@ void CG_Menu( int menuType, int arg )
 			menu = ROCKETMENU_TEAMSELECT;
 			break;
 
-		case MN_A_CLASS:
-			menu = ROCKETMENU_ALIENSPAWN;
+		case MN_Q_TEAMFULL:
+			longMsg = _("The Q team has too many players. Please wait until slots "
+			          "become available or join the U team.");
+			shortMsg = _("The Q team has too many players");
 			break;
 
-		case MN_H_SPAWN:
-			menu = ROCKETMENU_HUMANSPAWN;
+		case MN_U_TEAMFULL:
+			longMsg = _("The U team has too many players. Please wait until slots "
+			          "become available or join the Q team.");
+			shortMsg = _("The U team has too many players");
 			break;
 
-		case MN_H_UNKNOWNITEM:
-			shortMsg = "Unknown item";
-			break;
-
-		case MN_A_TEAMFULL:
-			longMsg = _("The alien team has too many players. Please wait until slots "
-			          "become available or join the human team.");
-			shortMsg = _("The alien team has too many players");
-			break;
-
-		case MN_H_TEAMFULL:
-			longMsg = _("The human team has too many players. Please wait until slots "
-			          "become available or join the alien team.");
-			shortMsg = _("The human team has too many players");
-			break;
-
-		case MN_A_TEAMLOCKED:
-			longMsg = _("The alien team is locked. You cannot join the aliens "
+		case MN_Q_TEAMLOCKED:
+			longMsg = _("The Q team is locked. You cannot join the Q team"
 			          "at this time.");
-			shortMsg = _("The alien team is locked");
+			shortMsg = _("The Q team is locked");
 			break;
 
-		case MN_H_TEAMLOCKED:
-			longMsg = _("The human team is locked. You cannot join the humans "
+		case MN_U_TEAMLOCKED:
+			longMsg = _("The U team is locked. You cannot join the U team"
 			          "at this time.");
-			shortMsg = _("The human team is locked");
+			shortMsg = _("The U team is locked");
 			break;
 
 		case MN_PLAYERLIMIT:
@@ -473,8 +461,8 @@ void CG_Menu( int menuType, int arg )
 			break;
 
 		case MN_CMD_TEAM:
-			//longMsg   = "You must be on a team to perform this action. Join the alien"
-			//            "or human team and try again.";
+			//longMsg   = "You must be on a team to perform this action. Join a"
+			//            "team and try again.";
 			shortMsg = _("Join a team first");
 			break;
 
@@ -484,14 +472,14 @@ void CG_Menu( int menuType, int arg )
 			shortMsg = _("You can only use this command when spectating");
 			break;
 
-		case MN_CMD_ALIEN:
-			//longMsg   = "You must be on the alien team to perform this action.";
-			shortMsg = _("Must be alien to use this command");
+		case MN_CMD_Q:
+			//longMsg   = "You must be on the Q team to perform this action.";
+			shortMsg = _("Must be on the Q team to use this command");
 			break;
 
-		case MN_CMD_HUMAN:
-			//longMsg   = "You must be on the human team to perform this action.";
-			shortMsg = _("Must be human to use this command");
+		case MN_CMD_U:
+			//longMsg   = "You must be on the U team to perform this action.";
+			shortMsg = _("Must be on the U team to use this command");
 			break;
 
 		case MN_CMD_ALIVE:
@@ -514,91 +502,7 @@ void CG_Menu( int menuType, int arg )
 			shortMsg = _("Cannot build after admitting defeat");
 			break;
 
-		case MN_H_NOSLOTS:
-			longMsg = _("You have no room to carry this. Please sell any conflicting "
-			          "upgrades before purchasing this item.");
-			shortMsg = _("You have no room to carry this");
-			break;
-
-		case MN_H_NOFUNDS:
-			longMsg = _("Insufficient funds. You do not have enough credits to perform "
-			          "this action.");
-			shortMsg = _("Insufficient funds");
-			break;
-
-		case MN_H_ITEMHELD:
-			longMsg = _("You already hold this item. It is not possible to carry multiple "
-			          "items of the same type.");
-			shortMsg = _("You already hold this item");
-			break;
-
-		case MN_H_NOROOMARMOURCHANGE:
-			longMsg = _("There is not enough room here to change armour.");
-			shortMsg = _("Not enough room here to change armour.");
-			break;
-
-		case MN_H_DEADTOCLASS:
-			shortMsg = _("You must be dead to use the class command");
-			break;
-
-		case MN_H_UNKNOWNSPAWNITEM:
-			shortMsg = _("Unknown starting item");
-			break;
-
 			//===============================
-
-		case MN_A_NOEROOM:
-			longMsg = _("There is no room to evolve here. Move away from walls or other "
-			          "nearby objects and try again.");
-			shortMsg = _("There is no room to evolve here");
-			break;
-
-		case MN_A_TOOCLOSE:
-			longMsg = _("This location is too close to the enemy to evolve. Move away "
-			          "from the enemy's presence and try again.");
-			shortMsg = _("This location is too close to the enemy to evolve");
-			break;
-
-		case MN_A_EVOLVEBUILDTIMER:
-			longMsg = _("You cannot evolve until your build timer has expired.");
-			shortMsg = _("You cannot evolve until your build timer expires");
-			break;
-
-		case MN_A_INFEST:
-			trap_Cvar_Set( "ui_currentClass",
-			               va( "%d %d", cg.snap->ps.stats[ STAT_CLASS ],
-			                   cg.snap->ps.persistant[ PERS_CREDIT ] ) );
-
-			menu = ROCKETMENU_ALIENEVOLVE;
-			break;
-
-		case MN_A_CANTEVOLVE:
-			shortMsg = va( _("You cannot evolve into a %s"),
-			               _( BG_ClassModelConfig( arg )->humanName ) );
-			break;
-
-		case MN_A_EVOLVEWALLWALK:
-			shortMsg = _("You cannot evolve while wallwalking");
-			break;
-
-		case MN_A_UNKNOWNCLASS:
-			shortMsg = _("Unknown class");
-			break;
-
-		case MN_A_CLASSNOTSPAWN:
-			shortMsg = va( _("You cannot spawn as a %s"),
-			               _( BG_ClassModelConfig( arg )->humanName ) );
-			break;
-
-		case MN_A_CLASSNOTALLOWED:
-			shortMsg = va( _("The %s is not allowed"),
-			               _( BG_ClassModelConfig( arg )->humanName ) );
-			break;
-
-		case MN_A_CLASSLOCKED:
-			shortMsg = va( _("The %s has not been unlocked yet"),
-			               _( BG_ClassModelConfig( arg )->humanName ) );
-			break;
 
 		default:
 			Com_Printf(_( "cgame: debug: no such menu %d\n"), menu );
@@ -643,13 +547,13 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 
 		name = ci->name;
 		team = ci->team;
-		if ( ci->team == TEAM_ALIENS )
+		if ( ci->team == TEAM_Q )
 		{
 			tcolor = S_COLOR_RED;
 		}
-		else if ( ci->team == TEAM_HUMANS )
+		else if ( ci->team == TEAM_U )
 		{
-			tcolor = S_COLOR_CYAN;
+			tcolor = S_COLOR_BLUE;
 		}
 
 		if ( cg_chatTeamPrefix.integer )
@@ -795,14 +699,14 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 		case SAY_TEAM:
 		case SAY_AREA:
 		case SAY_TPRIVMSG:
-			if ( cgs.clientinfo[ clientNum ].team == TEAM_ALIENS )
+			if ( cgs.clientinfo[ clientNum ].team == TEAM_Q )
 			{
-				trap_S_StartLocalSound( cgs.media.alienTalkSound, CHAN_LOCAL_SOUND );
+				trap_S_StartLocalSound( cgs.media.qTalkSound, CHAN_LOCAL_SOUND );
 				break;
 			}
-			else if ( cgs.clientinfo[ clientNum ].team == TEAM_HUMANS )
+			else if ( cgs.clientinfo[ clientNum ].team == TEAM_U )
 			{
-				trap_S_StartLocalSound( cgs.media.humanTalkSound, CHAN_LOCAL_SOUND );
+				trap_S_StartLocalSound( cgs.media.uTalkSound, CHAN_LOCAL_SOUND );
 				break;
 			}
 

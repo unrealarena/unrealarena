@@ -59,38 +59,38 @@ static void G_BotListTeamNames( gentity_t *ent, const char *heading, team_t team
 
 void G_BotListNames( gentity_t *ent )
 {
-	G_BotListTeamNames( ent, QQ( N_( "^3Alien bot names:\n" ) ), TEAM_ALIENS, "^1*" );
-	G_BotListTeamNames( ent, QQ( N_( "^3Human bot names:\n" ) ), TEAM_HUMANS, "^5*" );
+	G_BotListTeamNames( ent, QQ( N_( "^3Q bot names:\n" ) ), TEAM_Q, "^1*" );
+	G_BotListTeamNames( ent, QQ( N_( "^3U bot names:\n" ) ), TEAM_U, "^4*" );
 }
 
 bool G_BotClearNames()
 {
 	int i;
 
-	for ( i = 0; i < botNames[TEAM_ALIENS].count; ++i )
-		if ( botNames[TEAM_ALIENS].name[i].inUse )
+	for ( i = 0; i < botNames[TEAM_Q].count; ++i )
+		if ( botNames[TEAM_Q].name[i].inUse )
 		{
 			return false;
 		}
 
-		for ( i = 0; i < botNames[TEAM_HUMANS].count; ++i )
-			if ( botNames[TEAM_HUMANS].name[i].inUse )
+		for ( i = 0; i < botNames[TEAM_U].count; ++i )
+			if ( botNames[TEAM_U].name[i].inUse )
 			{
 				return false;
 			}
 
-			for ( i = 0; i < botNames[TEAM_ALIENS].count; ++i )
+			for ( i = 0; i < botNames[TEAM_Q].count; ++i )
 			{
-				BG_Free( botNames[TEAM_ALIENS].name[i].name );
+				BG_Free( botNames[TEAM_Q].name[i].name );
 			}
 
-			for ( i = 0; i < botNames[TEAM_HUMANS].count; ++i )
+			for ( i = 0; i < botNames[TEAM_U].count; ++i )
 			{
-				BG_Free( botNames[TEAM_HUMANS].name[i].name );
+				BG_Free( botNames[TEAM_U].name[i].name );
 			}
 
-			botNames[TEAM_ALIENS].count = 0;
-			botNames[TEAM_HUMANS].count = 0;
+			botNames[TEAM_Q].count = 0;
+			botNames[TEAM_U].count = 0;
 
 			return true;
 }
@@ -323,14 +323,14 @@ void G_BotDelAllBots()
 		}
 	}
 
-	for ( i = 0; i < botNames[TEAM_ALIENS].count; ++i )
+	for ( i = 0; i < botNames[TEAM_Q].count; ++i )
 	{
-		botNames[TEAM_ALIENS].name[i].inUse = false;
+		botNames[TEAM_Q].name[i].inUse = false;
 	}
 
-	for ( i = 0; i < botNames[TEAM_HUMANS].count; ++i )
+	for ( i = 0; i < botNames[TEAM_U].count; ++i )
 	{
-		botNames[TEAM_HUMANS].name[i].inUse = false;
+		botNames[TEAM_U].name[i].inUse = false;
 	}
 }
 
@@ -373,12 +373,6 @@ void G_BotThink( gentity_t *self )
 	if ( self->health < BOT_USEMEDKIT_HP && BG_InventoryContainsUpgrade( UP_MEDKIT, self->client->ps.stats ) )
 	{
 		BG_ActivateUpgrade( UP_MEDKIT, self->client->ps.stats );
-	}
-
-	//infinite funds cvar
-	if ( g_bot_infinite_funds.integer )
-	{
-		G_AddCreditToClient( self->client, HUMAN_MAX_CREDITS, true );
 	}
 
 	//hacky ping fix
@@ -456,26 +450,26 @@ void G_BotSpectatorThink( gentity_t *self )
 		int teamnum = self->client->pers.team;
 		int clientNum = self->client->ps.clientNum;
 
-		if ( teamnum == TEAM_HUMANS )
+		if ( teamnum == TEAM_Q )
 		{
-			self->client->pers.classSelection = PCL_HUMAN_NAKED;
-			self->client->ps.stats[STAT_CLASS] = PCL_HUMAN_NAKED;
-			BotSetNavmesh( self, PCL_HUMAN_NAKED );
+			self->client->pers.classSelection = PCL_Q;
+			self->client->ps.stats[STAT_CLASS] = PCL_Q;
+			BotSetNavmesh( self, PCL_Q );
+		}
+		else if ( teamnum == TEAM_U )
+		{
+			self->client->pers.classSelection = PCL_U;
+			self->client->ps.stats[STAT_CLASS] = PCL_U;
+			BotSetNavmesh( self, PCL_U );
 			//we want to spawn with rifle unless it is disabled or we need to build
 			if ( g_bot_rifle.integer )
 			{
-				self->client->pers.humanItemSelection = WP_MACHINEGUN;
+				self->client->pers.weapon = WP_MACHINEGUN;
 			}
 			else
 			{
-				self->client->pers.humanItemSelection = WP_HBUILD;
+				self->client->pers.weapon = WP_HBUILD;
 			}
-		}
-		else if ( teamnum == TEAM_ALIENS )
-		{
-			self->client->pers.classSelection = PCL_ALIEN_LEVEL0;
-			self->client->ps.stats[STAT_CLASS] = PCL_ALIEN_LEVEL0;
-			BotSetNavmesh( self, PCL_ALIEN_LEVEL0 );
 		}
 
 		G_PushSpawnQueue( &level.team[ teamnum ].spawnQueue, clientNum );

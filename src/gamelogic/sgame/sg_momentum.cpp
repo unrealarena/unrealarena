@@ -133,8 +133,8 @@ static INLINE float MomentumTimeMod()
  */
 static INLINE float MomentumPlayerCountMod()
 {
-	int playerCount = std::max( 2, level.team[ TEAM_ALIENS ].numClients +
-	                               level.team[ TEAM_HUMANS ].numClients );
+	int playerCount = std::max( 2, level.team[ TEAM_Q ].numClients +
+	                               level.team[ TEAM_U ].numClients );
 
 	// HACK: This uses the average number of players taking part in development games so that the
 	//       average momentum gain through all matches remains unchanged for now.

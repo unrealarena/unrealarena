@@ -103,26 +103,6 @@ extern int   LEVEL4_CRUSH_DAMAGE;
 extern int   LEVEL4_CRUSH_REPEAT;
 
 /*
- * ALIEN misc
- */
-
-#define ALIENSENSE_RANGE         1500.0f
-#define ALIENSENSE_BORDER_FRAC   0.2f // In this outer fraction of the range beacons are faded.
-
-#define REGEN_TEAMMATE_RANGE     300.0f
-
-#define ALIEN_POISON_TIME        10000
-#define ALIEN_POISON_DMG         5
-#define ALIEN_POISON_DIVIDER     ( 1.0f / 1.32f ) //about 1.0/((time)th root of damage)
-
-#define ALIEN_SPAWN_REPEAT_TIME  10000
-
-#define ALIEN_CLIENT_REGEN_WAIT    2000 // in ms
-
-#define ALIEN_MAX_CREDITS        2000 // CREDITS_PER_EVO converts this to evos for display
-#define ALIEN_TK_SUICIDE_PENALTY 150
-
-/*
  * HUMAN weapons
  */
 
@@ -199,37 +179,6 @@ extern int   MEDKIT_STARTUP_TIME;
 extern int   MEDKIT_STARTUP_SPEED;
 
 /*
- * HUMAN misc
- */
-
-#define HUMAN_JOG_MODIFIER            1.0f
-#define HUMAN_BACK_MODIFIER           0.8f
-#define HUMAN_SIDE_MODIFIER           0.9f
-#define HUMAN_LAND_FRICTION           3.0f
-
-#define STAMINA_MAX                   30000
-#define STAMINA_LEVEL1SLOW_TAKE       6    // 1/ms
-
-#define HUMAN_SPAWN_REPEAT_TIME       10000
-
-#define HUMAN_MAX_CREDITS             2000
-#define HUMAN_TK_SUICIDE_PENALTY      150
-
-#define HUMAN_AMMO_REFILL_PERIOD      2000 // don't refill ammo more frequently than this
-
-#define JETPACK_TARGETSPEED           350.0f
-#define JETPACK_ACCELERATION          3.0f
-#define JETPACK_JUMPMAG_REDUCTION     0.25f
-#define JETPACK_FUEL_MAX              30000 // needs to be < 2^15
-#define JETPACK_FUEL_USAGE            6     // in 1/ms
-#define JETPACK_FUEL_PER_DMG          300   // per damage point received (before armor mod is applied)
-#define JETPACK_FUEL_RESTORE          3     // in 1/ms
-#define JETPACK_FUEL_IGNITE           JETPACK_FUEL_MAX / 20      // used when igniting the engine
-#define JETPACK_FUEL_LOW              JETPACK_FUEL_MAX / 5       // jetpack doesn't start from a jump below this
-#define JETPACK_FUEL_STOP             JETPACK_FUEL_RESTORE * 150 // jetpack doesn't activate below this
-#define JETPACK_FUEL_REFUEL           JETPACK_FUEL_MAX - JETPACK_FUEL_USAGE * 1000
-
-/*
  * Misc
  */
 
@@ -254,8 +203,6 @@ extern int   MEDKIT_STARTUP_SPEED;
 // score
 #define SCORE_PER_CREDIT                   0.02f // used to convert credit rewards to score points
 #define SCORE_PER_MOMENTUM                 1.0f  // used to convert momentum rewards to score points
-#define HUMAN_BUILDER_SCOREINC             50    // in credits/10s
-#define ALIEN_BUILDER_SCOREINC             50    // in credits/10s
 
 // funds (values are in credits, 1 evo = 100 credits)
 #define CREDITS_PER_EVO                    100   // Used when alien credits are displayed as evos
@@ -271,7 +218,5 @@ extern int   MEDKIT_STARTUP_SPEED;
 #define DEFAULT_UNLOCKABLE_MIN_TIME      "30"  // in s
 #define DEFAULT_MOMENTUM_BASE_MOD        "0.7"
 #define DEFAULT_MOMENTUM_KILL_MOD        "1.3"
-
-#define MAXIMUM_BUILD_TIME                 20000 // used for pie timer
 
 #endif // G_GAMEPLAY_H_

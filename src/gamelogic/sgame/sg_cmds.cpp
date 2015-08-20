@@ -27,8 +27,8 @@
 #define CMD_MESSAGE      0x0004 // sends message to others (skip when muted)
 #define CMD_TEAM         0x0008 // must be on a team
 #define CMD_SPEC         0x0010 // must be a spectator
-#define CMD_ALIEN        0x0020
-#define CMD_HUMAN        0x0040
+#define CMD_Q            0x0020
+#define CMD_U            0x0040
 #define CMD_ALIVE        0x0080
 #define CMD_INTERMISSION 0x0100 // valid during intermission
 
@@ -425,7 +425,7 @@ void ScoreboardMessage( gentity_t *ent )
 	}
 
 	trap_SendServerCommand( ent - g_entities, va( "scores %i %i%s",
-	                        level.team[ TEAM_ALIENS ].kills, level.team[ TEAM_HUMANS ].kills, string ) );
+	                        level.team[ TEAM_Q ].kills, level.team[ TEAM_U ].kills, string ) );
 }
 
 /*
@@ -560,7 +560,7 @@ void Cmd_Give_f( gentity_t *ent )
 		else
 		{
 			amount = atof( name + strlen("funds") ) *
-			          ( ent->client->pers.team == TEAM_ALIENS ? CREDITS_PER_EVO : 1.0f );
+			          ( ent->client->pers.team == TEAM_Q ? CREDITS_PER_EVO : 1.0f );
 			// clamp credits as G_AddCreditToClient() expects a short int
 			amount = Math::Clamp(amount, -30000.0f, 30000.0f);
 		}
@@ -616,11 +616,6 @@ void Cmd_Give_f( gentity_t *ent )
 		}
 	}
 
-	if ( give_all || Q_stricmp( name, "stamina" ) == 0 )
-	{
-		ent->client->ps.stats[ STAT_STAMINA ] = STAMINA_MAX;
-	}
-
 	if ( give_all || Q_stricmp( name, "fuel" ) == 0 )
 	{
 		G_RefillFuel(ent, false);
@@ -628,7 +623,7 @@ void Cmd_Give_f( gentity_t *ent )
 
 	if ( Q_stricmp( name, "poison" ) == 0 )
 	{
-		if ( ent->client->pers.team == TEAM_HUMANS )
+		if ( ent->client->pers.team == TEAM_U )
 		{
 			ent->client->ps.stats[ STAT_STATE ] |= SS_POISONED;
 			ent->client->lastPoisonTime = level.time;
@@ -771,10 +766,10 @@ void Cmd_Team_f( gentity_t *ent )
 	int      t;
 	const g_admin_spec_t *specOnly;
 
-	players[ TEAM_ALIENS ] = level.team[ TEAM_ALIENS ].numClients;
-	players[ TEAM_HUMANS ] = level.team[ TEAM_HUMANS ].numClients;
+	players[ TEAM_Q ] = level.team[ TEAM_Q ].numClients;
+	players[ TEAM_U ] = level.team[ TEAM_U ].numClients;
 
-	if ( TEAM_ALIENS == oldteam || TEAM_HUMANS == oldteam )
+	if ( TEAM_Q == oldteam || TEAM_U == oldteam )
 	{
 		players[ oldteam ]--;
 	}
@@ -821,22 +816,21 @@ void Cmd_Team_f( gentity_t *ent )
 
 	if ( !Q_stricmp( s, "auto" ) )
 	{
-		if ( level.team[ TEAM_HUMANS ].locked && level.team[ TEAM_ALIENS ].locked )
+		if ( level.team[ TEAM_Q ].locked && level.team[ TEAM_U ].locked )
 		{
 			team = TEAM_NONE;
 		}
-		else if ( level.team[ TEAM_HUMANS ].locked || players[ TEAM_HUMANS ] > players[ TEAM_ALIENS ] )
+		else if ( level.team[ TEAM_Q ].locked || players[ TEAM_Q ] > players[ TEAM_U ] )
 		{
-			team = TEAM_ALIENS;
+			team = TEAM_U;
 		}
-
-		else if ( level.team[ TEAM_ALIENS ].locked || players[ TEAM_ALIENS ] > players[ TEAM_HUMANS ] )
+		else if ( level.team[ TEAM_U ].locked || players[ TEAM_U ] > players[ TEAM_Q ] )
 		{
-			team = TEAM_HUMANS;
+			team = TEAM_Q;
 		}
 		else
 		{
-			team = (team_t) ( TEAM_ALIENS + rand() / ( RAND_MAX / 2 + 1 ) );
+			team = (team_t) ( TEAM_Q + rand() / ( RAND_MAX / 2 + 1 ) );
 		}
 	}
 	else
@@ -847,46 +841,46 @@ void Cmd_Team_f( gentity_t *ent )
 				team = TEAM_NONE;
 				break;
 
-			case TEAM_ALIENS:
+			case TEAM_Q:
 				//TODO move code in a function common with next case
-				if ( level.team[ TEAM_ALIENS ].locked )
+				if ( level.team[ TEAM_Q ].locked )
 				{
-					G_TriggerMenu( ent - g_entities, MN_A_TEAMLOCKED );
+					G_TriggerMenu( ent - g_entities, MN_Q_TEAMLOCKED );
 					return;
 				}
-				else if ( level.team[ TEAM_HUMANS ].locked )
+				else if ( level.team[ TEAM_U ].locked )
 				{
 					force = true;
 				}
 
-				if ( !force && g_teamForceBalance.integer && players[ TEAM_ALIENS ] > players[ TEAM_HUMANS ])
+				if ( !force && g_teamForceBalance.integer && players[ TEAM_Q ] > players[ TEAM_U ])
 				{
-					G_TriggerMenu( ent - g_entities, MN_A_TEAMFULL );
+					G_TriggerMenu( ent - g_entities, MN_Q_TEAMFULL );
 					return;
 				}
 
-				team = TEAM_ALIENS;
+				team = TEAM_Q;
 				break;
 
-			case TEAM_HUMANS:
+			case TEAM_U:
 				//TODO move code in a function common with previous case
-				if ( level.team[ TEAM_HUMANS ].locked )
+				if ( level.team[ TEAM_U ].locked )
 				{
-					G_TriggerMenu( ent - g_entities, MN_H_TEAMLOCKED );
+					G_TriggerMenu( ent - g_entities, MN_U_TEAMLOCKED );
 					return;
 				}
-				else if ( level.team[ TEAM_ALIENS ].locked )
+				else if ( level.team[ TEAM_Q ].locked )
 				{
 					force = true;
 				}
 
-				if ( !force && g_teamForceBalance.integer && players[ TEAM_HUMANS ] > players[ TEAM_ALIENS ] )
+				if ( !force && g_teamForceBalance.integer && players[ TEAM_U ] > players[ TEAM_Q ] )
 				{
-					G_TriggerMenu( ent - g_entities, MN_H_TEAMFULL );
+					G_TriggerMenu( ent - g_entities, MN_U_TEAMFULL );
 					return;
 				}
 
-				team = TEAM_HUMANS;
+				team = TEAM_U;
 				break;
 
 			default:
@@ -2309,8 +2303,6 @@ void Cmd_SetViewpos_f( gentity_t *ent )
 	G_TeleportPlayer( ent, origin, angles, 0.0f );
 }
 
-#define AS_OVER_RT3 (( ALIENSENSE_RANGE * 0.5f ) / M_ROOT3 )
-
 bool G_RoomForClassChange( gentity_t *ent, class_t pcl, vec3_t newOrigin )
 {
 	vec3_t  fromMins, fromMaxs;
@@ -2394,7 +2386,7 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 	class_t   currentClass = ent->client->pers.classSelection;
 	class_t   newClass;
 	int       entityList[ MAX_GENTITIES ];
-	vec3_t    range = { AS_OVER_RT3, AS_OVER_RT3, AS_OVER_RT3 };
+	vec3_t    range = { 1000.0f, 1000.0f, 1000.0f };
 	vec3_t    mins, maxs;
 	int       num;
 	gentity_t *other;
@@ -2412,34 +2404,15 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 		}
 
 		team = (team_t) ent->client->pers.team;
-		if ( team == TEAM_ALIENS )
+		if ( team == TEAM_Q )
 		{
-			if ( newClass != PCL_ALIEN_BUILDER0 &&
-			     newClass != PCL_ALIEN_BUILDER0_UPG &&
-			     newClass != PCL_ALIEN_LEVEL0 )
-			{
-				if ( report )
-				{
-					G_TriggerMenuArgs( ent->client->ps.clientNum, MN_A_CLASSNOTSPAWN, newClass );
-				}
-				return false;
-			}
-
 			if ( BG_ClassDisabled( newClass ) )
 			{
-				if ( report )
-				{
-					G_TriggerMenuArgs( ent->client->ps.clientNum, MN_A_CLASSNOTALLOWED, newClass );
-				}
 				return false;
 			}
 
 			if ( !BG_ClassUnlocked( newClass ) )
 			{
-				if ( report )
-				{
-					G_TriggerMenuArgs( ent->client->ps.clientNum, MN_A_CLASSLOCKED, newClass );
-				}
 				return false;
 			}
 
@@ -2453,31 +2426,27 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 				return true;
 			}
 		}
-		else if ( team == TEAM_HUMANS )
+		else if ( team == TEAM_U )
 		{
 			//set the item to spawn with
 			if ( !Q_stricmp( s, BG_Weapon( WP_MACHINEGUN )->name ) &&
 			     !BG_WeaponDisabled( WP_MACHINEGUN ) )
 			{
-				ent->client->pers.humanItemSelection = WP_MACHINEGUN;
+				ent->client->pers.weapon = WP_MACHINEGUN;
 			}
 			else if ( !Q_stricmp( s, BG_Weapon( WP_HBUILD )->name ) &&
 			          !BG_WeaponDisabled( WP_HBUILD ) )
 			{
-				ent->client->pers.humanItemSelection = WP_HBUILD;
+				ent->client->pers.weapon = WP_HBUILD;
 			}
 			else
 			{
-				if ( report )
-				{
-					G_TriggerMenu( ent->client->ps.clientNum, MN_H_UNKNOWNSPAWNITEM );
-				}
 				return false;
 			}
 
 			// spawn from a telenode
 			//TODO merge with alien's code
-			newClass = PCL_HUMAN_NAKED;
+			newClass = PCL_U;
 			if ( G_PushSpawnQueue( &level.team[ team ].spawnQueue, clientNum ) )
 			{
 				ent->client->pers.classSelection = newClass;
@@ -2495,14 +2464,10 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 		return true; // dead, can't evolve; no point in trying other classes (if any listed)
 	}
 
-	if ( ent->client->pers.team == TEAM_ALIENS )
+	if ( ent->client->pers.team == TEAM_Q )
 	{
 		if ( newClass == PCL_NONE )
 		{
-			if ( report )
-			{
-				G_TriggerMenu( ent->client->ps.clientNum, MN_A_UNKNOWNCLASS );
-			}
 			return false;
 		}
 
@@ -2521,12 +2486,8 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 			{
 				other = &g_entities[ entityList[ i ] ];
 
-				if ( other->client && other->client->pers.team == TEAM_HUMANS )
+				if ( other->client && other->client->pers.team == TEAM_U )
 				{
-					if ( report )
-					{
-						G_TriggerMenu( clientNum, MN_A_TOOCLOSE );
-					}
 					return false;
 				}
 			}
@@ -2534,22 +2495,6 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 			//check that we are not wallwalking
 			if ( ent->client->ps.eFlags & EF_WALLCLIMB )
 			{
-				if ( report )
-				{
-					G_TriggerMenu( clientNum, MN_A_EVOLVEWALLWALK );
-				}
-				return false;
-			}
-
-			if ( ent->client->sess.spectatorState == SPECTATOR_NOT &&
-			     ( currentClass == PCL_ALIEN_BUILDER0 ||
-			       currentClass == PCL_ALIEN_BUILDER0_UPG ) &&
-			     ent->client->ps.stats[ STAT_MISC ] > 0 )
-			{
-				if ( report )
-				{
-					G_TriggerMenu( ent->client->ps.clientNum, MN_A_EVOLVEBUILDTIMER );
-				}
 				return false;
 			}
 
@@ -2584,29 +2529,17 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 				}
 				else
 				{
-					if ( report )
-					{
-						G_TriggerMenuArgs( clientNum, MN_A_CANTEVOLVE, newClass );
-					}
 					return false;
 				}
 			}
 			else
 			{
-				if ( report )
-				{
-					G_TriggerMenu( clientNum, MN_A_NOEROOM );
-				}
 				return false;
 			}
 		}
 	}
-	else if ( ent->client->pers.team == TEAM_HUMANS )
+	else if ( ent->client->pers.team == TEAM_U )
 	{
-		if ( report )
-		{
-			G_TriggerMenu( clientNum, MN_H_DEADTOCLASS );
-		}
 		return false;
 	}
 
@@ -2876,18 +2809,7 @@ void G_StopFollowing( gentity_t *ent )
 		ent->client->sess.spectatorState = SPECTATOR_LOCKED;
 		ent->client->ps.persistant[ PERS_SPECSTATE ] = SPECTATOR_LOCKED;
 
-		if ( ent->client->pers.team == TEAM_ALIENS )
-		{
-			G_SelectAlienLockSpawnPoint( spawn_origin, spawn_angles );
-		}
-		else if ( ent->client->pers.team == TEAM_HUMANS )
-		{
-			G_SelectHumanLockSpawnPoint( spawn_origin, spawn_angles );
-		}
-		else
-		{
-			G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
-		}
+		G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
 
 		G_SetOrigin( ent, spawn_origin );
 		VectorCopy( spawn_origin, ent->client->ps.origin );
@@ -2941,19 +2863,7 @@ void G_FollowLockView( gentity_t *ent )
 	ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
 	ent->client->ps.viewangles[ PITCH ] = 0.0f;
 
-	// Put the view at the team spectator lock position
-	if ( level.clients[ clientNum ].pers.team == TEAM_ALIENS )
-	{
-		G_SelectAlienLockSpawnPoint( spawn_origin, spawn_angles );
-	}
-	else if ( level.clients[ clientNum ].pers.team == TEAM_HUMANS )
-	{
-		G_SelectHumanLockSpawnPoint( spawn_origin, spawn_angles );
-	}
-	else
-	{
-		G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
-	}
+	G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
 
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, ent->client->ps.origin );
@@ -3393,10 +3303,10 @@ typedef struct {
 
 static const mapLogResult_t maplog_table[] = {
 	{ 't', "^7tie"                                  },
-	{ 'a', "^1Alien win"                            },
-	{ 'A', "^1Alien win ^7/ Humans admitted defeat" },
-	{ 'h', "^5Human win"                            },
-	{ 'H', "^5Human win ^7/ Aliens admitted defeat" },
+	{ 'q', "^1Q team win"                           },
+	{ 'Q', "^1Q team win ^7/ U team admitted defeat"},
+	{ 'u', "^4U team win"                           },
+	{ 'U', "^4U team win ^7/ Q team admitted defeat"},
 	{ 'd', "^2draw vote"                            },
 	{ 'm', "^2map vote"                             },
 	{ 'r', "^2restart vote"                         },
@@ -3462,13 +3372,13 @@ void G_MapLog_Result( char result )
 
 	if ( level.surrenderTeam != TEAM_NONE )
 	{
-		if ( result == 'a' && level.surrenderTeam == TEAM_HUMANS )
+		if ( result == 'q' && level.surrenderTeam == TEAM_U )
 		{
-			result = 'A';
+			result = 'Q';
 		}
-		else if ( result == 'h' && level.surrenderTeam == TEAM_ALIENS )
+		else if ( result == 'u' && level.surrenderTeam == TEAM_Q )
 		{
-			result = 'H';
+			result = 'U';
 		}
 	}
 
@@ -3751,9 +3661,9 @@ static const commands_t cmds[] =
 	{ "god",             CMD_CHEAT,                           Cmd_God_f              },
 	{ "ignite",          CMD_CHEAT | CMD_TEAM | CMD_ALIVE,    Cmd_Ignite_f           },
 	{ "ignore",          0,                                   Cmd_Ignore_f           },
-	{ "itemact",         CMD_HUMAN | CMD_ALIVE,               Cmd_ActivateItem_f     },
-	{ "itemdeact",       CMD_HUMAN | CMD_ALIVE,               Cmd_DeActivateItem_f   },
-	{ "itemtoggle",      CMD_HUMAN | CMD_ALIVE,               Cmd_ToggleItem_f       },
+	{ "itemact",         CMD_U | CMD_ALIVE,                   Cmd_ActivateItem_f     },
+	{ "itemdeact",       CMD_U | CMD_ALIVE,                   Cmd_DeActivateItem_f   },
+	{ "itemtoggle",      CMD_U | CMD_ALIVE,                   Cmd_ToggleItem_f       },
 	{ "kill",            CMD_TEAM | CMD_ALIVE,                Cmd_Kill_f             },
 	{ "listmaps",        CMD_MESSAGE | CMD_INTERMISSION,      Cmd_ListMaps_f         },
 	{ "listrotation",    CMD_MESSAGE | CMD_INTERMISSION,      G_PrintCurrentRotation },
@@ -3765,7 +3675,7 @@ static const commands_t cmds[] =
 	{ "noclip",          CMD_CHEAT_TEAM,                      Cmd_Noclip_f           },
 	{ "notarget",        CMD_CHEAT | CMD_TEAM | CMD_ALIVE,    Cmd_Notarget_f         },
 	{ "pubkey_identify", CMD_INTERMISSION,                    Cmd_Pubkey_Identify_f  },
-	{ "reload",          CMD_HUMAN | CMD_ALIVE,               Cmd_Reload_f           },
+	{ "reload",          CMD_U | CMD_ALIVE,                   Cmd_Reload_f           },
 	{ "say",             CMD_MESSAGE | CMD_INTERMISSION,      Cmd_Say_f              },
 	{ "say_area",        CMD_MESSAGE | CMD_TEAM | CMD_ALIVE,  Cmd_SayArea_f          },
 	{ "say_area_team",   CMD_MESSAGE | CMD_TEAM | CMD_ALIVE,  Cmd_SayAreaTeam_f      },
@@ -3858,17 +3768,17 @@ void ClientCommand( int clientNum )
 		return;
 	}
 
-	if ( (command->cmdFlags & CMD_ALIEN) &&
-	     ent->client->pers.team != TEAM_ALIENS )
+	if ( (command->cmdFlags & CMD_Q) &&
+	     ent->client->pers.team != TEAM_Q )
 	{
-		G_TriggerMenu( clientNum, MN_CMD_ALIEN );
+		G_TriggerMenu( clientNum, MN_CMD_Q );
 		return;
 	}
 
-	if ( (command->cmdFlags & CMD_HUMAN) &&
-	     ent->client->pers.team != TEAM_HUMANS )
+	if ( (command->cmdFlags & CMD_U) &&
+	     ent->client->pers.team != TEAM_U )
 	{
-		G_TriggerMenu( clientNum, MN_CMD_HUMAN );
+		G_TriggerMenu( clientNum, MN_CMD_U );
 		return;
 	}
 

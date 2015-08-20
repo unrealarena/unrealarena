@@ -32,13 +32,13 @@ ctrl_relay
 void target_relay_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
 {
 	if ( ( self->spawnflags & 1 ) && activator && activator->client &&
-	     activator->client->pers.team != TEAM_HUMANS )
+	     activator->client->pers.team != TEAM_Q )
 	{
 		return;
 	}
 
 	if ( ( self->spawnflags & 2 ) && activator && activator->client &&
-	     activator->client->pers.team != TEAM_ALIENS )
+	     activator->client->pers.team != TEAM_U )
 	{
 		return;
 	}

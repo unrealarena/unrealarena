@@ -77,9 +77,8 @@ static const struct {
 	{ "[tyrant]",      false, true  }, // trample
 	{ "crushed",       false, true  }, // weight (A) // FIXME
 
-	{ LONGFORM,        true,  false, TEAM_HUMANS }, // H spawn
-
-	{ LONGFORM,        true,  false, TEAM_ALIENS }, // A spawn
+	{ LONGFORM,        true,  false, TEAM_Q }, // Q spawn
+	{ LONGFORM,        true,  false, TEAM_U }, // U spawn
 };
 
 static void CG_Obituary( entityState_t *ent )
@@ -356,67 +355,7 @@ static void CG_Obituary( entityState_t *ent )
 				messageSuicide = G_( "%s%s ^7was incinerated" );
 				break;
 
-			case MOD_ABUILDER_CLAW:
-				message = G_( "%s%s ^7was gently nibbled by %s%s^7's granger\n" );
-				messageAssisted = G_( "%s%s ^7was gently nibbled by %s%s^7's granger; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_LEVEL0_BITE:
-				message = G_( "%s%s ^7was bitten by %s%s\n" );
-				messageAssisted = G_( "%s%s ^7was bitten by %s%s^7; %s%s^7 assisted\n" );
-				break;
-
-			case MOD_LEVEL1_CLAW:
-				message = G_( "%s%s ^7was sliced by %s%s^7's %s\n" );
-				messageAssisted = G_( "%s%s ^7was sliced by %s%s^7's %s^7; %s%s^7 assisted\n" );
-				attackerClass = PCL_ALIEN_LEVEL1;
-				break;
-
-			case MOD_LEVEL2_CLAW:
-				message = G_( "%s%s ^7was shredded by %s%s^7's %s\n" );
-				messageAssisted = G_( "%s%s ^7was shredded by %s%s^7's %s^7; %s%s^7 assisted\n" );
-				attackerClass = PCL_ALIEN_LEVEL2;
-				break;
-
-			case MOD_LEVEL2_ZAP:
-				message = G_( "%s%s ^7was electrocuted by %s%s^7's %s\n" );
-				messageAssisted = G_( "%s%s ^7was electrocuted by %s%s^7's %s^7; %s%s^7 assisted\n" );
-				attackerClass = PCL_ALIEN_LEVEL2;
-				break;
-
-			case MOD_LEVEL3_CLAW:
-				message = G_( "%s%s ^7was chomped by %s%s^7's %s\n" );
-				messageAssisted = G_( "%s%s ^7was chomped by %s%s^7's %s^7; %s%s^7 assisted\n" );
-				attackerClass = PCL_ALIEN_LEVEL3;
-				break;
-
-			case MOD_LEVEL3_POUNCE:
-				message = G_( "%s%s ^7was pounced upon by %s%s^7's %s\n" );
-				messageAssisted = G_( "%s%s ^7was pounced upon by %s%s^7's %s^7; %s%s^7 assisted\n" );
-				attackerClass = PCL_ALIEN_LEVEL3;
-				break;
-
-			case MOD_LEVEL3_BOUNCEBALL:
-				message = G_( "%s%s ^7was barbed by %s%s^7's %s\n" );
-				messageAssisted = G_( "%s%s ^7was barbed by %s%s^7's %s^7; %s%s^7 assisted\n" );
-				messageSuicide = G_( "%s%s ^7was barbed" );
-				attackerClass = PCL_ALIEN_LEVEL3;
-				break;
-
-			case MOD_LEVEL4_CLAW:
-				message = G_( "%s%s ^7was mauled by %s%s^7's %s\n" );
-				messageAssisted = G_( "%s%s ^7was mauled by %s%s^7's %s^7; %s%s^7 assisted\n" );
-				attackerClass = PCL_ALIEN_LEVEL4;
-				break;
-
-			case MOD_LEVEL4_TRAMPLE:
-				message = G_( "%s%s ^7should have gotten out of the way of %s%s^7's %s\n" );
-				messageAssisted = G_( "%s%s ^7should have gotten out of the way of %s%s^7's %s^7; %s%s^7 assisted\n" );
-				attackerClass = PCL_ALIEN_LEVEL4;
-				break;
-
-			case MOD_WEIGHT_H:
-			case MOD_WEIGHT_A:
+			case MOD_WEIGHT:
 				message = G_( "%s%s ^7was crushed under %s%s^7's weight\n" );
 				messageAssisted = G_( "%s%s ^7was crushed under %s%s^7's weight; %s%s^7 assisted\n" );
 				break;
@@ -855,15 +794,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 			break;
 
-		case EV_LEV4_TRAMPLE_PREPARE:
-			trap_S_StartSound( nullptr, es->number, CHAN_VOICE, cgs.media.alienL4ChargePrepare );
-			break;
-
-		case EV_LEV4_TRAMPLE_START:
-			//FIXME: stop cgs.media.alienL4ChargePrepare playing here
-			trap_S_StartSound( nullptr, es->number, CHAN_VOICE, cgs.media.alienL4ChargeStart );
-			break;
-
 		case EV_TAUNT:
 			if ( !cg_noTaunt.integer )
 			{
@@ -1058,35 +988,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 		case EV_STOPLOOPINGSOUND:
 			trap_S_StopLoopingSound( es->number );
 			es->loopSound = 0;
-			break;
-
-		case EV_ALIEN_EVOLVE:
-			trap_S_StartSound( nullptr, es->number, CHAN_BODY, cgs.media.alienEvolveSound );
-			{
-				particleSystem_t *ps = CG_SpawnNewParticleSystem( cgs.media.alienEvolvePS );
-
-				if ( CG_IsParticleSystemValid( &ps ) )
-				{
-					CG_SetAttachmentCent( &ps->attachment, cent );
-					CG_AttachToCent( &ps->attachment );
-				}
-			}
-
-			if ( es->number == cg.clientNum )
-			{
-				CG_ResetPainBlend();
-				cg.spawnTime = cg.time;
-			}
-
-			break;
-
-		case EV_ALIEN_EVOLVE_FAILED:
-			if ( clientNum == cg.predictedPlayerState.clientNum )
-			{
-				//FIXME: change to "negative" sound
-				cg.lastEvolveAttempt = cg.time;
-			}
-
 			break;
 
 		case EV_MEDKIT_USED:

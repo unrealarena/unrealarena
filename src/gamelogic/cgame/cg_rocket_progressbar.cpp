@@ -54,14 +54,6 @@ static float CG_Rocket_GetBuildTimerProgress()
 	return ( float ) misc / ( float ) max;
 }
 
-static float CG_Rocket_GetStaminaProgress()
-{
-	playerState_t *ps = &cg.snap->ps;
-	float         stamina = ps->stats[ STAT_STAMINA ];
-
-	return ( stamina / ( float ) STAMINA_MAX );
-}
-
 static float CG_Rocket_GetPoisonProgress()
 {
 	static int time = -1;
@@ -107,19 +99,6 @@ static float CG_Rocket_GetPlayerAmmoProgress()
 	}
 }
 
-float CG_Rocket_FuelProgress()
-{
-	int   fuel;
-
-	if ( !BG_InventoryContainsUpgrade( UP_JETPACK, cg.snap->ps.stats ) )
-	{
-		return 0;
-	}
-
-	fuel     = cg.snap->ps.stats[ STAT_FUEL ];
-	return ( float )fuel / ( float )JETPACK_FUEL_MAX;
-}
-
 float CG_Rocket_DownloadProgress()
 {
 	return trap_Cvar_VariableValue( "cl_downloadCount" ) / trap_Cvar_VariableValue( "cl_downloadSize" );
@@ -135,16 +114,14 @@ typedef struct progressBarCmd_s
 
 static const progressBarCmd_t progressBarCmdList[] =
 {
-	{ "ammo", &CG_Rocket_GetPlayerAmmoProgress, ELEMENT_HUMANS },
+	{ "ammo", &CG_Rocket_GetPlayerAmmoProgress, ELEMENT_U },
 	{ "btimer", &CG_Rocket_GetBuildTimerProgress, ELEMENT_BOTH },
 	{ "characters", &CG_Rocket_GetCharLoadProgress, ELEMENT_LOADING },
 	{ "charge", &CG_ChargeProgress, ELEMENT_BOTH },
 	{ "download", &CG_Rocket_DownloadProgress, ELEMENT_ALL },
-	{ "fuel", &CG_Rocket_FuelProgress, ELEMENT_HUMANS },
 	{ "health", &CG_Rocket_GetPlayerHealthProgress, ELEMENT_BOTH },
 	{ "media", &CG_Rocket_GetMediaLoadProgress, ELEMENT_LOADING },
-	{ "poison", &CG_Rocket_GetPoisonProgress, ELEMENT_ALIENS },
-	{ "stamina", &CG_Rocket_GetStaminaProgress, ELEMENT_HUMANS },
+	{ "poison", &CG_Rocket_GetPoisonProgress, ELEMENT_Q },
 };
 
 static const size_t progressBarCmdListCount = ARRAY_LEN( progressBarCmdList );

@@ -987,8 +987,8 @@ team_t G_Enemy( team_t team )
 {
 	switch ( team )
 	{
-		case TEAM_ALIENS: return TEAM_HUMANS;
-		case TEAM_HUMANS: return TEAM_ALIENS;
+		case TEAM_Q: return TEAM_U;
+		case TEAM_U: return TEAM_Q;
 		default:          return TEAM_NONE;
 	}
 }

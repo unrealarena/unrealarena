@@ -37,12 +37,12 @@ team_t G_TeamFromString( const char *str )
 			return TEAM_NONE;
 
 		case '1':
-		case 'a':
-			return TEAM_ALIENS;
+		case 'q':
+			return TEAM_Q;
 
 		case '2':
-		case 'h':
-			return TEAM_HUMANS;
+		case 'u':
+			return TEAM_U;
 
 		default:
 			return NUM_TEAMS;
@@ -166,25 +166,25 @@ G_UpdateTeamConfigStrings
 */
 void G_UpdateTeamConfigStrings()
 {
-	clientList_t alienTeam = G_ClientListForTeam( TEAM_ALIENS );
-	clientList_t humanTeam = G_ClientListForTeam( TEAM_HUMANS );
+	clientList_t qTeam = G_ClientListForTeam( TEAM_Q );
+	clientList_t uTeam = G_ClientListForTeam( TEAM_U );
 
 	if ( level.intermissiontime )
 	{
 		// No restrictions once the game has ended
-		Com_Memset( &alienTeam, 0, sizeof( clientList_t ) );
-		Com_Memset( &humanTeam, 0, sizeof( clientList_t ) );
+		Com_Memset( &qTeam, 0, sizeof( clientList_t ) );
+		Com_Memset( &uTeam, 0, sizeof( clientList_t ) );
 	}
 
-	trap_SetConfigstringRestrictions( CS_VOTE_TIME + TEAM_ALIENS,   &humanTeam );
-	trap_SetConfigstringRestrictions( CS_VOTE_STRING + TEAM_ALIENS, &humanTeam );
-	trap_SetConfigstringRestrictions( CS_VOTE_YES + TEAM_ALIENS,    &humanTeam );
-	trap_SetConfigstringRestrictions( CS_VOTE_NO + TEAM_ALIENS,     &humanTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_TIME + TEAM_Q,   &uTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_STRING + TEAM_Q, &uTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_YES + TEAM_Q,    &uTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_NO + TEAM_Q,     &uTeam );
 
-	trap_SetConfigstringRestrictions( CS_VOTE_TIME + TEAM_HUMANS,   &alienTeam );
-	trap_SetConfigstringRestrictions( CS_VOTE_STRING + TEAM_HUMANS, &alienTeam );
-	trap_SetConfigstringRestrictions( CS_VOTE_YES + TEAM_HUMANS,    &alienTeam );
-	trap_SetConfigstringRestrictions( CS_VOTE_NO + TEAM_HUMANS,     &alienTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_TIME + TEAM_U,   &qTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_STRING + TEAM_U, &qTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_YES + TEAM_U,    &qTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_NO + TEAM_U,     &qTeam );
 }
 
 /*
@@ -198,7 +198,7 @@ void G_LeaveTeam( gentity_t *self )
 	gentity_t *ent;
 	int       i;
 
-	if ( TEAM_ALIENS == team || TEAM_HUMANS == team )
+	if ( TEAM_Q == team || TEAM_U == team )
 	{
 		G_RemoveFromSpawnQueue( &level.team[ team ].spawnQueue, self->client->ps.clientNum );
 	}
@@ -271,21 +271,6 @@ void G_ChangeTeam( gentity_t *ent, team_t newTeam )
 	ent->client->pers.teamInfo = level.startTime - 1;
 	ent->client->pers.classSelection = PCL_NONE;
 	ClientSpawn( ent, nullptr, nullptr, nullptr );
-
-	if ( oldTeam == TEAM_HUMANS && newTeam == TEAM_ALIENS )
-	{
-		// Convert from human to alien credits
-		ent->client->pers.credit =
-		  ( int )( ent->client->pers.credit *
-		           ALIEN_MAX_CREDITS / HUMAN_MAX_CREDITS + 0.5f );
-	}
-	else if ( oldTeam == TEAM_ALIENS && newTeam == TEAM_HUMANS )
-	{
-		// Convert from alien to human credits
-		ent->client->pers.credit =
-		  ( int )( ent->client->pers.credit *
-		           HUMAN_MAX_CREDITS / ALIEN_MAX_CREDITS + 0.5f );
-	}
 
 	if ( !g_cheats.integer )
 	{
@@ -425,7 +410,12 @@ void TeamplayInfoMessage( gentity_t *ent )
 			curWeaponClass = WP_NONE;
 			upgrade = UP_NONE;
 		}
-		else if ( cl->pers.team == TEAM_HUMANS )
+		else if ( cl->pers.team == TEAM_Q )
+		{
+			curWeaponClass = cl->ps.stats[ STAT_CLASS ];
+			upgrade = UP_NONE;
+		}
+		else if ( cl->pers.team == TEAM_U )
 		{
 			curWeaponClass = cl->ps.weapon;
 
@@ -450,13 +440,8 @@ void TeamplayInfoMessage( gentity_t *ent )
 				upgrade = UP_NONE;
 			}
 		}
-		else if ( cl->pers.team == TEAM_ALIENS )
-		{
-			curWeaponClass = cl->ps.stats[ STAT_CLASS ];
-			upgrade = UP_NONE;
-		}
 
-		if( team == TEAM_ALIENS ) // aliens don't have upgrades
+		if( team == TEAM_Q ) // aliens don't have upgrades
 		{
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i", i,
 						 cl->pers.location,
@@ -512,8 +497,8 @@ void CheckTeamStatus()
 				continue;
 			}
 
-			if ( ent->inuse && ( ent->client->pers.team == TEAM_HUMANS ||
-			                     ent->client->pers.team == TEAM_ALIENS ) )
+			if ( ent->inuse && ( ent->client->pers.team == TEAM_Q ||
+			                     ent->client->pers.team == TEAM_U ) )
 			{
 				loc = Team_GetLocation( ent );
 
@@ -557,18 +542,18 @@ void CheckTeamStatus()
 	{
 		level.lastTeamImbalancedTime = level.time;
 
-		if ( level.team[ TEAM_ALIENS ].numSpawns > 0 &&
-		     level.team[ TEAM_HUMANS ].numClients - level.team[ TEAM_ALIENS ].numClients > 2 )
+		if ( level.team[ TEAM_U ].numSpawns > 0 &&
+		          level.team[ TEAM_Q ].numClients - level.team[ TEAM_U ].numClients > 2 )
 		{
 			trap_SendServerCommand( -1, "print_tr \"" N_("Teams are imbalanced. "
-			                        "Humans have more players.\n") "\"" );
+			                        "Q team have more players.\n") "\"" );
 			level.numTeamImbalanceWarnings++;
 		}
-		else if ( level.team[ TEAM_HUMANS ].numSpawns > 0 &&
-		          level.team[ TEAM_ALIENS ].numClients - level.team[ TEAM_HUMANS ].numClients > 2 )
+		else if ( level.team[ TEAM_Q ].numSpawns > 0 &&
+		     level.team[ TEAM_U ].numClients - level.team[ TEAM_Q ].numClients > 2 )
 		{
 			trap_SendServerCommand( -1, "print_tr \"" N_("Teams are imbalanced. "
-			                        "Aliens have more players.\n") "\"" );
+			                        "U team have more players.\n") "\"" );
 			level.numTeamImbalanceWarnings++;
 		}
 		else
