@@ -38,7 +38,10 @@ linux64-before_script() {
 linux64-script() {
 	mkdir build
 	cd build
-	cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_GAME_NATIVE_EXE=0 -DBUILD_GAME_NATIVE_DLL=0 ..
+	cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release\
+	                          -DBUILD_GAME_NATIVE_EXE=0\
+	                          -DBUILD_GAME_NATIVE_DLL=0\
+	                          ..
 	cmake --build . -- -j8 || cmake --build . -- VERBOSE=1
 }
 
@@ -47,7 +50,18 @@ linux64-before_deploy() {
 	cd build
 	wget -q "http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz" && gunzip "GeoIP.dat.gz"
 	wget -q "http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz" && gunzip "GeoIPv6.dat.gz"
-	zip -9 "../unrealarena-linux64.pre.zip" daemon daemon-tty daemonded irt_core-x86_64.nexe nacl_helper_bootstrap nacl_loader cgame-x86_64-stripped.nexe sgame-x86_64-stripped.nexe GeoIP.dat GeoIPv6.dat
+	zip -9 "../unrealarena-linux64.pre.zip" daemon\
+	                                        daemon-tty\
+	                                        daemonded\
+	                                        irt_core-x86_64.nexe\
+	                                        nacl_helper_bootstrap\
+	                                        nacl_loader\
+	                                        cgame-x86-stripped.nexe\
+	                                        sgame-x86-stripped.nexe\
+	                                        cgame-x86_64-stripped.nexe\
+	                                        sgame-x86_64-stripped.nexe\
+	                                        GeoIP.dat\
+	                                        GeoIPv6.dat
 }
 
 
