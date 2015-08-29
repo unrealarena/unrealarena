@@ -40,14 +40,15 @@
 #define CROUCH_VIEWHEIGHT  12
 #define DEAD_VIEWHEIGHT    4 // height from ground
 
-// player teams
+/**
+ * Teams
+ */
 typedef enum
 {
-  TEAM_NONE,
-  TEAM_Q,
-  TEAM_U,
-
-  NUM_TEAMS
+	TEAM_NONE,
+	TEAM_Q,
+	TEAM_U,
+	NUM_TEAMS
 } team_t;
 
 //
@@ -224,7 +225,6 @@ typedef enum
   STAT_ACTIVEITEMS,
   STAT_WEAPON,     // current primary weapon
   STAT_MAX_HEALTH, // health limit
-  STAT_CLASS,      // player class
   STAT_STATE2,     // more client states
   STAT_STAMINA,    // humans: stamina
   STAT_STATE,      // client states
@@ -713,15 +713,6 @@ typedef struct animation_s
 // Time between location updates
 #define TEAM_LOCATION_UPDATE_TIME 500
 
-// player classes
-typedef enum
-{
-  PCL_NONE,
-  PCL_Q,
-  PCL_U,
-  PCL_NUM_CLASSES
-} class_t;
-
 // spectator state
 typedef enum
 {
@@ -854,17 +845,17 @@ typedef struct
 
 //---------------------------------------------------------
 
-// player class record
+/**
+ * Class attributes
+ */
 typedef struct
 {
-	class_t  number;
+	team_t   team;
 
 	const char *name;
 	const char *info;
 	const char *icon;
 	const char *fovCvar;
-
-	team_t   team;
 
 	int      unlockThreshold;
 
@@ -921,7 +912,7 @@ typedef struct
 	vec3_t shoulderOffsets;
 	bool segmented;
 
-	class_t navMeshClass; // if not PCL_NONE, which model's navmesh to use
+	team_t  navMeshClass;
 	int     navHandle;
 } classModelConfig_t;
 
@@ -1067,20 +1058,12 @@ bool                    BG_PlayerLowAmmo( const playerState_t *ps, bool *energy 
 void                        BG_PackEntityNumbers( entityState_t *es, const int *entityNums, unsigned int count );
 int                         BG_UnpackEntityNumbers( entityState_t *es, int *entityNums, unsigned int count );
 
-const classAttributes_t     *BG_ClassByName( const char *name );
+const classAttributes_t     *BG_Class( team_t team );
 
-const classAttributes_t     *BG_Class( int pClass );
+classModelConfig_t    *BG_ClassModelConfig( team_t team );
 
-classModelConfig_t          *BG_ClassModelConfigByName( const char * );
-
-classModelConfig_t          *BG_ClassModelConfig( int pClass );
-
-void                        BG_ClassBoundingBox( int pClass, vec3_t mins, vec3_t maxs, vec3_t cmaxs,
+void                        BG_ClassBoundingBox( team_t team, vec3_t mins, vec3_t maxs, vec3_t cmaxs,
                                                  vec3_t dmins, vec3_t dmaxs );
-team_t                      BG_ClassTeam( int pClass );
-bool                    BG_ClassHasAbility( int pClass, int ability );
-
-int                         BG_ClassCanEvolveFromTo(int from, int to, int credits);
 
 weapon_t                  BG_WeaponNumberByName( const char *name );
 const weaponAttributes_t  *BG_WeaponByName( const char *name );
@@ -1113,13 +1096,12 @@ void                      BG_ParseMissileDisplayFile( const char *filename, miss
 void                      BG_ParseBeaconAttributeFile( const char *filename, beaconAttributes_t *ba );
 
 // bg_teamprogress.c
-#define NUM_UNLOCKABLES WP_NUM_WEAPONS + UP_NUM_UPGRADES + PCL_NUM_CLASSES
+#define NUM_UNLOCKABLES WP_NUM_WEAPONS + UP_NUM_UPGRADES
 
 typedef enum
 {
 	UNLT_WEAPON,
 	UNLT_UPGRADE,
-	UNLT_CLASS,
 	UNLT_NUM_UNLOCKABLETYPES
 } unlockableType_t;
 
@@ -1133,7 +1115,6 @@ void     BG_ImportUnlockablesFromMask( int team, int mask );
 int      BG_UnlockablesMask( int team );
 bool BG_WeaponUnlocked( int weapon );
 bool BG_UpgradeUnlocked( int upgrade );
-bool BG_ClassUnlocked( int class_ );
 
 unlockableType_t              BG_UnlockableType( int num );
 int                           BG_UnlockableTypeIndex( int num );
@@ -1183,12 +1164,9 @@ int      atoi_neg( char *token, bool allowNegative );
 
 void     BG_ParseCSVEquipmentList( const char *string, weapon_t *weapons, int weaponsSize,
                                    upgrade_t *upgrades, int upgradesSize );
-void     BG_ParseCSVClassList( const char *string, class_t *classes, int classesSize );
 void     BG_InitAllowedGameElements();
 bool BG_WeaponDisabled( int weapon );
 bool BG_UpgradeDisabled( int upgrade );
-
-bool BG_ClassDisabled( int class_ );
 
 weapon_t BG_PrimaryWeapon( int stats[] );
 
@@ -1216,7 +1194,6 @@ typedef struct voiceTrack_s
 	char                *text;
 	int                 enthusiasm;
 	int                 team;
-	int                 pClass;
 	int                 weapon;
 	struct voiceTrack_s *next;
 } voiceTrack_t;
@@ -1244,7 +1221,7 @@ voiceCmd_t   *BG_VoiceCmdByNum( voiceCmd_t *head, int num );
 voiceTrack_t *BG_VoiceTrackByNum( voiceTrack_t *head, int num );
 
 voiceTrack_t *BG_VoiceTrackFind( voiceTrack_t *head, int team,
-                                 int pClass, int weapon,
+                                 int weapon,
                                  int enthusiasm, int *trackNum );
 
 int  BG_LoadEmoticons( emoticon_t *emoticons, int num );
