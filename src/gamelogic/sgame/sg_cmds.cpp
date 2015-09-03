@@ -1511,16 +1511,16 @@ void Cmd_VSay_f( gentity_t *ent )
 	}
 
 	track = BG_VoiceTrackFind( cmd->tracks, ent->client->pers.team,
-	                           ent->client->pers.classSelection, weapon, ( int ) ent->client->voiceEnthusiasm,
+	                           weapon, ( int ) ent->client->voiceEnthusiasm,
 	                           &trackNum );
 
 	if ( !track )
 	{
-		trap_SendServerCommand( ent - g_entities, va("print_tr %s %s %s %d %d %d %d %s",
+		trap_SendServerCommand( ent - g_entities, va("print_tr %s %s %s %d %d %d %s",
 		                          QQ( N_("$1$: no available track for command '$2$', team $3$, "
-		                          "class $4$, weapon $5$, and enthusiasm $6$ in voice '$7$'\n") ),
+		                          "weapon $4$, and enthusiasm $5$ in voice '$6$'\n") ),
 		                          vsay, Quote( voiceCmd ), ent->client->pers.team,
-		                          ent->client->pers.classSelection, weapon,
+		                          weapon,
 		                          ( int ) ent->client->voiceEnthusiasm, Quote( voiceName ) ) );
 		return;
 	}
@@ -2301,264 +2301,6 @@ void Cmd_SetViewpos_f( gentity_t *ent )
 	}
 
 	G_TeleportPlayer( ent, origin, angles, 0.0f );
-}
-
-bool G_RoomForClassChange( gentity_t *ent, class_t pcl, vec3_t newOrigin )
-{
-	vec3_t  fromMins, fromMaxs;
-	vec3_t  toMins, toMaxs;
-	vec3_t  temp;
-	trace_t tr;
-	float   nudgeHeight;
-	float   maxHorizGrowth;
-	class_t oldClass = (class_t) ent->client->ps.stats[ STAT_CLASS ];
-
-	BG_ClassBoundingBox( oldClass, fromMins, fromMaxs, nullptr, nullptr, nullptr );
-	BG_ClassBoundingBox( pcl, toMins, toMaxs, nullptr, nullptr, nullptr );
-
-	VectorCopy( ent->client->ps.origin, newOrigin );
-
-	// find max x/y diff
-	maxHorizGrowth = toMaxs[ 0 ] - fromMaxs[ 0 ];
-
-	if ( toMaxs[ 1 ] - fromMaxs[ 1 ] > maxHorizGrowth )
-	{
-		maxHorizGrowth = toMaxs[ 1 ] - fromMaxs[ 1 ];
-	}
-
-	if ( toMins[ 0 ] - fromMins[ 0 ] > -maxHorizGrowth )
-	{
-		maxHorizGrowth = - ( toMins[ 0 ] - fromMins[ 0 ] );
-	}
-
-	if ( toMins[ 1 ] - fromMins[ 1 ] > -maxHorizGrowth )
-	{
-		maxHorizGrowth = - ( toMins[ 1 ] - fromMins[ 1 ] );
-	}
-
-	if ( maxHorizGrowth > 0.0f )
-	{
-		// test by moving the player up the max required on a 60 degree slope
-		nudgeHeight = maxHorizGrowth * 2.0f;
-	}
-	else
-	{
-		// player is shrinking, so there's no need to nudge them upwards
-		nudgeHeight = 0.0f;
-	}
-
-	// find what the new origin would be on a level surface
-	newOrigin[ 2 ] -= toMins[ 2 ] - fromMins[ 2 ];
-
-	if ( ent->client->noclip )
-	{
-		return true;
-	}
-
-	//compute a place up in the air to start the real trace
-	VectorCopy( newOrigin, temp );
-	temp[ 2 ] += nudgeHeight;
-	trap_Trace( &tr, newOrigin, toMins, toMaxs, temp, ent->s.number, MASK_PLAYERSOLID, 0 );
-
-	//trace down to the ground so that we can evolve on slopes
-	VectorCopy( newOrigin, temp );
-	temp[ 2 ] += ( nudgeHeight * tr.fraction );
-	trap_Trace( &tr, temp, toMins, toMaxs, newOrigin, ent->s.number, MASK_PLAYERSOLID, 0 );
-	VectorCopy( tr.endpos, newOrigin );
-
-	//make REALLY sure
-	trap_Trace( &tr, newOrigin, toMins, toMaxs, newOrigin, ent->s.number, MASK_PLAYERSOLID, 0 );
-
-	//check there is room to evolve
-	return ( !tr.startsolid && tr.fraction == 1.0f );
-}
-
-/*
-=================
-Cmd_Class_f
-=================
-*/
-static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
-{
-	int       clientNum;
-	int       i;
-	vec3_t    infestOrigin;
-	class_t   currentClass = ent->client->pers.classSelection;
-	class_t   newClass;
-	int       entityList[ MAX_GENTITIES ];
-	vec3_t    range = { 1000.0f, 1000.0f, 1000.0f };
-	vec3_t    mins, maxs;
-	int       num;
-	gentity_t *other;
-	vec3_t    oldVel;
-
-	clientNum = ent->client - level.clients;
-	newClass = BG_ClassByName( s )->number;
-
-	if ( ent->client->sess.spectatorState != SPECTATOR_NOT )
-	{
-		team_t team;
-		if ( ent->client->sess.spectatorState == SPECTATOR_FOLLOW )
-		{
-			G_StopFollowing( ent );
-		}
-
-		team = (team_t) ent->client->pers.team;
-		if ( team == TEAM_Q )
-		{
-			if ( BG_ClassDisabled( newClass ) )
-			{
-				return false;
-			}
-
-			if ( !BG_ClassUnlocked( newClass ) )
-			{
-				return false;
-			}
-
-			// spawn from an egg
-			//TODO merge with human's code
-			if ( G_PushSpawnQueue( &level.team[ team ].spawnQueue, clientNum ) )
-			{
-				ent->client->pers.classSelection = newClass;
-				ent->client->ps.stats[ STAT_CLASS ] = newClass;
-
-				return true;
-			}
-		}
-		else if ( team == TEAM_U )
-		{
-			//set the item to spawn with
-			if ( !Q_stricmp( s, BG_Weapon( WP_MACHINEGUN )->name ) &&
-			     !BG_WeaponDisabled( WP_MACHINEGUN ) )
-			{
-				ent->client->pers.weapon = WP_MACHINEGUN;
-			}
-			else if ( !Q_stricmp( s, BG_Weapon( WP_HBUILD )->name ) &&
-			          !BG_WeaponDisabled( WP_HBUILD ) )
-			{
-				ent->client->pers.weapon = WP_HBUILD;
-			}
-			else
-			{
-				return false;
-			}
-
-			// spawn from a telenode
-			//TODO merge with alien's code
-			newClass = PCL_U;
-			if ( G_PushSpawnQueue( &level.team[ team ].spawnQueue, clientNum ) )
-			{
-				ent->client->pers.classSelection = newClass;
-				ent->client->ps.stats[ STAT_CLASS ] = newClass;
-
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	if ( ent->health <= 0 )
-	{
-		return true; // dead, can't evolve; no point in trying other classes (if any listed)
-	}
-
-	if ( ent->client->pers.team == TEAM_Q )
-	{
-		if ( newClass == PCL_NONE )
-		{
-			return false;
-		}
-
-		//if we are not currently spectating, we are attempting evolution
-		if ( ent->client->pers.classSelection != PCL_NONE )
-		{
-			int cost;
-
-			//check there are no humans nearby
-			VectorAdd( ent->client->ps.origin, range, maxs );
-			VectorSubtract( ent->client->ps.origin, range, mins );
-
-			num = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
-
-			for ( i = 0; i < num; i++ )
-			{
-				other = &g_entities[ entityList[ i ] ];
-
-				if ( other->client && other->client->pers.team == TEAM_U )
-				{
-					return false;
-				}
-			}
-
-			//check that we are not wallwalking
-			if ( ent->client->ps.eFlags & EF_WALLCLIMB )
-			{
-				return false;
-			}
-
-			cost = BG_ClassCanEvolveFromTo( currentClass, newClass, ent->client->pers.credit );
-
-			if ( G_RoomForClassChange( ent, newClass, infestOrigin ) )
-			{
-				if ( cost >= 0 )
-				{
-					ent->client->pers.evolveHealthFraction = ( float ) ent->client->ps.stats[ STAT_HEALTH ] /
-					    ( float ) BG_Class( currentClass )->health;
-
-					if ( ent->client->pers.evolveHealthFraction < 0.0f )
-					{
-						ent->client->pers.evolveHealthFraction = 0.0f;
-					}
-					else if ( ent->client->pers.evolveHealthFraction > 1.0f )
-					{
-						ent->client->pers.evolveHealthFraction = 1.0f;
-					}
-
-					//remove credit
-					G_AddCreditToClient( ent->client, -cost, true );
-					ent->client->pers.classSelection = newClass;
-					ClientUserinfoChanged( clientNum, false );
-					VectorCopy( infestOrigin, ent->s.pos.trBase );
-					VectorCopy( ent->client->ps.velocity, oldVel );
-
-					ClientSpawn( ent, ent, ent->s.pos.trBase, ent->s.apos.trBase );
-
-					VectorCopy( oldVel, ent->client->ps.velocity );
-				}
-				else
-				{
-					return false;
-				}
-			}
-			else
-			{
-				return false;
-			}
-		}
-	}
-	else if ( ent->client->pers.team == TEAM_U )
-	{
-		return false;
-	}
-
-	// if we reach this, found a valid class and changed to it
-	return true;
-}
-
-void Cmd_Class_f( gentity_t *ent )
-{
-	char s[ MAX_TOKEN_CHARS ];
-	int  i;
-	int  args = trap_Argc() - 1;
-
-	for ( i = 1; i <= args; ++i )
-	{
-		trap_Argv( i, s, sizeof( s ) );
-
-		if ( Cmd_Class_internal( ent, s, i == args ) ) break;
-	}
 }
 
 /*
@@ -3652,7 +3394,6 @@ static const commands_t cmds[] =
 	{ "beacon",          CMD_TEAM | CMD_ALIVE,                Cmd_Beacon_f           },
 	{ "callteamvote",    CMD_MESSAGE | CMD_TEAM,              Cmd_CallVote_f         },
 	{ "callvote",        CMD_MESSAGE,                         Cmd_CallVote_f         },
-	{ "class",           CMD_TEAM,                            Cmd_Class_f            },
 	{ "damage",          CMD_CHEAT | CMD_ALIVE,               Cmd_Damage_f           },
 	{ "follow",          CMD_SPEC,                            Cmd_Follow_f           },
 	{ "follownext",      CMD_SPEC,                            Cmd_FollowCycle_f      },

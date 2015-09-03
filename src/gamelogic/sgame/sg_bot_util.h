@@ -86,8 +86,6 @@ int        BotValueOfWeapons( gentity_t *self );
 int        BotValueOfUpgrades( gentity_t *self );
 
 // alien bots
-bool BotCanEvolveToClass( gentity_t *self, class_t newClass );
-bool BotEvolveToClass( gentity_t *ent, class_t newClass );
 float    CalcAimPitch( gentity_t *self, botTarget_t target, vec_t launchSpeed );
 
 //g_bot_nav.c
@@ -106,7 +104,7 @@ void         G_BotNavInit();
 void         G_BotNavCleanup();
 bool     FindRouteToTarget( gentity_t *self, botTarget_t target, bool allowPartial );
 void         BotMoveToGoal( gentity_t *self );
-void         BotSetNavmesh( gentity_t  *ent, class_t newClass );
+void         BotSetNavmesh( gentity_t  *ent, team_t newTeam );
 void         BotClampPos( gentity_t *self );
 
 // local navigation

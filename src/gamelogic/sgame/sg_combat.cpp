@@ -25,8 +25,8 @@
 #define MAX_DAMAGE_REGIONS     16
 
 // damage region data
-damageRegion_t g_damageRegions[ PCL_NUM_CLASSES ][ MAX_DAMAGE_REGIONS ];
-int            g_numDamageRegions[ PCL_NUM_CLASSES ];
+damageRegion_t g_damageRegions[ NUM_TEAMS ][ MAX_DAMAGE_REGIONS ];
+int            g_numDamageRegions[ NUM_TEAMS ];
 
 // these are just for logging, the client prints its own messages
 // TODO: Centralize to keep in sync (e.g. bg_mod.c)
@@ -352,7 +352,6 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 	ent->s.generic1 = assistantTeam;
 	ent->r.svFlags = SVF_BROADCAST; // send to everyone
 
-	// FIXME if ( attacker )
 	if ( attacker && attacker->client )
 	{
 		if ( g_showKillerHP.integer )
@@ -652,14 +651,14 @@ static int ParseDmgScript( damageRegion_t *regions, const char *buf )
 	return count;
 }
 
-float G_GetNonLocDamageMod( class_t pcl )
+float G_GetNonLocDamageMod( team_t team )
 {
 	int            regionNum;
 	damageRegion_t *region;
 
-	for ( regionNum = 0; regionNum < g_numDamageRegions[ pcl ]; regionNum++ )
+	for ( regionNum = 0; regionNum < g_numDamageRegions[ team ]; regionNum++ )
 	{
-		region = &g_damageRegions[ pcl ][ regionNum ];
+		region = &g_damageRegions[ team ][ regionNum ];
 
 		if ( !region->nonlocational )
 		{
@@ -668,9 +667,9 @@ float G_GetNonLocDamageMod( class_t pcl )
 
 		if ( g_debugDamage.integer > 1 )
 		{
-			Com_Printf( "GetNonLocDamageModifier( pcl = %s ): "
+			Com_Printf( "GetNonLocDamageModifier( team = %s ): "
 			            S_COLOR_GREEN "FOUND:" S_COLOR_WHITE " %.2f\n",
-			            BG_Class( pcl )->name, region->modifier );
+			            BG_Class( team )->name, region->modifier );
 		}
 
 		return region->modifier;
@@ -678,15 +677,15 @@ float G_GetNonLocDamageMod( class_t pcl )
 
 	if ( g_debugDamage.integer > 1 )
 	{
-		Com_Printf( "GetNonLocDamageModifier( pcl = %s ): "
+		Com_Printf( "GetNonLocDamageModifier( team = %s ): "
 		            S_COLOR_YELLOW "NOT FOUND:" S_COLOR_WHITE " %.2f.\n",
-		            BG_Class( pcl )->name, 1.0f );
+		            BG_Class( team )->name, 1.0f );
 	}
 
 	return 1.0f;
 }
 
-float G_GetPointDamageMod( gentity_t *target, class_t pcl, float angle, float height )
+float G_GetPointDamageMod( gentity_t *target, team_t team, float angle, float height )
 {
 	int            regionNum;
 	damageRegion_t *region;
@@ -699,9 +698,9 @@ float G_GetPointDamageMod( gentity_t *target, class_t pcl, float angle, float he
 
 	crouching = ( target->client->ps.pm_flags & PMF_DUCKED );
 
-	for ( regionNum = 0; regionNum < g_numDamageRegions[ pcl ]; regionNum++ )
+	for ( regionNum = 0; regionNum < g_numDamageRegions[ team ]; regionNum++ )
 	{
-		region = &g_damageRegions[ pcl ][ regionNum ];
+		region = &g_damageRegions[ team ][ regionNum ];
 
 		// ignore nonlocational
 		if ( region->nonlocational )
@@ -730,9 +729,9 @@ float G_GetPointDamageMod( gentity_t *target, class_t pcl, float angle, float he
 
 		if ( g_debugDamage.integer > 1 )
 		{
-			G_Printf( "GetPointDamageModifier( pcl = %s, angle = %.2f, height = %.2f ): "
+			G_Printf( "GetPointDamageModifier( team = %s, angle = %.2f, height = %.2f ): "
 			          S_COLOR_GREEN "FOUND:" S_COLOR_WHITE " %.2f (%s)\n",
-			          BG_Class( pcl )->name, angle, height, region->modifier, region->name );
+			          BG_Class( team )->name, angle, height, region->modifier, region->name );
 		}
 
 		return region->modifier;
@@ -740,15 +739,15 @@ float G_GetPointDamageMod( gentity_t *target, class_t pcl, float angle, float he
 
 	if ( g_debugDamage.integer > 1 )
 	{
-		G_Printf( "GetPointDamageModifier( pcl = %s, angle = %.2f, height = %.2f ): "
+		G_Printf( "GetPointDamageModifier( team = %s, angle = %.2f, height = %.2f ): "
 		          S_COLOR_YELLOW "NOT FOUND:" S_COLOR_WHITE " %.2f\n",
-		          BG_Class( pcl )->name, angle, height, 1.0f );
+		          BG_Class( team )->name, angle, height, 1.0f );
 	}
 
 	return 1.0f;
 }
 
-static float CalcDamageModifier( vec3_t point, gentity_t *target, class_t pcl, int damageFlags )
+static float CalcDamageModifier( vec3_t point, gentity_t *target, team_t team, int damageFlags )
 {
 	vec3_t targOrigin, bulletPath, bulletAngle, pMINUSfloor, floor, normal;
 	float  clientHeight, hitRelative, hitRatio, modifier;
@@ -757,7 +756,7 @@ static float CalcDamageModifier( vec3_t point, gentity_t *target, class_t pcl, i
 	// handle nonlocational damage
 	if ( damageFlags & DAMAGE_NO_LOCDAMAGE )
 	{
-		return G_GetNonLocDamageMod( pcl );
+		return G_GetNonLocDamageMod( team );
 	}
 
 	// need a valid point and target client
@@ -808,7 +807,7 @@ static float CalcDamageModifier( vec3_t point, gentity_t *target, class_t pcl, i
 	hitRotation = AngleNormalize360( target->client->ps.viewangles[ YAW ] - bulletAngle[ YAW ] );
 
 	// Get damage region modifier
-	modifier = G_GetPointDamageMod( target, pcl, hitRotation, hitRatio );
+	modifier = G_GetPointDamageMod( target, team, hitRotation, hitRatio );
 
 	return modifier;
 }
@@ -822,9 +821,9 @@ void G_InitDamageLocations()
 	fileHandle_t fileHandle;
 	char         buffer[ MAX_DAMAGE_REGION_TEXT ];
 
-	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+	for ( i = 1; i < NUM_TEAMS; i++ )
 	{
-		modelName = BG_ClassModelConfig( i )->modelName;
+		modelName = BG_ClassModelConfig( ( team_t ) i )->modelName;
 		Com_sprintf( filename, sizeof( filename ), "configs/classes/%s.locdamage.cfg", modelName );
 
 		len = trap_FS_FOpenFile( filename, &fileHandle, FS_READ );
@@ -911,7 +910,7 @@ void G_KnockbackByDir( gentity_t *target, const vec3_t direction, float strength
 		return;
 	}
 
-	ca = BG_Class( target->client->ps.stats[ STAT_CLASS ] );
+	ca = BG_Class( ( team_t ) target->client->ps.persistant[ PERS_TEAM ] );
 
 	// normalize direction
 	VectorCopy( direction, dir );
@@ -1108,7 +1107,7 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 		}
 
 		// apply damage modifier
-		modifier = CalcDamageModifier( point, target, (class_t) client->ps.stats[ STAT_CLASS ], damageFlags );
+		modifier = CalcDamageModifier( point, target, ( team_t ) client->ps.persistant[ PERS_TEAM ], damageFlags );
 		take = ( int )( ( float )damage * modifier + 0.5f );
 	}
 	else

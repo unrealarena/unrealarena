@@ -433,7 +433,7 @@ namespace Beacon //this should eventually become a class
 
 		if ( parent->client )
 		{
-			BG_ClassBoundingBox( parent->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
+			BG_ClassBoundingBox( ( team_t ) parent->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
 			BG_MoveOriginToBBOXCenter( center, mins, maxs );
 
 			// Also update weapon for humans.
@@ -669,11 +669,11 @@ namespace Beacon //this should eventually become a class
 				targetTeam = (team_t)ent->client->pers.team;
 				dead       = ( ent->client && ent->client->ps.stats[ STAT_HEALTH ] <= 0 );
 				player     = true;
-				BG_ClassBoundingBox( ent->client->pers.classSelection, mins, maxs, nullptr, nullptr, nullptr );
+				BG_ClassBoundingBox( ent->client->pers.team, mins, maxs, nullptr, nullptr, nullptr );
 
 				// Set beacon data to class (Q team) or weapon (U team).
 				switch( targetTeam ) {
-					case TEAM_Q: data = ent->client->ps.stats[ STAT_CLASS ];    break;
+					case TEAM_Q: data = ent->client->ps.persistant[ PERS_TEAM ];    break;
 					case TEAM_U: data = BG_GetPlayerWeapon( &ent->client->ps ); break;
 					default:                                                         return;
 				}

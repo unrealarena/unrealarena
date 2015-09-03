@@ -116,7 +116,6 @@ int               G_FloodLimited( gentity_t *ent );
 void              G_LoadCensors();
 void              G_CensorString( char *out, const char *in, int len, gentity_t *ent );
 bool          G_CheckStopVote( team_t );
-bool          G_RoomForClassChange( gentity_t *ent, class_t pcl, vec3_t newOrigin );
 void              ScoreboardMessage( gentity_t *client );
 void              ClientCommand( int clientNum );
 void              G_ClearRotationStack();
@@ -136,8 +135,8 @@ void              G_RewardAttackers( gentity_t *self );
 void              G_AddCreditsToScore( gentity_t *self, int credits );
 void              G_AddMomentumToScore( gentity_t *self, float momentum );
 void              G_LogDestruction( gentity_t *self, gentity_t *actor, int mod );
-float             G_GetNonLocDamageMod( class_t pcl );
-float             G_GetPointDamageMod( gentity_t *target, class_t pcl, float angle, float height );
+float             G_GetNonLocDamageMod( team_t team );
+float             G_GetPointDamageMod( gentity_t *target, team_t team, float angle, float height );
 void              G_InitDamageLocations();
 void              G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int mod );
 

@@ -1270,8 +1270,8 @@ void G_WeightAttack( gentity_t *self, gentity_t *victim )
 		return;
 	}
 
-	attackerMass = BG_Class( self->client->pers.classSelection )->mass;
-	victimMass = BG_Class( victim->client->pers.classSelection )->mass;
+	attackerMass = BG_Class( self->client->pers.team )->mass;
+	victimMass = BG_Class( victim->client->pers.team )->mass;
 	weightDPS = WEIGHTDMG_DMG_MODIFIER * MAX( attackerMass - victimMass, 0 );
 
 	if ( weightDPS > WEIGHTDMG_DPS_THRESHOLD )

@@ -218,7 +218,7 @@ static int GetClientMass( gentity_t *ent )
 
 	if ( ent->client->pers.team == TEAM_Q )
 	{
-		entMass = BG_Class( ent->client->pers.classSelection )->health;
+		entMass = BG_Class( ent->client->pers.team )->health;
 	}
 	else if ( ent->client->pers.team == TEAM_U )
 	{
@@ -440,7 +440,7 @@ void  G_TouchTriggers( gentity_t *ent )
 		return;
 	}
 
-	BG_ClassBoundingBox( ent->client->ps.stats[ STAT_CLASS ],
+	BG_ClassBoundingBox( ( team_t ) ent->client->ps.persistant[ PERS_TEAM ],
 	                     pmins, pmaxs, nullptr, nullptr, nullptr );
 
 	VectorAdd( ent->client->ps.origin, pmins, mins );
@@ -565,9 +565,8 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		assert(team == TEAM_Q || team == TEAM_U);
 		G_RemoveFromSpawnQueue( &level.team[ team ].spawnQueue, client->ps.clientNum );
 
-		client->pers.classSelection = PCL_NONE;
 		client->pers.weapon = WP_NONE;
-		client->ps.stats[ STAT_CLASS ] = PCL_NONE;
+		client->ps.persistant[ PERS_TEAM ] = TEAM_NONE;
 		client->ps.pm_flags &= ~PMF_QUEUED;
 		queued = false;
 	}
@@ -614,7 +613,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		client->ps.stats[ STAT_STAMINA ] = 0;
 		client->ps.stats[ STAT_FUEL ] = 0;
 		client->ps.stats[ STAT_MISC ] = 0;
-		client->ps.stats[ STAT_CLASS ] = PCL_NONE;
+		client->ps.persistant[ PERS_TEAM ] = TEAM_NONE;
 		client->ps.weapon = WP_NONE;
 
 		// Set up for pmove
@@ -813,7 +812,7 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		     level.surrenderTeam == TEAM_Q )
 		{
 			G_Damage( ent, nullptr, nullptr, nullptr, nullptr,
-			          BG_Class( client->ps.stats[ STAT_CLASS ] )->regenRate,
+			          BG_Class( ( team_t ) client->ps.persistant[ PERS_TEAM ] )->regenRate,
 			          DAMAGE_NO_ARMOR, MOD_SUICIDE );
 		}
 		else if ( client->pers.team == TEAM_U &&
@@ -914,10 +913,10 @@ void ClientEvents( gentity_t *ent, int oldEventSequence )
 	vec3_t    dir;
 	vec3_t    point, mins;
 	float     fallDistance;
-	class_t   pcl;
+	team_t    team;
 
 	client = ent->client;
-	pcl = (class_t) client->ps.stats[ STAT_CLASS ];
+	team = ( team_t ) client->ps.persistant[ PERS_TEAM ];
 
 	if ( oldEventSequence < client->ps.eventSequence - MAX_EVENTS )
 	{
@@ -949,11 +948,11 @@ void ClientEvents( gentity_t *ent, int oldEventSequence )
 					fallDistance = 1.0f;
 				}
 
-				damage = ( int )( ( float ) BG_Class( pcl )->health *
-				                  BG_Class( pcl )->fallDamage * fallDistance );
+				damage = ( int )( ( float ) BG_Class( team )->health *
+				                  BG_Class( team )->fallDamage * fallDistance );
 
 				VectorSet( dir, 0, 0, 1 );
-				BG_ClassBoundingBox( pcl, mins, nullptr, nullptr, nullptr, nullptr );
+				BG_ClassBoundingBox( team, mins, nullptr, nullptr, nullptr, nullptr );
 				mins[ 0 ] = mins[ 1 ] = 0.0f;
 				VectorAdd( client->ps.origin, mins, point );
 
@@ -1581,7 +1580,7 @@ void ClientThink_real( gentity_t *self )
 	else
 	{
 		client->ps.speed = g_speed.value *
-		                   BG_Class( client->ps.stats[ STAT_CLASS ] )->speed;
+		                   BG_Class( ( team_t ) client->ps.persistant[ PERS_TEAM ] )->speed;
 	}
 
 	// unset level1slow flag if it's time

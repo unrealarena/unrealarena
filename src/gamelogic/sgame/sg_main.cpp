@@ -112,7 +112,6 @@ vmCvar_t           g_freeFundPeriod;
 vmCvar_t           g_unlagged;
 
 vmCvar_t           g_disabledEquipment;
-vmCvar_t           g_disabledClasses;
 vmCvar_t           g_disabledVoteCalls;
 
 vmCvar_t           g_debugMapRotation;
@@ -332,7 +331,6 @@ static cvarTable_t gameCvarTable[] =
 
 	// gameplay: limits
 	{ &g_disabledEquipment,           "g_disabledEquipment",           "",                                 CVAR_SYSTEMINFO,                                 0, false           },
-	{ &g_disabledClasses,             "g_disabledClasses",             "",                                 CVAR_SYSTEMINFO,                                 0, false           },
 
 	// gameplay: misc
 	{ &g_freeFundPeriod,              "g_freeFundPeriod",              DEFAULT_FREEKILL_PERIOD,            0,                                               0, true            },
@@ -2306,7 +2304,7 @@ void CheckExitRules()
 		}
 	}
 
-	// FIXME
+	// XXX
 	return;
 
 	if ( level.unconditionalWin == TEAM_Q ||

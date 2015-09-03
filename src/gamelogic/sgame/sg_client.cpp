@@ -376,7 +376,7 @@ static void SpawnCorpse( gentity_t *ent )
 	body->s.event = 0;
 	body->r.contents = CONTENTS_CORPSE;
 	body->clipmask = MASK_DEADSOLID;
-	body->s.clientNum = ent->client->ps.stats[ STAT_CLASS ];
+	body->s.clientNum = ent->client->ps.persistant[ PERS_TEAM ];
 	body->nonSegModel = ent->client->ps.persistant[ PERS_STATE ] & PS_NONSEGMODEL;
 
 	if ( ent->client->pers.team == TEAM_Q )
@@ -444,7 +444,7 @@ static void SpawnCorpse( gentity_t *ent )
 	ent->health = 0;
 
 	//change body dimensions
-	BG_ClassBoundingBox( ent->client->ps.stats[ STAT_CLASS ], mins, nullptr, nullptr, body->r.mins, body->r.maxs );
+	BG_ClassBoundingBox( ( team_t ) ent->client->ps.persistant[ PERS_TEAM ], mins, nullptr, nullptr, body->r.mins, body->r.maxs );
 
 	//drop down to match the *model* origins of ent and body
 	origin[2] += mins[ 2 ] - body->r.mins[ 2 ];
@@ -493,8 +493,6 @@ void respawn( gentity_t *ent )
 
 	SpawnCorpse( ent );
 
-	// Clients can't respawn - they must go through the class cmd
-	ent->client->pers.classSelection = PCL_NONE;
 	ClientSpawn( ent, nullptr, nullptr, nullptr );
 
 	// stop any following clients that don't have sticky spec on
@@ -952,28 +950,16 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 		trap_SetUserinfo(clientNum, userinfo);
 	}
 
-	if ( client->pers.classSelection == PCL_NONE )
+	Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( client->pers.team )->modelName,
+	             BG_ClassModelConfig( client->pers.team )->skinName );
+
+	if ( BG_ClassModelConfig( client->pers.team )->segmented )
 	{
-		//This looks hacky and frankly it is. The clientInfo string needs to hold different
-		//model details to that of the spawning class or the info change will not be
-		//registered and an axis appears instead of the player model. There is zero chance
-		//the player can spawn with the battlesuit, hence this choice.
-		Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( PCL_U )->modelName,
-					 BG_ClassModelConfig( PCL_U )->skinName );
+		client->ps.persistant[ PERS_STATE ] |= PS_NONSEGMODEL;
 	}
 	else
 	{
-		Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( client->pers.classSelection )->modelName,
-		             BG_ClassModelConfig( client->pers.classSelection )->skinName );
-
-		if ( BG_ClassModelConfig( client->pers.classSelection )->segmented )
-		{
-			client->ps.persistant[ PERS_STATE ] |= PS_NONSEGMODEL;
-		}
-		else
-		{
-			client->ps.persistant[ PERS_STATE ] &= ~PS_NONSEGMODEL;
-		}
+		client->ps.persistant[ PERS_STATE ] &= ~PS_NONSEGMODEL;
 	}
 
 	Q_strncpyz( model, buffer, sizeof( model ) );
@@ -1023,7 +1009,7 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 	}
 	else
 	{
-		client->pers.flySpeed = BG_Class( PCL_NONE )->speed;
+		client->pers.flySpeed = BG_Class( TEAM_NONE )->speed;
 	}
 
 	// disable blueprint errors
@@ -1492,16 +1478,6 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		client->sess.spectatorState = SPECTATOR_FREE;
 	}
 
-	// only start client if chosen a class and joined a team
-	if ( client->pers.classSelection == PCL_NONE && teamLocal == TEAM_NONE )
-	{
-		client->sess.spectatorState = SPECTATOR_FREE;
-	}
-	else if ( client->pers.classSelection == PCL_NONE )
-	{
-		client->sess.spectatorState = SPECTATOR_LOCKED;
-	}
-
 	// if client is dead and following teammate, stop following before spawning
 	if ( ent->client->sess.spectatorState == SPECTATOR_FOLLOW )
 	{
@@ -1529,11 +1505,17 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		}
 		else if ( teamLocal == TEAM_Q )
 		{
-			spawnPoint = G_SelectQLockSpawnPoint( spawn_origin, spawn_angles );
+			if ( G_PushSpawnQueue( &level.team[ teamLocal ].spawnQueue, index ) )
+			{
+				client->ps.persistant[ PERS_TEAM ] = TEAM_Q;
+			}
 		}
 		else if ( teamLocal == TEAM_U )
 		{
-			spawnPoint = G_SelectULockSpawnPoint( spawn_origin, spawn_angles );
+			if ( G_PushSpawnQueue( &level.team[ teamLocal ].spawnQueue, index ) )
+			{
+				client->ps.persistant[ PERS_TEAM ] = TEAM_U;
+			}
 		}
 	}
 	else
@@ -1588,8 +1570,6 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	trap_GetUserinfo( index, userinfo, sizeof( userinfo ) );
 	client->ps.eFlags = flags;
 
-	//Com_Printf( "ent->client->pers->pclass = %i\n", ent->client->pers.classSelection );
-
 	ent->s.groundEntityNum = ENTITYNUM_NONE;
 	ent->client = &level.clients[ index ];
 	ent->takedamage = teamLocal != TEAM_NONE && client->sess.spectatorState == SPECTATOR_NOT; //true;
@@ -1616,12 +1596,12 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	client->ps.eFlags = flags;
 	client->ps.clientNum = index;
 
-	BG_ClassBoundingBox( ent->client->pers.classSelection, ent->r.mins, ent->r.maxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( ent->client->pers.team, ent->r.mins, ent->r.maxs, nullptr, nullptr, nullptr );
 
 	if ( client->sess.spectatorState == SPECTATOR_NOT )
 	{
 		client->ps.stats[ STAT_MAX_HEALTH ] =
-		  BG_Class( ent->client->pers.classSelection )->health;
+		  BG_Class( ent->client->pers.team )->health;
 	}
 	else
 	{
@@ -1629,14 +1609,14 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	}
 
 	// clear entity values
-	if ( ent->client->pers.classSelection == PCL_U )
+	if ( ent->client->pers.team == TEAM_U )
 	{
 		BG_AddUpgradeToInventory( UP_MEDKIT, client->ps.stats );
 		weapon = client->pers.weapon;
 	}
 	else if ( client->sess.spectatorState == SPECTATOR_NOT )
 	{
-		weapon = BG_Class( ent->client->pers.classSelection )->startWeapon;
+		weapon = BG_Class( ent->client->pers.team )->startWeapon;
 	}
 	else
 	{
@@ -1655,7 +1635,6 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	client->ps.persistant[ PERS_TEAM ] = client->pers.team;
 
 	// TODO: Check whether stats can be cleared at once instead of per field
-	client->ps.stats[ STAT_CLASS ] = ent->client->pers.classSelection;
 	client->ps.stats[ STAT_PREDICTION ] = 0;
 	client->ps.stats[ STAT_STATE ] = 0;
 
