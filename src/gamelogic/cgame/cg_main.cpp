@@ -50,7 +50,6 @@ centity_t       cg_entities[ MAX_GENTITIES ];
 
 weaponInfo_t    cg_weapons[ 32 ];
 upgradeInfo_t   cg_upgrades[ 32 ];
-classInfo_t     cg_classes[ PCL_NUM_CLASSES ];
 
 vmCvar_t        cg_teslaTrailTime;
 vmCvar_t        cg_centertime;
@@ -421,7 +420,6 @@ static void CG_SetPVars()
 
 		default:
 		case TEAM_NONE:
-			trap_Cvar_Set( "p_classname", "Spectator" );
 			trap_Cvar_Set( "p_weaponname", "Nothing" );
 
 			/*
@@ -429,7 +427,6 @@ static void CG_SetPVars()
 			 * the only ones, that actually are helpful to hold on to are p_score and p_credits, since these actually
 			 * might be taken over when joining a team again, or be used to look up old values before leaving the game
 			 */
-			trap_Cvar_Set( "p_class" , "0" );
 			trap_Cvar_Set( "p_weapon", "0" );
 			trap_Cvar_Set( "p_hp", "0" );
 			trap_Cvar_Set( "p_maxhp", "0" );
@@ -437,11 +434,6 @@ static void CG_SetPVars()
 			trap_Cvar_Set( "p_clips", "0" );
 			return;
 	}
-
-	trap_Cvar_Set( "p_class", va( "%d", ps->stats[ STAT_CLASS ] ) );
-
-	trap_Cvar_Set( "p_classname", BG_Class( ps->stats[ STAT_CLASS ] )->name );
-
 
 	trap_Cvar_Set( "p_weapon", va( "%d", ps->stats[ STAT_WEAPON ] ) );
 	trap_Cvar_Set( "p_weaponname", BG_Weapon( ps->stats[ STAT_WEAPON ] )->humanName );
@@ -788,7 +780,7 @@ enum {
 	LOAD_CONFIGS,
 	LOAD_WEAPONS,
 	LOAD_UPGRADES,
-	LOAD_CLASSES,
+	LOAD_TEAMS,
 	LOAD_REMAINING,
 	LOAD_DONE
 } typedef cgLoadingStep_t;
@@ -845,7 +837,7 @@ static void CG_UpdateLoadingStep( cgLoadingStep_t step )
 			CG_UpdateLoadingProgress( LOADBAR_MEDIA, 0.90f, choose("Setting up the armoury", "Sharpening the aliens' claws", "Overloading lucifer cannons", nullptr) );
 			break;
 		case LOAD_UPGRADES:
-		case LOAD_CLASSES:
+		case LOAD_TEAMS:
 			CG_UpdateLoadingProgress( LOADBAR_MEDIA, 0.95f, choose("Charging battery packs", "Replicating alien DNA", "Packing tents for jetcampers", nullptr) );
 			break;
 		case LOAD_DONE:
@@ -1269,12 +1261,12 @@ static void CG_RegisterClients()
 	cg.charModelFraction = 0.0f;
 
 	//precache all the models/sounds/etc
-	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+	for ( i = 1; i < NUM_TEAMS; i++ )
 	{
-		CG_PrecacheClientInfo( (class_t) i, BG_ClassModelConfig( i )->modelName,
-		                       BG_ClassModelConfig( i )->skinName );
+		CG_PrecacheClientInfo( ( team_t ) i, BG_ClassModelConfig( ( team_t ) i )->modelName,
+		                       BG_ClassModelConfig( ( team_t ) i )->skinName );
 
-		cg.charModelFraction = ( float ) i / ( float ) PCL_NUM_CLASSES;
+		cg.charModelFraction = ( float ) i / ( float ) NUM_TEAMS;
 		trap_UpdateScreen();
 	}
 
@@ -1480,8 +1472,7 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 	CG_UpdateLoadingStep( LOAD_UPGRADES );
 	CG_InitUpgrades();
 
-	CG_UpdateLoadingStep( LOAD_CLASSES );
-	CG_InitClasses();
+	CG_UpdateLoadingStep( LOAD_TEAMS );
 
 	CG_UpdateLoadingStep( LOAD_REMAINING );
 

@@ -346,13 +346,13 @@ const char *CG_TutorialText()
 		}
 		else if ( ps->stats[ STAT_HEALTH ] > 0 )
 		{
-			switch ( ps->stats[ STAT_CLASS ] )
+			switch ( ps->persistant[ PERS_TEAM ] )
 			{
-				case PCL_Q:
+				case TEAM_Q:
 					CG_QText( text, ps );
 					break;
 
-				case PCL_U:
+				case TEAM_U:
 					CG_UText( text, ps );
 					break;
 

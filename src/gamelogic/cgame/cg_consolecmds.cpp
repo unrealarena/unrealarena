@@ -114,19 +114,6 @@ static void CG_ReloadHud_f()
 	CG_OnPlayerWeaponChange( (weapon_t) cg.snap->ps.weapon );
 }
 
-static void CG_CompleteClass()
-{
-	if ( cgs.clientinfo[ cg.clientNum ].team == TEAM_Q )
-	{
-		trap_CompleteCallback( BG_Class( PCL_Q )->name );
-	}
-	else if ( cgs.clientinfo[ cg.clientNum ].team == TEAM_U )
-	{
-		trap_CompleteCallback( BG_Weapon( WP_HBUILD )->name );
-		trap_CompleteCallback( BG_Weapon( WP_MACHINEGUN )->name );
-	}
-}
-
 static void CG_CompleteBeacon()
 {
 	int i;
@@ -336,7 +323,6 @@ static const struct
 	{ "beaconMenu",       CG_BeaconMenu_f,         0                },
 	{ "callteamvote",     0,                       CG_CompleteTeamVote },
 	{ "callvote",         0,                       CG_CompleteVote  },
-	{ "class",            0,                       CG_CompleteClass },
 	{ "clientlist",       CG_ClientList_f,         0                },
 	{ "damage",           0,                       0                },
 	{ "destroyTestPS",    CG_DestroyTestPS_f,      0                },

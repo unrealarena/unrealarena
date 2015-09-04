@@ -189,10 +189,10 @@ static bool LoadExplicitBeacons()
 		     ( targetES = &targetCent->currentState )->eType == ET_PLAYER )
 		{
 			vec3_t mins, maxs, center;
-			int pClass = ( ( targetES->misc >> 8 ) & 0xFF ); // TODO: Write function for this.
+			team_t team = ( team_t ) targetES->misc;
 
 			VectorCopy( targetCent->lerpOrigin, center );
-			BG_ClassBoundingBox( pClass, mins, maxs, nullptr, nullptr, nullptr );
+			BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
 			BG_MoveOriginToBBOXCenter( center, mins, maxs );
 
 			// TODO: Interpolate when target entity pops in.
@@ -244,10 +244,10 @@ static bool LoadImplicitBeacons()
 			// Set location on exact center of target player entity.
 			{
 				vec3_t mins, maxs, center;
-				int pClass = ( ( es->misc >> 8 ) & 0xFF ); // TODO: Write function for this.
+				team_t team = ( team_t ) es->misc;
 
 				VectorCopy( ent->lerpOrigin, center );
-				BG_ClassBoundingBox( pClass, mins, maxs, nullptr, nullptr, nullptr );
+				BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
 				BG_MoveOriginToBBOXCenter( center, mins, maxs );
 
 				VectorCopy( center, beacon->origin );
@@ -651,8 +651,6 @@ qhandle_t CG_BeaconDescriptiveIcon( const cbeacon_t *b )
 {
 	if ( b->type == BCT_TAG ) {
 		switch ( TargetTeam( b ) ) {
-			case TEAM_Q:
-				return cg_classes[ b->data ].classIcon;
 			case TEAM_U:
 				return cg_weapons[ b->data ].weaponIcon;
 			default:
@@ -679,7 +677,7 @@ const char *CG_BeaconName( const cbeacon_t *b, char *out, size_t len )
 			if ( ownTeam == TEAM_NONE || ownTeam == beaconTeam ) {
 				return strncpy( out, cgs.clientinfo[ b->target ].name, len ); // Player name
 			} else if ( beaconTeam == TEAM_Q ) {
-				return strncpy( out, BG_ClassModelConfig( b->data )->humanName, len ); // Class name
+				return strncpy( out, BG_ClassModelConfig( ( team_t ) b->data )->humanName, len ); // Team name
 			} else if ( beaconTeam == TEAM_U ) {
 				// TODO: Display "Light//Chewy/Canned Food" for different armor types.
 				return strncpy( out, "Food", len );

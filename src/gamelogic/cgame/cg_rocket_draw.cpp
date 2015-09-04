@@ -2242,9 +2242,6 @@ static INLINE qhandle_t CG_GetUnlockableIcon( int num )
 
 		case UNLT_UPGRADE:
 			return cg_upgrades[ index ].upgradeIcon;
-
-		case UNLT_CLASS:
-			return cg_classes[ index ].classIcon;
 	}
 
 	return 0;

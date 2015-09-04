@@ -523,7 +523,7 @@ static void CG_MinimapDrawTeammates( const minimap_t* m )
 
         int clientNum = mate->currentState.clientNum;
 
-        bool isTeammate = mate->currentState.eType == ET_PLAYER && clientNum >= 0 && clientNum < MAX_CLIENTS && (mate->currentState.misc & 0x00FF) == ownTeam;
+        bool isTeammate = mate->currentState.eType == ET_PLAYER && clientNum >= 0 && clientNum < MAX_CLIENTS && (mate->currentState.misc) == ownTeam;
 
         if ( !isTeammate )
         {

@@ -108,11 +108,6 @@ static void CG_Rocket_DFWeaponName( int handle, const char *data )
 	Rocket_DataFormatterFormattedData( handle, BG_Weapon( atoi( Info_ValueForKey( data, "1" ) ) )->humanName, true );
 }
 
-static void CG_Rocket_DFClassName( int handle, const char *data )
-{
-	Rocket_DataFormatterFormattedData( handle, BG_Class( atoi( Info_ValueForKey( data, "1" ) ) )->name, true );
-}
-
 static void CG_Rocket_DFServerLabel( int handle, const char *data )
 {
 	const char *str = Info_ValueForKey( data, "1" );
@@ -266,7 +261,6 @@ typedef struct
 
 static const dataFormatterCmd_t dataFormatterCmdList[] =
 {
-	{ "ClassName", &CG_Rocket_DFClassName },
 	{ "CMBeacons", &CG_Rocket_DFCMBeacons },
 	{ "GearOrReady", &CG_Rocket_DFGearOrReady },
 	{ "GWeaponDamage", &CG_Rocket_DFGWeaponDamage },

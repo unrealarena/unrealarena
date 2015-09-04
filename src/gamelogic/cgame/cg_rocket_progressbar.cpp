@@ -66,7 +66,7 @@ static float CG_Rocket_GetPlayerHealthProgress()
 {
 	playerState_t *ps = &cg.snap->ps;
 
-	return ( float )ps->stats[ STAT_HEALTH ] / ( float )BG_Class( ps->stats[ STAT_CLASS ] )->health;
+	return ( float )ps->stats[ STAT_HEALTH ] / ( float )BG_Class( ( team_t ) ps->persistant[ PERS_TEAM ] )->health;
 }
 
 static float CG_Rocket_GetPlayerAmmoProgress()
