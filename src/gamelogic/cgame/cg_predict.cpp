@@ -177,7 +177,7 @@ static void CG_ClipMoveToEntities( const vec3_t start, const vec3_t mins,
 
 			if ( i == cg_numSolidEntities )
 			{
-				BG_ClassBoundingBox( ( ent->misc >> 8 ) & 0xFF, bmins, bmaxs, nullptr, nullptr, nullptr );
+				BG_ClassBoundingBox( ( team_t ) ent->misc, bmins, bmaxs, nullptr, nullptr, nullptr );
 			}
 
 			VectorAdd( cent->lerpOrigin, bmins, bmins );

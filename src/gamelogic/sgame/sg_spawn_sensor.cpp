@@ -293,40 +293,6 @@ sensor_player
 
 /*
 ===============
-sensor_class_match
-===============
-*/
-bool sensor_class_match( gentity_t *self, gentity_t *activator )
-{
-	int i = 0;
-
-	if ( !activator )
-	{
-		return false;
-	}
-
-	//if there is no class list every class triggers (stupid case)
-	if ( self->conditions.classes[ i ] == PCL_NONE )
-	{
-		return true;
-	}
-	else
-	{
-		//otherwise check against the list
-		for ( i = 0; self->conditions.classes[ i ] != PCL_NONE; i++ )
-		{
-			if ( activator->client->ps.stats[ STAT_CLASS ] == self->conditions.classes[ i ] )
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-/*
-===============
 sensor_equipment_match
 ===============
 */
@@ -387,18 +353,7 @@ void sensor_player_touch( gentity_t *self, gentity_t *activator, trace_t *trace 
 	if ( self->conditions.team && ( activator->client->pers.team != self->conditions.team ) )
 		return;
 
-	if ( self->conditions.classes[0] && activator->client->pers.team == TEAM_Q )
-	{
-		shouldFire = sensor_class_match( self, activator );
-	}
-	else if ( ( self->conditions.upgrades[0] || self->conditions.weapons[0] ) && activator->client->pers.team == TEAM_U )
-	{
-		shouldFire = sensor_equipment_match( self, activator );
-	}
-	else
-	{
-		shouldFire = true;
-	}
+	shouldFire = true;
 
 	if( shouldFire == !self->conditions.negated )
 	{

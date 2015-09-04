@@ -269,7 +269,6 @@ void G_ChangeTeam( gentity_t *ent, team_t newTeam )
 	ent->client->pers.teamChangeTime = level.time;
 	ent->client->pers.team = newTeam;
 	ent->client->pers.teamInfo = level.startTime - 1;
-	ent->client->pers.classSelection = PCL_NONE;
 	ClientSpawn( ent, nullptr, nullptr, nullptr );
 
 	if ( !g_cheats.integer )
@@ -412,7 +411,7 @@ void TeamplayInfoMessage( gentity_t *ent )
 		}
 		else if ( cl->pers.team == TEAM_Q )
 		{
-			curWeaponClass = cl->ps.stats[ STAT_CLASS ];
+			curWeaponClass = cl->ps.persistant[ PERS_TEAM ];
 			upgrade = UP_NONE;
 		}
 		else if ( cl->pers.team == TEAM_U )

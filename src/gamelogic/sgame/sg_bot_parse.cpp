@@ -152,7 +152,7 @@ static AIValue_t healScore( gentity_t *self, const AIValue_t *params )
 
 static AIValue_t botClass( gentity_t *self, const AIValue_t *params )
 {
-	return AIBoxInt( self->client->ps.stats[ STAT_CLASS ] );
+	return AIBoxInt( self->client->ps.persistant[ PERS_TEAM ] );
 }
 
 static AIValue_t botSkill( gentity_t *self, const AIValue_t *params )
@@ -225,13 +225,6 @@ static AIValue_t directPathTo( gentity_t *self, const AIValue_t *params )
 	return AIBoxInt( false );
 }
 
-static AIValue_t botCanEvolveTo( gentity_t *self, const AIValue_t *params )
-{
-	class_t c = ( class_t ) AIUnBoxInt( params[ 0 ] );
-
-	return AIBoxInt( BotCanEvolveToClass( self, c ) );
-}
-
 static AIValue_t randomChance( gentity_t *self, const AIValue_t *params )
 {
 	return AIBoxFloat( random() );
@@ -274,7 +267,7 @@ static AIValue_t percentHealth( gentity_t *self, const AIValue_t *params )
 
 		if ( et.ent->s.eType == ET_PLAYER )
 		{
-			maxHealth = BG_Class( ( class_t ) et.ent->client->ps.stats[ STAT_CLASS ] )->health;
+			maxHealth = BG_Class( ( team_t ) et.ent->client->ps.persistant[ PERS_TEAM ] )->health;
 		}
 	}
 
@@ -292,7 +285,6 @@ static const struct AIConditionMap_s
 {
 	{ "alertedToEnemy",    VALUE_INT,   alertedToEnemy,    0 },
 	{ "baseRushScore",     VALUE_FLOAT, baseRushScore,     0 },
-	{ "canEvolveTo",       VALUE_INT,   botCanEvolveTo,    1 },
 	{ "class",             VALUE_INT,   botClass,          0 },
 	{ "cvarFloat",         VALUE_FLOAT, cvarFloat,         1 },
 	{ "cvarInt",           VALUE_INT,   cvarInt,           1 },
@@ -878,8 +870,6 @@ static const struct AIActionMap_s
 	{ "changeGoal",        BotActionChangeGoal,        1, 1 },
 	{ "classDodge",        BotActionClassDodge,        0, 0 },
 	{ "deactivateUpgrade", BotActionDeactivateUpgrade, 1, 1 },
-	{ "evolve",            BotActionEvolve,            0, 0 },
-	{ "evolveTo",          BotActionEvolveTo,          1, 1 },
 	{ "fight",             BotActionFight,             0, 0 },
 	{ "fireWeapon",        BotActionFireWeapon,        0, 0 },
 	{ "flee",              BotActionFlee,              0, 0 },
@@ -1232,11 +1222,6 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( E_ENEMY );
 	D( E_SELF );
 
-	// add player classes
-	D( PCL_NONE );
-	D( PCL_Q );
-	D( PCL_U );
-	
 	D( MOVE_FORWARD );
 	D( MOVE_BACKWARD );
 	D( MOVE_RIGHT );

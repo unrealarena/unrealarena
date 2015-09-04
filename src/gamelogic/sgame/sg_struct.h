@@ -36,7 +36,6 @@ struct gentityConditions_s
 	team_t   team;
 	int      stage;
 
-	class_t     classes[ PCL_NUM_CLASSES ];
 	weapon_t    weapons[ WP_NUM_WEAPONS ];
 	upgrade_t   upgrades[ UP_NUM_UPGRADES ];
 
@@ -388,7 +387,6 @@ struct clientPersistant_s
 	float             flySpeed; // for spectator/noclip moves
 	bool          disableBlueprintErrors; // should the buildable blueprint never be hidden from the players?
 
-	class_t           classSelection; // player class (copied to ent->client->ps.stats[ STAT_CLASS ] once spawned)
 	float             evolveHealthFraction;
 	weapon_t          weapon; // starting item
 
@@ -400,7 +398,7 @@ struct clientPersistant_s
 
 	// These have a copy in playerState_t.persistent but we use them in GAME so they don't get invalidated by
 	// SPECTATOR_FOLLOW mode
-	int team;
+	team_t team;
 	int credit;
 
 	int voted;

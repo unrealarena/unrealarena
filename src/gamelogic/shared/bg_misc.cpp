@@ -37,92 +37,66 @@ void                               trap_QuoteString( const char *, char *, int )
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct
 {
-	class_t number;
+	team_t team;
 	const char* name;
 	weapon_t startWeapon;
 } classData_t;
 
-static classData_t bg_classData[] =
+static classData_t bg_classData[NUM_TEAMS] =
 {
-	{ PCL_NONE, "spectator", WP_NONE },
-	{ PCL_Q,    "qplayer",   WP_NONE },
-	{ PCL_U,    "uplayer",   WP_NONE }
+	{TEAM_NONE, "spectator", WP_NONE},
+	{TEAM_Q,    "qplayer",   WP_NONE},
+	{TEAM_U,    "uplayer",   WP_NONE}
 };
 
-static const size_t bg_numClasses = ARRAY_LEN( bg_classData );
+static classAttributes_t bg_classList[ NUM_TEAMS ];
 
-static classAttributes_t bg_classList[ ARRAY_LEN( bg_classData ) ];
-
-static const classAttributes_t nullClass = { (class_t) 0, 0, 0 };
-static /*const*/ classModelConfig_t nullClassModelConfig = { "" };
-
-/*
-==============
-BG_ClassByName
-==============
-*/
-const classAttributes_t *BG_ClassByName( const char *name )
+/**
+ * Get class attributes
+ *
+ * XXX: move team check to a separate function
+ *
+ * @param team  class team
+ * @return      class attributes
+ */
+const classAttributes_t* BG_Class(team_t team)
 {
-	int i;
-
-	if ( name )
+	switch (team)
 	{
-		for ( i = 0; i < bg_numClasses; i++ )
-		{
-			if ( !Q_stricmp( bg_classList[ i ].name, name ) )
-			{
-				return &bg_classList[ i ];
-			}
-		}
+		case TEAM_NONE:
+		case TEAM_Q:
+		case TEAM_U:
+			return &bg_classList[team];
+			break;
+
+		default:
+			return nullptr;
 	}
-
-	return &nullClass;
 }
 
-/*
-==============
-BG_Class
-==============
-*/
-const classAttributes_t *BG_Class( int pClass )
+static classModelConfig_t bg_classModelConfigList[ NUM_TEAMS ];
+
+/**
+ * Get class model configuration
+ *
+ * XXX: move team check to a separate function
+ *
+ * @param team  class team
+ * @return      class model configuration
+ */
+classModelConfig_t* BG_ClassModelConfig(team_t team)
 {
-	return ( pClass >= PCL_NONE && pClass < PCL_NUM_CLASSES ) ?
-	       &bg_classList[ pClass ] : &nullClass;
-}
-
-static classModelConfig_t bg_classModelConfigList[ PCL_NUM_CLASSES ];
-
-/*
-==============
-BG_ClassModelConfigByName
-==============
-*/
-classModelConfig_t *BG_ClassModelConfigByName( const char *name )
-{
-	int i;
-
-	if ( name )
+	switch (team)
 	{
-		for ( i = 0; i < bg_numClasses; i++ )
-		{
-			if ( !Q_stricmp( bg_classModelConfigList[ i ].humanName, name ) )
-			{
-				return &bg_classModelConfigList[ i ];
-			}
-		}
+		case TEAM_NONE:
+		case TEAM_Q:
+		case TEAM_U:
+			return &bg_classModelConfigList[team];
+			break;
+
+		default:
+			return nullptr;
 	}
-
-	return &nullClassModelConfig;
-}
-
-/*
-==============
-BG_ClassModelConfig
-==============
-*/
-classModelConfig_t *BG_ClassModelConfig( int pClass )
-{
-	return &bg_classModelConfigList[ pClass ];
 }
 
 /*
@@ -130,11 +104,11 @@ classModelConfig_t *BG_ClassModelConfig( int pClass )
 BG_ClassBoundingBox
 ==============
 */
-void BG_ClassBoundingBox( int pClass,
+void BG_ClassBoundingBox( team_t team,
                           vec3_t mins, vec3_t maxs,
                           vec3_t cmaxs, vec3_t dmins, vec3_t dmaxs )
 {
-	classModelConfig_t *classModelConfig = BG_ClassModelConfig( pClass );
+	classModelConfig_t *classModelConfig = BG_ClassModelConfig( team );
 
 	if ( mins != nullptr )
 	{
@@ -162,63 +136,6 @@ void BG_ClassBoundingBox( int pClass,
 	}
 }
 
-team_t BG_ClassTeam( int pClass )
-{
-	return BG_Class( pClass )->team;
-}
-
-/*
-==============
-BG_ClassHasAbility
-==============
-*/
-bool BG_ClassHasAbility( int pClass, int ability )
-{
-	int abilities = BG_Class( pClass )->abilities;
-
-	return abilities & ability;
-}
-
-/*
-==============
-BG_ClassCanEvolveFromTo
-==============
-*/
-int BG_ClassCanEvolveFromTo( int from, int to, int credits )
-{
-	int fromCost, toCost, evolveCost;
-
-	if ( from == to ||
-	     from <= PCL_NONE || from >= PCL_NUM_CLASSES ||
-	     to <= PCL_NONE || to >= PCL_NUM_CLASSES )
-	{
-		return -1;
-	}
-
-	if ( !BG_ClassUnlocked( to ) || BG_ClassDisabled( to ) )
-	{
-		return -1;
-	}
-
-	fromCost = BG_Class( from )->cost;
-	toCost = BG_Class( to )->cost;
-
-	// don't allow devolving
-	if ( toCost <= fromCost )
-	{
-		return -1;
-	}
-
-	evolveCost = toCost - fromCost;
-
-	if ( credits < evolveCost )
-	{
-		return -1;
-	}
-
-	return evolveCost;
-}
-
 /*
 ===============
 BG_InitClassAttributes
@@ -230,12 +147,12 @@ void BG_InitClassAttributes()
 	const classData_t *cd;
 	classAttributes_t *ca;
 
-	for ( i = 0; i < bg_numClasses; i++ )
+	for ( i = 0; i < NUM_TEAMS; i++ )
 	{
 		cd = &bg_classData[i];
 		ca = &bg_classList[i];
 
-		ca->number = cd->number;
+		ca->team = cd->team;
 		ca->name = cd->name;
 		ca->startWeapon = cd->startWeapon;
 
@@ -257,12 +174,12 @@ void BG_InitClassModelConfigs()
 	int           i;
 	classModelConfig_t *cc;
 
-	for ( i = PCL_NONE; i < PCL_NUM_CLASSES; i++ )
+	for ( i = 0; i < NUM_TEAMS; i++ )
 	{
-		cc = BG_ClassModelConfig( i );
+		cc = BG_ClassModelConfig( ( team_t ) i );
 
 		BG_ParseClassModelFile( va( "configs/classes/%s.model.cfg",
-		                       BG_Class( i )->name ), cc );
+		                       BG_Class( ( team_t ) i )->name ), cc );
 
 		cc->segmented = cc->modelName[0] ? BG_NonSegModel( va( "models/players/%s/animation.cfg", cc->modelName ) ) : false;
 	}
@@ -736,7 +653,7 @@ void BG_UnloadAllConfigs()
     }
     config_loaded = false;
 
-    for ( i = 0; i < bg_numClasses; i++ )
+    for ( i = 0; i < NUM_TEAMS; i++ )
     {
         classAttributes_t *ca = &bg_classList[i];
 
@@ -755,9 +672,9 @@ void BG_UnloadAllConfigs()
         }
     }
 
-    for ( i = PCL_NONE; i < PCL_NUM_CLASSES; i++ )
+    for ( i = 0; i < NUM_TEAMS; i++ )
     {
-        BG_Free(BG_ClassModelConfig( i )->humanName);
+        BG_Free(BG_ClassModelConfig( ( team_t ) i )->humanName);
     }
 
     for ( i = 0; i < bg_numWeapons; i++ )
@@ -1189,7 +1106,7 @@ void BG_PlayerStateToEntityState( playerState_t *ps, entityState_t *s, bool snap
 	}
 
 	// use misc field to store team/class info:
-	s->misc = ps->persistant[ PERS_TEAM ] | ( ps->stats[ STAT_CLASS ] << 8 );
+	s->misc = ps->persistant[ PERS_TEAM ];
 
 	// have to get the surfNormal through somehow...
 	VectorCopy( ps->grapplePoint, s->angles2 );
@@ -1329,7 +1246,7 @@ void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s
 	}
 
 	// use misc field to store team/class info:
-	s->misc = ps->persistant[ PERS_TEAM ] | ( ps->stats[ STAT_CLASS ] << 8 );
+	s->misc = ps->persistant[ PERS_TEAM ];
 
 	// have to get the surfNormal through somehow...
 	VectorCopy( ps->grapplePoint, s->angles2 );
@@ -1371,14 +1288,6 @@ Does the player hold a weapon?
 */
 bool BG_InventoryContainsWeapon( int weapon, const int stats[] )
 {
-	// humans always have a blaster
-	// HACK: Determine team by checking for STAT_CLASS since we merged STAT_TEAM into PERS_TEAM
-	//       This hack will vanish as soon as the blast isn't the only possible sidearm weapon anymore
-	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_U && weapon == WP_BLASTER )
-	{
-		return true;
-	}
-
 	return ( stats[ STAT_WEAPON ] == weapon );
 }
 
@@ -1394,13 +1303,6 @@ int BG_SlotsForInventory( int stats[] )
 	int i, slot, slots;
 
 	slots = BG_Weapon( stats[ STAT_WEAPON ] )->slots;
-
-	// HACK: Determine team by checking for STAT_CLASS since we merged STAT_TEAM into PERS_TEAM
-	//       This hack will vanish as soon as the blast isn't the only possible sidearm weapon anymore
-	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_U )
-	{
-		slots |= BG_Weapon( WP_BLASTER )->slots;
-	}
 
 	for ( i = UP_NONE; i < UP_NUM_UPGRADES; i++ )
 	{
@@ -1608,7 +1510,7 @@ int BG_GetValueOfPlayer( playerState_t *ps )
 	switch ( ps->persistant[ PERS_TEAM ] )
 	{
 		case TEAM_Q:
-			price += BG_Class( ps->stats[ STAT_CLASS ] )->cost;
+			price += BG_Class( ( team_t ) ps->persistant[ PERS_TEAM ] )->cost;
 			break;
 
 		case TEAM_U:
@@ -2007,71 +1909,8 @@ void BG_ParseCSVEquipmentList( const char *string, weapon_t *weapons, int weapon
 	}
 }
 
-/*
-===============
-BG_ParseCSVClassList
-===============
-*/
-void BG_ParseCSVClassList( const char *string, class_t *classes, int classesSize )
-{
-	char     buffer[ MAX_STRING_CHARS ];
-	int      i = 0;
-	char     *p, *q;
-	bool EOS = false;
-
-	Q_strncpyz( buffer, string, MAX_STRING_CHARS );
-
-	p = q = buffer;
-
-	while ( *p != '\0' && i < classesSize - 1 )
-	{
-		//skip to first , or EOS
-		while ( *p != ',' && *p != '\0' )
-		{
-			p++;
-		}
-
-		if ( *p == '\0' )
-		{
-			EOS = true;
-		}
-
-		*p = '\0';
-
-		//strip leading whitespace
-		while ( *q == ' ' )
-		{
-			q++;
-		}
-
-		classes[ i ] = BG_ClassByName( q )->number;
-
-		if ( classes[ i ] == PCL_NONE )
-		{
-			Com_Printf( S_WARNING "unknown class %s\n", q );
-		}
-		else
-		{
-			i++;
-		}
-
-		if ( !EOS )
-		{
-			p++;
-			q = p;
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	classes[ i ] = PCL_NONE;
-}
-
 typedef struct gameElements_s
 {
-	class_t     classes[ PCL_NUM_CLASSES ];
 	weapon_t    weapons[ WP_NUM_WEAPONS ];
 	upgrade_t   upgrades[ UP_NUM_UPGRADES ];
 } gameElements_t;
@@ -2093,12 +1932,6 @@ void BG_InitAllowedGameElements()
 	BG_ParseCSVEquipmentList( cvar,
 	                          bg_disabledGameElements.weapons, WP_NUM_WEAPONS,
 	                          bg_disabledGameElements.upgrades, UP_NUM_UPGRADES );
-
-	trap_Cvar_VariableStringBuffer( "g_disabledClasses",
-	                                cvar, MAX_CVAR_VALUE_STRING );
-
-	BG_ParseCSVClassList( cvar,
-	                      bg_disabledGameElements.classes, PCL_NUM_CLASSES );
 }
 
 /*
@@ -2135,27 +1968,6 @@ bool BG_UpgradeDisabled( int upgrade )
 	      bg_disabledGameElements.upgrades[ i ] != UP_NONE; i++ )
 	{
 		if ( bg_disabledGameElements.upgrades[ i ] == upgrade )
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/*
-============
-BG_ClassDisabled
-============
-*/
-bool BG_ClassDisabled( int class_ )
-{
-	int i;
-
-	for ( i = 0; i < PCL_NUM_CLASSES &&
-	      bg_disabledGameElements.classes[ i ] != PCL_NONE; i++ )
-	{
-		if ( bg_disabledGameElements.classes[ i ] == class_ )
 		{
 			return true;
 		}

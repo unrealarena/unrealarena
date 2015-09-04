@@ -1400,7 +1400,7 @@ static void CG_CalculateWeaponPosition( vec3_t out_origin, vec3_t out_angles )
 	filter.SetWidth( 500 );
 
 	// bobbing
-	if( BG_Class( cg.predictedPlayerState.stats[ STAT_CLASS ] )->bob )
+	if( BG_Class( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] )->bob )
 	{
 		offsets.bob = Vec3(
 			cg.xyspeed * cg.bobfracsin * 0.005,

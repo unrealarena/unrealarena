@@ -37,27 +37,27 @@ void G_BotNavInit()
 
 	Com_Printf( "==== Bot Navigation Initialization ==== \n" );
 
-	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+	for ( i = 1; i < NUM_TEAMS; i++ )
 	{
 		classModelConfig_t *model;
 		botClass_t bot;
 		bot.polyFlagsInclude = POLYFLAGS_WALK;
 		bot.polyFlagsExclude = POLYFLAGS_DISABLED;
 
-		model = BG_ClassModelConfig( i );
+		model = BG_ClassModelConfig( ( team_t ) i );
 		if ( model->navMeshClass )
 		{
 			if ( BG_ClassModelConfig( model->navMeshClass )->navMeshClass )
 			{
 				Com_Printf( S_ERROR "class '%s': navmesh reference target class '%s' must have its own navmesh\n",
-				            BG_Class( i )->name, BG_Class( model->navMeshClass )->name );
+				            BG_Class( ( team_t ) i )->name, BG_Class( model->navMeshClass )->name );
 				return;
 			}
 
 			continue;
 		}
 
-		Q_strncpyz( bot.name, BG_Class( i )->name, sizeof( bot.name ) );
+		Q_strncpyz( bot.name, BG_Class( ( team_t ) i )->name, sizeof( bot.name ) );
 
 		if ( !trap_BotSetupNav( &bot, &model->navHandle ) )
 		{
@@ -83,17 +83,17 @@ void G_BotEnableArea( vec3_t origin, vec3_t mins, vec3_t maxs )
 	trap_BotEnableArea( origin, mins, maxs );
 }
 
-void BotSetNavmesh( gentity_t  *self, class_t newClass )
+void BotSetNavmesh( gentity_t  *self, team_t newTeam )
 {
 	int navHandle;
 	const classModelConfig_t *model;
 
-	if ( newClass == PCL_NONE )
+	if ( newTeam == TEAM_NONE )
 	{
 		return;
 	}
 
-	model = BG_ClassModelConfig( newClass );
+	model = BG_ClassModelConfig( newTeam );
 	navHandle = model->navMeshClass
 	          ? BG_ClassModelConfig( model->navMeshClass )->navHandle
 	          : model->navHandle;
@@ -313,7 +313,7 @@ bool BotJump( gentity_t *self )
 
 	if ( self->client->pers.team == TEAM_U )
 	{
-		staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
+		staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
 
 		if ( self->client->ps.stats[STAT_STAMINA] < staminaJumpCost )
 		{
@@ -336,7 +336,7 @@ bool BotSprint( gentity_t *self, bool enable )
 		return false;
 	}
 
-	staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
+	staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
 
 	if ( self->client->pers.team == TEAM_U
 	     && self->client->ps.stats[ STAT_STAMINA ] > staminaJumpCost
@@ -389,7 +389,7 @@ gentity_t* BotGetPathBlocker( gentity_t *self, const vec3_t dir )
 		return nullptr;
 	}
 
-	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[STAT_CLASS], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], playerMins, playerMaxs, nullptr, nullptr, nullptr );
 
 	//account for how large we can step
 	playerMins[2] += STEPSIZE;
@@ -425,7 +425,7 @@ bool BotShouldJump( gentity_t *self, gentity_t *blocker, const vec3_t dir )
 
 	//already normalized
 
-	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[STAT_CLASS], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], playerMins, playerMaxs, nullptr, nullptr, nullptr );
 
 	playerMins[2] += STEPSIZE;
 	playerMaxs[2] += STEPSIZE;
@@ -440,7 +440,7 @@ bool BotShouldJump( gentity_t *self, gentity_t *blocker, const vec3_t dir )
 		return false;
 	}
 
-	jumpMagnitude = BG_Class( ( class_t )self->client->ps.stats[STAT_CLASS] )->jumpMagnitude;
+	jumpMagnitude = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->jumpMagnitude;
 
 	//find the actual height of our jump
 	jumpMagnitude = Square( jumpMagnitude ) / ( self->client->ps.gravity * 2 );
@@ -479,7 +479,7 @@ bool BotFindSteerTarget( gentity_t *self, vec3_t dir )
 	}
 
 	//get bbox
-	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[STAT_CLASS], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], playerMins, playerMaxs, nullptr, nullptr, nullptr );
 
 	//account for stepsize
 	playerMins[2] += STEPSIZE;
@@ -583,15 +583,10 @@ bool BotOnLadder( gentity_t *self )
 	vec3_t mins, maxs;
 	trace_t trace;
 
-	if ( !BG_ClassHasAbility( ( class_t ) self->client->ps.stats[ STAT_CLASS ], SCA_CANUSELADDERS ) )
-	{
-		return false;
-	}
-
 	AngleVectors( self->client->ps.viewangles, forward, nullptr, nullptr );
 
 	forward[ 2 ] = 0.0f;
-	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
 	VectorMA( self->s.origin, 1.0f, forward, end );
 
 	trap_Trace( &trace, self->s.origin, mins, maxs, end, self->s.number, MASK_PLAYERSOLID, 0 );
@@ -678,7 +673,7 @@ void BotClampPos( gentity_t *self )
 	trace_t trace;
 	vec3_t mins, maxs;
 	VectorSet( origin, self->botMind->nav.pos[ 0 ], self->botMind->nav.pos[ 1 ], height );
-	BG_ClassBoundingBox( self->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
 	trap_Trace( &trace, self->client->ps.origin, mins, maxs, origin, self->client->ps.clientNum,
 	            MASK_PLAYERSOLID, 0 );
 	G_SetOrigin( self, trace.endpos );
@@ -700,7 +695,7 @@ void BotMoveToGoal( gentity_t *self )
 	BotAvoidObstacles( self, dir );
 	BotSeek( self, dir );
 
-	staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
+	staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
 
 	//dont sprint or dodge if we dont have enough stamina and are about to slow
 	if ( self->client->pers.team == TEAM_U

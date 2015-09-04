@@ -111,7 +111,7 @@ float BotGetHealScore( gentity_t *self )
 {
 	float distToHealer = 0;
 	float percentHealth = 0;
-	float maxHealth = BG_Class( ( class_t ) self->client->ps.stats[ STAT_CLASS ] )->health;
+	float maxHealth = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->health;
 
 	percentHealth = ( ( float ) self->client->ps.stats[STAT_HEALTH] ) / maxHealth;
 
@@ -187,12 +187,6 @@ float BotGetEnemyPriority( gentity_t *self, gentity_t *ent )
 	return enemyScore * 1000 / distanceScore;
 }
 
-
-bool BotCanEvolveToClass( gentity_t *self, class_t newClass )
-{
-	return ( BG_ClassCanEvolveFromTo( ( class_t )self->client->ps.stats[STAT_CLASS], newClass,
-	                                  self->client->ps.persistant[PERS_CREDIT] ) >= 0 );
-}
 
 bool WeaponIsEmpty( weapon_t weapon, playerState_t *ps )
 {
@@ -461,7 +455,7 @@ void BotTargetToRouteTarget( gentity_t *self, botTarget_t target, botRouteTarget
 	{
 		if ( target.ent->client )
 		{
-			BG_ClassBoundingBox( ( class_t ) target.ent->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
+			BG_ClassBoundingBox( ( team_t ) target.ent->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
 		}
 		else
 		{
@@ -1072,9 +1066,9 @@ void BotFireWeapon( weaponMode_t mode, usercmd_t *botCmdBuffer )
 }
 void BotClassMovement( gentity_t *self, bool inAttackRange )
 {
-	switch ( self->client->ps.stats[STAT_CLASS] )
+	switch ( self->client->ps.persistant[ PERS_TEAM ] )
 	{
-		case PCL_Q:
+		case TEAM_Q:
 			BotStrafeDodge( self );
 			break;
 		default:
@@ -1223,94 +1217,6 @@ void BotFireWeaponAI( gentity_t *self )
 		default:
 			BotFireWeapon( WPM_PRIMARY, botCmdBuffer );
 	}
-}
-
-bool BotEvolveToClass( gentity_t *ent, class_t newClass )
-{
-	int clientNum;
-	int i;
-	vec3_t infestOrigin;
-	class_t currentClass = ent->client->pers.classSelection;
-	int numLevels;
-	int entityList[ MAX_GENTITIES ];
-	vec3_t range = { 1000.0f, 1000.0f, 1000.0f };
-	vec3_t mins, maxs;
-	int num;
-	gentity_t *other;
-
-	if ( ent->client->ps.stats[ STAT_HEALTH ] <= 0 )
-	{
-		return false;
-	}
-
-	clientNum = ent->client - level.clients;
-
-	//if we are not currently spectating, we are attempting evolution
-	if ( ent->client->pers.classSelection != PCL_NONE )
-	{
-		if ( ( ent->client->ps.stats[ STAT_STATE ] & SS_WALLCLIMBING ) )
-		{
-			ent->client->pers.cmd.upmove = 0;
-		}
-
-		//check there are no humans nearby
-		VectorAdd( ent->client->ps.origin, range, maxs );
-		VectorSubtract( ent->client->ps.origin, range, mins );
-
-		num = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
-		for ( i = 0; i < num; i++ )
-		{
-			other = &g_entities[ entityList[ i ] ];
-
-			if ( other->client && other->client->pers.team == TEAM_U )
-			{
-				return false;
-			}
-		}
-
-		numLevels = BG_ClassCanEvolveFromTo( currentClass, newClass, ( short )ent->client->ps.persistant[ PERS_CREDIT ] );
-
-		if ( G_RoomForClassChange( ent, newClass, infestOrigin ) )
-		{
-			//...check we can evolve to that class
-			if ( numLevels >= 0 && BG_ClassUnlocked( newClass ) && !BG_ClassDisabled( newClass ) )
-			{
-				ent->client->pers.evolveHealthFraction = ( float )ent->client->ps.stats[ STAT_HEALTH ] /
-				( float )BG_Class( currentClass )->health;
-
-				if ( ent->client->pers.evolveHealthFraction < 0.0f )
-				{
-					ent->client->pers.evolveHealthFraction = 0.0f;
-				}
-				else if ( ent->client->pers.evolveHealthFraction > 1.0f )
-				{
-					ent->client->pers.evolveHealthFraction = 1.0f;
-				}
-
-				//remove credit
-				G_AddCreditToClient( ent->client, -( short )numLevels, true );
-				ent->client->pers.classSelection = newClass;
-				BotSetNavmesh( ent, newClass );
-				ClientUserinfoChanged( clientNum, false );
-				VectorCopy( infestOrigin, ent->s.pos.trBase );
-				ClientSpawn( ent, ent, ent->s.pos.trBase, ent->s.apos.trBase );
-
-				//trap_SendServerCommand( -1, va( "print \"evolved to %s\n\"", classname) );
-
-				return true;
-			}
-			else
-				//trap_SendServerCommand( -1, va( "print \"Not enough evos to evolve to %s\n\"", classname) );
-			{
-				return false;
-			}
-		}
-		else
-		{
-			return false;
-		}
-	}
-	return false;
 }
 
 void BotSetSkillLevel( gentity_t *self, int skill )

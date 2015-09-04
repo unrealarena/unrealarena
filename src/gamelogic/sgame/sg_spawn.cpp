@@ -428,7 +428,6 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	{ "target_u_win",             SP_game_end,               CHAIN_PASSIV,     ENT_V_TMPNAME, S_GAME_END },
 	{ "trigger_always",           SP_sensor_start,           CHAIN_ACTIVE,     ENT_V_RENAMED, S_SENSOR_START },
 	{ "trigger_ammo",             SP_env_afx_ammo,           CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_env_afx_ammo },
-	{ "trigger_class",            SP_sensor_player,          CHAIN_ACTIVE,     ENT_V_TMPNAME, S_SENSOR_PLAYER },
 	{ "trigger_equipment",        SP_sensor_player,          CHAIN_ACTIVE,     ENT_V_TMPNAME, S_SENSOR_PLAYER },
 	{ "trigger_gravity",          SP_env_afx_gravity,        CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_env_afx_gravity },
 	{ "trigger_heal",             SP_env_afx_heal,           CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_env_afx_heal },
@@ -976,7 +975,6 @@ Every map should have exactly one.
 ; gravity: level gravity [g_gravity (800)]
 
 ; disabledEquipment: A comma delimited list of human weapons or upgrades to disable for this map. [g_disabledEquipment ()]
-; disabledClasses: A comma delimited list of alien classes to disable for this map. [g_disabledClasses ()]
 */
 void SP_worldspawn()
 {
@@ -1020,7 +1018,6 @@ void SP_worldspawn()
 	G_SpawnStringIntoCVarIfSet( "gravity", "g_gravity" );
 
 	G_SpawnStringIntoCVar( "disabledEquipment", "g_disabledEquipment" );
-	G_SpawnStringIntoCVar( "disabledClasses", "g_disabledClasses" );
 
 	g_entities[ ENTITYNUM_WORLD ].s.number = ENTITYNUM_WORLD;
 	g_entities[ ENTITYNUM_WORLD ].r.ownerNum = ENTITYNUM_NONE;

@@ -468,7 +468,7 @@ void CG_OffsetShoulderView()
 
 	AngleVectors( cg.refdefViewAngles, forward, right, up );
 
-	classModelConfig = BG_ClassModelConfig( cg.snap->ps.stats[ STAT_CLASS ] );
+	classModelConfig = BG_ClassModelConfig( ( team_t ) cg.snap->ps.persistant[ PERS_TEAM ] );
 	VectorMA( cg.refdef.vieworg, classModelConfig->shoulderOffsets[ 0 ], forward, cg.refdef.vieworg );
 	VectorMA( cg.refdef.vieworg, classModelConfig->shoulderOffsets[ 1 ], right, cg.refdef.vieworg );
 	VectorMA( cg.refdef.vieworg, classModelConfig->shoulderOffsets[ 2 ], up, cg.refdef.vieworg );
@@ -541,7 +541,7 @@ static void CG_StepOffset()
 
 	BG_GetClientNormal( ps, normal );
 
-	steptime = BG_Class( ps->stats[ STAT_CLASS ] )->steptime;
+	steptime = BG_Class( ( team_t ) ps->persistant[ PERS_TEAM ] )->steptime;
 
 	// smooth out stair climbing
 	timeDelta = cg.time - cg.stepTime;
@@ -651,7 +651,7 @@ void CG_OffsetFirstPersonView()
 	}
 	else
 	{
-		bob2 = BG_Class( cg.predictedPlayerState.stats[ STAT_CLASS ] )->bob;
+		bob2 = BG_Class( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] )->bob;
 	}
 
 #define LEVEL4_FEEDBACK 10.0f
@@ -916,7 +916,7 @@ static int CG_CalcFov()
 	else
 	{
 		// don't lock the fov globally - we need to be able to change it
-		if ( ( attribFov = trap_Cvar_VariableIntegerValue( BG_Class( cg.predictedPlayerState.stats[ STAT_CLASS ] )->fovCvar ) ) )
+		if ( ( attribFov = trap_Cvar_VariableIntegerValue( BG_Class( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] )->fovCvar ) ) )
 		{
 			if ( attribFov < 80 )
 			{
@@ -929,7 +929,7 @@ static int CG_CalcFov()
 		}
 		else
 		{
-			attribFov = BG_Class( cg.predictedPlayerState.stats[ STAT_CLASS ] )->fov;
+			attribFov = BG_Class( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] )->fov;
 		}
 		attribFov *= 0.75;
 		fov_y = attribFov;
@@ -941,14 +941,6 @@ static int CG_CalcFov()
 		else if ( fov_y > MAX_FOV_Y )
 		{
 			fov_y = MAX_FOV_Y;
-		}
-
-		if ( cg.spawnTime > ( cg.time - FOVWARPTIME ) &&
-		     BG_ClassHasAbility( cg.predictedPlayerState.stats[ STAT_CLASS ], SCA_FOVWARPS ) )
-		{
-			float fraction = ( float )( cg.time - cg.spawnTime ) / FOVWARPTIME;
-
-			fov_y = MAX_FOV_WARP_Y - ( ( MAX_FOV_WARP_Y - fov_y ) * fraction );
 		}
 
 		// account for zooms
@@ -1665,28 +1657,9 @@ static int CG_CalcViewValues()
 
 	VectorCopy( ps->origin, cg.refdef.vieworg );
 
-	if ( BG_ClassHasAbility( ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) )
-	{
-		CG_smoothWWTransitions( ps, ps->viewangles, cg.refdefViewAngles );
-	}
-	else if ( BG_ClassHasAbility( ps->stats[ STAT_CLASS ], SCA_WALLJUMPER ) )
-	{
-		CG_smoothWJTransitions( ps, ps->viewangles, cg.refdefViewAngles );
-	}
-	else
-	{
-		VectorCopy( ps->viewangles, cg.refdefViewAngles );
-	}
+	VectorCopy( ps->viewangles, cg.refdefViewAngles );
 
-	//clumsy logic, but it needs to be this way around because the CS propagation
-	//delay screws things up otherwise
-	if ( !BG_ClassHasAbility( ps->stats[ STAT_CLASS ], SCA_WALLJUMPER ) )
-	{
-		if ( !( ps->stats[ STAT_STATE ] & SS_WALLCLIMBING ) )
-		{
-			VectorSet( cg.lastNormal, 0.0f, 0.0f, 1.0f );
-		}
-	}
+	VectorSet( cg.lastNormal, 0.0f, 0.0f, 1.0f );
 
 	// add error decay
 	if ( cg_errorDecay.value > 0 )

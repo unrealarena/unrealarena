@@ -625,24 +625,6 @@ AINodeStatus_t BotActionChangeGoal( gentity_t *self, AIGenericNode_t *node )
 	return STATUS_SUCCESS;
 }
 
-AINodeStatus_t BotActionEvolveTo( gentity_t *self, AIGenericNode_t *node )
-{
-	AIActionNode_t *action = ( AIActionNode_t * ) node;
-	class_t c = ( class_t )  AIUnBoxInt( action->params[ 0 ] );
-
-	if ( self->client->ps.stats[ STAT_CLASS ] == c )
-	{
-		return STATUS_SUCCESS;
-	}
-
-	if ( BotEvolveToClass( self, c ) )
-	{
-		return STATUS_SUCCESS;
-	}
-
-	return STATUS_FAILURE;
-}
-
 AINodeStatus_t BotActionSay( gentity_t *self, AIGenericNode_t *node )
 {
 	AIActionNode_t *action = ( AIActionNode_t * ) node;
@@ -931,18 +913,4 @@ AINodeStatus_t BotActionRush( gentity_t *self, AIGenericNode_t *node )
 AINodeStatus_t BotActionHeal( gentity_t *self, AIGenericNode_t *node )
 {
 	return STATUS_RUNNING;
-}
-
-/*
-	alien specific actions
-*/
-AINodeStatus_t BotActionEvolve ( gentity_t *self, AIGenericNode_t *node )
-{
-	AINodeStatus_t status = STATUS_FAILURE;
-	if ( !g_bot_evolve.integer )
-	{
-		return status;
-	}
-
-	return status;
 }

@@ -1271,18 +1271,13 @@ void CG_Rocket_CleanUpTeamList( const char *table )
 	rocketInfo.data.selectedTeamIndex = -1;
 }
 
-void AddQSpawnClass( class_t _class )
+void AddQSpawnClass( team_t team )
 {
 	static char data[ MAX_STRING_CHARS ];
 
-	if ( !BG_ClassUnlocked( _class ) )
-	{
-		return;
-	}
-
 	data[ 0 ] = '\0';
-	Info_SetValueForKey( data, "name", BG_ClassModelConfig( _class )->humanName, false );
-	Info_SetValueForKey( data, "description", BG_Class( _class )->info, false );
+	Info_SetValueForKey( data, "name", BG_ClassModelConfig( team )->humanName, false );
+	Info_SetValueForKey( data, "description", BG_Class( team )->info, false );
 
 	Rocket_DSAddRow( "qSpawnClass", "default", data );
 }
@@ -1299,7 +1294,7 @@ void CG_Rocket_BuildQSpawnList( const char *table )
 		Rocket_DSClearTable( "qSpawnClass", "default" );
 
 	{
-		AddQSpawnClass( PCL_Q );
+		AddQSpawnClass( TEAM_Q );
 	}
 }
 
@@ -1315,7 +1310,8 @@ void CG_Rocket_SetQSpawnList( const char *table, int index )
 
 void CG_Rocket_ExecQSpawnList( const char *table )
 {
-	trap_SendClientCommand( va( "class %s", "qplayer" ) );
+	// XXX
+	// trap_SendClientCommand( va( "class %s", "qplayer" ) );
 }
 
 void AddUSpawnItem( weapon_t weapon )
@@ -1355,16 +1351,17 @@ void CG_Rocket_ExecUSpawnItems( const char *table )
 {
 	const char *cmd = nullptr;
 
-	switch ( rocketInfo.data.selectedUSpawnItem )
-	{
-		case 0:
-			cmd = "class rifle";
-			break;
-
-		case 1:
-			cmd = "class ckit";
-			break;
-	}
+	// XXX
+	// switch ( rocketInfo.data.selectedUSpawnItem )
+	// {
+	// 	case 0:
+	// 		cmd = "class rifle";
+	// 		break;
+	//
+	// 	case 1:
+	// 		cmd = "class ckit";
+	// 		break;
+	// }
 
 	if ( cmd )
 	{

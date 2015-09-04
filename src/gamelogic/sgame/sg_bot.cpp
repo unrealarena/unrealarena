@@ -172,7 +172,7 @@ bool G_BotSetDefaults( int clientNum, team_t team, int skill, const char* behavi
 	botMind = self->botMind = &g_botMind[clientNum];
 
 	botMind->botTeam = team;
-	BotSetNavmesh( self, (class_t) self->client->ps.stats[ STAT_CLASS ] );
+	BotSetNavmesh( self, ( team_t ) self->client->ps.persistant[ PERS_TEAM ] );
 
 	memset( botMind->runningNodes, 0, sizeof( botMind->runningNodes ) );
 	botMind->numRunningNodes = 0;
@@ -452,15 +452,11 @@ void G_BotSpectatorThink( gentity_t *self )
 
 		if ( teamnum == TEAM_Q )
 		{
-			self->client->pers.classSelection = PCL_Q;
-			self->client->ps.stats[STAT_CLASS] = PCL_Q;
-			BotSetNavmesh( self, PCL_Q );
+			BotSetNavmesh( self, TEAM_Q );
 		}
 		else if ( teamnum == TEAM_U )
 		{
-			self->client->pers.classSelection = PCL_U;
-			self->client->ps.stats[STAT_CLASS] = PCL_U;
-			BotSetNavmesh( self, PCL_U );
+			BotSetNavmesh( self, TEAM_U );
 			//we want to spawn with rifle unless it is disabled or we need to build
 			if ( g_bot_rifle.integer )
 			{

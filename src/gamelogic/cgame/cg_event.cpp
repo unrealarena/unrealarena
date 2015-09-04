@@ -85,7 +85,6 @@ static void CG_Obituary( entityState_t *ent )
 {
 	int          mod;
 	int          target, attacker, assistant;
-	int          attackerClass = -1;
 	const char   *message;
 	const char   *messageAssisted = nullptr;
 	const char   *messageSuicide = nullptr;
@@ -379,36 +378,22 @@ static void CG_Obituary( entityState_t *ent )
 		if ( message )
 		{
 			// shouldn't need to do this here, but it avoids
-			char attackerClassName[ 64 ];
+			char attackerTeamName[ 64 ];
 
-			if ( attackerClass == -1 )
-			{
-				*attackerClassName = 0;
-			}
-			else
-			{
-				Q_strncpyz( attackerClassName, _( BG_ClassModelConfig( attackerClass )->humanName ), sizeof( attackerClassName ) );
-			}
+			Q_strncpyz( attackerTeamName, _( BG_ClassModelConfig( attackerTeam )->humanName ), sizeof( attackerTeamName ) );
 
-			// Argument order: victim, attacker, [class,] [assistant]. Each has team tag first.
+			// Argument order: victim, attacker, [team,] [assistant]. Each has team tag first.
 			if ( messageSuicide && attacker == target )
 			{
 				CG_Printf( messageSuicide, teamTag[ ci->team ], targetName );
 			}
 			else if ( messageAssisted && assistantInfo )
 			{
-				if ( attackerClass != -1 )
-				{
-					CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, attackerClassName, teamTag[ assistantTeam ], assistantName );
-				}
-				else
-				{
-					CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, teamTag[ assistantTeam ], assistantName );
-				}
+				CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, attackerTeamName, teamTag[ assistantTeam ], assistantName );
 			}
 			else
 			{
-				CG_Printf( message, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, attackerClassName );
+				CG_Printf( message, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, attackerTeamName );
 			}
 
 			if ( attackerTeam == ci->team && attacker == cg.clientNum && attacker != target )
@@ -560,7 +545,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 	}
 	else
 	{
-		steptime = BG_Class( cg.snap->ps.stats[ STAT_CLASS ] )->steptime;
+		steptime = BG_Class( ( team_t ) cg.snap->ps.persistant[ PERS_TEAM ] )->steptime;
 	}
 
 	es = &cent->currentState;
@@ -764,34 +749,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 		case EV_JUMP:
 			trap_S_StartSound( nullptr, es->number, CHAN_VOICE, CG_CustomSound( es->number, "*jump1.wav" ) );
-
-			if ( BG_ClassHasAbility( cg.predictedPlayerState.stats[ STAT_CLASS ], SCA_WALLJUMPER ) )
-			{
-				vec3_t surfNormal, refNormal = { 0.0f, 0.0f, 1.0f };
-				vec3_t rotAxis;
-
-				if ( clientNum != cg.predictedPlayerState.clientNum )
-				{
-					break;
-				}
-
-				//set surfNormal
-				VectorCopy( cg.predictedPlayerState.grapplePoint, surfNormal );
-
-				//if we are moving from one surface to another smooth the transition
-				if ( !VectorCompare( surfNormal, cg.lastNormal ) && surfNormal[ 2 ] != 1.0f )
-				{
-					CrossProduct( refNormal, surfNormal, rotAxis );
-					VectorNormalize( rotAxis );
-
-					//add the op
-					CG_addSmoothOp( rotAxis, 15.0f, 1.0f );
-				}
-
-				//copy the current normal to the lastNormal
-				VectorCopy( surfNormal, cg.lastNormal );
-			}
-
 			break;
 
 		case EV_TAUNT:

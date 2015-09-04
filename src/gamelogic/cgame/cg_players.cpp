@@ -1433,17 +1433,17 @@ static void CG_CopyClientInfoModel( clientInfo_t *from, clientInfo_t *to )
 CG_GetCorpseNum
 ======================
 */
-static int CG_GetCorpseNum( class_t class_ )
+static int CG_GetCorpseNum( team_t team )
 {
 	int          i;
 	clientInfo_t *match;
 	char         *modelName;
 	char         *skinName;
 
-	modelName = BG_ClassModelConfig( class_ )->modelName;
-	skinName = BG_ClassModelConfig( class_ )->skinName;
+	modelName = BG_ClassModelConfig( team )->modelName;
+	skinName = BG_ClassModelConfig( team )->skinName;
 
-	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+	for ( i = 1; i < NUM_TEAMS; i++ )
 	{
 		match = &cgs.corpseinfo[ i ];
 
@@ -1474,7 +1474,7 @@ static bool CG_ScanForExistingClientInfo( clientInfo_t *ci )
 	int          i;
 	clientInfo_t *match;
 
-	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+	for ( i = 1; i < NUM_TEAMS; i++ )
 	{
 		match = &cgs.corpseinfo[ i ];
 
@@ -1502,12 +1502,12 @@ static bool CG_ScanForExistingClientInfo( clientInfo_t *ci )
 CG_PrecacheClientInfo
 ======================
 */
-void CG_PrecacheClientInfo( class_t class_, const char *model, const char *skin )
+void CG_PrecacheClientInfo( team_t team, const char *model, const char *skin )
 {
 	clientInfo_t *ci;
 	clientInfo_t newInfo;
 
-	ci = &cgs.corpseinfo[ class_ ];
+	ci = &cgs.corpseinfo[ team ];
 
 	// the old value
 	memset( &newInfo, 0, sizeof( newInfo ) );
@@ -1644,7 +1644,8 @@ void CG_NewClientInfo( int clientNum )
 	// so we can avoid loading checks if possible
 	if ( !CG_ScanForExistingClientInfo( ci ) )
 	{
-		CG_LoadClientInfo( ci );
+		// XXX
+		// CG_LoadClientInfo( ci );
 	}
 }
 
@@ -2805,7 +2806,7 @@ Returns the Z component of the surface being shadowed
 ===============
 */
 #define SHADOW_DISTANCE 128
-static bool CG_PlayerShadow( centity_t *cent, class_t class_ )
+static bool CG_PlayerShadow( centity_t *cent, team_t team )
 {
 	vec3_t        end, mins, maxs;
 	trace_t       trace;
@@ -2813,7 +2814,7 @@ static bool CG_PlayerShadow( centity_t *cent, class_t class_ )
 	entityState_t *es = &cent->currentState;
 	vec3_t        surfNormal = { 0.0f, 0.0f, 1.0f };
 
-	BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
 	mins[ 2 ] = 0.0f;
 	maxs[ 2 ] = 2.0f;
 
@@ -2866,7 +2867,7 @@ static bool CG_PlayerShadow( centity_t *cent, class_t class_ )
 	// without taking a spot in the cg_marks array
 	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal,
 	               cent->pe.legs.yawAngle, 0.0f, 0.0f, 0.0f, alpha, false,
-	               24.0f * BG_ClassModelConfig( class_ )->shadowScale, true );
+	               24.0f * BG_ClassModelConfig( team )->shadowScale, true );
 
 	return true;
 }
@@ -2891,7 +2892,7 @@ CG_PlayerSplash
 Draw a mark at the water surface
 ===============
 */
-static void CG_PlayerSplash( centity_t *cent, class_t class_ )
+static void CG_PlayerSplash( centity_t *cent, team_t team )
 {
 	vec3_t  start, end;
 	vec3_t  mins, maxs;
@@ -2903,7 +2904,7 @@ static void CG_PlayerSplash( centity_t *cent, class_t class_ )
 		return;
 	}
 
-	BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
 
 	VectorCopy( cent->lerpOrigin, end );
 	end[ 2 ] += mins[ 2 ];
@@ -2939,7 +2940,7 @@ static void CG_PlayerSplash( centity_t *cent, class_t class_ )
 
 	CG_ImpactMark( cgs.media.wakeMarkShader, trace.endpos, trace.plane.normal,
 	               cent->pe.legs.yawAngle, 1.0f, 1.0f, 1.0f, 1.0f, false,
-	               32.0f * BG_ClassModelConfig( class_ )->shadowScale, true );
+	               32.0f * BG_ClassModelConfig( team )->shadowScale, true );
 }
 
 /*
@@ -3097,7 +3098,7 @@ void CG_Player( centity_t *cent )
 	int           clientNum;
 	int           renderfx;
 	entityState_t *es = &cent->currentState;
-	class_t       class_ = (class_t) ( ( es->misc >> 8 ) & 0xFF );
+	team_t        team = ( team_t ) es->misc;
 	float         scale;
 	vec3_t        tempAxis[ 3 ], tempAxis2[ 3 ];
 	vec3_t        angles;
@@ -3155,7 +3156,7 @@ void CG_Player( centity_t *cent )
 	{
 		vec3_t mins, maxs;
 
-		BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+		BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
 		CG_DrawBoundingBox( cg_drawBBOX.integer, cent->lerpOrigin, mins, maxs );
 	}
 
@@ -3237,11 +3238,11 @@ void CG_Player( centity_t *cent )
 		if ( ( es->number == cg.snap->ps.clientNum && cg.renderingThirdPerson ) ||
 			 es->number != cg.snap->ps.clientNum )
 		{
-			CG_PlayerShadow( cent, class_ );
+			CG_PlayerShadow( cent, team );
 		}
 
 		// add a water splash if partially in and out of water
-		CG_PlayerSplash( cent, class_ );
+		CG_PlayerSplash( cent, team );
 
 		renderfx |= RF_LIGHTING_ORIGIN; // use the same origin for all
 
@@ -3257,7 +3258,7 @@ void CG_Player( centity_t *cent )
 
 		body.renderfx = renderfx;
 
-		BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+		BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
 
 		// move the origin closer into the wall with a CapTrace
 		if ( es->eFlags & EF_WALLCLIMB && !( es->eFlags & EF_DEAD ) && !( cg.intermissionStarted ) )
@@ -3444,11 +3445,11 @@ void CG_Player( centity_t *cent )
 	if ( ( es->number == cg.snap->ps.clientNum && cg.renderingThirdPerson ) ||
 	     es->number != cg.snap->ps.clientNum )
 	{
-		CG_PlayerShadow( cent, class_ );
+		CG_PlayerShadow( cent, team );
 	}
 
 	// add a water splash if partially in and out of water
-	CG_PlayerSplash( cent, class_ );
+	CG_PlayerSplash( cent, team );
 
 	renderfx |= RF_LIGHTING_ORIGIN; // use the same origin for all
 
@@ -3487,7 +3488,7 @@ void CG_Player( centity_t *cent )
 			VectorCopy( es->angles2, surfNormal );
 		}
 
-		BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+		BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
 
 		VectorMA( legs.origin, -TRACE_DEPTH, surfNormal, end );
 		VectorMA( legs.origin, 1.0f, surfNormal, start );
@@ -3505,7 +3506,7 @@ void CG_Player( centity_t *cent )
 	}
 
 	//rescale the model
-	scale = BG_ClassModelConfig( class_ )->modelScale;
+	scale = BG_ClassModelConfig( team )->modelScale;
 
 	if ( scale != 1.0f )
 	{
@@ -3517,7 +3518,7 @@ void CG_Player( centity_t *cent )
 	}
 
 	//offset on the Z axis if required
-	VectorMA( legs.origin, BG_ClassModelConfig( class_ )->zOffset, surfNormal, legs.origin );
+	VectorMA( legs.origin, BG_ClassModelConfig( team )->zOffset, surfNormal, legs.origin );
 	VectorCopy( legs.origin, legs.lightingOrigin );
 	VectorCopy( legs.origin, legs.oldorigin );  // don't positionally lerp at all
 
@@ -3640,7 +3641,7 @@ void CG_Corpse( centity_t *cent )
 	vec3_t        origin, liveZ, deadZ, deadMax;
 	float         scale;
 
-	corpseNum = CG_GetCorpseNum( (class_t) es->clientNum );
+	corpseNum = CG_GetCorpseNum( ( team_t ) es->clientNum );
 
 	if ( corpseNum < 0 || corpseNum >= MAX_CLIENTS )
 	{
@@ -3661,7 +3662,7 @@ void CG_Corpse( centity_t *cent )
 	memset( &head, 0, sizeof( head ) );
 
 	VectorCopy( cent->lerpOrigin, origin );
-	BG_ClassBoundingBox( es->clientNum, liveZ, nullptr, nullptr, deadZ, deadMax );
+	BG_ClassBoundingBox( ( team_t ) es->clientNum, liveZ, nullptr, nullptr, deadZ, deadMax );
 	origin[ 2 ] -= ( liveZ[ 2 ] - deadZ[ 2 ] );
 
 	if( ci->md5 )
@@ -3730,7 +3731,7 @@ void CG_Corpse( centity_t *cent )
 	}
 
 	// add the shadow
-	CG_PlayerShadow( cent, (class_t) es->clientNum );
+	CG_PlayerShadow( cent, ( team_t ) es->clientNum );
 
 	// get the player model information
 	renderfx = RF_LIGHTING_ORIGIN; // use the same origin for all
@@ -3760,11 +3761,11 @@ void CG_Corpse( centity_t *cent )
 
 	VectorCopy( origin, legs.lightingOrigin );
 	legs.renderfx = renderfx;
-	legs.origin[ 2 ] += BG_ClassModelConfig( es->clientNum )->zOffset;
+	legs.origin[ 2 ] += BG_ClassModelConfig( ( team_t ) es->clientNum )->zOffset;
 	VectorCopy( legs.origin, legs.oldorigin );  // don't positionally lerp at all
 
 	//rescale the model
-	scale = BG_ClassModelConfig( es->clientNum )->modelScale;
+	scale = BG_ClassModelConfig( ( team_t ) es->clientNum )->modelScale;
 
 	if ( scale != 1.0f && !ci->md5 )
 	{
@@ -3949,26 +3950,4 @@ centity_t *CG_GetPlayerLocation()
 
 	VectorCopy( cg.predictedPlayerState.origin, origin );
 	return CG_GetLocation( origin );
-}
-
-void CG_InitClasses()
-{
-	int i;
-
-	Com_Memset( cg_classes, 0, sizeof( cg_classes ) );
-
-	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
-	{
-		const char *icon = BG_Class( i )->icon;
-
-		if ( icon )
-		{
-			cg_classes[ i ].classIcon = trap_R_RegisterShader( icon, RSF_DEFAULT );
-
-			if ( !cg_classes[ i ].classIcon )
-			{
-				Com_Printf( S_ERROR "Failed to load class icon file %s\n", icon );
-			}
-		}
-	}
 }

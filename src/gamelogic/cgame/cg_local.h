@@ -957,11 +957,6 @@ typedef struct upgradeInfo_s
 
 typedef struct
 {
-	qhandle_t classIcon;
-} classInfo_t;
-
-typedef struct
-{
 	bool    looped;
 	bool    enabled;
 
@@ -1675,7 +1670,6 @@ extern  centity_t           cg_entities[ MAX_GENTITIES ];
 
 extern  weaponInfo_t        cg_weapons[ 32 ];
 extern  upgradeInfo_t       cg_upgrades[ 32 ];
-extern  classInfo_t         cg_classes[ PCL_NUM_CLASSES ];
 
 extern  const vec3_t        cg_shaderColors[ SHC_NUM_SHADER_COLORS ];
 
@@ -1943,13 +1937,11 @@ void        CG_Corpse( centity_t *cent );
 void        CG_ResetPlayerEntity( centity_t *cent );
 void        CG_NewClientInfo( int clientNum );
 
-void        CG_PrecacheClientInfo( class_t class_, const char *model, const char *skin );
+void        CG_PrecacheClientInfo( team_t team, const char *model, const char *skin );
 sfxHandle_t CG_CustomSound( int clientNum, const char *soundName );
 void        CG_PlayerDisconnect( vec3_t org );
 centity_t   *CG_GetLocation( vec3_t );
 centity_t   *CG_GetPlayerLocation();
-
-void        CG_InitClasses();
 
 //
 // cg_animation.c

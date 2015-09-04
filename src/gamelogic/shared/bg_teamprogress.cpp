@@ -70,7 +70,6 @@ static const char *UnlockableHumanName( unlockable_t *unlockable )
 	{
 		case UNLT_WEAPON:    return BG_Weapon( unlockable->num )->humanName;
 		case UNLT_UPGRADE:   return BG_Upgrade( unlockable->num )->humanName;
-		case UNLT_CLASS:     return BG_ClassModelConfig( unlockable->num )->humanName;
 	}
 
 	Com_Error( ERR_FATAL, "UnlockableHumanName: Unlockable has unknown type" );
@@ -84,7 +83,6 @@ static bool Disabled( unlockable_t *unlockable )
 	{
 		case UNLT_WEAPON:    return BG_WeaponDisabled( unlockable->num );
 		case UNLT_UPGRADE:   return BG_UpgradeDisabled( unlockable->num );
-		case UNLT_CLASS:     return BG_ClassDisabled( unlockable->num );
 	}
 
 	Com_Error( ERR_FATAL, "Disabled: Unlockable has unknown type" );
@@ -247,7 +245,6 @@ void BG_InitUnlockackables()
 
 	unlockablesTypeOffset[ UNLT_WEAPON ]    = 0;
 	unlockablesTypeOffset[ UNLT_UPGRADE ]   = WP_NUM_WEAPONS;
-	unlockablesTypeOffset[ UNLT_CLASS ]     = unlockablesTypeOffset[ UNLT_UPGRADE ] + UP_NUM_UPGRADES;
 
 #ifdef BUILD_SGAME
 	G_UpdateUnlockables();
@@ -300,11 +297,6 @@ void BG_ImportUnlockablesFromMask( int team, int mask )
 			case UNLT_WEAPON:
 				currentTeam     = BG_Weapon( itemNum )->team;
 				unlockThreshold = BG_Weapon( itemNum )->unlockThreshold;
-				break;
-
-			case UNLT_CLASS:
-				currentTeam     = TEAM_Q;
-				unlockThreshold = BG_Class( itemNum )->unlockThreshold;
 				break;
 
 			case UNLT_UPGRADE:
@@ -406,13 +398,6 @@ bool BG_UpgradeUnlocked( int upgrade )
 	CheckStatusKnowledge( UNLT_UPGRADE, upgrade);
 
 	return Unlocked( UNLT_UPGRADE, upgrade);
-}
-
-bool BG_ClassUnlocked( int class_ )
-{
-	CheckStatusKnowledge( UNLT_CLASS, class_);
-
-	return Unlocked( UNLT_CLASS, class_);
 }
 
 static int MomentumNextThreshold( int threshold )
@@ -539,11 +524,6 @@ void G_UpdateUnlockables()
 			case UNLT_WEAPON:
 				team            = BG_Weapon( itemNum )->team;
 				unlockThreshold = BG_Weapon( itemNum )->unlockThreshold;
-				break;
-
-			case UNLT_CLASS:
-				team            = TEAM_Q;
-				unlockThreshold = BG_Class( itemNum )->unlockThreshold;
 				break;
 
 			case UNLT_UPGRADE:
