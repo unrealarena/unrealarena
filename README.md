@@ -29,7 +29,7 @@ theirs subsidiaries.*
 $ mkdir build
 $ cd build
 $ cmake ..
-$ make -j$(nproc)
+$ cmake --build . -- -j$(nproc)
 ```
 
 
@@ -40,29 +40,47 @@ $ make -j$(nproc)
 
 ### Windows
 
-*TODO*
-
-
-#### 32-bit cross-compiling from Linux
-
-```bash
-$ mkdir build-win32
-$ cd build-win32
-$ cmake -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw32.cmake ..
-$ make -j$(nproc)
+```bat
+> md build
+> cd build
+> cmake -G "NMake Makefiles" ..
+> cmake --build .
 ```
 
 
-#### 64-bit cross-compiling from Linux
+#### 32-bit cross-compiling on Linux
 
 ```bash
-$ mkdir build-win64
-$ cd build-win64
+$ mkdir build
+$ cd build
+$ cmake -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw32.cmake ..
+$ cmake --build . -- -j$(nproc)
+```
+
+
+#### 64-bit cross-compiling on Linux
+
+```bash
+$ mkdir build
+$ cd build
 $ cmake -DCMAKE_TOOLCHAIN_FILE=cmake/cross-toolchain-mingw64.cmake ..
-$ make -j$(nproc)
+$ cmake --build . -- -j$(nproc)
 ```
 
 
 ## Run Instructions
 
-- Run `daemon` (Linux) or `daemon.exe` (Windows)
+
+### Linux
+
+- Run `daemon`
+
+
+### OS X
+
+*TODO*
+
+
+### Windows
+
+- Run `daemon.exe`
