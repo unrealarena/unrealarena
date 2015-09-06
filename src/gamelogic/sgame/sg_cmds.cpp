@@ -765,23 +765,6 @@ void Cmd_Team_f( gentity_t *ent )
 		return;
 	}
 
-	// Cannot leave a team while in combat.
-	if ( !g_cheats.integer &&
-	     g_combatCooldown.integer &&
-	     ent->client->lastCombatTime &&
-	     ent->client->sess.spectatorState == SPECTATOR_NOT &&
-	     ent->health > 0 &&
-	     ent->client->lastCombatTime + g_combatCooldown.integer * 1000 > level.time )
-	{
-		float remaining = ( ( ent->client->lastCombatTime + g_combatCooldown.integer * 1000 ) - level.time ) / 1000;
-
-		trap_SendServerCommand( ent - g_entities,
-		    va( "print_tr %s %i %.0f", QQ( N_("You cannot leave your team until $1$ after combat. Try again in $2$s.\n") ),
-		        g_combatCooldown.integer, remaining ) );
-
-		return;
-	}
-
 	// disallow joining teams during warmup
 	if ( g_doWarmup.integer && ( ( level.warmupTime - level.time ) / 1000 ) > 0 )
 	{
