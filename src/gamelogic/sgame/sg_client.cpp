@@ -204,10 +204,6 @@ gentity_t *G_SelectUnvanquishedSpawnPoint( team_t team, vec3_t preference, vec3_
 
 	/* team must exist, or there will be a sigsegv */
 	assert(team == TEAM_Q || team == TEAM_U);
-	if( level.team[ team ].numSpawns <= 0 )
-	{
-		return nullptr;
-	}
 
 	if ( team == TEAM_Q )
 	{

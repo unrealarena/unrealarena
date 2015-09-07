@@ -540,15 +540,13 @@ void CheckTeamStatus()
 	{
 		level.lastTeamImbalancedTime = level.time;
 
-		if ( level.team[ TEAM_U ].numSpawns > 0 &&
-		          level.team[ TEAM_Q ].numClients - level.team[ TEAM_U ].numClients > 2 )
+		if ( level.team[ TEAM_Q ].numClients - level.team[ TEAM_U ].numClients > 2 )
 		{
 			trap_SendServerCommand( -1, "print_tr \"" N_("Teams are imbalanced. "
 			                        "Q team have more players.\n") "\"" );
 			level.numTeamImbalanceWarnings++;
 		}
-		else if ( level.team[ TEAM_Q ].numSpawns > 0 &&
-		     level.team[ TEAM_U ].numClients - level.team[ TEAM_Q ].numClients > 2 )
+		else if ( level.team[ TEAM_U ].numClients - level.team[ TEAM_Q ].numClients > 2 )
 		{
 			trap_SendServerCommand( -1, "print_tr \"" N_("Teams are imbalanced. "
 			                        "U team have more players.\n") "\"" );

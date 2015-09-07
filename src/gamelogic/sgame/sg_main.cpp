@@ -381,7 +381,6 @@ static cvarTable_t gameCvarTable[] =
 static const size_t gameCvarTableSize = ARRAY_LEN( gameCvarTable );
 
 void               CheckExitRules();
-void               G_CountSpawns();
 static void        G_LogGameplayStats( int state );
 
 // state field of G_LogGameplayStats
@@ -822,9 +821,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart, bool inClient )
 	BG_PrintVoices( level.voices, g_debugVoices.integer );
 
 	G_Printf( "-----------------------------------\n" );
-
-	// So the server counts the spawns without a client attached
-	G_CountSpawns();
 
 	G_UpdateTeamConfigStrings();
 
@@ -1277,14 +1273,11 @@ void G_SpawnClients( team_t team )
 	gentity_t    *ent, *spawn;
 	vec3_t       spawn_origin, spawn_angles;
 	spawnQueue_t *sq = nullptr;
-	int          numSpawns = 0;
 
 	assert(team == TEAM_Q || team == TEAM_U);
 	sq = &level.team[ team ].spawnQueue;
 
-	numSpawns = level.team[ team ].numSpawns;
-
-	if ( G_GetSpawnQueueLength( sq ) > 0 && numSpawns > 0 )
+	if ( G_GetSpawnQueueLength( sq ) > 0 )
 	{
 		clientNum = G_PeekSpawnQueue( sq );
 		ent = &g_entities[ clientNum ];
@@ -1307,20 +1300,6 @@ void G_SpawnClients( team_t team )
 			ClientSpawn( ent, spawn, spawn_origin, spawn_angles );
 		}
 	}
-}
-
-/*
-============
-G_CountSpawns
-
-Counts the number of spawns for each team
-============
-*/
-void G_CountSpawns()
-{
-	//I guess this could be changed into one function call per team
-	level.team[ TEAM_Q ].numSpawns = 0;
-	level.team[ TEAM_U ].numSpawns = 0;
 }
 
 /*
@@ -2310,7 +2289,6 @@ void CheckExitRules()
 	if ( level.unconditionalWin == TEAM_Q ||
 	      ( level.unconditionalWin != TEAM_U &&
 	        ( level.time > level.startTime + 1000 ) &&
-	        ( level.team[ TEAM_U ].numSpawns == 0 ) &&
 	        ( level.team[ TEAM_U ].numAliveClients == 0 ) ) )
 	{
 		level.lastWin = TEAM_Q;
@@ -2323,7 +2301,6 @@ void CheckExitRules()
 	else if ( level.unconditionalWin == TEAM_U ||
 	     ( level.unconditionalWin != TEAM_Q &&
 	       ( level.time > level.startTime + 1000 ) &&
-	       ( level.team[ TEAM_Q ].numSpawns == 0 ) &&
 	       ( level.team[ TEAM_Q ].numAliveClients == 0 ) ) )
 	{
 		level.lastWin = TEAM_U;
@@ -2828,7 +2805,6 @@ void G_RunFrame( int levelTime )
 	// save position information for all active clients
 	G_UnlaggedStore();
 
-	G_CountSpawns();
 	G_DecreaseMomentum();
 	G_CalculateAvgPlayers();
 	G_SpawnClients( TEAM_Q );

@@ -636,7 +636,6 @@ struct level_locals_s
 		int  quorum;
 
 		// gameplay state
-		int              numSpawns;
 		int              numClients;
 		int              numPlayers;
 		int              numBots;

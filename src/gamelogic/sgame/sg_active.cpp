@@ -543,7 +543,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		client->ps.persistant[ PERS_UNLOCKABLES ] = BG_UnlockablesMask( client->pers.team );
 		queued = G_SearchSpawnQueue( &level.team[ team ].spawnQueue, ent - g_entities );
 
-		if ( !ClientInactivityTimer( ent, queued || !level.team[ team ].numSpawns ) )
+		if ( !ClientInactivityTimer( ent, queued ) )
 		{
 			return;
 		}
@@ -639,7 +639,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		{
 			/* team must exist, or there will be a sigsegv */
 			assert(team == TEAM_Q || team == TEAM_U);
-			client->ps.persistant[ PERS_SPAWNQUEUE ] = level.team[ team ].numSpawns;
+			client->ps.persistant[ PERS_SPAWNQUEUE ] = 1;
 			client->ps.persistant[ PERS_SPAWNQUEUE ] |= G_GetPosInSpawnQueue( &level.team[ team ].spawnQueue,
 			                                                                  client->ps.clientNum ) << 8;
 		}
