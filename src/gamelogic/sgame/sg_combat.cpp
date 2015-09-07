@@ -272,7 +272,6 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 	}
 
 	self->client->ps.pm_type = PM_DEAD;
-	self->suicideTime = 0;
 
 	if ( attacker )
 	{

@@ -731,24 +731,8 @@ Cmd_Kill_f
 */
 void Cmd_Kill_f( gentity_t *ent )
 {
-	if ( g_cheats.integer )
-	{
-		ent->client->ps.stats[ STAT_HEALTH ] = ent->health = 0;
-		G_PlayerDie( ent, ent, ent, MOD_SUICIDE );
-	}
-	else
-	{
-		if ( ent->suicideTime == 0 )
-		{
-			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You will suicide in 20 seconds\n") "\"" );
-			ent->suicideTime = level.time + 20000;
-		}
-		else if ( ent->suicideTime > level.time )
-		{
-			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("Suicide cancelled\n") "\"" );
-			ent->suicideTime = 0;
-		}
-	}
+	ent->client->ps.stats[ STAT_HEALTH ] = ent->health = 0;
+	G_PlayerDie( ent, ent, ent, MOD_SUICIDE );
 }
 
 /*

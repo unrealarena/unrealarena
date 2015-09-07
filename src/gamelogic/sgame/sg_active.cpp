@@ -1786,14 +1786,6 @@ void ClientThink_real( gentity_t *self )
 
 	// perform once-a-second actions
 	ClientTimerActions( self, msec );
-
-	if ( self->suicideTime > 0 && self->suicideTime < level.time )
-	{
-		client->ps.stats[ STAT_HEALTH ] = self->health = 0;
-		G_PlayerDie( self, self, self, MOD_SUICIDE );
-
-		self->suicideTime = 0;
-	}
 }
 
 /*
