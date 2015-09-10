@@ -2691,6 +2691,7 @@ bool G_FollowNewClient( gentity_t *ent, int dir )
 		ent->client->sess.spectatorClient = clientnum;
 		ent->client->sess.spectatorState = SPECTATOR_FOLLOW;
 
+		// XXX
 		// if this client is in the spawn queue, we need to do something special
 		if ( level.clients[ clientnum ].sess.spectatorState != SPECTATOR_NOT )
 		{

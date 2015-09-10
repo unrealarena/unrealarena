@@ -517,30 +517,6 @@ static void Svcmd_Pr_f()
 	trap_SendServerCommand( cl, va( "print %s\\\n", Quote( ConcatArgs( 2 ) ) ) );
 }
 
-static void Svcmd_PrintQueue_f()
-{
-	team_t team;
-	char teamName[ MAX_STRING_CHARS ];
-
-	if ( trap_Argc() != 2 )
-	{
-		G_Printf( "usage: printqueue <team>\n" );
-		return;
-	}
-
-	trap_Argv( 1, teamName, sizeof( teamName ) );
-
-	team = G_TeamFromString(teamName);
-	if ( TEAM_Q == team || TEAM_U == team )
-	{
-		G_PrintSpawnQueue( &level.team[ team ].spawnQueue );
-	}
-	else
-	{
-		G_Printf( "unknown team\n" );
-	}
-}
-
 // dumb wrapper for "a", "m", "chat", and "say"
 static void Svcmd_MessageWrapper()
 {
@@ -604,7 +580,6 @@ static const struct svcmd
 	{ "mapRotation",        false, Svcmd_MapRotation_f          },
 	{ "maplog",             true,  Svcmd_MapLogWrapper          },
 	{ "pr",                 false, Svcmd_Pr_f                   },
-	{ "printqueue",         false, Svcmd_PrintQueue_f           },
 	{ "qWin",               false, Svcmd_TeamWin_f              },
 	{ "say",                true,  Svcmd_MessageWrapper         },
 	{ "say_team",           true,  Svcmd_TeamMessage_f          },

@@ -1081,7 +1081,6 @@ int G_PopSpawnQueue( spawnQueue_t *sq )
 	{
 		sq->clients[ sq->front ] = -1;
 		sq->front = QUEUE_PLUS1( sq->front );
-		G_StopFollowing( g_entities + clientNum );
 		g_entities[ clientNum ].client->ps.pm_flags &= ~PMF_QUEUED;
 
 		return clientNum;
@@ -1106,46 +1105,17 @@ int G_PeekSpawnQueue( spawnQueue_t *sq )
 
 /*
 ============
-G_SearchSpawnQueue
-
-Look to see if clientNum is already in the spawnQueue
-============
-*/
-bool G_SearchSpawnQueue( spawnQueue_t *sq, int clientNum )
-{
-	int i;
-
-	for ( i = 0; i < MAX_CLIENTS; i++ )
-	{
-		if ( sq->clients[ i ] == clientNum )
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/*
-============
 G_PushSpawnQueue
 
 Add an element to the back of the spawn queue
 ============
 */
-bool G_PushSpawnQueue( spawnQueue_t *sq, int clientNum )
+void G_PushSpawnQueue( spawnQueue_t *sq, int clientNum )
 {
-	// don't add the same client more than once
-	if ( G_SearchSpawnQueue( sq, clientNum ) )
-	{
-		return false;
-	}
-
 	sq->back = QUEUE_PLUS1( sq->back );
 	sq->clients[ sq->back ] = clientNum;
 
 	g_entities[ clientNum ].client->ps.pm_flags |= PMF_QUEUED;
-	return true;
 }
 
 /*
@@ -1188,76 +1158,6 @@ bool G_RemoveFromSpawnQueue( spawnQueue_t *sq, int clientNum )
 	}
 
 	return false;
-}
-
-/*
-============
-G_GetPosInSpawnQueue
-
-Get the position of a client in a spawn queue
-============
-*/
-int G_GetPosInSpawnQueue( spawnQueue_t *sq, int clientNum )
-{
-	int i = sq->front;
-
-	if ( G_GetSpawnQueueLength( sq ) )
-	{
-		do
-		{
-			if ( sq->clients[ i ] == clientNum )
-			{
-				if ( i < sq->front )
-				{
-					return i + MAX_CLIENTS - sq->front + 1;
-				}
-				else
-				{
-					return i - sq->front + 1;
-				}
-			}
-
-			i = QUEUE_PLUS1( i );
-		}
-		while ( i != QUEUE_PLUS1( sq->back ) );
-	}
-
-	return 0;
-}
-
-/*
-============
-G_PrintSpawnQueue
-
-Print the contents of a spawn queue
-============
-*/
-void G_PrintSpawnQueue( spawnQueue_t *sq )
-{
-	int i = sq->front;
-	int length = G_GetSpawnQueueLength( sq );
-
-	G_Printf( "l:%d f:%d b:%d    :", length, sq->front, sq->back );
-
-	if ( length > 0 )
-	{
-		do
-		{
-			if ( sq->clients[ i ] == -1 )
-			{
-				G_Printf( "*:" );
-			}
-			else
-			{
-				G_Printf( "%d:", sq->clients[ i ] );
-			}
-
-			i = QUEUE_PLUS1( i );
-		}
-		while ( i != QUEUE_PLUS1( sq->back ) );
-	}
-
-	G_Printf( "\n" );
 }
 
 /*

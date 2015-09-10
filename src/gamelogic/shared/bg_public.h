@@ -267,7 +267,6 @@ typedef enum
 {
   PERS_SCORE,          // !!! MUST NOT CHANGE, SERVER AND GAME BOTH REFERENCE !!!
   PERS_MOMENTUM,     // the total momentum of a team
-  PERS_SPAWNQUEUE,     // number of spawns and position in spawn queue
   PERS_SPECSTATE,
   PERS_SPAWN_COUNT,    // incremented every respawn
   PERS_TEAM,           // persistant team selection

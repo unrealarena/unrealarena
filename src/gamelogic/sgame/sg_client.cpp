@@ -1495,23 +1495,14 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	// ranging doesn't count this client
 	if ( client->sess.spectatorState != SPECTATOR_NOT )
 	{
-		if ( teamLocal == TEAM_NONE )
+		if ( teamLocal != TEAM_NONE )
+		{
+			G_PushSpawnQueue( &level.team[ teamLocal ].spawnQueue, index );
+			client->ps.persistant[ PERS_TEAM ] = teamLocal;
+		}
+		else
 		{
 			spawnPoint = G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
-		}
-		else if ( teamLocal == TEAM_Q )
-		{
-			if ( G_PushSpawnQueue( &level.team[ teamLocal ].spawnQueue, index ) )
-			{
-				client->ps.persistant[ PERS_TEAM ] = TEAM_Q;
-			}
-		}
-		else if ( teamLocal == TEAM_U )
-		{
-			if ( G_PushSpawnQueue( &level.team[ teamLocal ].spawnQueue, index ) )
-			{
-				client->ps.persistant[ PERS_TEAM ] = TEAM_U;
-			}
 		}
 	}
 	else
