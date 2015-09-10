@@ -1573,12 +1573,6 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, client->ps.origin );
 
-	if ( client->sess.spectatorState == SPECTATOR_NOT && ( client->pers.team == TEAM_Q || client->pers.team == TEAM_U ) )
-	{
-		spawn_angles[ YAW ] += 180.0f;
-		AngleNormalize360( spawn_angles[ YAW ] );
-	}
-
 	// the respawned flag will be cleared after the attack and jump keys come up
 	client->ps.pm_flags |= PMF_RESPAWNED;
 
