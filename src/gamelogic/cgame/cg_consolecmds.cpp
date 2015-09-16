@@ -367,6 +367,7 @@ static const struct
 	{ "showScores",       CG_ShowScores_f,         0                },
 	{ "sizedown",         CG_SizeDown_f,           0                },
 	{ "sizeup",           CG_SizeUp_f,             0                },
+	{ "suicide",          0,                       0                },
 	{ "team",             0,                       0                },
 	{ "teamvote",         0,                       0                },
 	{ "testcgrade",       CG_TestCGrade_f,         0                },
