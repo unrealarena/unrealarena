@@ -1431,40 +1431,11 @@ void MoveClientToIntermission( gentity_t *ent )
 /*
 ==================
 FindIntermissionPoint
-
-This is also used for spectator spawns
 ==================
 */
 void FindIntermissionPoint()
 {
-	gentity_t *ent, *target;
-	vec3_t    dir;
-
-	// find the intermission spot
-	ent = G_PickRandomEntityOfClass( S_POS_PLAYER_INTERMISSION );
-
-	if ( !ent )
-	{
-		// the map creator forgot to put in an intermission point...
-		ent = G_PickRandomEntityOfClass( S_POS_PLAYER_SPAWN );
-	}
-	else
-	{
-		VectorCopy( ent->s.origin, level.intermission_origin );
-		VectorCopy( ent->s.angles, level.intermission_angle );
-
-		// if it has a target, look towards it
-		if ( ent->targetCount  )
-		{
-			target = G_PickRandomTargetFor( ent );
-
-			if ( target )
-			{
-				VectorSubtract( target->s.origin, level.intermission_origin, dir );
-				vectoangles( dir, level.intermission_angle );
-			}
-		}
-	}
+	G_SelectSpawnPoint( level.intermission_origin, level.intermission_angle, TEAM_NONE, nullptr );
 }
 
 /*
