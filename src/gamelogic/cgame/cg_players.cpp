@@ -1644,7 +1644,7 @@ void CG_NewClientInfo( int clientNum )
 	// so we can avoid loading checks if possible
 	if ( !CG_ScanForExistingClientInfo( ci ) )
 	{
-		// XXX
+		// XXX: is this needed?
 		// CG_LoadClientInfo( ci );
 	}
 }

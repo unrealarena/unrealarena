@@ -1182,9 +1182,7 @@ void G_SpawnClients( team_t team )
 		clientNum = G_PeekSpawnQueue( sq );
 		ent = &g_entities[ clientNum ];
 
-		if ( ( spawn = G_SelectUnvanquishedSpawnPoint( team,
-		               ent->client->pers.lastDeathLocation,
-		               spawn_origin, spawn_angles ) ) )
+		if ( ( spawn = G_SelectSpawnPoint( spawn_origin, spawn_angles, team ) ) )
 		{
 			clientNum = G_PopSpawnQueue( sq );
 
@@ -1448,7 +1446,7 @@ void FindIntermissionPoint()
 	if ( !ent )
 	{
 		// the map creator forgot to put in an intermission point...
-		G_SelectRandomFurthestSpawnPoint( vec3_origin, level.intermission_origin, level.intermission_angle );
+		ent = G_PickRandomEntityOfClass( S_POS_PLAYER_SPAWN );
 	}
 	else
 	{
