@@ -111,20 +111,21 @@ bool SpotWouldTelefrag( gentity_t *spot )
  * @param origin  position
  * @param angles  orientation
  * @param team    team
+ * @param data    data needed for custom spawn logics
  * @return        spawn point
  */
-gentity_t *G_SelectSpawnPoint(vec3_t origin, vec3_t angles, team_t team)
+gentity_t *G_SelectSpawnPoint(vec3_t origin, vec3_t angles, team_t team, const void *data)
 {
 	gentity_t *spawnPoint = nullptr;
 
 	switch (team)
 	{
 		case TEAM_Q:
-			spawnPoint = G_SelectQSpawnPoint(origin, angles);
+			spawnPoint = G_SelectQSpawnPoint(origin, angles, data);
 			break;
 
 		case TEAM_U:
-			spawnPoint = G_SelectUSpawnPoint(origin, angles);
+			spawnPoint = G_SelectUSpawnPoint(origin, angles, data);
 			break;
 
 		case TEAM_NONE:
@@ -142,15 +143,92 @@ gentity_t *G_SelectSpawnPoint(vec3_t origin, vec3_t angles, team_t team)
 /**
  * Find a viable spawn point for a Q player
  *
- * XXX: implement the correct logic
+ * Pick a random spawn point among the (half) set of spawns further from the
+ * last death location.
  *
  * @param origin  position
  * @param angles  orientation
+ * @param data    position where the player died last
  * @return        spawn point
  */
-gentity_t *G_SelectQSpawnPoint(vec3_t origin, vec3_t angles)
+gentity_t *G_SelectQSpawnPoint(vec3_t origin, vec3_t angles, const void *data)
 {
-	return G_SelectSpectatorSpawnPoint(origin, angles);
+	gentity_t *spawnPoint = nullptr;
+	gentity_t *spawnPoints[MAX_CLIENTS];
+	int numSpawnPoints = 0;
+	float distance;
+	float distances[MAX_CLIENTS];
+
+	// Find all eligible spawn points
+	while ((spawnPoint = G_IterateEntitiesOfClass(spawnPoint, S_POS_PLAYER_SPAWN)))
+	{
+		if (SpotWouldTelefrag(spawnPoint))
+		{
+			continue;
+		}
+
+		vec3_t delta;
+
+		VectorSubtract(spawnPoint->s.origin, (float *) data, delta);
+		distance = VectorLength(delta);
+
+		int i;
+
+		for (i = 0; i < numSpawnPoints; ++i)
+		{
+			if (distance > distances[i])
+			{
+				if (numSpawnPoints == MAX_CLIENTS)
+				{
+					numSpawnPoints--;
+				}
+
+				for (int j = numSpawnPoints; j > i; --j)
+				{
+					distances[j] = distances[j - 1];
+					spawnPoints[j] = spawnPoints[j - 1];
+				}
+
+				distances[i] = distance;
+				spawnPoints[i] = spawnPoint;
+				numSpawnPoints++;
+
+				break;
+			}
+		}
+
+		if (i == numSpawnPoints && numSpawnPoints < MAX_CLIENTS)
+		{
+			distances[numSpawnPoints] = distance;
+			spawnPoints[numSpawnPoints] = spawnPoint;
+			numSpawnPoints++;
+		}
+	}
+
+	// If there are not suitable spawn points then pick a random one (that telefrag)
+	if (!numSpawnPoints)
+	{
+		spawnPoint = G_PickRandomEntityOfClass(S_POS_PLAYER_SPAWN);
+
+		if (!spawnPoint)
+		{
+			G_Error("No pos_player_spawn found");
+		}
+
+		spawnPoints[0] = spawnPoint;
+		numSpawnPoints++;
+	}
+
+	// Select a random spawn point from the (half) set of further ones
+	int pick = random() * (numSpawnPoints / 2);
+
+	VectorCopy(spawnPoints[pick]->s.origin, origin);
+	VectorCopy(spawnPoints[pick]->s.angles, angles);
+
+	// XXX: probably related to those little ob when you spawn
+	origin[2] += 9;
+
+	return spawnPoints[pick];
 }
 
 
@@ -161,11 +239,12 @@ gentity_t *G_SelectQSpawnPoint(vec3_t origin, vec3_t angles)
  *
  * @param origin  position
  * @param angles  orientation
+ * @param data    data needed for custom spawn logics
  * @return        spawn point
  */
-gentity_t *G_SelectUSpawnPoint(vec3_t origin, vec3_t angles)
+gentity_t *G_SelectUSpawnPoint(vec3_t origin, vec3_t angles, const void *data)
 {
-	return G_SelectSpectatorSpawnPoint(origin, angles);
+	return G_SelectQSpawnPoint(origin, angles, data);
 }
 
 
@@ -197,7 +276,7 @@ gentity_t *G_SelectSpectatorSpawnPoint(vec3_t origin, vec3_t angles)
 	VectorCopy(spawnPoint->s.origin, origin);
 	VectorCopy(spawnPoint->s.angles, angles);
 
-	// If the spawn has a target then look towards it
+	// Look toward linked target
 	if (spawnPoint->targetCount)
 	{
 		gentity_t *target = G_PickRandomTargetFor(spawnPoint);
@@ -1427,7 +1506,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		}
 		else
 		{
-			spawnPoint = G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE );
+			spawnPoint = G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE, nullptr );
 		}
 	}
 	else

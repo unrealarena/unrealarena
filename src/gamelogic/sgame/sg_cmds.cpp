@@ -2535,7 +2535,7 @@ void G_StopFollowing( gentity_t *ent )
 		ent->client->sess.spectatorState = SPECTATOR_LOCKED;
 		ent->client->ps.persistant[ PERS_SPECSTATE ] = SPECTATOR_LOCKED;
 
-		G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE );
+		G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE, nullptr );
 
 		G_SetOrigin( ent, spawn_origin );
 		VectorCopy( spawn_origin, ent->client->ps.origin );
@@ -2589,7 +2589,7 @@ void G_FollowLockView( gentity_t *ent )
 	ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
 	ent->client->ps.viewangles[ PITCH ] = 0.0f;
 
-	G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE );
+	G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE, nullptr );
 
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, ent->client->ps.origin );

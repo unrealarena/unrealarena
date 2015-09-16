@@ -1182,7 +1182,7 @@ void G_SpawnClients( team_t team )
 		clientNum = G_PeekSpawnQueue( sq );
 		ent = &g_entities[ clientNum ];
 
-		if ( ( spawn = G_SelectSpawnPoint( spawn_origin, spawn_angles, team ) ) )
+		if ( ( spawn = G_SelectSpawnPoint( spawn_origin, spawn_angles, team, ent->client->pers.lastDeathLocation ) ) )
 		{
 			clientNum = G_PopSpawnQueue( sq );
 

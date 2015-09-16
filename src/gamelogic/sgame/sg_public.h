@@ -68,9 +68,9 @@ namespace Beacon
 // sg_client.c
 void              G_AddCreditToClient( gclient_t *client, short credit, bool cap );
 void              G_SetClientViewAngle( gentity_t *ent, const vec3_t angle );
-gentity_t         *G_SelectSpawnPoint(vec3_t origin, vec3_t angles, team_t team);
-gentity_t         *G_SelectQSpawnPoint(vec3_t origin, vec3_t angles);
-gentity_t         *G_SelectUSpawnPoint(vec3_t origin, vec3_t angles);
+gentity_t         *G_SelectSpawnPoint(vec3_t origin, vec3_t angles, team_t team, const void *data);
+gentity_t         *G_SelectQSpawnPoint(vec3_t origin, vec3_t angles, const void *data);
+gentity_t         *G_SelectUSpawnPoint(vec3_t origin, vec3_t angles, const void *data);
 gentity_t         *G_SelectSpectatorSpawnPoint(vec3_t origin, vec3_t angles);
 void              respawn( gentity_t *ent );
 void              ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const vec3_t angles );
