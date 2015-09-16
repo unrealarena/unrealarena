@@ -731,24 +731,8 @@ Cmd_Kill_f
 */
 void Cmd_Kill_f( gentity_t *ent )
 {
-	if ( g_cheats.integer )
-	{
-		ent->client->ps.stats[ STAT_HEALTH ] = ent->health = 0;
-		G_PlayerDie( ent, ent, ent, MOD_SUICIDE );
-	}
-	else
-	{
-		if ( ent->suicideTime == 0 )
-		{
-			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You will suicide in 20 seconds\n") "\"" );
-			ent->suicideTime = level.time + 20000;
-		}
-		else if ( ent->suicideTime > level.time )
-		{
-			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("Suicide cancelled\n") "\"" );
-			ent->suicideTime = 0;
-		}
-	}
+	ent->client->ps.stats[ STAT_HEALTH ] = ent->health = 0;
+	G_PlayerDie( ent, ent, ent, MOD_SUICIDE );
 }
 
 /*
@@ -3423,6 +3407,7 @@ static const commands_t cmds[] =
 	{ "say_team",        CMD_MESSAGE | CMD_INTERMISSION,      Cmd_Say_f              },
 	{ "score",           CMD_INTERMISSION,                    ScoreboardMessage      },
 	{ "setviewpos",      CMD_CHEAT_TEAM,                      Cmd_SetViewpos_f       },
+	{ "suicide",         CMD_TEAM | CMD_ALIVE,                Cmd_Kill_f             },
 	{ "team",            0,                                   Cmd_Team_f             },
 	{ "teamvote",        CMD_TEAM | CMD_INTERMISSION,         Cmd_Vote_f             },
 	{ "test",            CMD_CHEAT,                           Cmd_Test_f             },
