@@ -765,23 +765,6 @@ void Cmd_Team_f( gentity_t *ent )
 		return;
 	}
 
-	// Cannot leave a team while in combat.
-	if ( !g_cheats.integer &&
-	     g_combatCooldown.integer &&
-	     ent->client->lastCombatTime &&
-	     ent->client->sess.spectatorState == SPECTATOR_NOT &&
-	     ent->health > 0 &&
-	     ent->client->lastCombatTime + g_combatCooldown.integer * 1000 > level.time )
-	{
-		float remaining = ( ( ent->client->lastCombatTime + g_combatCooldown.integer * 1000 ) - level.time ) / 1000;
-
-		trap_SendServerCommand( ent - g_entities,
-		    va( "print_tr %s %i %.0f", QQ( N_("You cannot leave your team until $1$ after combat. Try again in $2$s.\n") ),
-		        g_combatCooldown.integer, remaining ) );
-
-		return;
-	}
-
 	// disallow joining teams during warmup
 	if ( g_doWarmup.integer && ( ( level.warmupTime - level.time ) / 1000 ) > 0 )
 	{
@@ -2535,7 +2518,7 @@ void G_StopFollowing( gentity_t *ent )
 		ent->client->sess.spectatorState = SPECTATOR_LOCKED;
 		ent->client->ps.persistant[ PERS_SPECSTATE ] = SPECTATOR_LOCKED;
 
-		G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
+		G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE, nullptr );
 
 		G_SetOrigin( ent, spawn_origin );
 		VectorCopy( spawn_origin, ent->client->ps.origin );
@@ -2589,7 +2572,7 @@ void G_FollowLockView( gentity_t *ent )
 	ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
 	ent->client->ps.viewangles[ PITCH ] = 0.0f;
 
-	G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
+	G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE, nullptr );
 
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, ent->client->ps.origin );
@@ -2691,6 +2674,7 @@ bool G_FollowNewClient( gentity_t *ent, int dir )
 		ent->client->sess.spectatorClient = clientnum;
 		ent->client->sess.spectatorState = SPECTATOR_FOLLOW;
 
+		// XXX
 		// if this client is in the spawn queue, we need to do something special
 		if ( level.clients[ clientnum ].sess.spectatorState != SPECTATOR_NOT )
 		{

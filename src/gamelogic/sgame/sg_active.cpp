@@ -499,19 +499,13 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 	pmove_t   pm;
 	gclient_t *client;
 	int       clientNum;
-	bool  attack1, following, queued, attackReleased;
+	bool  following;
 	team_t    team;
 
 	client = ent->client;
 
 	usercmdCopyButtons( client->oldbuttons, client->buttons );
 	usercmdCopyButtons( client->buttons, ucmd->buttons );
-
-	attack1 = usercmdButtonPressed( client->buttons, BUTTON_ATTACK ) &&
-	          !usercmdButtonPressed( client->oldbuttons, BUTTON_ATTACK );
-
-	attackReleased = !usercmdButtonPressed( client->buttons, BUTTON_ATTACK ) &&
-		  usercmdButtonPressed( client->oldbuttons, BUTTON_ATTACK );
 
 	//if bot
 	if( ent->r.svFlags & SVF_BOT ) {
@@ -536,57 +530,6 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 
 	team = (team_t) client->pers.team;
 
-	// Check to see if we are in the spawn queue
-	// Also, do some other checks and updates which players need while spectating
-	if ( team == TEAM_Q || team == TEAM_U )
-	{
-		client->ps.persistant[ PERS_UNLOCKABLES ] = BG_UnlockablesMask( client->pers.team );
-		queued = G_SearchSpawnQueue( &level.team[ team ].spawnQueue, ent - g_entities );
-
-		if ( !ClientInactivityTimer( ent, queued || !level.team[ team ].numSpawns ) )
-		{
-			return;
-		}
-	}
-	else
-	{
-		queued = false;
-	}
-
-	// Wants to get out of spawn queue
-	if ( attack1 && queued )
-	{
-		if ( client->sess.spectatorState == SPECTATOR_FOLLOW )
-		{
-			G_StopFollowing( ent );
-		}
-
-		//be sure that only valid team "numbers" can be used.
-		assert(team == TEAM_Q || team == TEAM_U);
-		G_RemoveFromSpawnQueue( &level.team[ team ].spawnQueue, client->ps.clientNum );
-
-		client->pers.weapon = WP_NONE;
-		client->ps.persistant[ PERS_TEAM ] = TEAM_NONE;
-		client->ps.pm_flags &= ~PMF_QUEUED;
-		queued = false;
-	}
-	else if ( attack1 )
-	{
-		// Wants to get into spawn queue
-		if ( client->sess.spectatorState == SPECTATOR_FOLLOW )
-		{
-			G_StopFollowing( ent );
-		}
-	}
-	else if ( attackReleased )
-	{
-		if ( team == TEAM_NONE )
-		{
-			G_TriggerMenu( client->ps.clientNum, MN_TEAM );
-		}
-	}
-
-
 	// We are either not following anyone or following a spectator
 	if ( !following )
 	{
@@ -602,11 +545,6 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		else
 		{
 			client->ps.pm_type = PM_SPECTATOR;
-		}
-
-		if ( queued )
-		{
-			client->ps.pm_flags |= PMF_QUEUED;
 		}
 
 		client->ps.speed = client->pers.flySpeed;
@@ -633,16 +571,6 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 
 		G_TouchTriggers( ent );
 		trap_UnlinkEntity( ent );
-
-		// Set the queue position and spawn count for the client side
-		if ( client->ps.pm_flags & PMF_QUEUED )
-		{
-			/* team must exist, or there will be a sigsegv */
-			assert(team == TEAM_Q || team == TEAM_U);
-			client->ps.persistant[ PERS_SPAWNQUEUE ] = level.team[ team ].numSpawns;
-			client->ps.persistant[ PERS_SPAWNQUEUE ] |= G_GetPosInSpawnQueue( &level.team[ team ].spawnQueue,
-			                                                                  client->ps.clientNum ) << 8;
-		}
 	}
 }
 

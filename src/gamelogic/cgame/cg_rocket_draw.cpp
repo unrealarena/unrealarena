@@ -2441,68 +2441,6 @@ static void CG_Rocket_DrawTeamVote()
 	CG_Rocket_DrawVote_internal( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] );
 }
 
-static void CG_Rocket_DrawSpawnQueuePosition()
-{
-	int    position;
-	const char *s;
-
-	if ( !( cg.snap->ps.pm_flags & PMF_QUEUED ) )
-	{
-		Rocket_SetInnerRML( "", 0 );
-		return;
-	}
-
-	position = cg.snap->ps.persistant[ PERS_SPAWNQUEUE ] >> 8;
-
-	if ( position < 1 )
-	{
-		Rocket_SetInnerRML( "", 0 );
-		return;
-	}
-
-	if ( position == 1 )
-	{
-		s = va( _( "You are at the front of the spawn queue" ) );
-	}
-
-	else
-	{
-		s = va( _( "You are at position %d in the spawn queue" ), position );
-	}
-
-	Rocket_SetInnerRML( s, 0 );
-}
-
-static void CG_Rocket_DrawNumSpawns()
-{
-	int    position, spawns;
-	const char *s;
-
-	if ( !( cg.snap->ps.pm_flags & PMF_QUEUED ) )
-	{
-		Rocket_SetInnerRML( "", 0 );
-		return;
-	}
-
-	spawns   = cg.snap->ps.persistant[ PERS_SPAWNQUEUE ] & 0x000000ff;
-	position = cg.snap->ps.persistant[ PERS_SPAWNQUEUE ] >> 8;
-
-	if ( position < 1 || cg.intermissionStarted )
-	{
-		s = "";
-	}
-	else if ( spawns == 0 )
-	{
-		s = _( "There are no spawns remaining" );
-	}
-	else
-	{
-		s = va( P_( "There is %d spawn remaining", "There are %d spawns remaining", spawns ), spawns );
-	}
-
-	Rocket_SetInnerRML( s, 0 );
-}
-
 static void CG_Rocket_DrawWarmup()
 {
 	int   sec = 0;
@@ -2719,9 +2657,7 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "momentum", &CG_Rocket_DrawMomentum, ELEMENT_BOTH },
 	{ "momentum_bar", &CG_Rocket_DrawPlayerMomentumBar, ELEMENT_BOTH },
 	{ "motd", &CG_Rocket_DrawMOTD, ELEMENT_ALL },
-	{ "numSpawns", &CG_Rocket_DrawNumSpawns, ELEMENT_DEAD },
 	{ "progress_value", &CG_Rocket_DrawProgressValue, ELEMENT_ALL },
-	{ "spawnPos", &CG_Rocket_DrawSpawnQueuePosition, ELEMENT_DEAD },
 	{ "speedometer", &CG_Rocket_DrawSpeedGraph, ELEMENT_GAME },
 	{ "stamina_bolt", &CG_Rocket_DrawStaminaBolt, ELEMENT_U },
 	{ "timer", &CG_Rocket_DrawTimer, ELEMENT_GAME },

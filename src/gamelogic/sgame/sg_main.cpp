@@ -381,7 +381,6 @@ static cvarTable_t gameCvarTable[] =
 static const size_t gameCvarTableSize = ARRAY_LEN( gameCvarTable );
 
 void               CheckExitRules();
-void               G_CountSpawns();
 static void        G_LogGameplayStats( int state );
 
 // state field of G_LogGameplayStats
@@ -823,9 +822,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart, bool inClient )
 
 	G_Printf( "-----------------------------------\n" );
 
-	// So the server counts the spawns without a client attached
-	G_CountSpawns();
-
 	G_UpdateTeamConfigStrings();
 
 	G_MapLog_NewMap();
@@ -1085,7 +1081,6 @@ int G_PopSpawnQueue( spawnQueue_t *sq )
 	{
 		sq->clients[ sq->front ] = -1;
 		sq->front = QUEUE_PLUS1( sq->front );
-		G_StopFollowing( g_entities + clientNum );
 		g_entities[ clientNum ].client->ps.pm_flags &= ~PMF_QUEUED;
 
 		return clientNum;
@@ -1110,46 +1105,17 @@ int G_PeekSpawnQueue( spawnQueue_t *sq )
 
 /*
 ============
-G_SearchSpawnQueue
-
-Look to see if clientNum is already in the spawnQueue
-============
-*/
-bool G_SearchSpawnQueue( spawnQueue_t *sq, int clientNum )
-{
-	int i;
-
-	for ( i = 0; i < MAX_CLIENTS; i++ )
-	{
-		if ( sq->clients[ i ] == clientNum )
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/*
-============
 G_PushSpawnQueue
 
 Add an element to the back of the spawn queue
 ============
 */
-bool G_PushSpawnQueue( spawnQueue_t *sq, int clientNum )
+void G_PushSpawnQueue( spawnQueue_t *sq, int clientNum )
 {
-	// don't add the same client more than once
-	if ( G_SearchSpawnQueue( sq, clientNum ) )
-	{
-		return false;
-	}
-
 	sq->back = QUEUE_PLUS1( sq->back );
 	sq->clients[ sq->back ] = clientNum;
 
 	g_entities[ clientNum ].client->ps.pm_flags |= PMF_QUEUED;
-	return true;
 }
 
 /*
@@ -1196,76 +1162,6 @@ bool G_RemoveFromSpawnQueue( spawnQueue_t *sq, int clientNum )
 
 /*
 ============
-G_GetPosInSpawnQueue
-
-Get the position of a client in a spawn queue
-============
-*/
-int G_GetPosInSpawnQueue( spawnQueue_t *sq, int clientNum )
-{
-	int i = sq->front;
-
-	if ( G_GetSpawnQueueLength( sq ) )
-	{
-		do
-		{
-			if ( sq->clients[ i ] == clientNum )
-			{
-				if ( i < sq->front )
-				{
-					return i + MAX_CLIENTS - sq->front + 1;
-				}
-				else
-				{
-					return i - sq->front + 1;
-				}
-			}
-
-			i = QUEUE_PLUS1( i );
-		}
-		while ( i != QUEUE_PLUS1( sq->back ) );
-	}
-
-	return 0;
-}
-
-/*
-============
-G_PrintSpawnQueue
-
-Print the contents of a spawn queue
-============
-*/
-void G_PrintSpawnQueue( spawnQueue_t *sq )
-{
-	int i = sq->front;
-	int length = G_GetSpawnQueueLength( sq );
-
-	G_Printf( "l:%d f:%d b:%d    :", length, sq->front, sq->back );
-
-	if ( length > 0 )
-	{
-		do
-		{
-			if ( sq->clients[ i ] == -1 )
-			{
-				G_Printf( "*:" );
-			}
-			else
-			{
-				G_Printf( "%d:", sq->clients[ i ] );
-			}
-
-			i = QUEUE_PLUS1( i );
-		}
-		while ( i != QUEUE_PLUS1( sq->back ) );
-	}
-
-	G_Printf( "\n" );
-}
-
-/*
-============
 G_SpawnClients
 
 Spawn queued clients
@@ -1277,21 +1173,16 @@ void G_SpawnClients( team_t team )
 	gentity_t    *ent, *spawn;
 	vec3_t       spawn_origin, spawn_angles;
 	spawnQueue_t *sq = nullptr;
-	int          numSpawns = 0;
 
 	assert(team == TEAM_Q || team == TEAM_U);
 	sq = &level.team[ team ].spawnQueue;
 
-	numSpawns = level.team[ team ].numSpawns;
-
-	if ( G_GetSpawnQueueLength( sq ) > 0 && numSpawns > 0 )
+	if ( G_GetSpawnQueueLength( sq ) > 0 )
 	{
 		clientNum = G_PeekSpawnQueue( sq );
 		ent = &g_entities[ clientNum ];
 
-		if ( ( spawn = G_SelectUnvanquishedSpawnPoint( team,
-		               ent->client->pers.lastDeathLocation,
-		               spawn_origin, spawn_angles ) ) )
+		if ( ( spawn = G_SelectSpawnPoint( spawn_origin, spawn_angles, team, ent->client->pers.lastDeathLocation ) ) )
 		{
 			clientNum = G_PopSpawnQueue( sq );
 
@@ -1307,20 +1198,6 @@ void G_SpawnClients( team_t team )
 			ClientSpawn( ent, spawn, spawn_origin, spawn_angles );
 		}
 	}
-}
-
-/*
-============
-G_CountSpawns
-
-Counts the number of spawns for each team
-============
-*/
-void G_CountSpawns()
-{
-	//I guess this could be changed into one function call per team
-	level.team[ TEAM_Q ].numSpawns = 0;
-	level.team[ TEAM_U ].numSpawns = 0;
 }
 
 /*
@@ -1554,40 +1431,11 @@ void MoveClientToIntermission( gentity_t *ent )
 /*
 ==================
 FindIntermissionPoint
-
-This is also used for spectator spawns
 ==================
 */
 void FindIntermissionPoint()
 {
-	gentity_t *ent, *target;
-	vec3_t    dir;
-
-	// find the intermission spot
-	ent = G_PickRandomEntityOfClass( S_POS_PLAYER_INTERMISSION );
-
-	if ( !ent )
-	{
-		// the map creator forgot to put in an intermission point...
-		G_SelectRandomFurthestSpawnPoint( vec3_origin, level.intermission_origin, level.intermission_angle );
-	}
-	else
-	{
-		VectorCopy( ent->s.origin, level.intermission_origin );
-		VectorCopy( ent->s.angles, level.intermission_angle );
-
-		// if it has a target, look towards it
-		if ( ent->targetCount  )
-		{
-			target = G_PickRandomTargetFor( ent );
-
-			if ( target )
-			{
-				VectorSubtract( target->s.origin, level.intermission_origin, dir );
-				vectoangles( dir, level.intermission_angle );
-			}
-		}
-	}
+	G_SelectSpawnPoint( level.intermission_origin, level.intermission_angle, TEAM_NONE, nullptr );
 }
 
 /*
@@ -2310,7 +2158,6 @@ void CheckExitRules()
 	if ( level.unconditionalWin == TEAM_Q ||
 	      ( level.unconditionalWin != TEAM_U &&
 	        ( level.time > level.startTime + 1000 ) &&
-	        ( level.team[ TEAM_U ].numSpawns == 0 ) &&
 	        ( level.team[ TEAM_U ].numAliveClients == 0 ) ) )
 	{
 		level.lastWin = TEAM_Q;
@@ -2323,7 +2170,6 @@ void CheckExitRules()
 	else if ( level.unconditionalWin == TEAM_U ||
 	     ( level.unconditionalWin != TEAM_Q &&
 	       ( level.time > level.startTime + 1000 ) &&
-	       ( level.team[ TEAM_Q ].numSpawns == 0 ) &&
 	       ( level.team[ TEAM_Q ].numAliveClients == 0 ) ) )
 	{
 		level.lastWin = TEAM_U;
@@ -2828,7 +2674,6 @@ void G_RunFrame( int levelTime )
 	// save position information for all active clients
 	G_UnlaggedStore();
 
-	G_CountSpawns();
 	G_DecreaseMomentum();
 	G_CalculateAvgPlayers();
 	G_SpawnClients( TEAM_Q );

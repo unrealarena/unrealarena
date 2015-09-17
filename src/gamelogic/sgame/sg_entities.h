@@ -78,9 +78,7 @@
 
 #define S_PATH_CORNER             "path_corner"
 #define S_POS_PLAYER_SPAWN        "pos_player_spawn"
-#define S_POS_Q_INTERMISSION      "pos_q_intermission"
 #define S_POS_PLAYER_INTERMISSION "pos_player_intermission"
-#define S_POS_U_INTERMISSION      "pos_u_intermission"
 #define S_POS_TARGET              "pos_target"
 #define S_POS_LOCATION            "pos_location"
 

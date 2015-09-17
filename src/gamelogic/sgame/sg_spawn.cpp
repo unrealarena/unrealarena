@@ -356,8 +356,6 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	{ "info_player_deathmatch",   SP_pos_player_spawn,       CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_PLAYER_SPAWN },
 	{ "info_player_intermission", SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_PLAYER_INTERMISSION },
 	{ "info_player_start",        SP_pos_player_spawn,       CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_PLAYER_SPAWN },
-	{ "info_q_intermission",      SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_Q_INTERMISSION  },
-	{ "info_u_intermission",      SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_U_INTERMISSION  },
 	{ "light",                    SP_RemoveSelf,             (entityChainType_t) 0 },
 	{ "misc_anim_model",          SP_gfx_animated_model,     CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_gfx_animated_model },
 	{ "misc_light_flare",         SP_gfx_light_flare,        CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_gfx_light_flare },
@@ -380,9 +378,7 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	{ S_POS_LOCATION,             SP_pos_location,           CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
 	{ S_POS_PLAYER_INTERMISSION,  SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
 	{ S_POS_PLAYER_SPAWN,         SP_pos_player_spawn,       CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
-	{ S_POS_Q_INTERMISSION,       SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
 	{ S_POS_TARGET,               SP_pos_target,             CHAIN_TARGET },
-	{ S_POS_U_INTERMISSION,       SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
 
 	/**
 	 *  Sensors
