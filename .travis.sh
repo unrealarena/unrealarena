@@ -29,9 +29,9 @@ linux64-install() {
 
 # before_script
 linux64-before_script() {
-	mkdir "deps"
-	wget -qP "deps" "https://github.com/unrealarena/unrealarena-deps/releases/download/v0.1/linux64-3.tar.xz"
-	tar xf "deps/linux64-3.tar.xz" -C "deps"
+	mkdir "daemon/deps"
+	wget -qP "daemon/deps" "https://github.com/unrealarena/unrealarena-deps/releases/download/v0.1/linux64-3.tar.xz"
+	tar xf "daemon/deps/linux64-3.tar.xz" -C "daemon/deps"
 }
 
 # script

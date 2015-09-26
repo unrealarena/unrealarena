@@ -1,0 +1,4 @@
+# Ignore build stuff
+/build
+/deps
+Makefile
