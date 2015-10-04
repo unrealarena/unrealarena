@@ -146,7 +146,7 @@ protected:
 
 		if ( key > 0 )
 		{
-			trap_Key_SetBinding( key, team, nullptr );
+			trap_Key_SetBinding( key, team, "" );
 		}
 
 		key = newKey;

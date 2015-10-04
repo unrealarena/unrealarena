@@ -58,14 +58,14 @@ static void CG_GetBindings( team_t team )
 {
     std::vector<std::string> binds;
 
-    for (int i = 0; i < numBindings; i++) {
+    for (unsigned i = 0; i < numBindings; i++) {
 		bindings[i].keys[0] = bindings[i].keys[1] = K_NONE;
         binds.push_back(bindings[i].command);
     }
 
     std::vector<std::vector<int>> keyNums = trap_Key_GetKeynumForBinds(team, binds);
 
-    for (int i = 0; i < numBindings; i++) {
+    for (unsigned i = 0; i < numBindings; i++) {
         if (keyNums[i].size() > 0) {
             bindings[i].keys[0] = keyNums[i][0];
         }

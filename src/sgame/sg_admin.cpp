@@ -374,9 +374,7 @@ static const char *G_quoted_user_name( gentity_t *ent, const char *fallback )
 
 void G_admin_register_cmds()
 {
-	int i;
-
-	for ( i = 0; i < adminNumCmds; i++ )
+	for ( unsigned i = 0; i < adminNumCmds; i++ )
 	{
 		if ( g_admin_cmds[ i ].keyword )
 		{
@@ -387,9 +385,7 @@ void G_admin_register_cmds()
 
 void G_admin_unregister_cmds()
 {
-	int i;
-
-	for ( i = 0; i < adminNumCmds; i++ )
+	for ( unsigned i = 0; i < adminNumCmds; i++ )
 	{
 		if ( g_admin_cmds[ i ].keyword )
 		{
@@ -400,13 +396,12 @@ void G_admin_unregister_cmds()
 
 void G_admin_cmdlist( gentity_t *ent )
 {
-	int  i;
 	char out[ MAX_STRING_CHARS ] = "";
-	int  len, outlen;
+	unsigned len, outlen;
 
 	outlen = 0;
 
-	for ( i = 0; i < adminNumCmds; i++ )
+	for ( unsigned i = 0; i < adminNumCmds; i++ )
 	{
 		if ( !g_admin_cmds[ i ].keyword || !G_admin_permission( ent, g_admin_cmds[ i ].flag ) )
 		{
@@ -858,7 +853,7 @@ void G_admin_writeconfig()
 	trap_FS_FCloseFile( f );
 }
 
-static void admin_readconfig_string( const char **cnf, char *s, int size )
+static void admin_readconfig_string( const char **cnf, char *s, unsigned size )
 {
 	char *t;
 
@@ -3438,7 +3433,7 @@ bool G_admin_listlayouts( gentity_t *ent )
 	int  count = 0;
 	char *s;
 	char layout[ MAX_QPATH ] = { "" };
-	int  i = 0;
+	unsigned i = 0;
 
 	if ( trap_Argc() == 2 )
 	{
@@ -3684,7 +3679,8 @@ static bool ban_matchname( void *ban, const void *name )
 
 static int ban_out( void *ban, char *str )
 {
-	int           i, t;
+	unsigned i;
+    int t;
 	int           colorlen1 = 0;
 	char          duration[ MAX_DURATION_LENGTH ];
 	char          time[ MAX_DURATION_LENGTH ];
@@ -3805,13 +3801,12 @@ bool G_admin_adminhelp( gentity_t *ent )
 
 	if ( trap_Argc() < 2 )
 	{
-		int i;
 		int count = 0;
 		int width = 13;
 		int perline;
 		bool perms[ adminNumCmds ];
 
-		for ( i = 0; i < adminNumCmds; i++ )
+		for ( unsigned i = 0; i < adminNumCmds; i++ )
 		{
 			if ( g_admin_cmds[ i ].keyword && G_admin_permission( ent, g_admin_cmds[ i ].flag ) )
 			{
@@ -3847,7 +3842,7 @@ bool G_admin_adminhelp( gentity_t *ent )
 
 		ADMBP_begin();
 
-		for ( i = 0; i < adminNumCmds; i++ )
+		for ( unsigned i = 0; i < adminNumCmds; i++ )
 		{
 			if ( perms[ i ] )
 			{
@@ -4652,12 +4647,11 @@ bool G_admin_flaglist( gentity_t *ent )
 {
 	bool shown[ adminNumCmds ] = { false };
 	int      count = 0;
-	int      i, j;
 
 	ADMP( QQ( N_("^3Ability flags:\n") ) );
 	ADMBP_begin();
 
-	for( i = 0; i < adminNumFlags; i++ )
+	for( unsigned i = 0; i < adminNumFlags; i++ )
 	{
 		ADMBP( va( "  ^5%-20s ^7%s\n",
 		           g_admin_flags[ i ].flag,
@@ -4668,7 +4662,7 @@ bool G_admin_flaglist( gentity_t *ent )
 	ADMP( QQ( N_("^3Command flags:\n") ) );
 	ADMBP_begin();
 
-	for ( i = 0; i < adminNumCmds; i++ )
+	for ( unsigned i = 0; i < adminNumCmds; i++ )
 	{
 		if ( !g_admin_cmds[ i ].flag || !g_admin_cmds[ i ].flag[ 0 ] || shown[ i ] )
 		{
@@ -4677,7 +4671,7 @@ bool G_admin_flaglist( gentity_t *ent )
 
 		ADMBP( va( "  ^5%-20s^7", g_admin_cmds[ i ].flag ) );
 
-		for ( j = i; j < adminNumCmds; j++ )
+		for ( unsigned j = i; j < adminNumCmds; j++ )
 		{
 			if ( g_admin_cmds[ j ].keyword && g_admin_cmds[ j ].flag &&
 			     !strcmp ( g_admin_cmds[ j ].flag, g_admin_cmds[ i ].flag ) )
@@ -4689,7 +4683,7 @@ bool G_admin_flaglist( gentity_t *ent )
 
 		ADMBP( "^2" );
 
-		for ( j = i; j < adminNumCmds; j++ )
+		for ( unsigned j = i; j < adminNumCmds; j++ )
 		{
 			if ( !g_admin_cmds[ j ].keyword && g_admin_cmds[ j ].flag &&
 			     !strcmp ( g_admin_cmds[ j ].flag, g_admin_cmds[ i ].flag ) )

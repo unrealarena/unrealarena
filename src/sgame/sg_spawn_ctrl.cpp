@@ -29,7 +29,7 @@ ctrl_relay
 =================================================================================
 */
 
-void target_relay_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
+void target_relay_act( gentity_t *self, gentity_t*, gentity_t *activator )
 {
 	if ( ( self->spawnflags & 1 ) && activator && activator->client &&
 	     activator->client->pers.team != TEAM_Q )
@@ -65,7 +65,7 @@ void ctrl_relay_reset( gentity_t *self )
 {
 }
 
-void ctrl_relay_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
+void ctrl_relay_act( gentity_t *self, gentity_t*, gentity_t *activator )
 {
 	if ( !self->config.wait.time )
 	{
@@ -112,7 +112,7 @@ ctrl_limited
 =================================================================================
 */
 
-void ctrl_limited_act(gentity_t *self, gentity_t *other, gentity_t *activator)
+void ctrl_limited_act(gentity_t *self, gentity_t*, gentity_t *activator)
 {
 	G_FireEntity( self, activator );
 	if ( self->count <= 1 )

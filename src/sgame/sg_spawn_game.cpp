@@ -29,7 +29,7 @@ game_score
 =================================================================================
 */
 
-void game_score_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
+void game_score_act( gentity_t *self, gentity_t*, gentity_t *activator )
 {
 	if ( !activator )
 	{
@@ -63,7 +63,7 @@ game_end
 
 =================================================================================
 */
-void game_end_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
+void game_end_act( gentity_t *self, gentity_t*, gentity_t* )
 {
 	if ( level.unconditionalWin == TEAM_NONE ) // only if not yet triggered
 	{
@@ -93,7 +93,7 @@ game_funds
 =================================================================================
 */
 
-void game_funds_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
+void game_funds_act( gentity_t *self, gentity_t*, gentity_t *activator )
 {
 	if( !activator )
 	{
@@ -122,7 +122,7 @@ game_kill
 
 =================================================================================
 */
-void game_kill_act( gentity_t *self, gentity_t *other, gentity_t *activator )
+void game_kill_act( gentity_t*, gentity_t*, gentity_t *activator )
 {
 	if ( !activator )
 	{

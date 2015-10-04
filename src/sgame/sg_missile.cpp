@@ -149,7 +149,7 @@ static float MissileTimeSplashDmgMod( gentity_t *self )
 #define MIB_FREE        ( MIF_NO_DAMAGE | MIF_NO_EFFECT ) // Quietly remove the missile.
 #define MIB_BOUNCE      ( MIF_NO_DAMAGE | MIF_NO_EFFECT | MIF_NO_FREE ) // Continue flight.
 
-static int ImpactGrenade( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
+static int ImpactGrenade( gentity_t *ent, trace_t *trace, gentity_t* )
 {
 	BounceMissile( ent, trace );
 
@@ -171,7 +171,7 @@ static int ImpactFirebombSub( gentity_t *ent, trace_t *trace, gentity_t *hitEnt 
 	return MIB_IMPACT;
 }
 
-static int DefaultImpactFunc( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
+static int DefaultImpactFunc( gentity_t*, trace_t*, gentity_t* )
 {
 	return MIB_IMPACT;
 }

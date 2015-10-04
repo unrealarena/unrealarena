@@ -310,6 +310,17 @@ void Quit(Str::StringRef message)
 	OSExit(0);
 }
 
+class QuitCmd : public Cmd::StaticCmd {
+    public:
+        QuitCmd(): StaticCmd("quit", Cmd::BASE, "quits the program") {
+        }
+
+        void Run(const Cmd::Args& args) const OVERRIDE {
+            Quit(args.ConcatArgs(1));
+        }
+};
+static QuitCmd QuitCmdRegistration;
+
 void Error(Str::StringRef message)
 {
 	// Crash immediately in case of a recursive error
@@ -573,14 +584,20 @@ static void Init(int argc, char** argv)
 	// characters. We keep all other locale facets as "C".
 	if (!setlocale(LC_CTYPE, "C.UTF-8") || !setlocale(LC_CTYPE, "UTF-8") || !setlocale(LC_CTYPE, "en_US.UTF-8")) {
 		// Try using the user's locale with UTF-8
-		std::string locale = setlocale(LC_CTYPE, "");
-		if (!Str::IsSuffix(".UTF-8", locale)) {
-			size_t dot = locale.rfind('.');
-			if (dot != std::string::npos)
-				locale.replace(dot, locale.size() - dot, ".UTF-8");
-			if (!setlocale(LC_CTYPE, locale.c_str())) {
-				setlocale(LC_CTYPE, "C");
-				Log::Warn("Could not set locale to UTF-8, unicode characters may not display correctly");
+		const char* locale = setlocale(LC_CTYPE, "");
+		if (!locale) {
+			setlocale(LC_CTYPE, "C");
+			Log::Warn("Could not set locale to UTF-8, unicode characters may not display correctly");
+		} else {
+			std::string locale2 = locale;
+			if (!Str::IsSuffix(".UTF-8", locale2)) {
+				size_t dot = locale2.rfind('.');
+				if (dot != std::string::npos)
+					locale2.replace(dot, locale2.size() - dot, ".UTF-8");
+				if (!setlocale(LC_CTYPE, locale2.c_str())) {
+					setlocale(LC_CTYPE, "C");
+					Log::Warn("Could not set locale to UTF-8, unicode characters may not display correctly");
+				}
 			}
 		}
 	}

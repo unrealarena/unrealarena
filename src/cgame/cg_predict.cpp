@@ -46,7 +46,6 @@ It also adds content flags to allow for more specific traces in synchronized cod
 */
 void CG_BuildSolidList()
 {
-	int           i;
 	centity_t     *cent;
 	snapshot_t    *snap;
 	entityState_t *ent;
@@ -63,7 +62,7 @@ void CG_BuildSolidList()
 		snap = cg.snap;
 	}
 
-	for ( i = 0; i < snap->entities.size(); i++ )
+	for ( unsigned i = 0; i < snap->entities.size(); i++ )
 	{
 		cent = &cg_entities[ snap->entities[ i ].number ];
 		ent = &cent->currentState;

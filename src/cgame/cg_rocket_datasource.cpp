@@ -497,7 +497,7 @@ static void AddToResolutionList( int w, int h )
 	rocketInfo.data.resolutionCount++;
 }
 
-void CG_Rocket_SetResolutionListResolution( const char *table, int index )
+void CG_Rocket_SetResolutionListResolution( const char*, int index )
 {
 	if ( index < rocketInfo.data.resolutionCount && index >= 0 )
 	{
@@ -508,7 +508,7 @@ void CG_Rocket_SetResolutionListResolution( const char *table, int index )
 	}
 }
 
-void CG_Rocket_BuildResolutionList( const char *args )
+void CG_Rocket_BuildResolutionList( const char* )
 {
 	char        buf[ MAX_STRING_CHARS ];
 	int         w, h, currentW, currentH;
@@ -572,7 +572,7 @@ static int ResolutionListCmpByWidth( const void *one, const void *two )
 	return 0; // silence compiler
 }
 
-void CG_Rocket_SortResolutionList( const char *name, const char *sortBy )
+void CG_Rocket_SortResolutionList( const char*, const char *sortBy )
 {
 	static char buf[ MAX_STRING_CHARS ];
 	int i;
@@ -593,7 +593,7 @@ void CG_Rocket_SortResolutionList( const char *name, const char *sortBy )
 	}
 }
 
-int CG_Rocket_GetResolutionListIndex( const char *table )
+int CG_Rocket_GetResolutionListIndex( const char* )
 {
 	if ( !rocketInfo.data.resolutionCount)
 	{
@@ -602,7 +602,7 @@ int CG_Rocket_GetResolutionListIndex( const char *table )
 	return rocketInfo.data.resolutionIndex;
 }
 
-void CG_Rocket_CleanUpResolutionList( const char *table )
+void CG_Rocket_CleanUpResolutionList( const char* )
 {
 	rocketInfo.data.resolutionCount = 0;
 }
@@ -623,7 +623,7 @@ static void AddToLanguageList( char *name, char *lang )
 	rocketInfo.data.languageCount++;
 }
 
-void CG_Rocket_SetLanguageListLanguage( const char *table, int index )
+void CG_Rocket_SetLanguageListLanguage( const char*, int index )
 {
 	if ( index > 0 && index < rocketInfo.data.languageCount )
 	{
@@ -633,7 +633,7 @@ void CG_Rocket_SetLanguageListLanguage( const char *table, int index )
 }
 
 // FIXME: use COM_Parse or something instead of this way
-void CG_Rocket_BuildLanguageList( const char *args )
+void CG_Rocket_BuildLanguageList( const char* )
 {
 	char        buf[ MAX_STRING_CHARS ], temp[ MAX_TOKEN_CHARS ], language[ 32 ];
 	int         index = 0, lang = 0;
@@ -716,7 +716,7 @@ void CG_Rocket_BuildLanguageList( const char *args )
 	}
 }
 
-int CG_Rocket_GetLanguageListIndex( const char *args )
+int CG_Rocket_GetLanguageListIndex( const char* )
 {
 	if ( !rocketInfo.data.languageCount )
 	{
@@ -726,7 +726,7 @@ int CG_Rocket_GetLanguageListIndex( const char *args )
 	return rocketInfo.data.languageIndex;
 }
 
-void CG_Rocket_CleanUpLanguageList( const char *args )
+void CG_Rocket_CleanUpLanguageList( const char* )
 {
 	int i;
 
@@ -749,12 +749,12 @@ static void AddToVoipInputs( char *name )
 	rocketInfo.data.voipInputs[ rocketInfo.data.voipInputsCount++ ] = name;
 }
 
-void CG_Rocket_SetVoipInputsInput( const char *args, int index )
+void CG_Rocket_SetVoipInputsInput( const char*, int index )
 {
 	rocketInfo.data.voipInputIndex = index;
 }
 
-void CG_Rocket_BuildVoIPInputs( const char *args )
+void CG_Rocket_BuildVoIPInputs( const char* )
 {
 	char buf[ MAX_STRING_CHARS ];
 	char *p, *head;
@@ -780,7 +780,7 @@ void CG_Rocket_BuildVoIPInputs( const char *args )
 	}
 }
 
-void CG_Rocket_CleanUpVoIPInputs( const char *table )
+void CG_Rocket_CleanUpVoIPInputs( const char* )
 {
 	int i;
 
@@ -802,14 +802,14 @@ static void AddToAlOutputs( char *name )
 	rocketInfo.data.alOutputs[ rocketInfo.data.alOutputsCount++ ] = name;
 }
 
-void CG_Rocket_SetAlOutputsOutput( const char *table, int index )
+void CG_Rocket_SetAlOutputsOutput( const char*, int index )
 {
 	rocketInfo.data.alOutputIndex = index;
 	trap_Cvar_Set( "audio.al.device", rocketInfo.data.alOutputs[ index ] );
 	trap_Cvar_AddFlags( "audio.al.device", CVAR_ARCHIVE );
 }
 
-void CG_Rocket_BuildAlOutputs( const char *args )
+void CG_Rocket_BuildAlOutputs( const char* )
 {
 	char buf[ MAX_STRING_CHARS ], currentDevice[ MAX_STRING_CHARS ];
 	char *p, *head;
@@ -843,7 +843,7 @@ void CG_Rocket_BuildAlOutputs( const char *args )
 	}
 }
 
-void CG_Rocket_CleanUpAlOutputs( const char *args )
+void CG_Rocket_CleanUpAlOutputs( const char* )
 {
 	int i;
 
@@ -855,12 +855,12 @@ void CG_Rocket_CleanUpAlOutputs( const char *args )
 	rocketInfo.data.alOutputsCount = 0;
 }
 
-void CG_Rocket_SetModListMod( const char *table, int index )
+void CG_Rocket_SetModListMod( const char*, int index )
 {
 	rocketInfo.data.modIndex = index;
 }
 
-void CG_Rocket_BuildModList( const char *args )
+void CG_Rocket_BuildModList( const char* )
 {
 	int   numdirs;
 	char  dirlist[ 2048 ];
@@ -899,7 +899,7 @@ void CG_Rocket_BuildModList( const char *args )
 	}
 }
 
-void CG_Rocket_CleanUpModList( const char *args )
+void CG_Rocket_CleanUpModList( const char* )
 {
 	int i;
 
@@ -912,17 +912,17 @@ void CG_Rocket_CleanUpModList( const char *args )
 	rocketInfo.data.modCount = 0;
 }
 
-void CG_Rocket_SetDemoListDemo( const char *table, int index )
+void CG_Rocket_SetDemoListDemo( const char*, int index )
 {
 	rocketInfo.data.demoIndex = index;
 }
 
-void CG_Rocket_ExecDemoList( const char *args )
+void CG_Rocket_ExecDemoList( const char* )
 {
 	trap_SendConsoleCommand( va( "demo %s", rocketInfo.data.demoList[ rocketInfo.data.demoIndex ] ) );
 }
 
-void CG_Rocket_BuildDemoList( const char *args )
+void CG_Rocket_BuildDemoList( const char* )
 {
 	char  demolist[ 4096 ];
 	char demoExt[ 32 ];
@@ -968,7 +968,7 @@ void CG_Rocket_BuildDemoList( const char *args )
 	}
 }
 
-void CG_Rocket_CleanUpDemoList( const char *args )
+void CG_Rocket_CleanUpDemoList( const char* )
 {
 	int i;
 
@@ -980,7 +980,7 @@ void CG_Rocket_CleanUpDemoList( const char *args )
 	rocketInfo.data.demoCount = 0;
 }
 
-void CG_Rocket_BuildPlayerList( const char *args )
+void CG_Rocket_BuildPlayerList( const char* )
 {
 	char buf[ MAX_INFO_STRING ] = { 0 };
 	clientInfo_t *ci;
@@ -1054,7 +1054,7 @@ static int PlayerListCmpByScore( const void *one, const void *two )
 	return 0; // silence compiler
 }
 
-void CG_Rocket_SortPlayerList( const char *name, const char *sortBy )
+void CG_Rocket_SortPlayerList( const char*, const char *sortBy )
 {
 	int i;
 	clientInfo_t *ci;
@@ -1147,7 +1147,7 @@ void CG_Rocket_SortPlayerList( const char *name, const char *sortBy )
 	}
 }
 
-void CG_Rocket_BuildMapList( const char *args )
+void CG_Rocket_BuildMapList( const char* )
 {
 	int i;
 
@@ -1167,7 +1167,7 @@ void CG_Rocket_BuildMapList( const char *args )
 
 }
 
-void CG_Rocket_CleanUpMapList( const char *args )
+void CG_Rocket_CleanUpMapList( const char* )
 {
 	int i;
 
@@ -1180,24 +1180,24 @@ void CG_Rocket_CleanUpMapList( const char *args )
 	rocketInfo.data.mapCount = 0;
 }
 
-void CG_Rocket_SetMapListIndex( const char *table, int index )
+void CG_Rocket_SetMapListIndex( const char*, int index )
 {
 	rocketInfo.data.mapIndex = index;
 }
 
 
-void CG_Rocket_CleanUpPlayerList( const char *args )
+void CG_Rocket_CleanUpPlayerList( const char* )
 {
 	rocketInfo.data.playerCount[ TEAM_Q ] = 0;
 	rocketInfo.data.playerIndex[ TEAM_U ] = 0;
 	rocketInfo.data.playerCount[ TEAM_NONE ] = 0;
 }
 
-void CG_Rocket_SetPlayerListPlayer( const char *table, int index )
+void CG_Rocket_SetPlayerListPlayer( const char*, int )
 {
 }
 
-void CG_Rocket_BuildTeamList( const char *args )
+void CG_Rocket_BuildTeamList( const char* )
 {
 	static const char *data[] =
 	{
@@ -1231,12 +1231,12 @@ void CG_Rocket_BuildTeamList( const char *args )
 	}
 }
 
-void CG_Rocket_SetTeamList( const char *table, int index )
+void CG_Rocket_SetTeamList( const char*, int index )
 {
 	rocketInfo.data.selectedTeamIndex = index;
 }
 
-void CG_Rocket_ExecTeamList( const char *table )
+void CG_Rocket_ExecTeamList( const char* )
 {
 	const char *cmd = nullptr;
 
@@ -1266,7 +1266,7 @@ void CG_Rocket_ExecTeamList( const char *table )
 	}
 }
 
-void CG_Rocket_CleanUpTeamList( const char *table )
+void CG_Rocket_CleanUpTeamList( const char* )
 {
 	rocketInfo.data.selectedTeamIndex = -1;
 }
@@ -1385,7 +1385,7 @@ enum
 //////// beacon shit
 
 
-void CG_Rocket_CleanUpBeaconList( const char *table )
+void CG_Rocket_CleanUpBeaconList( const char* )
 {
 	rocketInfo.data.selectedBeacon = -1;
 	rocketInfo.data.beaconListCount = 0;
@@ -1428,12 +1428,12 @@ void CG_Rocket_BuildBeaconList( const char *table )
 	}
 }
 
-void CG_Rocket_SetBeaconList( const char *table, int index )
+void CG_Rocket_SetBeaconList( const char*, int index )
 {
 	rocketInfo.data.selectedBeacon = index;
 }
 
-void CG_Rocket_ExecBeaconList( const char *table )
+void CG_Rocket_ExecBeaconList( const char* )
 {
 	const beaconAttributes_t *ba;
 
@@ -1446,19 +1446,19 @@ void CG_Rocket_ExecBeaconList( const char *table )
 	Rocket_DocumentAction( rocketInfo.menu[ ROCKETMENU_BEACONS ].id, "hide" );
 }
 
-static void nullSortFunc( const char *name, const char *sortBy )
+static void nullSortFunc( const char*, const char* )
 {
 }
 
-static void nullExecFunc( const char *table )
+static void nullExecFunc( const char* )
 {
 }
 
-static void nullFilterFunc( const char *table, const char *filter )
+static void nullFilterFunc( const char*, const char* )
 {
 }
 
-static int nullGetFunc( const char *table )
+static int nullGetFunc( const char* )
 {
 	return -1;
 }
@@ -1584,9 +1584,7 @@ int CG_Rocket_GetDataSourceIndex( const char *dataSource, const char *table )
 
 void CG_Rocket_RegisterDataSources()
 {
-	int i;
-
-	for ( i = 0; i < dataSourceCmdListCount; ++i )
+	for ( unsigned i = 0; i < dataSourceCmdListCount; ++i )
 	{
 		// Check that the commands are in increasing order so that it can be used by bsearch
 		if ( i != 0 && Q_stricmp( dataSourceCmdList[ i - 1 ].name, dataSourceCmdList[ i ].name ) > 0 )
@@ -1600,9 +1598,7 @@ void CG_Rocket_RegisterDataSources()
 
 void CG_Rocket_CleanUpDataSources()
 {
-	int i;
-
-	for ( i = 0; i < dataSourceCmdListCount; ++i )
+	for ( unsigned i = 0; i < dataSourceCmdListCount; ++i )
 	{
 		dataSourceCmdList[ i ].cleanup( nullptr );
 	}
