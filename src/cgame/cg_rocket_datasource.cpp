@@ -1271,109 +1271,6 @@ void CG_Rocket_CleanUpTeamList( const char* )
 	rocketInfo.data.selectedTeamIndex = -1;
 }
 
-void AddQSpawnClass( team_t team )
-{
-	static char data[ MAX_STRING_CHARS ];
-
-	data[ 0 ] = '\0';
-	Info_SetValueForKey( data, "name", BG_ClassModelConfig( team )->humanName, false );
-	Info_SetValueForKey( data, "description", BG_Class( team )->info, false );
-
-	Rocket_DSAddRow( "qSpawnClass", "default", data );
-}
-
-void CG_Rocket_BuildQSpawnList( const char *table )
-{
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
-	{
-		return;
-	}
-
-	if ( !Q_stricmp( table, "default" ) )
-
-		Rocket_DSClearTable( "qSpawnClass", "default" );
-
-	{
-		AddQSpawnClass( TEAM_Q );
-	}
-}
-
-void CG_Rocket_CleanUpQSpawnList( const char *table )
-{
-	rocketInfo.data.selectedQSpawnClass = -1;
-}
-
-void CG_Rocket_SetQSpawnList( const char *table, int index )
-{
-	rocketInfo.data.selectedQSpawnClass = index;
-}
-
-void CG_Rocket_ExecQSpawnList( const char *table )
-{
-	// XXX
-	// trap_SendClientCommand( va( "class %s", "qplayer" ) );
-}
-
-void AddUSpawnItem( weapon_t weapon )
-{
-	static char data[ MAX_STRING_CHARS ];
-
-	if ( !BG_WeaponUnlocked( weapon ) )
-	{
-		return;
-	}
-
-	data[ 0 ] = '\0';
-	Info_SetValueForKey( data, "name", BG_Weapon( weapon )->humanName, false );
-	Info_SetValueForKey( data, "description", BG_Weapon( weapon )->info, false );
-
-	Rocket_DSAddRow( "uSpawnItems", "default", data );
-}
-
-void CG_Rocket_BuildUSpawnItems( const char *table )
-{
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
-	{
-		return;
-	}
-
-	Rocket_DSClearTable( "uSpawnItems", "default" );
-	AddUSpawnItem( WP_MACHINEGUN );
-	AddUSpawnItem( WP_HBUILD );
-}
-
-void CG_Rocket_SetUSpawnItems( const char *table, int index )
-{
-	rocketInfo.data.selectedUSpawnItem = index;
-}
-
-void CG_Rocket_ExecUSpawnItems( const char *table )
-{
-	const char *cmd = nullptr;
-
-	// XXX
-	// switch ( rocketInfo.data.selectedUSpawnItem )
-	// {
-	// 	case 0:
-	// 		cmd = "class rifle";
-	// 		break;
-	//
-	// 	case 1:
-	// 		cmd = "class ckit";
-	// 		break;
-	// }
-
-	if ( cmd )
-	{
-		trap_SendConsoleCommand( cmd );
-	}
-}
-
-void CG_Rocket_CleanUpUSpawnItems( const char *table )
-{
-	rocketInfo.data.selectedUSpawnItem = -1;
-}
-
 
 enum
 {
@@ -1484,11 +1381,9 @@ static const dataSourceCmd_t dataSourceCmdList[] =
 	{ "mapList", &CG_Rocket_BuildMapList, &nullSortFunc, &CG_Rocket_CleanUpMapList, &CG_Rocket_SetMapListIndex, &nullFilterFunc, &nullExecFunc, &nullGetFunc },
 	{ "modList", &CG_Rocket_BuildModList, &nullSortFunc, &CG_Rocket_CleanUpModList, &CG_Rocket_SetModListMod, &nullFilterFunc, &nullExecFunc, &nullGetFunc },
 	{ "playerList", &CG_Rocket_BuildPlayerList, &CG_Rocket_SortPlayerList, &CG_Rocket_CleanUpPlayerList, &CG_Rocket_SetPlayerListPlayer, &nullFilterFunc, &nullExecFunc, &nullGetFunc },
-	{ "qSpawnClass", &CG_Rocket_BuildQSpawnList, &nullSortFunc, &CG_Rocket_CleanUpQSpawnList, &CG_Rocket_SetQSpawnList, &nullFilterFunc, &CG_Rocket_ExecQSpawnList, &nullGetFunc },
 	{ "resolutions", &CG_Rocket_BuildResolutionList, &CG_Rocket_SortResolutionList, &CG_Rocket_CleanUpResolutionList, &CG_Rocket_SetResolutionListResolution, &nullFilterFunc, &nullExecFunc, &CG_Rocket_GetResolutionListIndex},
 	{ "server_browser", &CG_Rocket_BuildServerList, &CG_Rocket_SortServerList, &CG_Rocket_CleanUpServerList, &CG_Rocket_SetServerListServer, &CG_Rocket_FilterServerList, &CG_Rocket_ExecServerList, &nullGetFunc },
 	{ "teamList", &CG_Rocket_BuildTeamList, &nullSortFunc, &CG_Rocket_CleanUpTeamList, &CG_Rocket_SetTeamList, &nullFilterFunc, &CG_Rocket_ExecTeamList, &nullGetFunc },
-	{ "uSpawnItems", &CG_Rocket_BuildUSpawnItems, &nullSortFunc, CG_Rocket_CleanUpUSpawnItems, &CG_Rocket_SetUSpawnItems, &nullFilterFunc, &CG_Rocket_ExecUSpawnItems, &nullGetFunc },
 	{ "voipInputs", &CG_Rocket_BuildVoIPInputs, &nullSortFunc, &CG_Rocket_CleanUpVoIPInputs, &CG_Rocket_SetVoipInputsInput, &nullFilterFunc, &nullExecFunc, &nullGetFunc },
 
 };
