@@ -9,7 +9,7 @@ notifications:
     channels:
       - "irc.quakenet.org#unrealarena"
     template:
-      - "%{repository_slug} (%{branch}) \"%{commit_message}\" [%{result}]"
+      - "%{repository_slug} (%{branch}) \"%{commit_subject}\" [%{result}]"
       - "%{build_url}"
       - "%{compare_url}"
 
