@@ -1,5 +1,5 @@
 # Daemon BSD Source Code
-# Copyright (c) 2015, Unreal Arena
+# Copyright (c) 2015-2016, Unreal Arena
 # Copyright (c) 2013-2014, Daemon Developers
 # All rights reserved.
 #
@@ -146,15 +146,8 @@ elseif (APPLE)
         set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/macosx32-${DEPS_VERSION})
     endif()
 elseif (LINUX)
-    set(DEPS_EXT ".tar.bz2")
-    # Our minimal NaCl .debs put the files in /usr/lib/nacl, so check that first
-    if (EXISTS "/usr/lib/nacl/nacl_loader")
-        set(DEPS_DIR "/usr/lib/nacl")
-    elseif (ARCH STREQUAL "x86_64")
-        set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/linux64-${DEPS_VERSION})
-    else()
-        set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/linux32-${DEPS_VERSION})
-    endif()
+    set(DEPS_EXT ".zip")
+    set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/linux-${DEPS_VERSION})
 endif()
 set(DEPS_DIR ${DEPS_DIR} PARENT_SCOPE)
 
@@ -335,7 +328,12 @@ if (DEPS_DIR)
     # Download them if they not available
     if (NOT EXISTS ${DEPS_DIR})
         get_filename_component(BASENAME ${DEPS_DIR} NAME)
-        set(REMOTE "http://dl.unvanquished.net/deps/${BASENAME}${DEPS_EXT}")
+        if (LINUX)
+            string(REPLACE "-${DEPS_VERSION}" "" BASENAME ${BASENAME})
+            set(REMOTE "https://github.com/unrealarena/unrealarena-deps/releases/download/v0.2.1/${BASENAME}${DEPS_EXT}")
+        else()
+            set(REMOTE "http://dl.unvanquished.net/deps/${BASENAME}${DEPS_EXT}")
+        endif()
         message(STATUS "Downloading dependencies from '${REMOTE}'")
         file(DOWNLOAD ${REMOTE} ${OBJ_DIR}/${BASENAME}${DEPS_EXT}
             SHOW_PROGRESS
@@ -669,6 +667,18 @@ if (BUILD_CLIENT OR BUILD_SERVER OR BUILD_TTY_CLIENT)
                 ${DEPS_DIR}/irt_core-x86_64.nexe
                 ${FULL_OUTPUT_DIR}/irt_core-x86_64.nexe
         )
+    endif()
+
+    # Linux requires some libraries from deps
+    if (LINUX)
+        set(RUNTIME_LIBS ${DEPS_DIR}/lib/libopenal.so.1 ${DEPS_DIR}/lib/libSDL2-2.0.so.0 ${DEPS_DIR}/lib64/libGLEW.so.1.12)
+        foreach(RUNTIME_LIB ${RUNTIME_LIBS})
+            add_custom_command(TARGET runtime_deps PRE_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${RUNTIME_LIB}
+                    ${FULL_OUTPUT_DIR}
+            )
+        endforeach()
     endif()
 
     # Mac requires some libraries from deps

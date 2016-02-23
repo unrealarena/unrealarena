@@ -1,4 +1,5 @@
 # Daemon BSD Source Code
+# Copyright (c) 2015-2016, Unreal Arena
 # Copyright (c) 2013-2014, Daemon Developers
 # All rights reserved.
 #
@@ -322,5 +323,11 @@ if (APPLE)
     add_definitions(-DMACOS_X)
     set_linker_flag("-Wl,-no_pie")
     set(CMAKE_INSTALL_RPATH "@executable_path/;${DEPS_DIR};${DEPS_DIR}/lib")
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+endif()
+
+# Linux-specific definitions
+if (LINUX)
+    set(CMAKE_INSTALL_RPATH "$ORIGIN")
     set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 endif()
