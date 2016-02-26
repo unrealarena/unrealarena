@@ -56,7 +56,7 @@ build_script:
 # Scripts called after build
 after_build:
   - copy "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\%PLATFORM%\Microsoft.VC120.CRT\msvc*120.dll"
-  - 7z a %APPVEYOR_BUILD_FOLDER%\%ARTIFACT% daemon.exe glew32.dll irt_core*.nexe libcurl-4.dll libfreetype-6.dll libGeoIP-1.dll libgmp-10.dll libhogweed-3-0.dll libjpeg-8.dll libnettle-5-0.dll libogg-0.dll libopus-0.dll libopusfile-0.dll libpng16-16.dll libtheora-0.dll libvorbis-0.dll libvorbisfile-3.dll libwebp-5.dll msvcp120.dll msvcr120.dll nacl_loader*.exe OpenAL32.dll SDL2.dll zlib1.dll
+  - 7z a %APPVEYOR_BUILD_FOLDER%\%ARTIFACT% daemon.exe glew32.dll irt_core*.nexe libcurl-4.dll libfreetype-6.dll libGeoIP-1.dll libgmp-10.dll libhogweed-4-1.dll libjpeg-8.dll libnettle-6-1.dll libogg-0.dll libopus-0.dll libopusfile-0.dll libpng16-16.dll libtheora-0.dll libvorbis-0.dll libvorbisfile-3.dll libwebp-5.dll lua53.dll msvcp120.dll msvcr120.dll nacl_loader*.exe OpenAL32.dll SDL2.dll zlib1.dll
 
 
 #---------------------------------#
