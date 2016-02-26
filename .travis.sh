@@ -92,6 +92,49 @@ linux-before_deploy() {
 
 
 ################################################################################
+# Routines (osx)
+################################################################################
+
+# before_install
+osx-before_install() {
+	true
+}
+
+# install
+osx-install() {
+	true
+}
+
+# before_script
+osx-before_script() {
+	true
+}
+
+# script
+osx-script() {
+	cmake -H. -Bbuild -G "Unix Makefiles" -DCMAKE_OSX_ARCHITECTURES=x86_64\
+	                                      -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9\
+	                                      -DCMAKE_BUILD_TYPE=Release\
+	                                      -DBUILD_SERVER=0\
+	                                      -DBUILD_GAME_NATIVE_EXE=0\
+	                                      -DBUILD_GAME_NATIVE_DLL=0\
+	                                      -DBUILD_GAME_NACL=0\
+	                                      -DBUILD_TTY_CLIENT=0
+	cmake --build build -- -j8 || cmake --build build -- VERBOSE=1
+}
+
+# before_deploy
+osx-before_deploy() {
+	cd build && zip -r9 --symlinks "../unrealarena-${TRAVIS_OS_NAME}.pre.zip" daemon\
+	                                                                          irt_core-x86_64.nexe\
+	                                                                          nacl_loader\
+	                                                                          libGLEW.1.12.0.dylib\
+	                                                                          libopenal.1.16.0.dylib\
+	                                                                          SDL2.framework
+}
+
+
+################################################################################
 # Main
 ################################################################################
 

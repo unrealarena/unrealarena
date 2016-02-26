@@ -139,12 +139,8 @@ elseif (WIN32)
         set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/mingw32-${DEPS_VERSION})
     endif()
 elseif (APPLE)
-    set(DEPS_EXT ".tar.bz2")
-    if (ARCH STREQUAL "x86_64")
-        set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/macosx64-${DEPS_VERSION})
-    else()
-        set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/macosx32-${DEPS_VERSION})
-    endif()
+    set(DEPS_EXT ".zip")
+    set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/osx-${DEPS_VERSION})
 elseif (LINUX)
     set(DEPS_EXT ".zip")
     set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/linux-${DEPS_VERSION})
@@ -328,7 +324,7 @@ if (DEPS_DIR)
     # Download them if they not available
     if (NOT EXISTS ${DEPS_DIR})
         get_filename_component(BASENAME ${DEPS_DIR} NAME)
-        if (LINUX)
+        if (APPLE OR LINUX)
             string(REPLACE "-${DEPS_VERSION}" "" BASENAME ${BASENAME})
             set(REMOTE "https://github.com/unrealarena/unrealarena-deps/releases/download/v0.2.1/${BASENAME}${DEPS_EXT}")
         else()
@@ -684,7 +680,7 @@ if (BUILD_CLIENT OR BUILD_SERVER OR BUILD_TTY_CLIENT)
     # Mac requires some libraries from deps
     if (APPLE)
         add_custom_command(TARGET runtime_deps PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            COMMAND cp -a
                 ${DEPS_DIR}/SDL2.framework
                 ${FULL_OUTPUT_DIR}/SDL2.framework
         )

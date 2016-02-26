@@ -33,7 +33,10 @@ $ cmake --build build -- -j$(nproc)
 
 ### OS X
 
-*TODO*
+```bash
+$ cmake -H. -Bbuild -G "Unix Makefiles"
+$ cmake --build build -- -j$(sysctl -n hw.ncpu)
+```
 
 
 ### Windows
@@ -76,7 +79,7 @@ $ cmake --build . -- -j$(nproc)
 
 ### OS X
 
-*TODO*
+- Run `Unreal Arena.app`
 
 
 ### Windows
