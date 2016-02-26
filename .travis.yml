@@ -9,13 +9,12 @@ notifications:
     channels:
       - "irc.quakenet.org#unrealarena"
     template:
-      - "%{repository_slug} (%{branch}) \"%{commit_message}\" [%{result}]"
+      - "%{repository_slug} (%{branch}) \"%{commit_subject}\" [%{result}]"
       - "%{build_url}"
       - "%{compare_url}"
 
-env:
-  matrix:
-    - OS="linux64"
+os:
+  - linux
 
 before_install:
   - ./.travis.sh "before_install"
@@ -36,7 +35,7 @@ deploy:
   provider: releases
   api_key:
     secure: ls9Dc2BV/hbrcX0sSnGrIJkdgXrxAwiqTXPoLcuk3ef4R6odj7El4RT1FDNwAvnpAJTy5A2nrWpZnLVhJESHGIH9dzFtUKgPN0vzsvzPApkOeusPLT1UpcKKKEdj3y+QS/Hn7VWo1MTCDRGlizaFn4MASOjg5CyOYPOwP6EHMZcg+MpSbcU1Md26IYUzxNVrs3f2uJ4Bc6wsgeRID8H0cfefm+rf4GjaB3anlPkKUo63i7JGFmNgpj2/9RNF+OoBcAyClqAc2UCYquqsZNFhr7mwmyxrZz1WfRMh10HOe4FbAHYZT9L6i0cfLffn1lpNwSuUzKSy5NhAnC71Qi8iFIlxGM6cjT9tl4j4Co9OH7GcHNW2pN02msZXgeSkAPTLbtD56mrAuxOsH6njhCJyMbznigiIKK2b/XHKnXnjVWTwDgte1jKcZjD42VTER8LmjmEME+6lMe2GrERz//K2gXihPuRo0nuQgnLQJ3IBCNC0Nkuk2o9IdGZGacl6fP0WZByGKExT35szrI7jrE+TSL8QD2lVjcXHIumCGho+9BjpbMYAMcZ9CegLaPHoykg/6UbipIS9ESFwQkY3+TIxs/xn3W26ZdLLuS13qSgPiMMAaazKTmCiKrjIOoMYUk5u3cyTphDif0oQ1HJRhkLclIxdds3kvcDvE2APL7Pj+Z4=
-  file: "unrealarena-${OS}.pre.zip"
+  file: "unrealarena-${TRAVIS_OS_NAME}.pre.zip"
   skip_cleanup: true
   draft: true
   on:

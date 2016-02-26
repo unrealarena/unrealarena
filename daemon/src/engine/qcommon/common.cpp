@@ -64,10 +64,6 @@ cvar_t *com_cl_running;
 cvar_t *com_logfile; // 1 = buffer log, 2 = flush after each print, 3 = append + flush
 cvar_t *com_version;
 
-cvar_t *com_ansiColor;
-
-cvar_t *com_consoleCommand;
-
 cvar_t *com_unfocused;
 cvar_t *com_minimized;
 
@@ -156,7 +152,7 @@ void QDECL PRINTF_LIKE(1) Com_Printf( const char *fmt, ... )
 	va_end( argptr );
 }
 
-void QDECL Com_LogEvent( log_event_t *event, log_location_info_t *location)
+void QDECL Com_LogEvent( log_event_t *event )
 {
 	switch (event->level)
 	{
@@ -178,12 +174,6 @@ void QDECL Com_LogEvent( log_event_t *event, log_location_info_t *location)
 		Com_Printf("%s\n", event->message);
 		break;
 	}
-#ifndef NDEBUG
-	if (location)
-	{
-		Com_Printf("\tin %s at %s:%i\n", location->function, location->file, location->line);
-	}
-#endif
 }
 
 void QDECL PRINTF_LIKE(2) Com_Logf( log_level_t level, const char *fmt, ... )
@@ -199,7 +189,7 @@ void QDECL PRINTF_LIKE(2) Com_Logf( log_level_t level, const char *fmt, ... )
 	Q_vsnprintf( text, sizeof( text ), fmt, argptr );
 	va_end( argptr );
 
-	Com_LogEvent( &event, nullptr );
+	Com_LogEvent( &event );
 }
 
 void QDECL Com_Log( log_level_t level, const char* message )
@@ -207,7 +197,7 @@ void QDECL Com_Log( log_level_t level, const char* message )
 	log_event_t event;
 	event.level = level;
 	event.message = message;
-	Com_LogEvent( &event, nullptr );
+	Com_LogEvent( &event );
 }
 
 /*
@@ -263,21 +253,6 @@ void QDECL PRINTF_LIKE(2) Com_Error( int code, const char *fmt, ... )
 void CL_ShutdownCGame();
 
 // *INDENT-ON*
-
-/*
-=============
-Com_Quit_f
-
-Both client and server can use this, and it will
-do the appropriate things.
-=============
-*/
-void NORETURN Com_Quit_f()
-{
-	// don't try to shutdown if we are in a recursive error
-	char *p = Cmd_Args();
-	Sys::Quit(p[0] ? p : "Server quit");
-}
 
 /*
 ============================================================================
@@ -533,13 +508,7 @@ bool Com_IsClient()
 
 bool Com_IsDedicatedServer()
 {
-#if BUILD_CLIENT || BUILD_TTY_CLIENT
-	return false;
-#elif BUILD_SERVER
-	return true;
-#else
-	#error
-#endif
+    return !Com_IsClient();
 }
 
 bool Com_ServerRunning()
@@ -953,10 +922,10 @@ Allocate permanent (until the hunk is cleared) memory
 =================
 */
 #ifdef HUNK_DEBUG
-void           *Hunk_AllocDebug( int size, ha_pref preference, const char *label, const char *file, int line )
+void           *Hunk_AllocDebug( int size, ha_pref, const char *label, const char *file, int line )
 {
 #else
-void           *Hunk_Alloc( int size, ha_pref preference )
+void           *Hunk_Alloc( int size, ha_pref)
 {
 #endif
 	void *buf;
@@ -1111,7 +1080,7 @@ void Hunk_FreeTempMemory( void *buf )
 
 	hdr = ( ( hunkHeader_t * ) buf ) - 1;
 
-	if ( hdr->magic != HUNK_MAGIC )
+	if ( hdr->magic != (int) HUNK_MAGIC )
 	{
 		Com_Error( ERR_FATAL, "Hunk_FreeTempMemory: bad magic" );
 	}
@@ -1416,7 +1385,7 @@ int Com_EventLoop()
 					 *
 					 * the additional space gets trimmed by the parser
 					 */
-					Cmd::BufferCommandTextAfter(va("%s %s", com_consoleCommand->string, cmd), true);
+					Cmd::BufferCommandTextAfter(va("%s %s", com_consoleCommand.Get().c_str(), cmd), true);
 				}
 
 				break;
@@ -1444,7 +1413,7 @@ int Com_EventLoop()
 				// the event buffers are only large enough to hold the
 				// exact payload, but channel messages need to be large
 				// enough to hold fragment reassembly
-				if ( ( unsigned ) buf.cursize > buf.maxsize )
+				if ( buf.cursize > buf.maxsize )
 				{
 					Com_Printf( "Com_EventLoop: oversize packet\n" );
 					continue;
@@ -1635,12 +1604,7 @@ void Com_Init( char *commandLine )
 	com_sv_running = Cvar_Get( "sv_running", "0", CVAR_ROM );
 	com_cl_running = Cvar_Get( "cl_running", "0", CVAR_ROM );
 
-	//on a server, commands have to be used a lot more often than say
-	//we could differentiate server and client, but would change the default behavior many might be used to
-	com_consoleCommand = Cvar_Get( "com_consoleCommand", "", 0 );
-
 	com_introPlayed = Cvar_Get( "com_introplayed", "0", 0 );
-	com_ansiColor = Cvar_Get( "com_ansiColor", "1", 0 );
 	com_logosPlaying = Cvar_Get( "com_logosPlaying", "0", CVAR_ROM );
 	com_recommendedSet = Cvar_Get( "com_recommendedSet", "0", 0 );
 
@@ -1661,7 +1625,6 @@ void Com_Init( char *commandLine )
 		Cmd_AddCommand( "freeze", Com_Freeze_f );
 	}
 
-	Cmd_AddCommand( "quit", Com_Quit_f );
 	Cmd_AddCommand( "writeconfig", Com_WriteConfig_f );
 #ifndef BUILD_SERVER
 	Cmd_AddCommand( "writebindings", Com_WriteBindings_f );

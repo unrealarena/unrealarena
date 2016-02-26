@@ -784,7 +784,7 @@ typedef enum
 
 typedef enum
 {
-	BCT_NONE,
+	BCT_NONE = 0,
 
 	//local
 	BCT_POINTER,

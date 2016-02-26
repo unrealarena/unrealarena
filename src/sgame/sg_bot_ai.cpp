@@ -510,7 +510,7 @@ to the rest of the behavior tree
 ======================
 */
 
-AINodeStatus_t BotActionFireWeapon( gentity_t *self, AIGenericNode_t *node ) 
+AINodeStatus_t BotActionFireWeapon( gentity_t *self, AIGenericNode_t* ) 
 {
 	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && self->client->pers.team == TEAM_U )
 	{
@@ -552,7 +552,7 @@ AINodeStatus_t BotActionDeactivateUpgrade( gentity_t *self, AIGenericNode_t *nod
 	return STATUS_SUCCESS;
 }
 
-AINodeStatus_t BotActionAimAtGoal( gentity_t *self, AIGenericNode_t *node )
+AINodeStatus_t BotActionAimAtGoal( gentity_t *self, AIGenericNode_t* )
 {
 	if ( BotGetTargetTeam( self->botMind->goal ) != self->client->pers.team )
 	{
@@ -568,7 +568,7 @@ AINodeStatus_t BotActionAimAtGoal( gentity_t *self, AIGenericNode_t *node )
 	return STATUS_SUCCESS;
 }
 
-AINodeStatus_t BotActionMoveToGoal( gentity_t *self, AIGenericNode_t *node )
+AINodeStatus_t BotActionMoveToGoal( gentity_t *self, AIGenericNode_t* )
 {
 	BotMoveToGoal( self );
 	return STATUS_RUNNING;
@@ -586,25 +586,25 @@ AINodeStatus_t BotActionMoveInDir( gentity_t *self, AIGenericNode_t *node )
 	return STATUS_SUCCESS;
 }
 
-AINodeStatus_t BotActionStandStill( gentity_t *self, AIGenericNode_t *node )
+AINodeStatus_t BotActionStandStill( gentity_t *self, AIGenericNode_t* )
 {
 	BotStandStill( self );
 	return STATUS_SUCCESS;
 }
 
-AINodeStatus_t BotActionStrafeDodge( gentity_t *self, AIGenericNode_t *node )
+AINodeStatus_t BotActionStrafeDodge( gentity_t *self, AIGenericNode_t* )
 {
 	BotStrafeDodge( self );
 	return STATUS_SUCCESS;
 }
 
-AINodeStatus_t BotActionAlternateStrafe( gentity_t *self, AIGenericNode_t *node )
+AINodeStatus_t BotActionAlternateStrafe( gentity_t *self, AIGenericNode_t* )
 {
 	BotAlternateStrafe( self );
 	return STATUS_SUCCESS;
 }
 
-AINodeStatus_t BotActionClassDodge( gentity_t *self, AIGenericNode_t *node )
+AINodeStatus_t BotActionClassDodge( gentity_t *self, AIGenericNode_t* )
 {
 	BotClassMovement( self, BotTargetInAttackRange( self, self->botMind->goal ) );
 	return STATUS_SUCCESS;

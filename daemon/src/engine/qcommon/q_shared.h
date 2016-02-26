@@ -38,7 +38,7 @@
 #define PRODUCT_VERSION         "0.1-2"
 
 #define ENGINE_NAME             "Daemon Engine"
-#define ENGINE_VERSION          "0.42"
+#define ENGINE_VERSION          "0.43.1"
 
 #define RSQRT_PRECISE 1
 
@@ -66,6 +66,9 @@
 #define UNNAMED_PLAYER "UnnamedPlayer"
 
 #define Q_UNUSED(x) (void)(x)
+
+template<class T>
+void ignore_result(T) {}
 
 #define EXTERN_C extern "C"
 
@@ -2432,14 +2435,6 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 	  CA_ACTIVE, // game views should be displayed
 	  CA_CINEMATIC // playing a cinematic or a static pic, not connected to a server
 	} connstate_t;
-
-// clipboard
-	typedef enum
-	{
-		SELECTION_PRIMARY,
-		SELECTION_SECONDARY,
-		SELECTION_CLIPBOARD
-	} clipboard_t;
 
 // font support
 

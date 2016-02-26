@@ -575,10 +575,9 @@ static const struct svcmd
 	{ "entityShow",         false, Svcmd_EntityShow_f           },
 	{ "evacuation",         false, Svcmd_Evacuation_f           },
 	{ "forceTeam",          false, Svcmd_ForceTeam_f            },
-	{ "loadcensors",        false, G_LoadCensors                },
 	{ "m",                  true,  Svcmd_MessageWrapper         },
-	{ "mapRotation",        false, Svcmd_MapRotation_f          },
 	{ "maplog",             true,  Svcmd_MapLogWrapper          },
+	{ "mapRotation",        false, Svcmd_MapRotation_f          },
 	{ "pr",                 false, Svcmd_Pr_f                   },
 	{ "qWin",               false, Svcmd_TeamWin_f              },
 	{ "say",                true,  Svcmd_MessageWrapper         },
@@ -634,9 +633,7 @@ void CompleteCommand(int)
 
 void G_RegisterCommands()
 {
-	int i;
-
-	for ( i = 0; i < ARRAY_LEN( svcmds ); i++ )
+	for ( unsigned i = 0; i < ARRAY_LEN( svcmds ); i++ )
 	{
 		if ( svcmds[ i ].conflicts && level.inClient )
 		{
@@ -651,9 +648,7 @@ void G_RegisterCommands()
 
 void G_UnregisterCommands()
 {
-	int i;
-
-	for ( i = 0; i < ARRAY_LEN( svcmds ); i++ )
+	for ( unsigned i = 0; i < ARRAY_LEN( svcmds ); i++ )
 	{
 		if ( svcmds[ i ].conflicts && level.inClient )
 		{

@@ -134,8 +134,6 @@ extern  vmCvar_t g_specChat;
 extern  vmCvar_t g_publicAdminMessages;
 extern  vmCvar_t g_allowTeamOverlay;
 
-extern  vmCvar_t g_censorship;
-
 extern  vmCvar_t g_showKillerHP;
 extern  vmCvar_t g_combatCooldown;
 

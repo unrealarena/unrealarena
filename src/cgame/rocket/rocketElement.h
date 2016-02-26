@@ -82,7 +82,7 @@ public:
 			Rocket::Core::Element *parent = GetParentNode();
 			if ( parent != nullptr )
 			{
-				dimensions.x = ResolveProperty( "width", parent->GetBox().GetSize().x );
+				dimensions.y = ResolveProperty( "height", parent->GetBox().GetSize().y );
 			}
 		}
 
@@ -90,7 +90,6 @@ public:
 		// a 'resize' event which is caught below and will regenerate the geometry.
 
 		dimension = dimensions;
-
 		return true;
 	}
 
@@ -135,9 +134,9 @@ class RocketElementInstancer : public Rocket::Core::ElementInstancer
 public:
 	RocketElementInstancer() { }
 	~RocketElementInstancer() { }
-	Rocket::Core::Element *InstanceElement( Rocket::Core::Element *parent,
+	Rocket::Core::Element *InstanceElement( Rocket::Core::Element*,
 											const Rocket::Core::String &tag,
-											const Rocket::Core::XMLAttributes &attributes )
+											const Rocket::Core::XMLAttributes& )
 	{
 		return new RocketElement( tag );
 	}

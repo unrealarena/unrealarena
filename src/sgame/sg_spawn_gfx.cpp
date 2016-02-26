@@ -37,7 +37,7 @@ void gfx_particle_system_toggle( gentity_t *self )
 	self->nextthink = 0;
 }
 
-void gfx_particle_system_act( gentity_t *self, gentity_t *caller, gentity_t *activator )
+void gfx_particle_system_act( gentity_t *self, gentity_t*, gentity_t* )
 {
 	gfx_particle_system_toggle( self );
 
@@ -77,7 +77,7 @@ Light Flare
 
 =================================================================================
 */
-void gfx_light_flare_toggle( gentity_t *self, gentity_t *caller, gentity_t *activator )
+void gfx_light_flare_toggle( gentity_t *self, gentity_t*, gentity_t* )
 {
 	self->s.eFlags ^= EF_NODRAW;
 }
@@ -259,7 +259,7 @@ env_animated_model
 
 =================================================================================
 */
-void gfx_animated_model_act( gentity_t *self, gentity_t *other, gentity_t *activator )
+void gfx_animated_model_act( gentity_t *self, gentity_t*, gentity_t* )
 {
 	if ( self->spawnflags & 1 )
 	{
@@ -322,7 +322,7 @@ gfx_shader_mod
 =================================================================================
 */
 
-void gfx_shader_mod_act( gentity_t *self, gentity_t *other, gentity_t *activator )
+void gfx_shader_mod_act( gentity_t *self, gentity_t*, gentity_t* )
 {
 	if ( !self->shaderKey || !self->shaderReplacement )
 	{

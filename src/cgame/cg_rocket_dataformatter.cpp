@@ -91,7 +91,7 @@ static void CG_Rocket_DFUpgradeName( int handle, const char *data )
 
 static void CG_Rocket_DFVotePlayer( int handle, const char *data )
 {
-	Rocket_DataFormatterFormattedData( handle, va("<button onClick=\"exec set ui_dialogCvar1 %s;exec rocket ui/dialogs/editplayer.rml load; exec rocket editplayer show\">vote/moderate</button>", cgs.clientinfo[ atoi( Info_ValueForKey( data, "1" ) ) ].name ) , false );
+	Rocket_DataFormatterFormattedData( handle, va("<button onClick=\"Events.pushevent('exec set ui_dialogCvar1 %s;exec rocket ui/dialogs/editplayer.rml load; exec rocket editplayer show', event)\">vote/moderate</button>", cgs.clientinfo[ atoi( Info_ValueForKey( data, "1" ) ) ].name ) , false );
 }
 
 static void CG_Rocket_DFVoteMap( int handle, const char *data )
@@ -99,7 +99,7 @@ static void CG_Rocket_DFVoteMap( int handle, const char *data )
 	int mapIndex = atoi( Info_ValueForKey( data, "1" ) );
 	if ( mapIndex < rocketInfo.data.mapCount )
 	{
-		Rocket_DataFormatterFormattedData( handle, va("<button onClick=\"exec set ui_dialogCvar1 %s;hide maps;exec rocket ui/dialogs/mapdialog.rml load; exec rocket mapdialog show\" class=\"maps\"><div class=\"levelname\">%s</div> <img class=\"levelshot\"src='/meta/%s/%s'/><div class=\"hovertext\">Start Vote</div> </button>", rocketInfo.data.mapList[ mapIndex ].mapLoadName, CG_Rocket_QuakeToRML( rocketInfo.data.mapList[ mapIndex ].mapName ), rocketInfo.data.mapList[ mapIndex ].mapLoadName, rocketInfo.data.mapList[ mapIndex ].mapLoadName ) , false );
+		Rocket_DataFormatterFormattedData( handle, va("<button onClick=\"Events.pushevent('exec set ui_dialogCvar1 %s;hide maps;exec rocket ui/dialogs/mapdialog.rml load; exec rocket mapdialog show', event)\" class=\"maps\"><div class=\"levelname\">%s</div> <img class=\"levelshot\"src='/meta/%s/%s'/><div class=\"hovertext\">Start Vote</div> </button>", rocketInfo.data.mapList[ mapIndex ].mapLoadName, CG_Rocket_QuakeToRML( rocketInfo.data.mapList[ mapIndex ].mapName ), rocketInfo.data.mapList[ mapIndex ].mapLoadName, rocketInfo.data.mapList[ mapIndex ].mapLoadName ) , false );
 	}
 }
 
@@ -248,9 +248,9 @@ static void CG_Rocket_DFCMBeacons( int handle, const char *data )
 		return;
 
 	icon = CG_GetShaderNameFromHandle( ba->icon[ 0 ][ 0 ] );
-	action = va( "onClick='exec \"beacon %s\"; hide ingame_beaconmenu'", ba->name );
+	action = va( "onClick='Cmd.exec(\"beacon %s\") Events.pushevent(\"hide ingame_beaconmenu\", event)'", ba->name );
 
-	Rocket_DataFormatterFormattedData( handle, va( "<button class='beacons' onMouseover='setDS beacons default %s' %s><img src='/%s'/></button>", Info_ValueForKey( data, "2" ), action, icon ), false );
+	Rocket_DataFormatterFormattedData( handle, va( "<button class='beacons' onMouseover='Events.pushevent(\"setDS beacons default %s\", event)' %s><img src='/%s'/></button>", Info_ValueForKey( data, "2" ), action, icon ), false );
 }
 
 typedef struct
@@ -302,9 +302,7 @@ void CG_Rocket_FormatData( int handle )
 
 void CG_Rocket_RegisterDataFormatters()
 {
-	int i;
-
-	for ( i = 0; i < dataFormatterCmdListCount; i++ )
+	for ( unsigned i = 0; i < dataFormatterCmdListCount; i++ )
 	{
 		// Check that the commands are in increasing order so that it can be used by bsearch
 		if ( i != 0 && Q_stricmp( dataFormatterCmdList[ i - 1 ].name, dataFormatterCmdList[ i ].name ) > 0 )

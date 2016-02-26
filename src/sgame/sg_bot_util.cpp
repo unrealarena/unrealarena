@@ -1303,7 +1303,7 @@ bool BotEnemyIsValid( gentity_t *self, gentity_t *enemy )
 	return true;
 }
 
-void BotPain( gentity_t *self, gentity_t *attacker, int damage )
+void BotPain( gentity_t *self, gentity_t *attacker, int )
 {
 	if ( BotGetEntityTeam( attacker ) != TEAM_NONE && BotGetEntityTeam( attacker ) != self->client->pers.team )
 	{

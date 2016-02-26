@@ -26,10 +26,8 @@ theirs subsidiaries.*
 ### Linux
 
 ```bash
-$ mkdir build
-$ cd build
-$ cmake ..
-$ cmake --build . -- -j$(nproc)
+$ cmake -H. -Bbuild
+$ cmake --build build -- -j$(nproc)
 ```
 
 
