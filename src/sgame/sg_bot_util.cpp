@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -111,7 +111,33 @@ float BotGetHealScore( gentity_t *self )
 {
 	float distToHealer = 0;
 	float percentHealth = 0;
+#ifdef UNREALARENA
 	float maxHealth = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->health;
+#else
+	float maxHealth = BG_Class( ( class_t ) self->client->ps.stats[ STAT_CLASS ] )->health;
+#endif
+
+#ifndef UNREALARENA
+	if ( self->client->pers.team == TEAM_ALIENS )
+	{
+		if ( self->botMind->closestBuildings[ BA_A_BOOSTER ].ent )
+		{
+			distToHealer = self->botMind->closestBuildings[ BA_A_BOOSTER ].distance;
+		}
+		else if ( self->botMind->closestBuildings[ BA_A_OVERMIND ].ent )
+		{
+			distToHealer = self->botMind->closestBuildings[ BA_A_OVERMIND ].distance;
+		}
+		else if ( self->botMind->closestBuildings[ BA_A_SPAWN ].ent )
+		{
+			distToHealer = self->botMind->closestBuildings[BA_A_SPAWN].distance;
+		}
+	}
+	else
+	{
+		distToHealer = self->botMind->closestBuildings[ BA_H_MEDISTAT ].distance;
+	}
+#endif
 
 	percentHealth = ( ( float ) self->client->ps.stats[STAT_HEALTH] ) / maxHealth;
 
@@ -130,63 +156,131 @@ float BotGetEnemyPriority( gentity_t *self, gentity_t *ent )
 	float distanceScore;
 	distanceScore = Distance( self->s.origin, ent->s.origin );
 
-	switch ( ent->s.weapon )
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+	enemyScore = 0.5;
+#else
+	if ( ent->client )
 	{
-		case WP_ALEVEL0:
-			enemyScore = 0.1;
-			break;
-		case WP_ALEVEL1:
-			enemyScore = 0.3;
-			break;
-		case WP_ALEVEL2:
-			enemyScore = 0.4;
-			break;
-		case WP_ALEVEL2_UPG:
-			enemyScore = 0.7;
-			break;
-		case WP_ALEVEL3:
-			enemyScore = 0.7;
-			break;
-		case WP_ALEVEL3_UPG:
-			enemyScore = 0.8;
-			break;
-		case WP_ALEVEL4:
-			enemyScore = 1.0;
-			break;
-		case WP_BLASTER:
-			enemyScore = 0.2;
-			break;
-		case WP_MACHINEGUN:
-			enemyScore = 0.4;
-			break;
-		case WP_PAIN_SAW:
-			enemyScore = 0.4;
-			break;
-		case WP_LAS_GUN:
-			enemyScore = 0.4;
-			break;
-		case WP_MASS_DRIVER:
-			enemyScore = 0.4;
-			break;
-		case WP_CHAINGUN:
-			enemyScore = 0.6;
-			break;
-		case WP_FLAMER:
-			enemyScore = 0.6;
-			break;
-		case WP_PULSE_RIFLE:
-			enemyScore = 0.5;
-			break;
-		case WP_LUCIFER_CANNON:
-			enemyScore = 1.0;
-			break;
-		default:
-			enemyScore = 0.5;
-			break;
+		switch ( ent->s.weapon )
+		{
+			case WP_ALEVEL0:
+				enemyScore = 0.1;
+				break;
+			case WP_ALEVEL1:
+				enemyScore = 0.3;
+				break;
+			case WP_ALEVEL2:
+				enemyScore = 0.4;
+				break;
+			case WP_ALEVEL2_UPG:
+				enemyScore = 0.7;
+				break;
+			case WP_ALEVEL3:
+				enemyScore = 0.7;
+				break;
+			case WP_ALEVEL3_UPG:
+				enemyScore = 0.8;
+				break;
+			case WP_ALEVEL4:
+				enemyScore = 1.0;
+				break;
+			case WP_BLASTER:
+				enemyScore = 0.2;
+				break;
+			case WP_MACHINEGUN:
+				enemyScore = 0.4;
+				break;
+			case WP_PAIN_SAW:
+				enemyScore = 0.4;
+				break;
+			case WP_LAS_GUN:
+				enemyScore = 0.4;
+				break;
+			case WP_MASS_DRIVER:
+				enemyScore = 0.4;
+				break;
+			case WP_CHAINGUN:
+				enemyScore = 0.6;
+				break;
+			case WP_FLAMER:
+				enemyScore = 0.6;
+				break;
+			case WP_PULSE_RIFLE:
+				enemyScore = 0.5;
+				break;
+			case WP_LUCIFER_CANNON:
+				enemyScore = 1.0;
+				break;
+			default:
+				enemyScore = 0.5;
+				break;
+		}
 	}
+	else
+	{
+		switch ( ent->s.modelindex )
+		{
+			case BA_H_MGTURRET:
+				enemyScore = 0.6;
+				break;
+			case BA_H_REACTOR:
+				enemyScore = 0.5;
+				break;
+			case BA_H_ROCKETPOD:
+				enemyScore = 0.7;
+				break;
+			case BA_H_SPAWN:
+				enemyScore = 0.9;
+				break;
+			case BA_H_ARMOURY:
+				enemyScore = 0.8;
+				break;
+			case BA_H_MEDISTAT:
+				enemyScore = 0.6;
+				break;
+			case BA_A_ACIDTUBE:
+				enemyScore = 0.7;
+				break;
+			case BA_A_SPAWN:
+				enemyScore = 0.9;
+				break;
+			case BA_A_OVERMIND:
+				enemyScore = 0.5;
+				break;
+			case BA_A_HIVE:
+				enemyScore = 0.7;
+				break;
+			case BA_A_BOOSTER:
+				enemyScore = 0.4;
+				break;
+			case BA_A_TRAPPER:
+				enemyScore = 0.8;
+				break;
+			case BA_A_LEECH:
+				enemyScore = 0.6;
+				break;
+			case BA_H_DRILL:
+				enemyScore = 0.6;
+				break;
+			default:
+				enemyScore = 0.5;
+				break;
+
+		}
+	}
+#endif
 	return enemyScore * 1000 / distanceScore;
 }
 
+
+#ifndef UNREALARENA
+bool BotCanEvolveToClass( gentity_t *self, class_t newClass )
+{
+	return ( BG_ClassCanEvolveFromTo( ( class_t )self->client->ps.stats[STAT_CLASS], newClass,
+	                                  self->client->ps.persistant[PERS_CREDIT] ) >= 0 );
+}
+#endif
 
 bool WeaponIsEmpty( weapon_t weapon, playerState_t *ps )
 {
@@ -250,6 +344,270 @@ int BotValueOfUpgrades( gentity_t *self )
 	return worth;
 }
 
+#ifndef UNREALARENA
+void BotGetDesiredBuy( gentity_t *self, weapon_t *weapon, upgrade_t *upgrades, int *numUpgrades )
+{
+	int i;
+	int equipmentPrice = BotValueOfWeapons( self ) + BotValueOfUpgrades( self );
+	int credits = self->client->ps.persistant[PERS_CREDIT];
+	int usableCapital = credits + equipmentPrice;
+
+	//decide what upgrade(s) to buy
+	if ( BG_WeaponUnlocked( WP_PAIN_SAW ) && BG_UpgradeUnlocked( UP_BATTLESUIT ) &&
+	     usableCapital >= ( BG_Weapon( WP_PAIN_SAW )->price + BG_Upgrade( UP_BATTLESUIT )->price ) )
+	{
+		upgrades[0] = UP_BATTLESUIT;
+		*numUpgrades = 1;
+	}
+	else if ( BG_WeaponUnlocked( WP_SHOTGUN ) && BG_UpgradeUnlocked( UP_MEDIUMARMOUR ) && BG_UpgradeUnlocked( UP_RADAR ) &&
+	          usableCapital >= ( BG_Weapon( WP_SHOTGUN )->price + BG_Upgrade( UP_MEDIUMARMOUR )->price + BG_Upgrade( UP_RADAR )->price ) )
+	{
+		upgrades[0] = UP_MEDIUMARMOUR;
+		upgrades[1] = UP_RADAR;
+		*numUpgrades = 2;
+	}
+	else if ( BG_WeaponUnlocked( WP_SHOTGUN ) && BG_UpgradeUnlocked( UP_LIGHTARMOUR ) && BG_UpgradeUnlocked( UP_RADAR ) &&
+	          usableCapital >= ( BG_Weapon( WP_SHOTGUN )->price + BG_Upgrade( UP_LIGHTARMOUR )->price + BG_Upgrade( UP_RADAR )->price ) )
+	{
+		upgrades[0] = UP_LIGHTARMOUR;
+		upgrades[1] = UP_RADAR;
+		*numUpgrades = 2;
+	}
+	else if ( BG_WeaponUnlocked( WP_PAIN_SAW ) && BG_UpgradeUnlocked( UP_MEDIUMARMOUR ) &&
+	          usableCapital >= ( BG_Weapon( WP_PAIN_SAW )->price + BG_Upgrade( UP_MEDIUMARMOUR )->price ) )
+	{
+		upgrades[0] = UP_MEDIUMARMOUR;
+		*numUpgrades = 1;
+	}
+	else if ( BG_WeaponUnlocked( WP_PAIN_SAW ) && BG_UpgradeUnlocked( UP_LIGHTARMOUR ) &&
+	          usableCapital >= ( BG_Weapon( WP_PAIN_SAW )->price + BG_Upgrade( UP_LIGHTARMOUR )->price ) )
+	{
+		upgrades[0] = UP_LIGHTARMOUR;
+		*numUpgrades = 1;
+	}
+	else
+	{
+		*numUpgrades = 0;
+	}
+
+	for (i = 0; i < *numUpgrades; i++)
+	{
+		usableCapital -= BG_Upgrade( upgrades[i] )->price;
+	}
+
+	//now decide what weapon to buy
+	if ( g_bot_lcannon.integer && BG_WeaponUnlocked( WP_LUCIFER_CANNON ) && usableCapital >= BG_Weapon( WP_LUCIFER_CANNON )->price )
+	{
+		*weapon = WP_LUCIFER_CANNON;;
+	}
+	else if ( g_bot_chaingun.integer && BG_WeaponUnlocked( WP_CHAINGUN ) && usableCapital >= BG_Weapon( WP_CHAINGUN )->price && upgrades[0] == UP_BATTLESUIT )
+	{
+		*weapon = WP_CHAINGUN;
+	}
+	else if ( g_bot_flamer.integer && BG_WeaponUnlocked( WP_FLAMER ) && usableCapital >= BG_Weapon( WP_FLAMER )->price )
+	{
+		*weapon = WP_FLAMER;
+	}
+	else if ( g_bot_prifle.integer && BG_WeaponUnlocked( WP_PULSE_RIFLE ) && usableCapital >= BG_Weapon( WP_PULSE_RIFLE )->price )
+	{
+		*weapon = WP_PULSE_RIFLE;
+	}
+	else if ( g_bot_chaingun.integer && BG_WeaponUnlocked( WP_CHAINGUN ) && usableCapital >= BG_Weapon( WP_CHAINGUN )->price )
+	{
+		*weapon = WP_CHAINGUN;;
+	}
+	else if ( g_bot_mdriver.integer && BG_WeaponUnlocked( WP_MASS_DRIVER ) && usableCapital >= BG_Weapon( WP_MASS_DRIVER )->price )
+	{
+		*weapon = WP_MASS_DRIVER;
+	}
+	else if ( g_bot_lasgun.integer && BG_WeaponUnlocked( WP_LAS_GUN ) && usableCapital >= BG_Weapon( WP_LAS_GUN )->price )
+	{
+		*weapon = WP_LAS_GUN;
+	}
+	else if ( g_bot_shotgun.integer && BG_WeaponUnlocked( WP_SHOTGUN ) && usableCapital >= BG_Weapon( WP_SHOTGUN )->price )
+	{
+		*weapon = WP_SHOTGUN;
+	}
+	else if ( g_bot_painsaw.integer && BG_WeaponUnlocked( WP_PAIN_SAW ) && usableCapital >= BG_Weapon( WP_PAIN_SAW )->price )
+	{
+		*weapon = WP_PAIN_SAW;
+	}
+	else
+	{
+		*weapon = WP_MACHINEGUN;
+	}
+
+	usableCapital -= BG_Weapon( *weapon )->price;
+
+	//now test to see if we already have all of these items
+	//check if we already have everything
+	if ( BG_InventoryContainsWeapon( ( int )*weapon, self->client->ps.stats ) )
+	{
+		int numContain = 0;
+		int i;
+
+		for ( i = 0; i < *numUpgrades; i++ )
+		{
+			if ( BG_InventoryContainsUpgrade( ( int )upgrades[i], self->client->ps.stats ) )
+			{
+				numContain++;
+			}
+		}
+
+		if ( numContain == *numUpgrades )
+		{
+			*numUpgrades = 0;
+			for ( i = 0; i < 3; i++ )
+			{
+				upgrades[i] = UP_NONE;
+			}
+			*weapon = WP_NONE;
+		}
+	}
+}
+/*
+ = *======================
+ Entity Querys
+ =======================
+ */
+gentity_t* BotFindBuilding( gentity_t *self, int buildingType, int range )
+{
+	float minDistance = -1;
+	gentity_t* closestBuilding = nullptr;
+	float newDistance;
+	float rangeSquared = Square( range );
+	gentity_t *target = &g_entities[MAX_CLIENTS];
+	int i;
+
+	for ( i = MAX_CLIENTS; i < level.num_entities; i++, target++ )
+	{
+		if ( !target->inuse )
+		{
+			continue;
+		}
+		if ( target->s.eType == ET_BUILDABLE && target->s.modelindex == buildingType && ( target->buildableTeam == TEAM_ALIENS || ( target->powered && target->spawned ) ) && target->health > 0 )
+		{
+			newDistance = DistanceSquared( self->s.origin, target->s.origin );
+			if ( range && newDistance > rangeSquared )
+			{
+				continue;
+			}
+			if ( newDistance < minDistance || minDistance == -1 )
+			{
+				minDistance = newDistance;
+				closestBuilding = target;
+			}
+		}
+	}
+	return closestBuilding;
+}
+
+void BotFindClosestBuildings( gentity_t *self )
+{
+	gentity_t *testEnt;
+	botEntityAndDistance_t *ent;
+
+	// clear out building list
+	for ( unsigned i = 0; i < ARRAY_LEN( self->botMind->closestBuildings ); i++ )
+	{
+		self->botMind->closestBuildings[ i ].ent = nullptr;
+		self->botMind->closestBuildings[ i ].distance = INT_MAX;
+	}
+
+	for ( testEnt = &g_entities[MAX_CLIENTS]; testEnt < &g_entities[level.num_entities - 1]; testEnt++ )
+	{
+		float newDist;
+		//ignore entities that arnt in use
+		if ( !testEnt->inuse )
+		{
+			continue;
+		}
+
+		//ignore dead targets
+		if ( testEnt->health <= 0 )
+		{
+			continue;
+		}
+
+		//skip non buildings
+		if ( testEnt->s.eType != ET_BUILDABLE )
+		{
+			continue;
+		}
+
+		//skip human buildings that are currently building or arn't powered
+		if ( testEnt->buildableTeam == TEAM_HUMANS && ( !testEnt->powered || !testEnt->spawned ) )
+		{
+			continue;
+		}
+
+		newDist = Distance( self->s.origin, testEnt->s.origin );
+
+		ent = &self->botMind->closestBuildings[ testEnt->s.modelindex ];
+
+		if ( newDist < ent->distance )
+		{
+			ent->ent = testEnt;
+			ent->distance = newDist;
+		}
+	}
+}
+
+void BotFindDamagedFriendlyStructure( gentity_t *self )
+{
+	float minDistSqr;
+
+	gentity_t *target;
+	self->botMind->closestDamagedBuilding.ent = nullptr;
+	self->botMind->closestDamagedBuilding.distance = INT_MAX;
+
+	minDistSqr = Square( self->botMind->closestDamagedBuilding.distance );
+
+	for ( target = &g_entities[MAX_CLIENTS]; target < &g_entities[level.num_entities - 1]; target++ )
+	{
+		float distSqr;
+
+		if ( !target->inuse )
+		{
+			continue;
+		}
+
+		if ( target->s.eType != ET_BUILDABLE )
+		{
+			continue;
+		}
+
+		if ( target->buildableTeam != self->client->pers.team )
+		{
+			continue;
+		}
+
+		if ( target->health >= BG_Buildable( ( buildable_t )target->s.modelindex )->health )
+		{
+			continue;
+		}
+
+		if ( target->health <= 0 )
+		{
+			continue;
+		}
+
+		if ( !target->spawned || !target->powered )
+		{
+			continue;
+		}
+
+		distSqr = DistanceSquared( self->s.origin, target->s.origin );
+		if ( distSqr < minDistSqr )
+		{
+			self->botMind->closestDamagedBuilding.ent = target;
+			self->botMind->closestDamagedBuilding.distance = sqrt( distSqr );
+			minDistSqr = distSqr;
+		}
+	}
+}
+#endif
+
 bool BotEntityIsVisible( gentity_t *self, gentity_t *target, int mask )
 {
 	botTarget_t bt;
@@ -265,8 +623,13 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 	gentity_t *bestInvisibleEnemy = nullptr;
 	gentity_t *target;
 	team_t    team = BotGetEntityTeam( self );
+#ifdef UNREALARENA
 	bool  hasRadar = ( team == TEAM_Q ) ||
 	                     ( team == TEAM_U && BG_InventoryContainsUpgrade( UP_RADAR, self->client->ps.stats ) );
+#else
+	bool  hasRadar = ( team == TEAM_ALIENS ) ||
+	                     ( team == TEAM_HUMANS && BG_InventoryContainsUpgrade( UP_RADAR, self->client->ps.stats ) );
+#endif
 
 	for ( target = g_entities; target < &g_entities[level.num_entities - 1]; target++ )
 	{
@@ -277,8 +640,20 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 			continue;
 		}
 
+#ifndef UNREALARENA
+		if ( DistanceSquared( self->s.origin, target->s.origin ) > Square( ALIENSENSE_RANGE ) )
+		{
+			continue;
+		}
+#endif
+
+#ifdef UNREALARENA
 		if ( target->s.eType == ET_PLAYER && self->client->pers.team == TEAM_U
 		    && BotAimAngle( self, target->s.origin ) > g_bot_fov.value / 2 )
+#else
+		if ( target->s.eType == ET_PLAYER && self->client->pers.team == TEAM_HUMANS
+		    && BotAimAngle( self, target->s.origin ) > g_bot_fov.value / 2 )
+#endif
 		{
 			continue;
 		}
@@ -315,6 +690,12 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 gentity_t* BotFindClosestEnemy( gentity_t *self )
 {
 	gentity_t* closestEnemy = nullptr;
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+	float minDistance = 1500.0f;
+#else
+	float minDistance = Square( ALIENSENSE_RANGE );
+#endif
 	gentity_t *target;
 
 	for ( target = g_entities; target < &g_entities[level.num_entities - 1]; target++ )
@@ -331,6 +712,23 @@ gentity_t* BotFindClosestEnemy( gentity_t *self )
 		{
 			continue;
 		}
+
+#ifndef UNREALARENA
+		//ignore buildings if we cant attack them
+		if ( target->s.eType == ET_BUILDABLE )
+		{
+			if ( !g_bot_attackStruct.integer )
+			{
+				continue;
+			}
+
+			// dretches can only bite buildables in construction
+			if ( self->client->ps.stats[STAT_CLASS] == PCL_ALIEN_LEVEL0 && target->spawned )
+			{
+				continue;
+			}
+		}
+#endif
 
 		//ignore neutrals
 		if ( BotGetEntityTeam( target ) == TEAM_NONE )
@@ -353,6 +751,11 @@ gentity_t* BotFindClosestEnemy( gentity_t *self )
 			}
 		}
 		newDistance = DistanceSquared( self->s.origin, target->s.origin );
+		if ( newDistance <= minDistance )
+		{
+			minDistance = newDistance;
+			closestEnemy = target;
+		}
 	}
 	return closestEnemy;
 }
@@ -361,7 +764,30 @@ botTarget_t BotGetRushTarget( gentity_t *self )
 {
 	botTarget_t target;
 	gentity_t* rushTarget = nullptr;
-
+#ifndef UNREALARENA
+	if ( BotGetEntityTeam( self ) == TEAM_HUMANS )
+	{
+		if ( self->botMind->closestBuildings[BA_A_SPAWN].ent )
+		{
+			rushTarget = self->botMind->closestBuildings[BA_A_SPAWN].ent;
+		}
+		else if ( self->botMind->closestBuildings[BA_A_OVERMIND].ent )
+		{
+			rushTarget = self->botMind->closestBuildings[BA_A_OVERMIND].ent;
+		}
+	}
+	else    //team aliens
+	{
+		if ( self->botMind->closestBuildings[BA_H_SPAWN].ent )
+		{
+			rushTarget = self->botMind->closestBuildings[BA_H_SPAWN].ent;
+		}
+		else if ( self->botMind->closestBuildings[BA_H_REACTOR].ent )
+		{
+			rushTarget = self->botMind->closestBuildings[BA_H_REACTOR].ent;
+		}
+	}
+#endif
 	BotSetTarget( &target, rushTarget, nullptr );
 	return target;
 }
@@ -370,7 +796,23 @@ botTarget_t BotGetRetreatTarget( gentity_t *self )
 {
 	botTarget_t target;
 	gentity_t* retreatTarget = nullptr;
-
+#ifndef UNREALARENA
+	//FIXME, this seems like it could be done better...
+	if ( self->client->pers.team == TEAM_HUMANS )
+	{
+		if ( self->botMind->closestBuildings[BA_H_REACTOR].ent )
+		{
+			retreatTarget = self->botMind->closestBuildings[BA_H_REACTOR].ent;
+		}
+	}
+	else
+	{
+		if ( self->botMind->closestBuildings[BA_A_OVERMIND].ent )
+		{
+			retreatTarget = self->botMind->closestBuildings[BA_A_OVERMIND].ent;
+		}
+	}
+#endif
 	BotSetTarget( &target, retreatTarget, nullptr );
 	return target;
 }
@@ -455,8 +897,18 @@ void BotTargetToRouteTarget( gentity_t *self, botTarget_t target, botRouteTarget
 	{
 		if ( target.ent->client )
 		{
+#ifdef UNREALARENA
 			BG_ClassBoundingBox( ( team_t ) target.ent->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
+#else
+			BG_ClassBoundingBox( ( class_t ) target.ent->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
+#endif
 		}
+#ifndef UNREALARENA
+		else if ( target.ent->s.eType == ET_BUILDABLE )
+		{
+			BG_BuildableBoundingBox( ( buildable_t ) target.ent->s.modelindex, mins, maxs );
+		}
+#endif
 		else
 		{
 			VectorCopy( target.ent->r.mins, mins );
@@ -494,7 +946,11 @@ void BotTargetToRouteTarget( gentity_t *self, botTarget_t target, botRouteTarget
 	// account for buildings on walls or cielings
 	if ( BotTargetIsEntity( target ) )
 	{
+#ifdef UNREALARENA
 		if ( target.ent->s.eType == ET_PLAYER )
+#else
+		if ( target.ent->s.eType == ET_BUILDABLE || target.ent->s.eType == ET_PLAYER )
+#endif
 		{
 			// building on wall or cieling ( 0.7 == MIN_WALK_NORMAL )
 			if ( target.ent->s.origin2[ 2 ] < 0.7 || target.ent->s.eType == ET_PLAYER )
@@ -534,6 +990,12 @@ team_t BotGetEntityTeam( gentity_t *ent )
 	{
 		return ( team_t )ent->client->pers.team;
 	}
+#ifndef UNREALARENA
+	else if ( ent->s.eType == ET_BUILDABLE )
+	{
+		return ent->buildableTeam;
+	}
+#endif
 	else
 	{
 		return TEAM_NONE;
@@ -708,8 +1170,24 @@ bool BotTargetInAttackRange( gentity_t *self, botTarget_t target )
 					range = -range;
 				}
 
+#ifdef UNREALARENA
 				range -= 150;
-
+#else
+				// the flamer uses a cosine based power falloff by default
+				// so decrease the range to give us a usable minimum damage
+				// FIXME: depend on the value of the flamer damage falloff cvar
+				// FIXME: have to stand further away from acid or will be
+				//        pushed back and will stop attacking (too far away)
+				if ( BotGetTargetType( target ) == ET_BUILDABLE &&
+				     target.ent->s.modelindex != BA_A_ACIDTUBE )
+				{
+					range -= 300;
+				}
+				else
+				{
+					range -= 150;
+				}
+#endif
 				range = MAX( range, 100.0f );
 				secondaryRange = 0;
 				width = height = FLAMER_SIZE;
@@ -789,20 +1267,28 @@ void BotGetIdealAimLocation( gentity_t *self, botTarget_t target, vec3_t aimLoca
 	//get the position of the target
 	BotGetTargetPos( target, aimLocation );
 
-	if ( BotGetTargetTeam( target ) == TEAM_Q )
+#ifdef UNREALARENA
+	if ( BotTargetIsEntity( target ) && BotGetTargetTeam( target ) == TEAM_U )
+#else
+	if ( BotGetTargetType( target ) != ET_BUILDABLE && BotTargetIsEntity( target ) && BotGetTargetTeam( target ) == TEAM_HUMANS )
+#endif
+	{
+
+		//aim at head
+		aimLocation[2] += target.ent->r.maxs[2] * 0.85;
+
+	}
+#ifdef UNREALARENA
+	else if ( BotGetTargetTeam( target ) == TEAM_Q )
+#else
+	else if ( BotGetTargetType( target ) == ET_BUILDABLE || BotGetTargetTeam( target ) == TEAM_ALIENS )
+#endif
 	{
 		//make lucifer cannons aim ahead based on the target's velocity
 		if ( self->client->ps.weapon == WP_LUCIFER_CANNON && self->botMind->botSkill.level >= 5 )
 		{
 			VectorMA( aimLocation, Distance( self->s.origin, aimLocation ) / LCANNON_SPEED, target.ent->s.pos.trDelta, aimLocation );
 		}
-	}
-	else if ( BotTargetIsEntity( target ) && BotGetTargetTeam( target ) == TEAM_U )
-	{
-
-		//aim at head
-		aimLocation[2] += target.ent->r.maxs[2] * 0.85;
-
 	}
 }
 
@@ -1066,6 +1552,12 @@ void BotFireWeapon( weaponMode_t mode, usercmd_t *botCmdBuffer )
 }
 void BotClassMovement( gentity_t *self, bool inAttackRange )
 {
+#ifndef UNREALARENA
+	usercmd_t *botCmdBuffer = &self->botMind->cmdBuffer;
+#endif
+
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
 	switch ( self->client->ps.persistant[ PERS_TEAM ] )
 	{
 		case TEAM_Q:
@@ -1074,6 +1566,46 @@ void BotClassMovement( gentity_t *self, bool inAttackRange )
 		default:
 			break;
 	}
+#else
+	switch ( self->client->ps.stats[STAT_CLASS] )
+	{
+		case PCL_ALIEN_LEVEL0:
+			BotStrafeDodge( self );
+			break;
+		case PCL_ALIEN_LEVEL1:
+			break;
+		case PCL_ALIEN_LEVEL2:
+		case PCL_ALIEN_LEVEL2_UPG:
+			if ( self->botMind->nav.directPathToGoal )
+			{
+				if ( self->client->time1000 % 300 == 0 )
+				{
+					BotJump( self );
+				}
+				BotStrafeDodge( self );
+			}
+			break;
+		case PCL_ALIEN_LEVEL3:
+			break;
+		case PCL_ALIEN_LEVEL3_UPG:
+			if ( BotGetTargetType( self->botMind->goal ) == ET_BUILDABLE && self->client->ps.ammo > 0
+				&& inAttackRange )
+			{
+				//dont move when sniping buildings
+				BotStandStill( self );
+			}
+			break;
+		case PCL_ALIEN_LEVEL4:
+			//use rush to approach faster
+			if ( !inAttackRange )
+			{
+				BotFireWeapon( WPM_SECONDARY, botCmdBuffer );
+			}
+			break;
+		default:
+			break;
+	}
+#endif
 }
 
 float CalcAimPitch( gentity_t *self, botTarget_t target, vec_t launchSpeed )
@@ -1128,6 +1660,24 @@ float CalcAimPitch( gentity_t *self, botTarget_t target, vec_t launchSpeed )
 	angle = RAD2DEG( angle );
 	return angle;
 }
+#ifndef UNREALARENA
+float CalcPounceAimPitch( gentity_t *self, botTarget_t target )
+{
+	vec_t speed = ( self->client->ps.stats[STAT_CLASS] == PCL_ALIEN_LEVEL3 ) ? LEVEL3_POUNCE_JUMP_MAG : LEVEL3_POUNCE_JUMP_MAG_UPG;
+	return CalcAimPitch( self, target, speed );
+
+	//in usrcmd angles, a positive angle is down, so multiply angle by -1
+	// botCmdBuffer->angles[PITCH] = ANGLE2SHORT(-angle);
+}
+float CalcBarbAimPitch( gentity_t *self, botTarget_t target )
+{
+	vec_t speed = LEVEL3_BOUNCEBALL_SPEED;
+	return CalcAimPitch( self, target, speed );
+
+	//in usrcmd angles, a positive angle is down, so multiply angle by -1
+	//botCmdBuffer->angles[PITCH] = ANGLE2SHORT(-angle);
+}
+#endif
 
 void BotFireWeaponAI( gentity_t *self )
 {
@@ -1193,10 +1743,39 @@ void BotFireWeaponAI( gentity_t *self )
 			}
 			break;
 		case WP_ALEVEL3:
+#ifdef UNREALARENA
 			BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
+#else
+			if ( distance > LEVEL3_CLAW_RANGE && self->client->ps.stats[ STAT_MISC ] < LEVEL3_POUNCE_TIME )
+			{
+				botCmdBuffer->angles[PITCH] = ANGLE2SHORT( -CalcPounceAimPitch( self, self->botMind->goal ) ); //compute and apply correct aim pitch to hit target
+				BotFireWeapon( WPM_SECONDARY, botCmdBuffer ); //goon pounce
+			}
+			else
+			{
+				BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
+			}
+#endif
 			break;
 		case WP_ALEVEL3_UPG:
+#ifdef UNREALARENA
 			BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
+#else
+			if ( self->client->ps.ammo > 0 && distance > LEVEL3_CLAW_UPG_RANGE )
+			{
+				botCmdBuffer->angles[PITCH] = ANGLE2SHORT( -CalcBarbAimPitch( self, self->botMind->goal ) ); //compute and apply correct aim pitch to hit target
+				BotFireWeapon( WPM_TERTIARY, botCmdBuffer ); //goon barb
+			}
+			else if ( distance > LEVEL3_CLAW_UPG_RANGE && self->client->ps.stats[ STAT_MISC ] < LEVEL3_POUNCE_TIME_UPG )
+			{
+				botCmdBuffer->angles[PITCH] = ANGLE2SHORT( -CalcPounceAimPitch( self, self->botMind->goal ) ); //compute and apply correct aim pitch to hit target
+				BotFireWeapon( WPM_SECONDARY, botCmdBuffer ); //goon pounce
+			}
+			else
+			{
+				BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
+			}
+#endif
 			break;
 		case WP_ALEVEL4:
 			if ( distance > LEVEL4_CLAW_RANGE && self->client->ps.stats[STAT_MISC] < LEVEL4_TRAMPLE_CHARGE_MAX )
@@ -1219,11 +1798,355 @@ void BotFireWeaponAI( gentity_t *self )
 	}
 }
 
+#ifndef UNREALARENA
+bool BotEvolveToClass( gentity_t *ent, class_t newClass )
+{
+	int clientNum;
+	int i;
+	vec3_t infestOrigin;
+	class_t currentClass = ent->client->pers.classSelection;
+	int numLevels;
+	int entityList[ MAX_GENTITIES ];
+	vec3_t range = { AS_OVER_RT3, AS_OVER_RT3, AS_OVER_RT3 };
+	vec3_t mins, maxs;
+	int num;
+	gentity_t *other;
+
+	if ( ent->client->ps.stats[ STAT_HEALTH ] <= 0 )
+	{
+		return false;
+	}
+
+	clientNum = ent->client - level.clients;
+
+	//if we are not currently spectating, we are attempting evolution
+	if ( ent->client->pers.classSelection != PCL_NONE )
+	{
+		if ( ( ent->client->ps.stats[ STAT_STATE ] & SS_WALLCLIMBING ) )
+		{
+			ent->client->pers.cmd.upmove = 0;
+		}
+
+		//check there are no humans nearby
+		VectorAdd( ent->client->ps.origin, range, maxs );
+		VectorSubtract( ent->client->ps.origin, range, mins );
+
+		num = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
+		for ( i = 0; i < num; i++ )
+		{
+			other = &g_entities[ entityList[ i ] ];
+
+			if ( ( other->client && other->client->pers.team == TEAM_HUMANS ) ||
+				( other->s.eType == ET_BUILDABLE && other->buildableTeam == TEAM_HUMANS ) )
+			{
+				return false;
+			}
+		}
+
+		if ( !G_ActiveOvermind() )
+		{
+			return false;
+		}
+
+		numLevels = BG_ClassCanEvolveFromTo( currentClass, newClass, ( short )ent->client->ps.persistant[ PERS_CREDIT ] );
+
+		if ( G_RoomForClassChange( ent, newClass, infestOrigin ) )
+		{
+			//...check we can evolve to that class
+			if ( numLevels >= 0 && BG_ClassUnlocked( newClass ) && !BG_ClassDisabled( newClass ) )
+			{
+				ent->client->pers.evolveHealthFraction = ( float )ent->client->ps.stats[ STAT_HEALTH ] /
+				( float )BG_Class( currentClass )->health;
+
+				if ( ent->client->pers.evolveHealthFraction < 0.0f )
+				{
+					ent->client->pers.evolveHealthFraction = 0.0f;
+				}
+				else if ( ent->client->pers.evolveHealthFraction > 1.0f )
+				{
+					ent->client->pers.evolveHealthFraction = 1.0f;
+				}
+
+				//remove credit
+				G_AddCreditToClient( ent->client, -( short )numLevels, true );
+				ent->client->pers.classSelection = newClass;
+				BotSetNavmesh( ent, newClass );
+				ClientUserinfoChanged( clientNum, false );
+				VectorCopy( infestOrigin, ent->s.pos.trBase );
+				ClientSpawn( ent, ent, ent->s.pos.trBase, ent->s.apos.trBase );
+
+				//trap_SendServerCommand( -1, va( "print \"evolved to %s\n\"", classname) );
+
+				return true;
+			}
+			else
+				//trap_SendServerCommand( -1, va( "print \"Not enough evos to evolve to %s\n\"", classname) );
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return false;
+}
+
+//Cmd_Buy_f ripoff, weapon version
+void BotBuyWeapon( gentity_t *self, weapon_t weapon )
+{
+	if ( weapon != WP_NONE )
+	{
+		//already got this?
+		if ( BG_InventoryContainsWeapon( weapon, self->client->ps.stats ) )
+		{
+			return;
+		}
+
+		// Only humans can buy stuff
+		if ( BG_Weapon( weapon )->team != TEAM_HUMANS )
+		{
+			return;
+		}
+
+		//are we /allowed/ to buy this?
+		if ( !BG_Weapon( weapon )->purchasable )
+		{
+			return;
+		}
+
+		//are we /allowed/ to buy this?
+		if ( !BG_WeaponUnlocked( weapon ) || BG_WeaponDisabled( weapon ) )
+		{
+			return;
+		}
+
+		//can afford this?
+		if ( BG_Weapon( weapon )->price > ( short )self->client->pers.credit )
+		{
+			return;
+		}
+
+		//have space to carry this?
+		if ( BG_Weapon( weapon )->slots & BG_SlotsForInventory( self->client->ps.stats ) )
+		{
+			return;
+		}
+
+		// In some instances, weapons can't be changed
+		if ( !BG_PlayerCanChangeWeapon( &self->client->ps ) )
+		{
+			return;
+		}
+
+		self->client->ps.stats[ STAT_WEAPON ] = weapon;
+		G_GiveMaxAmmo( self );
+		G_ForceWeaponChange( self, weapon );
+
+		//set build delay/pounce etc to 0
+		self->client->ps.stats[ STAT_MISC ] = 0;
+
+		//subtract from funds
+		G_AddCreditToClient( self->client, -( short )BG_Weapon( weapon )->price, false );
+	}
+	else
+	{
+		return;
+	}
+	//update ClientInfo
+	ClientUserinfoChanged( self->client->ps.clientNum, false );
+}
+void BotBuyUpgrade( gentity_t *self, upgrade_t upgrade )
+{
+	vec3_t    newOrigin;
+
+	if ( upgrade != UP_NONE )
+	{
+		//already got this?
+		if ( BG_InventoryContainsUpgrade( upgrade, self->client->ps.stats ) )
+		{
+			return;
+		}
+
+		//can afford this?
+		if ( BG_Upgrade( upgrade )->price > ( short )self->client->pers.credit )
+		{
+			return;
+		}
+
+		//have space to carry this?
+		if ( BG_Upgrade( upgrade )->slots & BG_SlotsForInventory( self->client->ps.stats ) )
+		{
+			return;
+		}
+
+		// Only humans can buy stuff
+		if ( BG_Upgrade( upgrade )->team != TEAM_HUMANS )
+		{
+			return;
+		}
+
+		//are we /allowed/ to buy this?
+		if ( !BG_Upgrade( upgrade )->purchasable )
+		{
+			return;
+		}
+
+		//are we /allowed/ to buy this?
+		if ( !BG_UpgradeUnlocked( upgrade ) || BG_UpgradeDisabled( upgrade ) )
+		{
+			return;
+		}
+
+		if ( upgrade == UP_LIGHTARMOUR )
+		{
+			if ( !G_RoomForClassChange( self, PCL_HUMAN_LIGHT, newOrigin ) )
+			{
+				return;
+			}
+			VectorCopy( newOrigin, self->client->ps.origin );
+			self->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_LIGHT;
+			self->client->pers.classSelection = PCL_HUMAN_LIGHT;
+			BotSetNavmesh( self, PCL_HUMAN_LIGHT );
+			self->client->ps.eFlags ^= EF_TELEPORT_BIT;
+		}
+		else if ( upgrade == UP_MEDIUMARMOUR )
+		{
+			if ( !G_RoomForClassChange( self, PCL_HUMAN_MEDIUM, newOrigin ) )
+			{
+				return;
+			}
+			VectorCopy( newOrigin, self->client->ps.origin );
+			self->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_MEDIUM;
+			self->client->pers.classSelection = PCL_HUMAN_MEDIUM;
+			BotSetNavmesh( self, PCL_HUMAN_MEDIUM );
+			self->client->ps.eFlags ^= EF_TELEPORT_BIT;
+		}
+		else if ( upgrade == UP_BATTLESUIT )
+		{
+			if ( !G_RoomForClassChange( self, PCL_HUMAN_BSUIT, newOrigin ) )
+			{
+				return;
+			}
+			VectorCopy( newOrigin, self->client->ps.origin );
+			self->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_BSUIT;
+			self->client->pers.classSelection = PCL_HUMAN_BSUIT;
+			BotSetNavmesh( self, PCL_HUMAN_BSUIT );
+			self->client->ps.eFlags ^= EF_TELEPORT_BIT;
+		}
+
+		//add to inventory
+		BG_AddUpgradeToInventory( upgrade, self->client->ps.stats );
+
+		//subtract from funds
+		G_AddCreditToClient( self->client, -( short )BG_Upgrade( upgrade )->price, false );
+	}
+	else
+	{
+		return;
+	}
+
+	//update ClientInfo
+	ClientUserinfoChanged( self->client->ps.clientNum, false );
+}
+void BotSellWeapons( gentity_t *self )
+{
+	weapon_t selected = BG_GetPlayerWeapon( &self->client->ps );
+	int i;
+
+	//no armoury nearby
+	if ( !G_BuildableInRange( self->client->ps.origin, ENTITY_BUY_RANGE, BA_H_ARMOURY ) )
+	{
+		return;
+	}
+
+	if ( !BG_PlayerCanChangeWeapon( &self->client->ps ) )
+	{
+		return;
+	}
+
+	//sell weapons
+	for ( i = WP_NONE + 1; i < WP_NUM_WEAPONS; i++ )
+	{
+		//guard against selling the HBUILD weapons exploit
+		if ( i == WP_HBUILD && self->client->ps.stats[ STAT_MISC ] > 0 )
+		{
+			continue;
+		}
+
+		if ( BG_InventoryContainsWeapon( i, self->client->ps.stats ) &&
+			BG_Weapon( ( weapon_t )i )->purchasable )
+		{
+			self->client->ps.stats[ STAT_WEAPON ] = WP_NONE;
+
+			//add to funds
+			G_AddCreditToClient( self->client, ( short )BG_Weapon( ( weapon_t ) i )->price, false );
+		}
+
+		//if we have this weapon selected, force a new selection
+		if ( i == selected )
+		{
+			G_ForceWeaponChange( self, WP_NONE );
+		}
+	}
+}
+void BotSellAll( gentity_t *self )
+{
+	int i;
+
+	//no armoury nearby
+	if ( !G_BuildableInRange( self->client->ps.origin, ENTITY_BUY_RANGE, BA_H_ARMOURY ) )
+	{
+		return;
+	}
+	BotSellWeapons( self );
+
+	//sell upgrades
+	for ( i = UP_NONE + 1; i < UP_NUM_UPGRADES; i++ )
+	{
+		//remove upgrade if carried
+		if ( BG_InventoryContainsUpgrade( i, self->client->ps.stats ) &&
+			BG_Upgrade( ( upgrade_t )i )->purchasable )
+		{
+
+			// shouldn't really need to test for this, but just to be safe
+			if ( i == UP_LIGHTARMOUR || i == UP_MEDIUMARMOUR || i == UP_BATTLESUIT )
+			{
+				vec3_t newOrigin;
+
+				if ( !G_RoomForClassChange( self, PCL_HUMAN_NAKED, newOrigin ) )
+				{
+					continue;
+				}
+				VectorCopy( newOrigin, self->client->ps.origin );
+				self->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_NAKED;
+				self->client->pers.classSelection = PCL_HUMAN_NAKED;
+				self->client->ps.eFlags ^= EF_TELEPORT_BIT;
+				BotSetNavmesh( self, PCL_HUMAN_NAKED );
+			}
+
+			//remove from inventory
+			BG_RemoveUpgradeFromInventory( i, self->client->ps.stats );
+
+			//add to funds
+			G_AddCreditToClient( self->client, ( short )BG_Upgrade( ( upgrade_t )i )->price, false );
+		}
+	}
+	//update ClientInfo
+	ClientUserinfoChanged( self->client->ps.clientNum, false );
+}
+#endif
+
 void BotSetSkillLevel( gentity_t *self, int skill )
 {
 	self->botMind->botSkill.level = skill;
 	//different aim for different teams
+#ifdef UNREALARENA
 	if ( self->botMind->botTeam == TEAM_U )
+#else
+	if ( self->botMind->botTeam == TEAM_HUMANS )
+#endif
 	{
 		self->botMind->botSkill.aimSlowness = ( float ) skill / 10;
 		self->botMind->botSkill.aimShake = 10 - skill;
@@ -1284,6 +2207,15 @@ bool BotEnemyIsValid( gentity_t *self, gentity_t *enemy )
 	{
 		return false;
 	}
+
+#ifndef UNREALARENA
+	//ignore buildings if we cant attack them
+	if ( enemy->s.eType == ET_BUILDABLE && ( !g_bot_attackStruct.integer ||
+	                                         self->client->ps.stats[STAT_CLASS] == PCL_ALIEN_LEVEL0 ) )
+	{
+		return false;
+	}
+#endif
 
 	if ( BotGetEntityTeam( enemy ) == self->client->pers.team )
 	{

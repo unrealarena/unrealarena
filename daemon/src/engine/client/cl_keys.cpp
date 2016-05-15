@@ -1,7 +1,7 @@
 /*
  * Daemon GPL source code
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  Id Software, Inc.
+ * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -852,9 +852,14 @@ const char *Key_KeynumToString( int keynum )
 /*
 ===================
 Key_GetTeam
+Assumes 'three' teams: spectators, aliens, humans
 ===================
 */
+#ifdef UNREALARENA
 static const char *const teamName[] = { "default", "q", "u", "others" };
+#else
+static const char *const teamName[] = { "default", "aliens", "humans", "others" };
+#endif
 
 int Key_GetTeam( const char *arg, const char *cmd )
 {
@@ -864,8 +869,13 @@ int Key_GetTeam( const char *arg, const char *cmd )
 	} labels[] = {
 		{ 0, "spectators" },
 		{ 0, "default" },
+#ifdef UNREALARENA
 		{ 1, "q" },
 		{ 2, "u" }
+#else
+		{ 1, "aliens" },
+		{ 2, "humans" }
+#endif
 	};
 	int t, l;
 
@@ -1356,8 +1366,13 @@ static void Field_TeamnameCompletion( void ( *callback )( const char *s ), int f
 		callback( "default" );
 	}
 
-	callback( "q" );
+#ifdef UNREALARENA
 	callback( "u" );
+	callback( "q" );
+#else
+	callback( "humans" );
+	callback( "aliens" );
+#endif
 }
 
 /*

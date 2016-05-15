@@ -94,8 +94,13 @@ else if( !Q_stricmp( token.string, #x ) ) \
 		READ_FLOAT  ( fadeMaxAlpha )
 
 		READ_COLOR  ( colorNeutral )
+#ifdef UNREALARENA
 		READ_COLOR  ( colorQ )
 		READ_COLOR  ( colorU )
+#else
+		READ_COLOR  ( colorAlien )
+		READ_COLOR  ( colorHuman )
+#endif
 		READ_FLOAT  ( fadeInAlpha )
 		READ_FLOAT  ( fadeInScale )
 
@@ -189,10 +194,18 @@ static bool LoadExplicitBeacons()
 		     ( targetES = &targetCent->currentState )->eType == ET_PLAYER )
 		{
 			vec3_t mins, maxs, center;
+#ifdef UNREALARENA
 			team_t team = ( team_t ) targetES->misc;
+#else
+			int pClass = ( ( targetES->misc >> 8 ) & 0xFF ); // TODO: Write function for this.
+#endif
 
 			VectorCopy( targetCent->lerpOrigin, center );
+#ifdef UNREALARENA
 			BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
+#else
+			BG_ClassBoundingBox( pClass, mins, maxs, nullptr, nullptr, nullptr );
+#endif
 			BG_MoveOriginToBBOXCenter( center, mins, maxs );
 
 			// TODO: Interpolate when target entity pops in.
@@ -218,9 +231,15 @@ static bool LoadExplicitBeacons()
 static bool LoadImplicitBeacons()
 {
 	// All alive aliens have enemy sense.
+#ifdef UNREALARENA
 	if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_Q &&
 	     cg.predictedPlayerState.persistant[ PERS_SPECSTATE ] == SPECTATOR_NOT &&
 	     cg.predictedPlayerState.stats[ STAT_HEALTH ] > 0 )
+#else
+	if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS &&
+	     cg.predictedPlayerState.persistant[ PERS_SPECSTATE ] == SPECTATOR_NOT &&
+	     cg.predictedPlayerState.stats[ STAT_HEALTH ] > 0 )
+#endif
 	{
 		for ( int clientNum = 0; clientNum < MAX_CLIENTS; clientNum++ )
 		{
@@ -234,7 +253,11 @@ static bool LoadImplicitBeacons()
 
 			// Only tag enemies like this, teammates have an explicit beacon.
 			if ( !( client = &cgs.clientinfo[ clientNum ] )->infoValid ) continue;
+#ifdef UNREALARENA
 			if ( client->team != TEAM_U )                                continue;
+#else
+			if ( client->team != TEAM_HUMANS )                           continue;
+#endif
 
 			//ent = &cg_entities[ clientNum ];
 			es = &ent->currentState;
@@ -244,14 +267,30 @@ static bool LoadImplicitBeacons()
 			// Set location on exact center of target player entity.
 			{
 				vec3_t mins, maxs, center;
+#ifdef UNREALARENA
 				team_t team = ( team_t ) es->misc;
+#else
+				int pClass = ( ( es->misc >> 8 ) & 0xFF ); // TODO: Write function for this.
+#endif
 
 				VectorCopy( ent->lerpOrigin, center );
+#ifdef UNREALARENA
 				BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
+#else
+				BG_ClassBoundingBox( pClass, mins, maxs, nullptr, nullptr, nullptr );
+#endif
 				BG_MoveOriginToBBOXCenter( center, mins, maxs );
 
 				VectorCopy( center, beacon->origin );
 			}
+
+#ifndef UNREALARENA
+			// Add alpha fade at the borders of the sense range.
+			beacon->alphaMod = Math::Clamp(
+				( ( (float)ALIENSENSE_RANGE -
+			        Distance( cg.predictedPlayerState.origin, beacon->origin ) ) /
+			      ( ALIENSENSE_BORDER_FRAC * (float)ALIENSENSE_RANGE ) ), 0.0f, 1.0f );
+#endif
 
 			// A value of 0 means the target is out of range, don't create a beacon in that case.
 			if ( beacon->alphaMod == 0.0f ) continue;
@@ -261,7 +300,11 @@ static bool LoadImplicitBeacons()
 			beacon->mtime     = cg.time;
 			beacon->type      = BCT_TAG;
 			beacon->data      = es->weapon;
+#ifdef UNREALARENA
 			beacon->ownerTeam = TEAM_Q;
+#else
+			beacon->ownerTeam = TEAM_ALIENS;
+#endif
 			beacon->owner     = ENTITYNUM_NONE;
 			beacon->flags     = EF_BC_TAG_PLAYER | EF_BC_ENEMY;
 			beacon->target    = es->number;
@@ -305,6 +348,52 @@ static int CompareBeaconsByDist( const void *a, const void *b )
  */
 static void MarkRelevantBeacons()
 {
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+#else
+	const playerState_t *ps = &cg.predictedPlayerState;
+	int team = ps->persistant[ PERS_TEAM ];
+	bool lowammo, energy;
+
+	lowammo = BG_PlayerLowAmmo( ps, &energy );
+
+	for( int beaconNum = 0, tofind = 3; beaconNum < cg.beaconCount && tofind; beaconNum++ )
+	{
+		cbeacon_t *beacon = cg.beacons[ beaconNum ];
+
+		// Only tagged buildables are relevant so far.
+		if( beacon->type != BCT_TAG ||
+		    ( beacon->flags & EF_BC_TAG_PLAYER ) ||
+		    ( beacon->flags & EF_BC_DYING ) )
+		{
+			continue;
+		}
+
+		// Find a health source.
+		if( tofind & 1 )
+		{
+			if( ( team == TEAM_ALIENS && beacon->data == BA_A_BOOSTER ) ||
+			    ( team == TEAM_HUMANS && beacon->data == BA_H_MEDISTAT ) )
+			{
+				if( ps->stats[ STAT_HEALTH ] < ps->stats[ STAT_MAX_HEALTH ] / 2 )
+					beacon->type = BCT_HEALTH;
+				tofind &= ~1;
+			}
+		}
+
+		// Find an ammo source.
+		if( tofind & 2 )
+		{
+			if( team == TEAM_HUMANS && ( beacon->data == BA_H_ARMOURY ||
+			    ( energy && ( beacon->data == BA_H_REPEATER || beacon->data == BA_H_REACTOR ) ) ) )
+			{
+				if( lowammo )
+					beacon->type = BCT_AMMO;
+				tofind &= ~2;
+			}
+		}
+	}
+#endif
 }
 
 static void SetHighlightedBeacon()
@@ -337,11 +426,19 @@ static team_t TargetTeam( const cbeacon_t *beacon )
 	if ( beacon->type != BCT_TAG && beacon->type != BCT_BASE )
 		return TEAM_NONE;
 
+#ifdef UNREALARENA
 	if ( ( beacon->ownerTeam == TEAM_Q && beacon->flags & EF_BC_ENEMY ) ||
 	     ( beacon->ownerTeam == TEAM_U && !( beacon->flags & EF_BC_ENEMY ) ) )
 		return TEAM_U;
 	else
 		return TEAM_Q;
+#else
+	if ( ( beacon->ownerTeam == TEAM_ALIENS && beacon->flags & EF_BC_ENEMY ) ||
+	     ( beacon->ownerTeam == TEAM_HUMANS && !( beacon->flags & EF_BC_ENEMY ) ) )
+		return TEAM_HUMANS;
+	else
+		return TEAM_ALIENS;
+#endif
 }
 
 /**
@@ -459,6 +556,7 @@ static void DrawBeacon( cbeacon_t *b )
 	{
 		switch( b->ownerTeam )
 		{
+#ifdef UNREALARENA
 			case TEAM_Q:
 				if ( b->flags & EF_BC_ENEMY )
 					Vector4Copy( cgs.bc.colorU, b->color );
@@ -471,6 +569,20 @@ static void DrawBeacon( cbeacon_t *b )
 				else
 					Vector4Copy( cgs.bc.colorU, b->color );
 				break;
+#else
+			case TEAM_ALIENS:
+				if ( b->flags & EF_BC_ENEMY )
+					Vector4Copy( cgs.bc.colorHuman, b->color );
+				else
+					Vector4Copy( cgs.bc.colorAlien, b->color );
+				break;
+			case TEAM_HUMANS:
+				if ( b->flags & EF_BC_ENEMY )
+					Vector4Copy( cgs.bc.colorAlien, b->color );
+				else
+					Vector4Copy( cgs.bc.colorHuman, b->color );
+				break;
+#endif
 			default:
 				Vector4Copy( cgs.bc.colorNeutral, b->color );
 				break;
@@ -552,9 +664,15 @@ static void HandHLBeaconToUI()
 		showName = true;
 
 		// info
+#ifdef UNREALARENA
 		if ( beacon->type == BCT_TAG &&
 		     ( beacon->flags & EF_BC_TAG_PLAYER ) &&
 		     TargetTeam( beacon ) == TEAM_U )
+#else
+		if ( beacon->type == BCT_TAG &&
+		     ( beacon->flags & EF_BC_TAG_PLAYER ) &&
+		     TargetTeam( beacon ) == TEAM_HUMANS )
+#endif
 		{
 			Com_sprintf( br->info, sizeof( br->info ), "Carrying %s",
 			             BG_Weapon( beacon->data )->humanName );
@@ -657,12 +775,28 @@ qhandle_t CG_BeaconIcon( const cbeacon_t *b )
 qhandle_t CG_BeaconDescriptiveIcon( const cbeacon_t *b )
 {
 	if ( b->type == BCT_TAG ) {
+#ifdef UNREALARENA
 		switch ( TargetTeam( b ) ) {
+			// case TEAM_Q:
 			case TEAM_U:
 				return cg_weapons[ b->data ].weaponIcon;
 			default:
 				return CG_BeaconIcon( b );
 		}
+#else
+		if( b->flags & EF_BC_TAG_PLAYER ) {
+			switch ( TargetTeam( b ) ) {
+				case TEAM_ALIENS:
+					return cg_classes[ b->data ].classIcon;
+				case TEAM_HUMANS:
+					return cg_weapons[ b->data ].weaponIcon;
+				default:
+					return CG_BeaconIcon( b );
+			}
+		} else {
+			return cg_buildables[ b->data ].buildableIcon;
+		}
+#endif
 	} else {
 		return CG_BeaconIcon( b );
 	}
@@ -681,6 +815,7 @@ const char *CG_BeaconName( const cbeacon_t *b, char *out, size_t len )
 	switch( b->type )
 	{
 		case BCT_TAG:
+#ifdef UNREALARENA
 			if ( ownTeam == TEAM_NONE || ownTeam == beaconTeam ) {
 				return strncpy( out, cgs.clientinfo[ b->target ].name, len ); // Player name
 			} else if ( beaconTeam == TEAM_Q ) {
@@ -692,6 +827,24 @@ const char *CG_BeaconName( const cbeacon_t *b, char *out, size_t len )
 				return strncpy( out, "???", len );
 			}
 			break;
+#else
+			if( b->flags & EF_BC_TAG_PLAYER ) {
+				if ( ownTeam == TEAM_NONE || ownTeam == beaconTeam ) {
+					return strncpy( out, cgs.clientinfo[ b->target ].name, len ); // Player name
+				} else if ( beaconTeam == TEAM_ALIENS ) {
+					return strncpy( out, BG_ClassModelConfig( b->data )->humanName, len ); // Class name
+				} else if ( beaconTeam == TEAM_HUMANS ) {
+					// TODO: Display "Light//Chewy/Canned Food" for different armor types.
+					return strncpy( out, "Food", len );
+				} else {
+					return strncpy( out, "???", len );
+				}
+			} else {
+				// Display buildable name for all teams.
+				return strncpy( out, BG_Buildable( b->data )->humanName, len );
+			}
+			break;
+#endif
 
 		case BCT_BASE:
 		{
@@ -699,8 +852,13 @@ const char *CG_BeaconName( const cbeacon_t *b, char *out, size_t len )
 
 			if ( ownTeam == TEAM_NONE ) {
 				switch ( TargetTeam( b ) ) {
+#ifdef UNREALARENA
 					case TEAM_Q: prefix = "Q"; break;
 					case TEAM_U: prefix = "U"; break;
+#else
+					case TEAM_ALIENS: prefix = "Alien"; break;
+					case TEAM_HUMANS: prefix = "Human"; break;
+#endif
 					default:          prefix = "Neutral";
 				}
 			} else {

@@ -468,7 +468,11 @@ void CG_OffsetShoulderView()
 
 	AngleVectors( cg.refdefViewAngles, forward, right, up );
 
+#ifdef UNREALARENA
 	classModelConfig = BG_ClassModelConfig( ( team_t ) cg.snap->ps.persistant[ PERS_TEAM ] );
+#else
+	classModelConfig = BG_ClassModelConfig( cg.snap->ps.stats[ STAT_CLASS ] );
+#endif
 	VectorMA( cg.refdef.vieworg, classModelConfig->shoulderOffsets[ 0 ], forward, cg.refdef.vieworg );
 	VectorMA( cg.refdef.vieworg, classModelConfig->shoulderOffsets[ 1 ], right, cg.refdef.vieworg );
 	VectorMA( cg.refdef.vieworg, classModelConfig->shoulderOffsets[ 2 ], up, cg.refdef.vieworg );
@@ -541,7 +545,11 @@ static void CG_StepOffset()
 
 	BG_GetClientNormal( ps, normal );
 
+#ifdef UNREALARENA
 	steptime = BG_Class( ( team_t ) ps->persistant[ PERS_TEAM ] )->steptime;
+#else
+	steptime = BG_Class( ps->stats[ STAT_CLASS ] )->steptime;
+#endif
 
 	// smooth out stair climbing
 	timeDelta = cg.time - cg.stepTime;
@@ -651,7 +659,11 @@ void CG_OffsetFirstPersonView()
 	}
 	else
 	{
+#ifdef UNREALARENA
 		bob2 = BG_Class( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] )->bob;
+#else
+		bob2 = BG_Class( cg.predictedPlayerState.stats[ STAT_CLASS ] )->bob;
+#endif
 	}
 
 #define LEVEL4_FEEDBACK 10.0f
@@ -802,8 +814,14 @@ void CG_OffsetFirstPersonView()
 		}
 	}
 
+	// this *feels* more realisitic for humans <- this comment feels very descriptive
+#ifdef UNREALARENA
 	if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_U &&
 	     cg.predictedPlayerState.pm_type == PM_NORMAL )
+#else
+	if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_HUMANS &&
+	     cg.predictedPlayerState.pm_type == PM_NORMAL )
+#endif
 	{
 		angles[ PITCH ] += cg.bobfracsin * bob2 * 0.5;
 	}
@@ -885,12 +903,30 @@ static int CG_CalcFov()
 	trap_GetUserCmd( cmdNum, &cmd );
 	trap_GetUserCmd( cmdNum - 1, &oldcmd );
 
+#ifdef UNREALARENA
 	// Manage follow mode
 	if ( usercmdButtonPressed( cmd.buttons, BUTTON_ATTACK ) && !usercmdButtonPressed( oldcmd.buttons, BUTTON_ATTACK ) )
+#else
+	// switch follow modes if necessary: cycle between free -> follow -> third-person follow
+	if ( usercmdButtonPressed( cmd.buttons, BUTTON_USE_HOLDABLE ) && !usercmdButtonPressed( oldcmd.buttons, BUTTON_USE_HOLDABLE ) )
+#endif
 	{
 		if ( cg.snap->ps.pm_flags & PMF_FOLLOW )
 		{
+#ifdef UNREALARENA
+			// Follow the next player
 			trap_SendClientCommand( "follownext\n" );
+#else
+			if ( !cg.chaseFollow )
+			{
+				cg.chaseFollow = true;
+			}
+			else
+			{
+				cg.chaseFollow = false;
+				trap_SendClientCommand( "follow\n" );
+			}
+#endif
 		}
 		else if ( cg.snap->ps.persistant[ PERS_SPECSTATE ] != SPECTATOR_NOT )
 		{
@@ -908,7 +944,11 @@ static int CG_CalcFov()
 	else
 	{
 		// don't lock the fov globally - we need to be able to change it
+#ifdef UNREALARENA
 		if ( ( attribFov = trap_Cvar_VariableIntegerValue( BG_Class( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] )->fovCvar ) ) )
+#else
+		if ( ( attribFov = trap_Cvar_VariableIntegerValue( BG_Class( cg.predictedPlayerState.stats[ STAT_CLASS ] )->fovCvar ) ) )
+#endif
 		{
 			if ( attribFov < 80 )
 			{
@@ -921,7 +961,11 @@ static int CG_CalcFov()
 		}
 		else
 		{
+#ifdef UNREALARENA
 			attribFov = BG_Class( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] )->fov;
+#else
+			attribFov = BG_Class( cg.predictedPlayerState.stats[ STAT_CLASS ] )->fov;
+#endif
 		}
 		attribFov *= 0.75;
 		fov_y = attribFov;
@@ -934,6 +978,16 @@ static int CG_CalcFov()
 		{
 			fov_y = MAX_FOV_Y;
 		}
+
+#ifndef UNREALARENA
+		if ( cg.spawnTime > ( cg.time - FOVWARPTIME ) &&
+		     BG_ClassHasAbility( cg.predictedPlayerState.stats[ STAT_CLASS ], SCA_FOVWARPS ) )
+		{
+			float fraction = ( float )( cg.time - cg.spawnTime ) / FOVWARPTIME;
+
+			fov_y = MAX_FOV_WARP_Y - ( ( MAX_FOV_WARP_Y - fov_y ) * fraction );
+		}
+#endif
 
 		// account for zooms
 		zoomFov = BG_Weapon( cg.predictedPlayerState.weapon )->zoomFov * 0.75f;
@@ -1365,7 +1419,11 @@ static void CG_ChooseCgradingEffectAndFade( const playerState_t* ps, qhandle_t* 
 {
 	int health = ps->stats[ STAT_HEALTH ];
 	int team = ps->persistant[ PERS_TEAM ];
-	bool playing = team == TEAM_Q || team == TEAM_U;
+#ifdef UNREALARENA
+	bool playing = team == TEAM_U || team == TEAM_Q;
+#else
+	bool playing = team == TEAM_HUMANS || team == TEAM_ALIENS;
+#endif
 
 	//the player has spawned once and is dead or in the intermission
 	if ( cg_spawnEffects.integer && ( health <= 0 || (playing && cg.snap->ps.persistant[ PERS_SPECSTATE ] != SPECTATOR_NOT) ) )
@@ -1649,9 +1707,36 @@ static int CG_CalcViewValues()
 
 	VectorCopy( ps->origin, cg.refdef.vieworg );
 
+#ifdef UNREALARENA
 	VectorCopy( ps->viewangles, cg.refdefViewAngles );
+#else
+	if ( BG_ClassHasAbility( ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) )
+	{
+		CG_smoothWWTransitions( ps, ps->viewangles, cg.refdefViewAngles );
+	}
+	else if ( BG_ClassHasAbility( ps->stats[ STAT_CLASS ], SCA_WALLJUMPER ) )
+	{
+		CG_smoothWJTransitions( ps, ps->viewangles, cg.refdefViewAngles );
+	}
+	else
+	{
+		VectorCopy( ps->viewangles, cg.refdefViewAngles );
+	}
+#endif
 
+#ifdef UNREALARENA
 	VectorSet( cg.lastNormal, 0.0f, 0.0f, 1.0f );
+#else
+	//clumsy logic, but it needs to be this way around because the CS propagation
+	//delay screws things up otherwise
+	if ( !BG_ClassHasAbility( ps->stats[ STAT_CLASS ], SCA_WALLJUMPER ) )
+	{
+		if ( !( ps->stats[ STAT_STATE ] & SS_WALLCLIMBING ) )
+		{
+			VectorSet( cg.lastNormal, 0.0f, 0.0f, 1.0f );
+		}
+	}
+#endif
 
 	// add error decay
 	if ( cg_errorDecay.value > 0 )

@@ -1,7 +1,7 @@
 /*
  * Daemon GPL source code
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  Id Software, Inc.
+ * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -599,8 +599,13 @@ void SCR_DrawVoipSender()
 
 		switch ( atoi( Info_ValueForKey(cl.gameState[CS_PLAYERS + cls.voipSender].c_str(), "t") ) )
 		{
+#ifdef UNREALARENA
 			case TEAM_Q: teamColor = '1'; break;
 			case TEAM_U: teamColor = '4'; break;
+#else
+			case TEAM_ALIENS: teamColor = '1'; break;
+			case TEAM_HUMANS: teamColor = '4'; break;
+#endif
 			default: teamColor = '3';
 		}
 

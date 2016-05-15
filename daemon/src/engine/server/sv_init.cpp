@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  Id Software, Inc.
+ * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -628,7 +628,11 @@ void SV_Init()
 	Cvar_Get( "layout", "", CVAR_SERVERINFO | CVAR_ROM );
 	Cvar_Get( "g_layouts", "", 0 ); // FIXME
 	sv_privateClients = Cvar_Get( "sv_privateClients", "0", CVAR_SERVERINFO );
+#ifdef UNREALARENA
 	sv_hostname = Cvar_Get( "sv_hostname", "Unnamed Unreal Arena Server", CVAR_SERVERINFO  );
+#else
+	sv_hostname = Cvar_Get( "sv_hostname", "Unnamed Unvanquished Server", CVAR_SERVERINFO  );
+#endif
 	sv_maxclients = Cvar_Get( "sv_maxclients", "20", CVAR_SERVERINFO | CVAR_LATCH );  // NERVE - SMF - changed to 20 from 8
 	sv_maxRate = Cvar_Get( "sv_maxRate", "0",  CVAR_SERVERINFO );
 	sv_minPing = Cvar_Get( "sv_minPing", "0",  CVAR_SERVERINFO );
@@ -677,7 +681,11 @@ void SV_Init()
 	sv_dl_maxRate = Cvar_Get( "sv_dl_maxRate", "42000", 0 );
 
 	sv_wwwDownload = Cvar_Get( "sv_wwwDownload", "0", 0 );
+#ifdef UNREALARENA
 	sv_wwwBaseURL = Cvar_Get( "sv_wwwBaseURL", "dl.example.com/pkg", 0 );
+#else
+	sv_wwwBaseURL = Cvar_Get( "sv_wwwBaseURL", "dl.unvanquished.net/pkg", 0 );
+#endif
 	sv_wwwDlDisconnected = Cvar_Get( "sv_wwwDlDisconnected", "0", 0 );
 	sv_wwwFallbackURL = Cvar_Get( "sv_wwwFallbackURL", "", 0 );
 

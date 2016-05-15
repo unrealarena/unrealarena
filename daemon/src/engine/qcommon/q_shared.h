@@ -1,7 +1,7 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  Id Software, Inc.
+ * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,13 +32,23 @@
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
 
+#ifdef UNREALARENA
 #define PRODUCT_NAME            "Unreal Arena"
 #define PRODUCT_NAME_UPPER      "UNREALARENA" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unrealarena" // No case, No spaces
-#define PRODUCT_VERSION         "0.1-2"
+#define PRODUCT_VERSION         "0.1-3"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          "0.43.1"
+#else
+#define PRODUCT_NAME            "Unvanquished"
+#define PRODUCT_NAME_UPPER      "UNVANQUISHED" // Case, No spaces
+#define PRODUCT_NAME_LOWER      "unvanquished" // No case, No spaces
+#define PRODUCT_VERSION         "0.43"
+
+#define ENGINE_NAME             "Daemon Engine"
+#define ENGINE_VERSION          PRODUCT_VERSION
+#endif
 
 #define RSQRT_PRECISE 1
 
@@ -2339,6 +2349,10 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 		ET_GENERAL,
 		ET_PLAYER,
 		ET_ITEM,
+
+#ifndef UNREALARENA
+		ET_BUILDABLE,       // buildable type
+#endif
 
 		ET_LOCATION,
 

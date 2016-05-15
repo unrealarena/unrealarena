@@ -521,7 +521,11 @@ static void CG_MinimapDrawTeammates( const minimap_t* m )
 
         int clientNum = mate->currentState.clientNum;
 
+#ifdef UNREALARENA
         bool isTeammate = mate->currentState.eType == ET_PLAYER && clientNum >= 0 && clientNum < MAX_CLIENTS && (mate->currentState.misc) == ownTeam;
+#else
+        bool isTeammate = mate->currentState.eType == ET_PLAYER && clientNum >= 0 && clientNum < MAX_CLIENTS && (mate->currentState.misc & 0x00FF) == ownTeam;
+#endif
 
         if ( !isTeammate )
         {

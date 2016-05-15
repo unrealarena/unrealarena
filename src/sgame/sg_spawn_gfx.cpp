@@ -324,7 +324,11 @@ gfx_shader_mod
 
 void gfx_shader_mod_act( gentity_t *self, gentity_t*, gentity_t* )
 {
+#ifdef UNREALARENA
 	if ( !self->shaderKey || !self->shaderReplacement )
+#else
+	if ( !self->shaderKey || !self->shaderReplacement || !self->enabled )
+#endif
 	{
 		return;
 	}

@@ -78,13 +78,28 @@
 
 #define S_PATH_CORNER             "path_corner"
 #define S_POS_PLAYER_SPAWN        "pos_player_spawn"
+#ifndef UNREALARENA
+#define S_POS_ALIEN_INTERMISSION  "pos_alien_intermission"
+#endif
 #define S_POS_PLAYER_INTERMISSION "pos_player_intermission"
+#ifndef UNREALARENA
+#define S_POS_HUMAN_INTERMISSION  "pos_human_intermission"
+#endif
 #define S_POS_TARGET              "pos_target"
 #define S_POS_LOCATION            "pos_location"
 
+#ifndef UNREALARENA
+#define S_SENSOR_CREEP            "sensor_creep"
+#endif
 #define S_SENSOR_END              "sensor_end"
+#ifndef UNREALARENA
+#define S_SENSOR_BUILDABLE        "sensor_buildable"
+#endif
 #define S_SENSOR_TIMER            "sensor_timer"
 #define S_SENSOR_PLAYER           "sensor_player"
+#ifndef UNREALARENA
+#define S_SENSOR_POWER            "sensor_power"
+#endif
 #define S_SENSOR_SUPPORT          "sensor_support"
 #define S_SENSOR_START            "sensor_start"
 #define S_SENSOR_STAGE            "sensor_stage"
@@ -149,6 +164,12 @@ typedef enum
 	ECA_USE,
 	ECA_RESET,
 
+#ifndef UNREALARENA
+	ECA_ENABLE,
+	ECA_DISABLE,
+	ECA_TOGGLE
+#endif
+
 } gentityCallActionType_t;
 
 typedef enum
@@ -166,6 +187,11 @@ typedef enum
 	ON_REACH,
 	ON_RESET,
 	ON_TOUCH,
+
+#ifndef UNREALARENA
+	ON_ENABLE,
+	ON_DISABLE,
+#endif
 
 	ON_SPAWN
 
@@ -204,7 +230,11 @@ const char *etos( const gentity_t *entity );
 void       G_PrintEntityNameList( gentity_t *entity );
 
 //search, select, iterate
+#ifdef UNREALARENA
 gentity_t  *G_IterateEntities( gentity_t *entity, const char *classname, size_t fieldofs, const char *match );
+#else
+gentity_t  *G_IterateEntities( gentity_t *entity, const char *classname, bool skipdisabled, size_t fieldofs, const char *match );
+#endif
 gentity_t  *G_IterateEntities( gentity_t *entity );
 gentity_t  *G_IterateEntitiesOfClass( gentity_t *entity, const char *classname );
 gentity_t  *G_IterateEntitiesWithField( gentity_t *entity, size_t fieldofs, const char *match );

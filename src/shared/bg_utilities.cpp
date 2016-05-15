@@ -108,6 +108,23 @@ void BG_BuildEntityDescription( char *str, size_t size, entityState_t *es )
 	str[ size -1 ] = '\0';
 }
 
+#ifndef UNREALARENA
+bool BG_IsMainStructure( entityState_t *es )
+{
+	if ( es->eType != ET_BUILDABLE ) return false;
+
+	switch ( es->modelindex )
+	{
+		case BA_A_OVERMIND:
+		case BA_H_REACTOR:
+			return true;
+
+		default:
+			return false;
+	}
+}
+#endif
+
 /**
  * @brief Moves a point from the origin of a bounding box to its center.
  * @param point The origin, will be modified.

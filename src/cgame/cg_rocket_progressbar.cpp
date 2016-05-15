@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,13 @@
 
 #include "cg_local.h"
 
+#ifndef UNREALARENA
+static float CG_Rocket_GetBuildableLoadProgress()
+{
+	return cg.buildablesFraction;
+}
+#endif
+
 static float CG_Rocket_GetCharLoadProgress()
 {
 	return cg.charModelFraction;
@@ -28,6 +35,15 @@ static float CG_Rocket_GetCharLoadProgress()
 static float CG_Rocket_GetMediaLoadProgress()
 {
 	return cg.mediaFraction;
+}
+
+static float CG_Rocket_GetOverallLoadProgress()
+{
+#ifdef UNREALARENA
+	return ( cg.mediaFraction + cg.charModelFraction ) / 2.0f;
+#else
+	return ( cg.mediaFraction + cg.charModelFraction + cg.buildablesFraction ) / 3.0f;
+#endif
 }
 
 static float CG_Rocket_GetBuildTimerProgress()
@@ -54,19 +70,51 @@ static float CG_Rocket_GetBuildTimerProgress()
 	return ( float ) misc / ( float ) max;
 }
 
+#ifndef UNREALARENA
+static float CG_Rocket_GetStaminaProgress()
+{
+	playerState_t *ps = &cg.snap->ps;
+	float         stamina = ps->stats[ STAT_STAMINA ];
+
+	return ( stamina / ( float ) STAMINA_MAX );
+}
+#endif
+
 static float CG_Rocket_GetPoisonProgress()
 {
+#ifdef UNREALARENA
+	return 0;
+#else
 	static int time = -1;
 
-	time = -1;
-	return 0;
+	if ( cg.snap->ps.stats[ STAT_STATE ] & SS_BOOSTED )
+	{
+		if ( time == -1 || cg.snap->ps.stats[ STAT_STATE ] & SS_BOOSTEDNEW )
+		{
+			time = cg.time;
+		}
+
+		return 1 - ( ( ( float )cg.time - time ) / BOOST_TIME );
+	}
+
+	else
+	{
+		time = -1;
+		return 0;
+	}
+
+#endif
 }
 
 static float CG_Rocket_GetPlayerHealthProgress()
 {
 	playerState_t *ps = &cg.snap->ps;
 
+#ifdef UNREALARENA
 	return ( float )ps->stats[ STAT_HEALTH ] / ( float )BG_Class( ( team_t ) ps->persistant[ PERS_TEAM ] )->health;
+#else
+	return ( float )ps->stats[ STAT_HEALTH ] / ( float )BG_Class( ps->stats[ STAT_CLASS ] )->health;
+#endif
 }
 
 static float CG_Rocket_GetPlayerAmmoProgress()
@@ -99,6 +147,21 @@ static float CG_Rocket_GetPlayerAmmoProgress()
 	}
 }
 
+#ifndef UNREALARENA
+float CG_Rocket_FuelProgress()
+{
+	int   fuel;
+
+	if ( !BG_InventoryContainsUpgrade( UP_JETPACK, cg.snap->ps.stats ) )
+	{
+		return 0;
+	}
+
+	fuel     = cg.snap->ps.stats[ STAT_FUEL ];
+	return ( float )fuel / ( float )JETPACK_FUEL_MAX;
+}
+#endif
+
 float CG_Rocket_DownloadProgress()
 {
 	return trap_Cvar_VariableValue( "cl_downloadCount" ) / trap_Cvar_VariableValue( "cl_downloadSize" );
@@ -114,14 +177,32 @@ typedef struct progressBarCmd_s
 
 static const progressBarCmd_t progressBarCmdList[] =
 {
+#ifdef UNREALARENA
 	{ "ammo", &CG_Rocket_GetPlayerAmmoProgress, ELEMENT_U },
+#else
+	{ "ammo", &CG_Rocket_GetPlayerAmmoProgress, ELEMENT_HUMANS },
+#endif
 	{ "btimer", &CG_Rocket_GetBuildTimerProgress, ELEMENT_BOTH },
+#ifndef UNREALARENA
+	{ "buildables", &CG_Rocket_GetBuildableLoadProgress, ELEMENT_LOADING },
+#endif
 	{ "characters", &CG_Rocket_GetCharLoadProgress, ELEMENT_LOADING },
 	{ "charge", &CG_ChargeProgress, ELEMENT_BOTH },
 	{ "download", &CG_Rocket_DownloadProgress, ELEMENT_ALL },
+#ifndef UNREALARENA
+	{ "fuel", &CG_Rocket_FuelProgress, ELEMENT_HUMANS },
+#endif
 	{ "health", &CG_Rocket_GetPlayerHealthProgress, ELEMENT_BOTH },
 	{ "media", &CG_Rocket_GetMediaLoadProgress, ELEMENT_LOADING },
+	{ "overall", &CG_Rocket_GetOverallLoadProgress, ELEMENT_LOADING },
+#ifdef UNREALARENA
 	{ "poison", &CG_Rocket_GetPoisonProgress, ELEMENT_Q },
+#else
+	{ "poison", &CG_Rocket_GetPoisonProgress, ELEMENT_ALIENS },
+#endif
+#ifndef UNREALARENA
+	{ "stamina", &CG_Rocket_GetStaminaProgress, ELEMENT_HUMANS },
+#endif
 };
 
 static const size_t progressBarCmdListCount = ARRAY_LEN( progressBarCmdList );

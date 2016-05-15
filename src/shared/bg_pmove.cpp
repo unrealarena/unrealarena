@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -277,8 +277,13 @@ static void PM_Friction()
 			// if getting knocked back, no friction
 			if ( !( pm->ps->pm_flags & PMF_TIME_KNOCKBACK ) )
 			{
+#ifdef UNREALARENA
 				float stopSpeed = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->stopSpeed;
 				float friction = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->friction;
+#else
+				float stopSpeed = BG_Class( pm->ps->stats[ STAT_CLASS ] )->stopSpeed;
+				float friction = BG_Class( pm->ps->stats[ STAT_CLASS ] )->friction;
+#endif
 
 				control = speed < stopSpeed ? stopSpeed : speed;
 				drop += control * friction * pml.frametime;
@@ -385,9 +390,17 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 	float modifier = 1.0f;
 	int   staminaJumpCost;
 
+#ifdef UNREALARENA
 	staminaJumpCost = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->staminaJumpCost;
+#else
+	staminaJumpCost = BG_Class( pm->ps->stats[ STAT_CLASS ] )->staminaJumpCost;
+#endif
 
+#ifdef UNREALARENA
 	if ( pm->ps->persistant[ PERS_TEAM ] == TEAM_U && pm->ps->pm_type == PM_NORMAL )
+#else
+	if ( pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS && pm->ps->pm_type == PM_NORMAL )
+#endif
 	{
 		bool wasSprinting, sprint;
 
@@ -446,14 +459,54 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 		// TODO: Try to move code upwards so sprinting isn't activated in the first place.
 		if ( sprint && !usercmdButtonPressed( cmd->buttons, BUTTON_WALKING ) )
 		{
+#ifdef UNREALARENA
 			modifier *= BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->sprintMod;
+#else
+			modifier *= BG_Class( pm->ps->stats[ STAT_CLASS ] )->sprintMod;
+#endif
 		}
+#ifndef UNREALARENA
+		else
+		{
+			modifier *= HUMAN_JOG_MODIFIER;
+		}
+#endif
+
+#ifndef UNREALARENA
+		// Apply modfiers for strafing and going backwards
+		if ( cmd->forwardmove < 0 )
+		{
+			modifier *= HUMAN_BACK_MODIFIER;
+		}
+		else if ( cmd->rightmove )
+		{
+			modifier *= HUMAN_SIDE_MODIFIER;
+		}
+#endif
 
 		// Cancel jump if low on stamina
 		if ( !zFlight && pm->ps->stats[ STAT_STAMINA ] < staminaJumpCost )
 		{
 			cmd->upmove = 0;
 		}
+
+#ifndef UNREALARENA
+		// Apply creepslow modifier
+		// TODO: Move modifer into upgrade/class config files of armour items/classes
+		if ( pm->ps->stats[ STAT_STATE ] & SS_CREEPSLOWED )
+		{
+			if ( BG_InventoryContainsUpgrade( UP_LIGHTARMOUR, pm->ps->stats ) ||
+			     BG_InventoryContainsUpgrade( UP_MEDIUMARMOUR, pm->ps->stats ) ||
+			     BG_InventoryContainsUpgrade( UP_BATTLESUIT,  pm->ps->stats ) )
+			{
+				modifier *= CREEP_ARMOUR_MODIFIER;
+			}
+			else
+			{
+				modifier *= CREEP_MODIFIER;
+			}
+		}
+#endif
 
 		// Apply level1 slow modifier
 		if ( pm->ps->stats[ STAT_STATE2 ] & SS2_LEVEL1SLOW )
@@ -1024,7 +1077,11 @@ static bool PM_CheckWallJump()
 
 	static const vec3_t  refNormal = { 0.0f, 0.0f, 1.0f };
 
+#ifdef UNREALARENA
 	if ( !( BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->abilities & SCA_WALLJUMPER ) )
+#else
+	if ( !( BG_Class( pm->ps->stats[ STAT_CLASS ] )->abilities & SCA_WALLJUMPER ) )
+#endif
 	{
 		return false;
 	}
@@ -1122,8 +1179,13 @@ static bool PM_CheckWallJump()
 	VectorMA( dir, upFraction, refNormal, dir );
 	VectorNormalize( dir );
 
+#ifdef UNREALARENA
 	VectorMA( pm->ps->velocity, BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->jumpMagnitude,
 	          dir, pm->ps->velocity );
+#else
+	VectorMA( pm->ps->velocity, BG_Class( pm->ps->stats[ STAT_CLASS ] )->jumpMagnitude,
+	          dir, pm->ps->velocity );
+#endif
 
 	//for a long run of wall jumps the velocity can get pretty large, this caps it
 	if ( VectorLength( pm->ps->velocity ) > LEVEL2_WALLJUMP_MAXSPEED )
@@ -1144,6 +1206,150 @@ static bool PM_CheckWallJump()
  */
 static bool PM_CheckJetpack()
 {
+#ifndef UNREALARENA
+	static const vec3_t thrustDir = { 0.0f, 0.0f, 1.0f };
+	int                 sideVelocity;
+
+	if ( pm->ps->pm_type != PM_NORMAL ||
+	     pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS ||
+	     !BG_InventoryContainsUpgrade( UP_JETPACK, pm->ps->stats ) )
+	{
+		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
+		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_WARM;
+		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ENABLED;
+
+		return false;
+	}
+
+	// enable jetpack when in air
+	if ( pm->ps->groundEntityNum == ENTITYNUM_NONE &&
+	     !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ENABLED ) )
+	{
+		if ( pm->debugLevel > 0 )
+		{
+			Com_Printf( "[PM_CheckJetpack] " S_COLOR_CYAN "Jetpack enabled\n" );
+		}
+
+		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ENABLED;
+		PM_AddEvent( EV_JETPACK_ENABLE );
+
+		return false;
+	}
+
+	// if jump key not held stop active thrust
+	if ( pm->cmd.upmove < 10 )
+	{
+		if ( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
+		{
+			if ( pm->debugLevel > 0 && pm->cmd.upmove < 10 )
+			{
+				Com_Printf( "[PM_CheckJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (jump key released)\n" );
+			}
+
+			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
+			PM_AddEvent( EV_JETPACK_STOP );
+		}
+
+		return false;
+	}
+
+	// sanity check that jetpack is enabled at this point
+	if ( !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ENABLED ) )
+	{
+		if ( pm->debugLevel > 0 )
+		{
+			Com_Printf( "[PM_CheckJetpack] " S_COLOR_RED "Can't start jetpack thrust (jetpack not enabled)\n" );
+		}
+
+		return false;
+	}
+
+	// check ignite conditions
+	if ( !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_WARM ) )
+	{
+		sideVelocity = sqrt( pm->ps->velocity[ 0 ] * pm->ps->velocity[ 0 ] +
+		                     pm->ps->velocity[ 1 ] * pm->ps->velocity[ 1 ] );
+
+		// we got off ground by jumping and are not yet in free fall, where free fall is defined as
+		// (1) fall speed bigger than sideways speed (not strafe jumping)
+		// (2) fall speed bigger than jump magnitude (not jumping up and down on solid ground)
+		if ( ( pm->ps->pm_flags & PMF_JUMPED ) && !( -pm->ps->velocity[ 2 ] > sideVelocity &&
+		     -pm->ps->velocity[ 2 ] > BG_Class( pm->ps->stats[ STAT_CLASS ] )->jumpMagnitude ) )
+		{
+			// require the jump key to be held since the jump
+			if ( !( pm->ps->pm_flags & PMF_JUMP_HELD ) )
+			{
+				return false;
+			}
+
+			// minimum fuel required to start from a jump
+			if ( pm->ps->stats[ STAT_FUEL ] < JETPACK_FUEL_LOW )
+			{
+				return false;
+			}
+
+			// wait until at highest spot
+			if ( !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE ) && pm->ps->velocity[ 2 ] > 0.0f )
+			{
+				return false;
+			}
+		}
+
+		// use some fuel for ignition
+		pm->ps->stats[ STAT_FUEL ] -= JETPACK_FUEL_IGNITE;
+		if ( pm->ps->stats[ STAT_FUEL ] < 0 ) pm->ps->stats[ STAT_FUEL ] = 0;
+
+		// ignite
+		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_WARM;
+		PM_AddEvent( EV_JETPACK_IGNITE );
+	}
+
+	// stop thrusting if completely out of fuel
+	if ( pm->ps->stats[ STAT_FUEL ] < JETPACK_FUEL_USAGE )
+	{
+		if ( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
+		{
+			if ( pm->debugLevel > 0 )
+			{
+				Com_Printf( "[PM_CheckJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (out of fuel)\n" );
+			}
+
+			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
+			PM_AddEvent( EV_JETPACK_STOP );
+		}
+
+		return false;
+	}
+
+	// start thrusting if possible
+	if ( !( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE ) )
+	{
+		// minimum fuel required
+		if ( pm->ps->stats[ STAT_FUEL ] < JETPACK_FUEL_STOP )
+		{
+			return false;
+		}
+
+		if ( pm->debugLevel > 0 )
+		{
+			Com_Printf( "[PM_CheckJetpack] " S_COLOR_GREEN "Jetpack thrust started\n" );
+		}
+
+		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ACTIVE;
+		PM_AddEvent( EV_JETPACK_START );
+	}
+
+	// clear the jumped flag as the reason we are in air now is the jetpack
+	pm->ps->pm_flags &= ~PMF_JUMPED;
+
+	// thrust
+	PM_Accelerate( thrustDir, JETPACK_TARGETSPEED, JETPACK_ACCELERATION );
+
+	// remove fuel
+	pm->ps->stats[ STAT_FUEL ] -= pml.msec * JETPACK_FUEL_USAGE;
+	if ( pm->ps->stats[ STAT_FUEL ] < 0 ) pm->ps->stats[ STAT_FUEL ] = 0;
+#endif
+
 	return true;
 }
 
@@ -1153,6 +1359,22 @@ static bool PM_CheckJetpack()
  */
 static bool PM_CheckJetpackRestoreFuel()
 {
+#ifndef UNREALARENA
+	// don't restore fuel when full or jetpack active
+	if ( pm->ps->stats[ STAT_FUEL ] == JETPACK_FUEL_MAX ||
+	     pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
+	{
+		return false;
+	}
+
+	pm->ps->stats[ STAT_FUEL ] += pml.msec * JETPACK_FUEL_RESTORE;
+
+	if ( pm->ps->stats[ STAT_FUEL ] > JETPACK_FUEL_MAX )
+	{
+		pm->ps->stats[ STAT_FUEL ] = JETPACK_FUEL_MAX;
+	}
+#endif
+
 	return true;
 }
 
@@ -1161,6 +1383,64 @@ static bool PM_CheckJetpackRestoreFuel()
  */
 static void PM_LandJetpack( bool force )
 {
+#ifndef UNREALARENA
+	float angle, sideVelocity;
+
+	// when low on fuel, always force a landing
+	if ( pm->ps->stats[ STAT_FUEL ] < JETPACK_FUEL_LOW )
+	{
+		force = true;
+	}
+
+	sideVelocity = sqrt( pml.previous_velocity[ 0 ] * pml.previous_velocity[ 0 ] +
+	                     pml.previous_velocity[ 1 ] * pml.previous_velocity[ 1 ] );
+
+	angle = atan2( -pml.previous_velocity[ 2 ], sideVelocity );
+
+	// allow the player to jump instead of land for some impacts
+	if ( !force )
+	{
+		if ( angle > 0.0f && angle < M_PI_4 ) // 45°
+		{
+			if ( pm->debugLevel > 0 )
+			{
+				Com_Printf( "[PM_LandJetpack] Landing ignored (hit surface at %.0f°)\n", RAD2DEG( angle ) );
+			}
+
+			return;
+		}
+	}
+
+	if ( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
+	{
+		if ( pm->debugLevel > 0 )
+		{
+			Com_Printf( "[PM_LandJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (hit surface at %.0f°)%s\n", RAD2DEG( angle ),
+			            force ? S_COLOR_RED " (FORCED)" : "" );
+		}
+
+		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
+
+		PM_AddEvent( EV_JETPACK_STOP );
+
+		// HACK: mark the jump key held so there is no immediate jump on landing
+		pm->ps->pm_flags |= PMF_JUMP_HELD;
+	}
+
+	if ( pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ENABLED )
+	{
+		if ( pm->debugLevel > 0 )
+		{
+			Com_Printf( "[PM_LandJetpack] " S_COLOR_YELLOW "Jetpack disabled (hit surface at %.0f°)%s\n", RAD2DEG( angle ),
+			            force ? S_COLOR_RED " (FORCED)" : "" );
+		}
+
+		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_WARM;
+		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ENABLED;
+
+		PM_AddEvent( EV_JETPACK_DISABLE );
+	}
+#endif
 }
 
 static bool PM_CheckJump()
@@ -1183,10 +1463,32 @@ static bool PM_CheckJump()
 	}
 
 	// needs jump ability
+#ifdef UNREALARENA
 	if ( BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->jumpMagnitude <= 0.0f )
+#else
+	if ( BG_Class( pm->ps->stats[ STAT_CLASS ] )->jumpMagnitude <= 0.0f )
+#endif
 	{
 		return false;
 	}
+
+#ifndef UNREALARENA
+	// can't jump and pounce at the same time
+	// TODO: This prevents jumps in an unintuitive manner, since the charge
+	//       meter has nothing to do with the land time.
+	if ( ( pm->ps->stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL3 ||
+	       pm->ps->stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL3_UPG ) &&
+	     pm->ps->stats[ STAT_MISC ] > 0 )
+	{
+		return false;
+	}
+
+	// can't jump and charge at the same time
+	if ( pm->ps->stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL4 && pm->ps->stats[ STAT_MISC ] > 0 )
+	{
+		return false;
+	}
+#endif
 
 	// don't allow jump until all buttons are up (?)
 	if ( pm->ps->pm_flags & PMF_RESPAWNED )
@@ -1206,18 +1508,44 @@ static bool PM_CheckJump()
 		return false;
 	}
 
+#ifdef UNREALARENA
 	staminaJumpCost = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->staminaJumpCost;
+#else
+	staminaJumpCost = BG_Class( pm->ps->stats[ STAT_CLASS ] )->staminaJumpCost;
+#endif
 	jetpackJump     = false;
 
 	// humans need stamina or jetpack to jump
+#ifdef UNREALARENA
 	if ( ( pm->ps->persistant[ PERS_TEAM ] == TEAM_U ) &&
 	     ( pm->ps->stats[ STAT_STAMINA ] < staminaJumpCost ) )
+#else
+	if ( ( pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS ) &&
+	     ( pm->ps->stats[ STAT_STAMINA ] < staminaJumpCost ) )
+#endif
 	{
+#ifdef UNREALARENA
 		return false;
+#else
+		// use jetpack instead of stamina to take off
+		if ( BG_InventoryContainsUpgrade( UP_JETPACK, pm->ps->stats ) &&
+		     pm->ps->stats[ STAT_FUEL ] > JETPACK_FUEL_LOW )
+		{
+			jetpackJump = true;
+		}
+		else
+		{
+			return false;
+		}
+#endif
 	}
 
 	// take some stamina off
+#ifdef UNREALARENA
 	if ( !jetpackJump && pm->ps->persistant[ PERS_TEAM ] == TEAM_U )
+#else
+	if ( !jetpackJump && pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS )
+#endif
 	{
 		pm->ps->stats[ STAT_STAMINA ] -= staminaJumpCost;
 	}
@@ -1229,11 +1557,39 @@ static bool PM_CheckJump()
 	pm->ps->pm_flags |= PMF_JUMPED;
 	pm->ps->groundEntityNum = ENTITYNUM_NONE;
 
+#ifndef UNREALARENA
+	// don't allow walljump for a short while after jumping from the ground
+	// TODO: There was an issue about this potentially having side effects.
+	if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_WALLJUMPER ) )
+	{
+		pm->ps->pm_flags |= PMF_TIME_WALLJUMP;
+		pm->ps->pm_time = 200;
+	}
+#endif
+
 	// jump in surface normal direction
 	BG_GetClientNormal( pm->ps, normal );
 
 	// retrieve jump magnitude
+#ifdef UNREALARENA
 	magnitude = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->jumpMagnitude;
+#else
+	magnitude = BG_Class( pm->ps->stats[ STAT_CLASS ] )->jumpMagnitude;
+#endif
+
+#ifndef UNREALARENA
+	// if jetpack is active or being used for the jump, scale down jump magnitude
+	if ( jetpackJump || pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
+	{
+		if ( pm->debugLevel > 0 )
+		{
+			Com_Printf( "[PM_CheckJump] Using jetpack: Decreasing jump magnitude to %.0f%%\n",
+			            JETPACK_JUMPMAG_REDUCTION * 100.0f );
+		}
+
+		magnitude *= JETPACK_JUMPMAG_REDUCTION;
+	}
+#endif
 
 	// sanity clip velocity Z
 	if ( pm->ps->velocity[ 2 ] < 0.0f )
@@ -1493,8 +1849,13 @@ static void PM_AirMove()
 	wishspeed *= scale;
 
 	// not on ground, so little effect on velocity
+#ifdef UNREALARENA
 	PM_Accelerate( wishdir, wishspeed,
 	               BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->airAcceleration );
+#else
+	PM_Accelerate( wishdir, wishspeed,
+	               BG_Class( pm->ps->stats[ STAT_CLASS ] )->airAcceleration );
+#endif
 
 	// we may have a ground plane that is very steep, even
 	// though we don't have a groundentity
@@ -1604,11 +1965,19 @@ static void PM_ClimbMove()
 	// full control, which allows them to be moved a bit
 	if ( ( pml.groundTrace.surfaceFlags & SURF_SLICK ) || pm->ps->pm_flags & PMF_TIME_KNOCKBACK )
 	{
+#ifdef UNREALARENA
 		accelerate = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->airAcceleration;
+#else
+		accelerate = BG_Class( pm->ps->stats[ STAT_CLASS ] )->airAcceleration;
+#endif
 	}
 	else
 	{
+#ifdef UNREALARENA
 		accelerate = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->acceleration;
+#else
+		accelerate = BG_Class( pm->ps->stats[ STAT_CLASS ] )->acceleration;
+#endif
 	}
 
 	PM_Accelerate( wishdir, wishspeed, accelerate );
@@ -1741,11 +2110,19 @@ static void PM_WalkMove()
 	// full control, which allows them to be moved a bit
 	if ( ( pml.groundTrace.surfaceFlags & SURF_SLICK ) || pm->ps->pm_flags & PMF_TIME_KNOCKBACK )
 	{
+#ifdef UNREALARENA
 		accelerate = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->airAcceleration;
+#else
+		accelerate = BG_Class( pm->ps->stats[ STAT_CLASS ] )->airAcceleration;
+#endif
 	}
 	else
 	{
+#ifdef UNREALARENA
 		accelerate = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->acceleration;
+#else
+		accelerate = BG_Class( pm->ps->stats[ STAT_CLASS ] )->acceleration;
+#endif
 	}
 
 	PM_Accelerate( wishdir, wishspeed, accelerate );
@@ -1841,6 +2218,15 @@ static void PM_CheckLadder()
 	vec3_t  forward, end;
 	trace_t trace;
 
+#ifndef UNREALARENA
+	//test if class can use ladders
+	if ( !BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_CANUSELADDERS ) )
+	{
+		pml.ladder = false;
+		return;
+	}
+#endif
+
 	VectorCopy( pml.forward, forward );
 	forward[ 2 ] = 0.0f;
 
@@ -1900,6 +2286,13 @@ Returns an event number appropriate for the groundsurface
 */
 static int PM_FootstepForSurface()
 {
+#ifndef UNREALARENA
+	if ( pm->ps->stats[ STAT_STATE ] & SS_CREEPSLOWED )
+	{
+		return EV_FOOTSTEP_SQUELCH;
+	}
+#endif
+
 	if ( pml.groundTrace.surfaceFlags & SURF_NOSTEPS )
 	{
 		return 0;
@@ -2167,13 +2560,20 @@ static void PM_GroundTraceMissed()
 		}
 	}
 
-	// if ( BG_ClassHasAbility( pm->ps->persistant[ PERS_TEAM ], SCA_TAKESFALLDAMAGE ) )
-	// {
-	// 	if ( pm->ps->velocity[ 2 ] < FALLING_THRESHOLD && pml.previous_velocity[ 2 ] >= FALLING_THRESHOLD )
-	// 	{
-	// 		PM_AddEvent( EV_FALLING );
-	// 	}
-	// }
+#ifdef UNREALARENA
+	if ( pm->ps->velocity[ 2 ] < FALLING_THRESHOLD && pml.previous_velocity[ 2 ] >= FALLING_THRESHOLD )
+	{
+		PM_AddEvent( EV_FALLING );
+	}
+#else
+	if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_TAKESFALLDAMAGE ) )
+	{
+		if ( pm->ps->velocity[ 2 ] < FALLING_THRESHOLD && pml.previous_velocity[ 2 ] >= FALLING_THRESHOLD )
+		{
+			PM_AddEvent( EV_FALLING );
+		}
+	}
+#endif
 
 	pm->ps->groundEntityNum = ENTITYNUM_NONE;
 	pml.groundPlane = false;
@@ -2610,6 +3010,86 @@ static void PM_GroundTrace()
 
 	static const vec3_t refNormal = { 0.0f, 0.0f, 1.0f };
 
+#ifndef UNREALARENA
+	if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) )
+	{
+		if ( pm->ps->persistant[ PERS_STATE ] & PS_WALLCLIMBINGTOGGLE )
+		{
+			//toggle wall climbing if holding crouch
+			if ( pm->cmd.upmove < 0 && !( pm->ps->pm_flags & PMF_CROUCH_HELD ) )
+			{
+				if ( !( pm->ps->stats[ STAT_STATE ] & SS_WALLCLIMBING ) )
+				{
+					pm->ps->stats[ STAT_STATE ] |= SS_WALLCLIMBING;
+				}
+				else if ( pm->ps->stats[ STAT_STATE ] & SS_WALLCLIMBING )
+				{
+					pm->ps->stats[ STAT_STATE ] &= ~SS_WALLCLIMBING;
+				}
+
+				pm->ps->pm_flags |= PMF_CROUCH_HELD;
+			}
+			else if ( pm->cmd.upmove >= 0 )
+			{
+				pm->ps->pm_flags &= ~PMF_CROUCH_HELD;
+			}
+		}
+		else
+		{
+			if ( pm->cmd.upmove < 0 )
+			{
+				pm->ps->stats[ STAT_STATE ] |= SS_WALLCLIMBING;
+			}
+			else if ( pm->cmd.upmove >= 0 )
+			{
+				pm->ps->stats[ STAT_STATE ] &= ~SS_WALLCLIMBING;
+			}
+		}
+
+		if ( pm->ps->pm_type == PM_DEAD )
+		{
+			pm->ps->stats[ STAT_STATE ] &= ~SS_WALLCLIMBING;
+		}
+
+		if ( pm->ps->stats[ STAT_STATE ] & SS_WALLCLIMBING )
+		{
+			PM_GroundClimbTrace();
+			return;
+		}
+
+		//just transitioned from ceiling to floor... apply delta correction
+		if( pm->ps->eFlags & EF_WALLCLIMB || pm->ps->eFlags & EF_WALLCLIMBCEILING)
+		{
+			vec3_t  forward, rotated, angles;
+			vec3_t  surfNormal = {0,0,-1};
+
+			if(!(pm->ps->eFlags & EF_WALLCLIMBCEILING))
+				VectorCopy(pm->ps->grapplePoint,surfNormal);
+
+			//only correct if we were on a ceiling
+			if(surfNormal[2] < 0)
+			{
+				//The actual problem is with BG_RotateAxis()
+				//The rotation applied there causes our view to turn around
+				//We correct this here
+				vec3_t xNormal;
+				AngleVectors( pm->ps->viewangles, forward, nullptr, nullptr );
+				if(pm->ps->eFlags & EF_WALLCLIMBCEILING)
+				{
+					VectorCopy(pm->ps->grapplePoint, xNormal);
+				}
+				else {
+					CrossProduct( surfNormal, refNormal, xNormal );
+					VectorNormalize( xNormal );
+				}
+				RotatePointAroundVector(rotated, xNormal, forward, 180);
+				vectoangles( rotated, angles );
+				pm->ps->delta_angles[ YAW ] -= ANGLE2SHORT( angles[ YAW ] - pm->ps->viewangles[ YAW ] );
+			}
+		}
+	}
+#endif
+
 	pm->ps->stats[ STAT_STATE ] &= ~SS_WALLCLIMBING;
 	pm->ps->eFlags &= ~( EF_WALLCLIMB | EF_WALLCLIMBCEILING );
 
@@ -2749,10 +3229,14 @@ static void PM_GroundTrace()
 
 		PM_Land();
 
-		// if ( BG_ClassHasAbility( pm->ps->persistant[ PERS_TEAM ], SCA_TAKESFALLDAMAGE ) )
-		// {
-		// 	PM_CrashLand();
-		// }
+#ifdef UNREALARENA
+		PM_CrashLand();
+#else
+		if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_TAKESFALLDAMAGE ) )
+		{
+			PM_CrashLand();
+		}
+#endif
 	}
 
 	pm->ps->groundEntityNum = trace.entityNum;
@@ -2817,9 +3301,15 @@ PM_SetViewheight
 */
 static void PM_SetViewheight()
 {
+#ifdef UNREALARENA
 	pm->ps->viewheight = ( pm->ps->pm_flags & PMF_DUCKED )
 	                     ? BG_ClassModelConfig( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->crouchViewheight
 	                     : BG_ClassModelConfig( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->viewheight;
+#else
+	pm->ps->viewheight = ( pm->ps->pm_flags & PMF_DUCKED )
+	                     ? BG_ClassModelConfig( pm->ps->stats[ STAT_CLASS ] )->crouchViewheight
+	                     : BG_ClassModelConfig( pm->ps->stats[ STAT_CLASS ] )->viewheight;
+#endif
 }
 
 /*
@@ -2834,7 +3324,11 @@ static void PM_CheckDuck()
 	trace_t trace;
 	vec3_t  PCmins, PCmaxs, PCcmaxs;
 
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) pm->ps->persistant[ PERS_TEAM ], PCmins, PCmaxs, PCcmaxs, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( pm->ps->stats[ STAT_CLASS ], PCmins, PCmaxs, PCcmaxs, nullptr, nullptr );
+#endif
 
 	pm->mins[ 0 ] = PCmins[ 0 ];
 	pm->mins[ 1 ] = PCmins[ 1 ];
@@ -2903,8 +3397,23 @@ static void PM_Footsteps()
 	// calculate speed and cycle to be used for
 	// all cyclic walking effects
 	//
+#ifdef UNREALARENA
+	pm->xyspeed = sqrt( pm->ps->velocity[ 0 ] * pm->ps->velocity[ 0 ]
+	                    + pm->ps->velocity[ 1 ] * pm->ps->velocity[ 1 ] );
+#else
+	if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) && ( pml.groundPlane ) )
+	{
+		// FIXME: yes yes i know this is wrong
+		pm->xyspeed = sqrt( pm->ps->velocity[ 0 ] * pm->ps->velocity[ 0 ]
+		                    + pm->ps->velocity[ 1 ] * pm->ps->velocity[ 1 ]
+		                    + pm->ps->velocity[ 2 ] * pm->ps->velocity[ 2 ] );
+	}
+	else
+	{
 		pm->xyspeed = sqrt( pm->ps->velocity[ 0 ] * pm->ps->velocity[ 0 ]
 		                    + pm->ps->velocity[ 1 ] * pm->ps->velocity[ 1 ] );
+	}
+#endif
 
 	if ( pm->ps->groundEntityNum == ENTITYNUM_NONE )
 	{
@@ -3119,11 +3628,19 @@ static void PM_Footsteps()
 		}
 	}
 
+#ifdef UNREALARENA
 	bobmove *= BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->bobCycle;
+#else
+	bobmove *= BG_Class( pm->ps->stats[ STAT_CLASS ] )->bobCycle;
+#endif
 
 	if ( pm->ps->stats[ STAT_STATE ] & SS_SPEEDBOOST && pm->ps->groundEntityNum != ENTITYNUM_NONE )
 	{
+#ifdef UNREALARENA
 		bobmove *= BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->sprintMod;
+#else
+		bobmove *= BG_Class( pm->ps->stats[ STAT_CLASS ] )->sprintMod;
+#endif
 	}
 
 	// check for footstep / splash sounds
@@ -3243,6 +3760,11 @@ static void PM_BeginWeaponChange( int weapon )
 	pm->ps->weaponstate = WEAPON_DROPPING;
 	pm->ps->weaponTime += 200;
 	pm->ps->persistant[ PERS_NEWWEAPON ] = weapon;
+
+#ifndef UNREALARENA
+	//reset build weapon
+	pm->ps->stats[ STAT_BUILDABLE ] = BA_NONE;
+#endif
 
 	if ( !( pm->ps->persistant[ PERS_STATE ] & PS_NONSEGMODEL ) )
 	{
@@ -4241,6 +4763,64 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 	}
 }
 
+#ifndef UNREALARENA
+static void PM_HumanStaminaEffects()
+{
+	const classAttributes_t *ca;
+	int      *stats;
+	bool crouching, stopped, walking;
+
+	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS )
+	{
+		return;
+	}
+
+	stats     = pm->ps->stats;
+	ca        = BG_Class( stats[ STAT_CLASS ] );
+	stopped   = ( pm->cmd.forwardmove == 0 && pm->cmd.rightmove == 0 );
+	crouching = ( pm->ps->pm_flags & PMF_DUCKED );
+	walking   = usercmdButtonPressed( pm->cmd.buttons, BUTTON_WALKING );
+
+	// Use/Restore stamina
+	if ( stats[ STAT_STATE2 ] & SS2_JETPACK_WARM )
+	{
+		stats[ STAT_STAMINA ] += ( int )( pml.msec * ca->staminaJogRestore * 0.001f );
+	}
+	else if ( stopped )
+	{
+		stats[ STAT_STAMINA ] += ( int )( pml.msec * ca->staminaStopRestore * 0.001f );
+	}
+	else if ( ( stats[ STAT_STATE ] & SS_SPEEDBOOST ) && !walking && !crouching ) // walk/crouch overrides sprint
+	{
+		stats[ STAT_STAMINA ] -= ( int )( pml.msec * ca->staminaSprintCost * 0.001f );
+	}
+	else if ( walking || crouching )
+	{
+		stats[ STAT_STAMINA ] += ( int )( pml.msec * ca->staminaWalkRestore * 0.001f );
+	}
+	else // assume jogging
+	{
+		stats[ STAT_STAMINA ] += ( int )( pml.msec * ca->staminaJogRestore * 0.001f );
+	}
+
+	// Remove stamina based on status effects
+	if ( stats[ STAT_STATE2 ] & SS2_LEVEL1SLOW )
+	{
+		stats[ STAT_STAMINA ] -= pml.msec * STAMINA_LEVEL1SLOW_TAKE;
+	}
+
+	// Check stamina limits
+	if ( stats[ STAT_STAMINA ] > STAMINA_MAX )
+	{
+		stats[ STAT_STAMINA ] = STAMINA_MAX;
+	}
+	else if ( stats[ STAT_STAMINA ] < 0 )
+	{
+		stats[ STAT_STAMINA ] = 0;
+	}
+}
+#endif
+
 /*
 ================
 PmoveSingle
@@ -4442,7 +5022,19 @@ void PmoveSingle( pmove_t *pmove )
 	}
 	else if ( pml.walking )
 	{
+#ifdef UNREALARENA
+		PM_WalkMove();
+#else
+		if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) &&
+		     ( pm->ps->stats[ STAT_STATE ] & SS_WALLCLIMBING ) )
+		{
+			PM_ClimbMove(); // walking on any surface
+		}
+		else
+		{
 			PM_WalkMove(); // walking on ground
+		}
+#endif
 	}
 	else
 	{
@@ -4451,6 +5043,11 @@ void PmoveSingle( pmove_t *pmove )
 
 	// restore jetpack fuel if possible
 	PM_CheckJetpackRestoreFuel();
+
+#ifndef UNREALARENA
+	// restore or remove stamina
+	PM_HumanStaminaEffects();
+#endif
 
 	PM_Animate();
 

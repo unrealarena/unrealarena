@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -25,8 +25,13 @@
 #define MAX_DAMAGE_REGIONS     16
 
 // damage region data
+#ifdef UNREALARENA
 damageRegion_t g_damageRegions[ NUM_TEAMS ][ MAX_DAMAGE_REGIONS ];
 int            g_numDamageRegions[ NUM_TEAMS ];
+#else
+damageRegion_t g_damageRegions[ PCL_NUM_CLASSES ][ MAX_DAMAGE_REGIONS ];
+int            g_numDamageRegions[ PCL_NUM_CLASSES ];
+#endif
 
 // these are just for logging, the client prints its own messages
 // TODO: Centralize to keep in sync (e.g. bg_mod.c)
@@ -45,8 +50,16 @@ static const char *const modNames[] =
 	"MOD_LCANNON_SPLASH",
 	"MOD_FLAMER",
 	"MOD_FLAMER_SPLASH",
+#ifndef UNREALARENA
+	"MOD_BURN",
+#endif
 	"MOD_GRENADE",
 	"MOD_FIREBOMB",
+#ifdef UNREALARENA
+	"MOD_WEIGHT",
+#else
+	"MOD_WEIGHT_H",
+#endif
 	"MOD_WATER",
 	"MOD_SLIME",
 	"MOD_LAVA",
@@ -56,11 +69,37 @@ static const char *const modNames[] =
 	"MOD_SUICIDE",
 	"MOD_TARGET_LASER",
 	"MOD_TRIGGER_HURT",
-	"MOD_WEIGHT",
 
+#ifndef UNREALARENA
+	"MOD_ABUILDER_CLAW",
+	"MOD_LEVEL0_BITE",
+	"MOD_LEVEL1_CLAW",
+	"MOD_LEVEL3_CLAW",
+	"MOD_LEVEL3_POUNCE",
+	"MOD_LEVEL3_BOUNCEBALL",
+	"MOD_LEVEL2_CLAW",
+	"MOD_LEVEL2_ZAP",
+	"MOD_LEVEL4_CLAW",
+	"MOD_LEVEL4_TRAMPLE",
+	"MOD_WEIGHT_A",
+
+	"MOD_SLOWBLOB",
 	"MOD_POISON",
+	"MOD_SWARM",
 
-	"MOD_REPLACE"
+	"MOD_HSPAWN",
+	"MOD_ROCKETPOD",
+	"MOD_MGTURRET",
+	"MOD_REACTOR",
+
+	"MOD_ASPAWN",
+	"MOD_ATUBE",
+	"MOD_SPIKER",
+	"MOD_OVERMIND",
+	"MOD_DECONSTRUCT",
+	"MOD_REPLACE",
+	"MOD_NOCREEP"
+#endif
 };
 
 /**
@@ -175,13 +214,30 @@ void G_RewardAttackers( gentity_t *self )
 	gentity_t *player;
 	team_t    ownTeam, playerTeam;
 
-	// Only reward killing players
+	// Only reward killing players and buildables
 	if ( self->client )
 	{
 		ownTeam   = (team_t) self->client->pers.team;
 		maxHealth = self->client->ps.stats[ STAT_MAX_HEALTH ];
 		value     = BG_GetValueOfPlayer( &self->client->ps );
 	}
+#ifndef UNREALARENA
+	else if ( self->s.eType == ET_BUILDABLE )
+	{
+		ownTeam   = (team_t) self->buildableTeam;
+		maxHealth = BG_Buildable( self->s.modelindex )->health;
+		value     = BG_IsMainStructure( &self->s )
+		            ? MAIN_STRUCTURE_MOMENTUM_VALUE
+		            : BG_Buildable( self->s.modelindex )->buildPoints;
+
+		// Give partial credits for buildables in construction
+		if ( !self->spawned )
+		{
+			value *= ( level.time - self->creationTime ) /
+			         ( float )BG_Buildable( self->s.modelindex )->buildTime;
+		}
+	}
+#endif
 	else
 	{
 		return;
@@ -234,6 +290,7 @@ void G_RewardAttackers( gentity_t *self )
 		share  = damageShare / ( float )maxHealth;
 		reward = value * share;
 
+#ifdef UNREALARENA
 		// Add score
 		G_AddCreditsToScore( player, ( int )reward );
 
@@ -242,6 +299,27 @@ void G_RewardAttackers( gentity_t *self )
 
 		// Add momentum
 		G_AddMomentumForKillingStep( self, player, share );
+#else
+		if ( self->s.eType == ET_BUILDABLE )
+		{
+			// Add score
+			G_AddMomentumToScore( player, reward );
+
+			// Add momentum
+			G_AddMomentumForDestroyingStep( self, player, reward );
+		}
+		else
+		{
+			// Add score
+			G_AddCreditsToScore( player, ( int )reward );
+
+			// Add credits
+			G_AddCreditToClient( player->client, ( short )reward, true );
+
+			// Add momentum
+			G_AddMomentumForKillingStep( self, player, share );
+		}
+#endif
 	}
 
 	// Complete momentum modification
@@ -272,6 +350,9 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 	}
 
 	self->client->ps.pm_type = PM_DEAD;
+#ifndef UNREALARENA
+	self->suicideTime = 0;
+#endif
 
 	if ( attacker )
 	{
@@ -353,13 +434,46 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 
 	if ( attacker && attacker->client )
 	{
+#ifndef UNREALARENA
+		if ( ( attacker == self || G_OnSameTeam( self, attacker ) ) )
+		{
+			//punish team kills and suicides
+			if ( attacker->client->pers.team == TEAM_ALIENS )
+			{
+				G_AddCreditToClient( attacker->client, -ALIEN_TK_SUICIDE_PENALTY, true );
+				G_AddCreditsToScore( attacker, -ALIEN_TK_SUICIDE_PENALTY );
+			}
+			else if ( attacker->client->pers.team == TEAM_HUMANS )
+			{
+				G_AddCreditToClient( attacker->client, -HUMAN_TK_SUICIDE_PENALTY, true );
+				G_AddCreditsToScore( attacker, -HUMAN_TK_SUICIDE_PENALTY );
+			}
+		}
+#endif
+#ifdef UNREALARENA
 		if ( g_showKillerHP.integer )
+#else
+		else if ( g_showKillerHP.integer )
+#endif
 		{
 			trap_SendServerCommand( self - g_entities, va( "print_tr %s %s %3i", QQ( N_("Your killer, $1$^7, had $2$ HP.\n") ),
 			                        Quote( killerName ),
 			                        attacker->health ) );
 		}
 	}
+#ifndef UNREALARENA
+	else if ( attacker->s.eType != ET_BUILDABLE )
+	{
+		if ( self->client->pers.team == TEAM_ALIENS )
+		{
+			G_AddCreditsToScore( self, -ALIEN_TK_SUICIDE_PENALTY );
+		}
+		else if ( self->client->pers.team == TEAM_HUMANS )
+		{
+			G_AddCreditsToScore( self, -HUMAN_TK_SUICIDE_PENALTY );
+		}
+	}
+#endif
 
 	// give credits for killing this player
 	G_RewardAttackers( self );
@@ -650,14 +764,26 @@ static int ParseDmgScript( damageRegion_t *regions, const char *buf )
 	return count;
 }
 
+#ifdef UNREALARENA
 float G_GetNonLocDamageMod( team_t team )
+#else
+float G_GetNonLocDamageMod( class_t pcl )
+#endif
 {
 	int            regionNum;
 	damageRegion_t *region;
 
+#ifdef UNREALARENA
 	for ( regionNum = 0; regionNum < g_numDamageRegions[ team ]; regionNum++ )
+#else
+	for ( regionNum = 0; regionNum < g_numDamageRegions[ pcl ]; regionNum++ )
+#endif
 	{
+#ifdef UNREALARENA
 		region = &g_damageRegions[ team ][ regionNum ];
+#else
+		region = &g_damageRegions[ pcl ][ regionNum ];
+#endif
 
 		if ( !region->nonlocational )
 		{
@@ -666,9 +792,15 @@ float G_GetNonLocDamageMod( team_t team )
 
 		if ( g_debugDamage.integer > 1 )
 		{
+#ifdef UNREALARENA
 			Com_Printf( "GetNonLocDamageModifier( team = %s ): "
 			            S_COLOR_GREEN "FOUND:" S_COLOR_WHITE " %.2f\n",
 			            BG_Class( team )->name, region->modifier );
+#else
+			Com_Printf( "GetNonLocDamageModifier( pcl = %s ): "
+			            S_COLOR_GREEN "FOUND:" S_COLOR_WHITE " %.2f\n",
+			            BG_Class( pcl )->name, region->modifier );
+#endif
 		}
 
 		return region->modifier;
@@ -676,15 +808,25 @@ float G_GetNonLocDamageMod( team_t team )
 
 	if ( g_debugDamage.integer > 1 )
 	{
+#ifdef UNREALARENA
 		Com_Printf( "GetNonLocDamageModifier( team = %s ): "
 		            S_COLOR_YELLOW "NOT FOUND:" S_COLOR_WHITE " %.2f.\n",
 		            BG_Class( team )->name, 1.0f );
+#else
+		Com_Printf( "GetNonLocDamageModifier( pcl = %s ): "
+		            S_COLOR_YELLOW "NOT FOUND:" S_COLOR_WHITE " %.2f.\n",
+		            BG_Class( pcl )->name, 1.0f );
+#endif
 	}
 
 	return 1.0f;
 }
 
+#ifdef UNREALARENA
 float G_GetPointDamageMod( gentity_t *target, team_t team, float angle, float height )
+#else
+float G_GetPointDamageMod( gentity_t *target, class_t pcl, float angle, float height )
+#endif
 {
 	int            regionNum;
 	damageRegion_t *region;
@@ -697,9 +839,17 @@ float G_GetPointDamageMod( gentity_t *target, team_t team, float angle, float he
 
 	crouching = ( target->client->ps.pm_flags & PMF_DUCKED );
 
+#ifdef UNREALARENA
 	for ( regionNum = 0; regionNum < g_numDamageRegions[ team ]; regionNum++ )
+#else
+	for ( regionNum = 0; regionNum < g_numDamageRegions[ pcl ]; regionNum++ )
+#endif
 	{
+#ifdef UNREALARENA
 		region = &g_damageRegions[ team ][ regionNum ];
+#else
+		region = &g_damageRegions[ pcl ][ regionNum ];
+#endif
 
 		// ignore nonlocational
 		if ( region->nonlocational )
@@ -728,9 +878,15 @@ float G_GetPointDamageMod( gentity_t *target, team_t team, float angle, float he
 
 		if ( g_debugDamage.integer > 1 )
 		{
+#ifdef UNREALARENA
 			G_Printf( "GetPointDamageModifier( team = %s, angle = %.2f, height = %.2f ): "
 			          S_COLOR_GREEN "FOUND:" S_COLOR_WHITE " %.2f (%s)\n",
 			          BG_Class( team )->name, angle, height, region->modifier, region->name );
+#else
+			G_Printf( "GetPointDamageModifier( pcl = %s, angle = %.2f, height = %.2f ): "
+			          S_COLOR_GREEN "FOUND:" S_COLOR_WHITE " %.2f (%s)\n",
+			          BG_Class( pcl )->name, angle, height, region->modifier, region->name );
+#endif
 		}
 
 		return region->modifier;
@@ -738,15 +894,25 @@ float G_GetPointDamageMod( gentity_t *target, team_t team, float angle, float he
 
 	if ( g_debugDamage.integer > 1 )
 	{
+#ifdef UNREALARENA
 		G_Printf( "GetPointDamageModifier( team = %s, angle = %.2f, height = %.2f ): "
 		          S_COLOR_YELLOW "NOT FOUND:" S_COLOR_WHITE " %.2f\n",
 		          BG_Class( team )->name, angle, height, 1.0f );
+#else
+		G_Printf( "GetPointDamageModifier( pcl = %s, angle = %.2f, height = %.2f ): "
+		          S_COLOR_YELLOW "NOT FOUND:" S_COLOR_WHITE " %.2f\n",
+		          BG_Class( pcl )->name, angle, height, 1.0f );
+#endif
 	}
 
 	return 1.0f;
 }
 
+#ifdef UNREALARENA
 static float CalcDamageModifier( vec3_t point, gentity_t *target, team_t team, int damageFlags )
+#else
+static float CalcDamageModifier( vec3_t point, gentity_t *target, class_t pcl, int damageFlags )
+#endif
 {
 	vec3_t targOrigin, bulletPath, bulletAngle, pMINUSfloor, floor, normal;
 	float  clientHeight, hitRelative, hitRatio, modifier;
@@ -755,7 +921,11 @@ static float CalcDamageModifier( vec3_t point, gentity_t *target, team_t team, i
 	// handle nonlocational damage
 	if ( damageFlags & DAMAGE_NO_LOCDAMAGE )
 	{
+#ifdef UNREALARENA
 		return G_GetNonLocDamageMod( team );
+#else
+		return G_GetNonLocDamageMod( pcl );
+#endif
 	}
 
 	// need a valid point and target client
@@ -806,7 +976,11 @@ static float CalcDamageModifier( vec3_t point, gentity_t *target, team_t team, i
 	hitRotation = AngleNormalize360( target->client->ps.viewangles[ YAW ] - bulletAngle[ YAW ] );
 
 	// Get damage region modifier
+#ifdef UNREALARENA
 	modifier = G_GetPointDamageMod( target, team, hitRotation, hitRatio );
+#else
+	modifier = G_GetPointDamageMod( target, pcl, hitRotation, hitRatio );
+#endif
 
 	return modifier;
 }
@@ -820,9 +994,17 @@ void G_InitDamageLocations()
 	fileHandle_t fileHandle;
 	char         buffer[ MAX_DAMAGE_REGION_TEXT ];
 
-	for ( i = 1; i < NUM_TEAMS; i++ )
+#ifdef UNREALARENA
+	for ( i = TEAM_NONE + 1; i < NUM_TEAMS; i++ )
+#else
+	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+#endif
 	{
+#ifdef UNREALARENA
 		modelName = BG_ClassModelConfig( ( team_t ) i )->modelName;
+#else
+		modelName = BG_ClassModelConfig( i )->modelName;
+#endif
 		Com_sprintf( filename, sizeof( filename ), "configs/classes/%s.locdamage.cfg", modelName );
 
 		len = trap_FS_FOpenFile( filename, &fileHandle, FS_READ );
@@ -909,7 +1091,11 @@ void G_KnockbackByDir( gentity_t *target, const vec3_t direction, float strength
 		return;
 	}
 
+#ifdef UNREALARENA
 	ca = BG_Class( ( team_t ) target->client->ps.persistant[ PERS_TEAM ] );
+#else
+	ca = BG_Class( target->client->ps.stats[ STAT_CLASS ] );
+#endif
 
 	// normalize direction
 	VectorCopy( direction, dir );
@@ -1071,7 +1257,49 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 			{
 				return;
 			}
+
+#ifndef UNREALARENA
+			// don't do friendly damage on movement attacks
+			switch ( mod )
+			{
+				case MOD_LEVEL3_POUNCE:
+				case MOD_LEVEL4_TRAMPLE:
+					return;
+
+				default:
+					break;
+			}
+
+			// if dretchpunt is enabled and this is a dretch, do dretchpunt instead of damage
+			if ( g_dretchPunt.integer && target->client && target->client->ps.stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL0 )
+			{
+				vec3_t dir, push;
+
+				VectorSubtract( target->r.currentOrigin, attacker->r.currentOrigin, dir );
+				VectorNormalizeFast( dir );
+				VectorScale( dir, ( damage * 10.0f ), push );
+				push[ 2 ] = 64.0f;
+
+				VectorAdd( target->client->ps.velocity, push, target->client->ps.velocity );
+
+				return;
+			}
+#endif
 		}
+
+#ifndef UNREALARENA
+		// for buildables, never protect from damage dealt by building actions
+		if ( target->s.eType == ET_BUILDABLE && attacker->client &&
+		     mod != MOD_DECONSTRUCT && mod != MOD_SUICIDE &&
+		     mod != MOD_REPLACE     && mod != MOD_NOCREEP )
+		{
+			// check for protection from friendly buildable damage
+			if ( G_OnSameTeam( target, attacker ) && !g_friendlyBuildableFire.integer )
+			{
+				return;
+			}
+		}
+#endif
 	}
 
 	// update combat timers
@@ -1100,14 +1328,42 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 		}
 
 		// drain jetpack fuel
+#ifndef UNREALARENA
+		client->ps.stats[ STAT_FUEL ] -= damage * JETPACK_FUEL_PER_DMG;
+#endif
 		if ( client->ps.stats[ STAT_FUEL ] < 0 )
 		{
 			client->ps.stats[ STAT_FUEL ] = 0;
 		}
 
 		// apply damage modifier
+#ifdef UNREALARENA
 		modifier = CalcDamageModifier( point, target, ( team_t ) client->ps.persistant[ PERS_TEAM ], damageFlags );
+#else
+		modifier = CalcDamageModifier( point, target, (class_t) client->ps.stats[ STAT_CLASS ], damageFlags );
+#endif
 		take = ( int )( ( float )damage * modifier + 0.5f );
+
+#ifndef UNREALARENA
+		// if boosted poison every attack
+		if ( attacker->client &&
+		     ( attacker->client->ps.stats[ STAT_STATE ] & SS_BOOSTED ) &&
+		     target->client->pers.team == TEAM_HUMANS &&
+		     target->client->poisonImmunityTime < level.time )
+		{
+			switch ( mod )
+			{
+				case MOD_POISON:
+				case MOD_LEVEL2_ZAP:
+					break;
+
+				default:
+					target->client->ps.stats[ STAT_STATE ] |= SS_POISONED;
+					target->client->lastPoisonTime   = level.time;
+					target->client->lastPoisonClient = attacker;
+			}
+		}
+#endif
 	}
 	else
 	{
@@ -1137,6 +1393,12 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 
 	target->lastDamageTime = level.time;
 
+#ifndef UNREALARENA
+	// TODO: gentity_t->nextRegenTime only affects alien clients, remove it and use lastDamageTime
+	// Optionally (if needed for some reason), move into client struct and add "Alien" to name
+	target->nextRegenTime = level.time + ALIEN_CLIENT_REGEN_WAIT;
+#endif
+
 	// handle non-self damage
 	if ( attacker != target )
 	{
@@ -1159,6 +1421,14 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 			// notify the attacker of a hit
 			NotifyClientOfHit( attacker );
 		}
+
+#ifndef UNREALARENA
+		// update buildable stats
+		if ( attacker->s.eType == ET_BUILDABLE && attacker->health > 0 )
+		{
+			attacker->buildableStatsTotal += loss;
+		}
+#endif
 	}
 
 	// handle dying target
@@ -1181,6 +1451,14 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 		{
 			target->die( target, inflictor, attacker, mod );
 		}
+
+#ifndef UNREALARENA
+		// update buildable stats
+		if ( attacker->s.eType == ET_BUILDABLE && attacker->health > 0 )
+		{
+			attacker->buildableStatsCount++;
+		}
+#endif
 
 		// for non-client victims, fire ON_DIE event
 		if( !target->client )
@@ -1437,3 +1715,86 @@ bool G_RadiusDamage( vec3_t origin, gentity_t *attacker, float damage,
 
 	return hitSomething;
 }
+
+#ifndef UNREALARENA
+/**
+ * @brief Log deconstruct/destroy events
+ * @param self
+ * @param actor
+ * @param mod
+ */
+void G_LogDestruction( gentity_t *self, gentity_t *actor, int mod )
+{
+	buildFate_t fate;
+
+	switch ( mod )
+	{
+		case MOD_DECONSTRUCT:
+			fate = BF_DECONSTRUCT;
+			break;
+
+		case MOD_REPLACE:
+			fate = BF_REPLACE;
+			break;
+
+		case MOD_NOCREEP:
+			fate = ( actor->client ) ? BF_UNPOWER : BF_AUTO;
+			break;
+
+		default:
+			if ( actor->client )
+			{
+				if ( actor->client->pers.team ==
+				     BG_Buildable( self->s.modelindex )->team )
+				{
+					fate = BF_TEAMKILL;
+				}
+				else
+				{
+					fate = BF_DESTROY;
+				}
+			}
+			else
+			{
+				fate = BF_AUTO;
+			}
+
+			break;
+	}
+
+	G_BuildLogAuto( actor, self, fate );
+
+	// don't log when marked structures are removed
+	if ( mod == MOD_REPLACE )
+	{
+		return;
+	}
+
+	G_LogPrintf( S_COLOR_YELLOW "Deconstruct: %d %d %s %s: %s %s by %s\n",
+	             ( int )( actor - g_entities ),
+	             ( int )( self - g_entities ),
+	             BG_Buildable( self->s.modelindex )->name,
+	             modNames[ mod ],
+	             BG_Buildable( self->s.modelindex )->humanName,
+	             mod == MOD_DECONSTRUCT ? "deconstructed" : "destroyed",
+	             actor->client ? actor->client->pers.netname : "<world>" );
+
+	// No-power deaths for humans come after some minutes and it's confusing
+	//  when the messages appear attributed to the deconner. Just don't print them.
+	if ( mod == MOD_NOCREEP && actor->client &&
+	     actor->client->pers.team == TEAM_HUMANS )
+	{
+		return;
+	}
+
+	if ( actor->client && actor->client->pers.team ==
+	     BG_Buildable( self->s.modelindex )->team )
+	{
+		G_TeamCommand( (team_t) actor->client->pers.team,
+		               va( "print_tr %s %s %s", mod == MOD_DECONSTRUCT ? QQ( N_("$1$ ^3DECONSTRUCTED^7 by $2$\n") ) :
+						   QQ( N_("$1$ ^3DESTROYED^7 by $2$\n") ),
+		                   Quote( BG_Buildable( self->s.modelindex )->humanName ),
+		                   Quote( actor->client->pers.netname ) ) );
+	}
+}
+#endif

@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -290,9 +290,15 @@ private:
 class ClipsHudElement : public TextHudElement
 {
 public:
+#ifdef UNREALARENA
 	ClipsHudElement( const Rocket::Core::String& tag ) :
 		TextHudElement( tag, ELEMENT_U ),
 		clips( 0 ) {}
+#else
+	ClipsHudElement( const Rocket::Core::String& tag ) :
+		TextHudElement( tag, ELEMENT_HUMANS ),
+		clips( 0 ) {}
+#endif
 
 	virtual void DoOnRender()
 	{
@@ -845,9 +851,15 @@ private:
 class CreditsValueElement : public TextHudElement
 {
 public:
+#ifdef UNREALARENA
 	CreditsValueElement( const Rocket::Core::String& tag ) :
 			TextHudElement( tag, ELEMENT_U ),
 			credits( -1 ) {}
+#else
+	CreditsValueElement( const Rocket::Core::String& tag ) :
+			TextHudElement( tag, ELEMENT_HUMANS ),
+			credits( -1 ) {}
+#endif
 
 	void DoOnUpdate()
 	{
@@ -867,9 +879,15 @@ private:
 class EvosValueElement : public TextHudElement
 {
 public:
+#ifdef UNREALARENA
 	EvosValueElement( const Rocket::Core::String& tag ) :
 			TextHudElement( tag, ELEMENT_Q ),
 			evos( -1 ) {}
+#else
+	EvosValueElement( const Rocket::Core::String& tag ) :
+			TextHudElement( tag, ELEMENT_ALIENS ),
+			evos( -1 ) {}
+#endif
 
 	void DoOnUpdate()
 	{
@@ -888,6 +906,32 @@ public:
 private:
 	float evos;
 };
+
+#ifndef UNREALARENA
+class StaminaValueElement : public TextHudElement
+{
+public:
+	StaminaValueElement( const Rocket::Core::String& tag ) :
+	TextHudElement( tag, ELEMENT_HUMANS ),
+	stamina( -1 ) {}
+
+	void DoOnUpdate()
+	{
+		playerState_t *ps = &cg.snap->ps;
+		float         value = ps->stats[ STAT_STAMINA ];
+
+		if ( stamina != value )
+		{
+			stamina = value;
+			int percent = 100 * ( stamina / ( float ) STAMINA_MAX );
+			SetText( va( "%d", percent ) );
+		}
+	}
+
+private:
+	float stamina;
+};
+#endif
 
 class WeaponIconElement : public HudElement
 {
@@ -950,9 +994,15 @@ private:
 class WallwalkElement : public HudElement
 {
 public:
+#ifdef UNREALARENA
 	WallwalkElement( const Rocket::Core::String& tag ) :
 			HudElement( tag, ELEMENT_Q ),
 			isActive( false ) {}
+#else
+	WallwalkElement( const Rocket::Core::String& tag ) :
+			HudElement( tag, ELEMENT_ALIENS ),
+			isActive( false ) {}
+#endif
 
 	void DoOnUpdate()
 	{
@@ -974,6 +1024,73 @@ private:
 
 	bool isActive;
 };
+
+#ifndef UNREALARENA
+class UsableBuildableElement : public HudElement
+{
+public:
+	UsableBuildableElement( const Rocket::Core::String& tag ) :
+			HudElement( tag, ELEMENT_HUMANS ),
+			display( "block" ) {}
+
+	void OnPropertyChange( const Rocket::Core::PropertyNameList& changed_properties )
+	{
+		HudElement::OnPropertyChange( changed_properties );
+		if ( display.Empty() && changed_properties.find( "display" ) != changed_properties.end() )
+		{
+			display = GetProperty<Rocket::Core::String>( "display" );
+		}
+	}
+
+	void DoOnUpdate()
+	{
+		vec3_t        view, point;
+		trace_t       trace;
+		entityState_t *es;
+
+		AngleVectors( cg.refdefViewAngles, view, nullptr, nullptr );
+		VectorMA( cg.refdef.vieworg, 64, view, point );
+		CG_Trace( &trace, cg.refdef.vieworg, nullptr, nullptr,
+				  point, cg.predictedPlayerState.clientNum, MASK_SHOT, 0 );
+
+		es = &cg_entities[ trace.entityNum ].currentState;
+
+		if ( es->eType == ET_BUILDABLE && BG_Buildable( es->modelindex )->usable &&
+			cg.predictedPlayerState.persistant[ PERS_TEAM ] == BG_Buildable( es->modelindex )->team )
+		{
+			//hack to prevent showing the usable buildable when you aren't carrying an energy weapon
+			if ( ( es->modelindex == BA_H_REACTOR || es->modelindex == BA_H_REPEATER ) &&
+				( !BG_Weapon( cg.snap->ps.weapon )->usesEnergy ||
+				BG_Weapon( cg.snap->ps.weapon )->infiniteAmmo ) )
+			{
+				cg.nearUsableBuildable = BA_NONE;
+				SetProperty( "display", "none" );
+				return;
+			}
+
+			if ( IsVisible() )
+			{
+				return;
+			}
+
+			SetProperty( "display", display );
+			cg.nearUsableBuildable = es->modelindex;
+		}
+		else
+		{
+			if ( IsVisible() )
+			{
+				// Clear the old image if there was one.
+				SetProperty( "display", "none" );
+				cg.nearUsableBuildable = BA_NONE;
+			}
+		}
+	}
+
+private:
+	Rocket::Core::String display;
+};
+#endif
 
 class LocationElement : public HudElement
 {
@@ -1421,6 +1538,24 @@ static void CG_ScanForCrosshairEntity()
 	if ( trace.entityNum >= MAX_CLIENTS )
 	{
 		// we have a non-client entity
+
+#ifndef UNREALARENA
+		// set friend/foe if it's a living buildable
+		if ( targetState->eType == ET_BUILDABLE && targetState->generic1 > 0 )
+		{
+			targetTeam = BG_Buildable( targetState->modelindex )->team;
+
+			if ( targetTeam == ownTeam && ownTeam != TEAM_NONE )
+			{
+				cg.crosshairFriend = true;
+			}
+
+			else if ( targetTeam != TEAM_NONE )
+			{
+				cg.crosshairFoe = true;
+			}
+		}
+#endif
 
 		// set more stuff if requested
 		if ( cg_drawEntityInfo.integer && targetState->eType )
@@ -1987,7 +2122,11 @@ void CG_Rocket_DrawPlayerHealthCross()
 
 	else if ( cg.snap->ps.stats[ STAT_STATE ] & SS_HEALING_4X )
 	{
+#ifdef UNREALARENA
 		if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_Q )
+#else
+		if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+#endif
 		{
 			shader = cgs.media.healthCross2X;
 		}
@@ -2006,8 +2145,13 @@ void CG_Rocket_DrawPlayerHealthCross()
 	// Pick the alpha value
 	Vector4Copy( ref_color, color );
 
+#ifdef UNREALARENA
 	if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_U &&
 			cg.snap->ps.stats[ STAT_HEALTH ] < 10 )
+#else
+	if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_HUMANS &&
+			cg.snap->ps.stats[ STAT_HEALTH ] < 10 )
+#endif
 	{
 		color[ 0 ] = 1.0f;
 		color[ 1 ] = color[ 2 ] = 0.0f;
@@ -2058,6 +2202,30 @@ void CG_Rocket_DrawPlayerHealthCross()
 	trap_R_SetColor( nullptr );
 
 }
+
+#ifndef UNREALARENA
+void CG_Rocket_DrawAlienBarbs()
+{
+	int numBarbs = cg.snap->ps.ammo;
+	char base[ MAX_STRING_CHARS ];
+	char rml[ MAX_STRING_CHARS ] = { 0 };
+
+	if ( !numBarbs )
+	{
+		Rocket_SetInnerRML( "", 0 );
+		return;
+	}
+
+	Com_sprintf( base, sizeof( base ), "<img class='barbs' src='%s' />", CG_Rocket_GetAttribute( "src" ) );
+
+	for ( ; numBarbs > 0; numBarbs-- )
+	{
+		Q_strcat( rml, sizeof( rml ), base );
+	}
+
+	Rocket_SetInnerRML( rml, 0 );
+}
+#endif
 
 /*
 ============
@@ -2547,12 +2715,14 @@ void CG_Rocket_DrawTutorial()
 	Rocket_SetInnerRML( CG_TutorialText(), RP_EMOTICONS );
 }
 
+#ifndef UNREALARENA
 void CG_Rocket_DrawStaminaBolt()
 {
 	bool  activate = cg.snap->ps.stats[ STAT_STATE ] & SS_SPEEDBOOST;
 	Rocket_SetClass( "sprint", activate );
 	Rocket_SetClass( "walk", !activate );
 }
+#endif
 
 void CG_Rocket_DrawChatType()
 {
@@ -2761,6 +2931,14 @@ static INLINE qhandle_t CG_GetUnlockableIcon( int num )
 		case UNLT_UPGRADE:
 			return cg_upgrades[ index ].upgradeIcon;
 
+#ifndef UNREALARENA
+		case UNLT_BUILDABLE:
+			return cg_buildables[ index ].buildableIcon;
+
+		case UNLT_CLASS:
+			return cg_classes[ index ].classIcon;
+#endif
+
         default:
             return 0;
 	}
@@ -2959,6 +3137,106 @@ static void CG_Rocket_DrawTeamVote()
 	CG_Rocket_DrawVote_internal( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] );
 }
 
+#ifndef UNREALARENA
+static void CG_Rocket_DrawSpawnQueuePosition()
+{
+	int    position;
+	const char *s;
+
+	if ( !( cg.snap->ps.pm_flags & PMF_QUEUED ) )
+	{
+		Rocket_SetInnerRML( "", 0 );
+		return;
+	}
+
+	position = cg.snap->ps.persistant[ PERS_SPAWNQUEUE ] >> 8;
+
+	if ( position < 1 )
+	{
+		Rocket_SetInnerRML( "", 0 );
+		return;
+	}
+
+	if ( position == 1 )
+	{
+		s = va( _( "You are at the front of the spawn queue" ) );
+	}
+
+	else
+	{
+		s = va( _( "You are at position %d in the spawn queue" ), position );
+	}
+
+	Rocket_SetInnerRML( s, 0 );
+}
+
+static void CG_Rocket_DrawNumSpawns()
+{
+	int    position, spawns;
+	const char *s;
+
+	if ( !( cg.snap->ps.pm_flags & PMF_QUEUED ) )
+	{
+		Rocket_SetInnerRML( "", 0 );
+		return;
+	}
+
+	spawns   = cg.snap->ps.persistant[ PERS_SPAWNQUEUE ] & 0x000000ff;
+	position = cg.snap->ps.persistant[ PERS_SPAWNQUEUE ] >> 8;
+
+	if ( position < 1 || cg.intermissionStarted )
+	{
+		s = "";
+	}
+	else if ( spawns == 0 )
+	{
+		s = _( "There are no spawns remaining" );
+	}
+	else
+	{
+		s = va( P_( "There is %d spawn remaining", "There are %d spawns remaining", spawns ), spawns );
+	}
+
+	Rocket_SetInnerRML( s, 0 );
+}
+
+void CG_Rocket_DrawPredictedRGSRate()
+{
+	playerState_t  *ps = &cg.snap->ps;
+	buildable_t   buildable = ( buildable_t )( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
+	char color;
+	int  delta = ps->stats[ STAT_PREDICTION ];
+
+	if ( buildable != BA_H_DRILL && buildable != BA_A_LEECH )
+	{
+		Rocket_SetInnerRML( "", 0 );
+		return;
+	}
+
+	if ( delta < 0 )
+	{
+		color = COLOR_RED;
+	}
+
+	else if ( delta < 10 )
+	{
+		color = COLOR_ORANGE;
+	}
+
+	else if ( delta < 50 )
+	{
+		color = COLOR_YELLOW;
+	}
+
+	else
+	{
+		color = COLOR_GREEN;
+	}
+
+	Rocket_SetInnerRML( va( "^%c%+d%%", color, delta ), RP_QUAKE );
+}
+#endif
+
 static void CG_Rocket_DrawWarmup()
 {
 	int   sec = 0;
@@ -3138,9 +3416,20 @@ typedef struct
 // THESE MUST BE ALPHABETIZED
 static const elementRenderCmd_t elementRenderCmdList[] =
 {
+#ifdef UNREALARENA
 	{ "ammo_stack", &CG_DrawPlayerAmmoStack, ELEMENT_U },
+#else
+	{ "ammo_stack", &CG_DrawPlayerAmmoStack, ELEMENT_HUMANS },
+#endif
+#ifndef UNREALARENA
+	{ "barbs", &CG_Rocket_DrawAlienBarbs, ELEMENT_ALIENS },
+#endif
 	{ "chattype", &CG_Rocket_DrawChatType, ELEMENT_ALL },
+#ifdef UNREALARENA
 	{ "clip_stack", &CG_DrawPlayerClipsStack, ELEMENT_U },
+#else
+	{ "clip_stack", &CG_DrawPlayerClipsStack, ELEMENT_HUMANS },
+#endif
 	{ "clock", &CG_Rocket_DrawClock, ELEMENT_ALL },
 	{ "connecting", &CG_Rocket_DrawConnectText, ELEMENT_ALL },
 	{ "downloadCompletedSize", &CG_Rocket_DrawDownloadCompletedSize, ELEMENT_ALL },
@@ -3152,16 +3441,29 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "health", &CG_Rocket_DrawPlayerHealth, ELEMENT_BOTH },
 	{ "health_cross", &CG_Rocket_DrawPlayerHealthCross, ELEMENT_BOTH },
 	{ "hostname", &CG_Rocket_DrawHostname, ELEMENT_ALL },
+#ifdef UNREALARENA
 	{ "inventory", &CG_DrawUInventory, ELEMENT_U },
 	{ "itemselect_text", &CG_DrawItemSelectText, ELEMENT_U },
 	{ "jetpack", &CG_Rocket_HaveJetpck, ELEMENT_U },
+#else
+	{ "inventory", &CG_DrawHumanInventory, ELEMENT_HUMANS },
+	{ "itemselect_text", &CG_DrawItemSelectText, ELEMENT_HUMANS },
+	{ "jetpack", &CG_Rocket_HaveJetpck, ELEMENT_HUMANS },
+#endif
 	{ "levelname", &CG_Rocket_DrawLevelName, ELEMENT_ALL },
 	{ "mine_rate", &CG_Rocket_DrawMineRate, ELEMENT_BOTH },
 	{ "minimap", &CG_Rocket_DrawMinimap, ELEMENT_ALL },
 	{ "momentum_bar", &CG_Rocket_DrawPlayerMomentumBar, ELEMENT_BOTH },
 	{ "motd", &CG_Rocket_DrawMOTD, ELEMENT_ALL },
+#ifndef UNREALARENA
+	{ "numSpawns", &CG_Rocket_DrawNumSpawns, ELEMENT_DEAD },
+	{ "predictedMineEfficiency", &CG_Rocket_DrawPredictedRGSRate, ELEMENT_BOTH },
+#endif
 	{ "progress_value", &CG_Rocket_DrawProgressValue, ELEMENT_ALL },
-	{ "stamina_bolt", &CG_Rocket_DrawStaminaBolt, ELEMENT_U },
+#ifndef UNREALARENA
+	{ "spawnPos", &CG_Rocket_DrawSpawnQueuePosition, ELEMENT_DEAD },
+	{ "stamina_bolt", &CG_Rocket_DrawStaminaBolt, ELEMENT_HUMANS },
+#endif
 	{ "tutorial", &CG_Rocket_DrawTutorial, ELEMENT_GAME },
 	{ "unlocked_items", &CG_Rocket_DrawPlayerUnlockedItems, ELEMENT_BOTH },
 	{ "votes", &CG_Rocket_DrawVote, ELEMENT_GAME },
@@ -3210,8 +3512,14 @@ void CG_Rocket_RegisterElements()
 	REGISTER_ELEMENT( "speedometer", SpeedGraphElement )
 	REGISTER_ELEMENT( "credits", CreditsValueElement )
 	REGISTER_ELEMENT( "evos", EvosValueElement )
+#ifndef UNREALARENA
+	REGISTER_ELEMENT( "stamina", StaminaValueElement )
+#endif
 	REGISTER_ELEMENT( "weapon_icon", WeaponIconElement )
 	REGISTER_ELEMENT( "wallwalk", WallwalkElement )
+#ifndef UNREALARENA
+	REGISTER_ELEMENT( "usable_buildable", UsableBuildableElement )
+#endif
 	REGISTER_ELEMENT( "location", LocationElement )
 	REGISTER_ELEMENT( "timer", TimerElement )
 	REGISTER_ELEMENT( "lagometer", LagometerElement )

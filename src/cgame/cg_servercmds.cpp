@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -111,7 +111,11 @@ static void CG_ParseTeamInfo()
 		cgs.clientinfo[ client ].curWeaponClass = atoi( CG_Argv( ++i ) );
 		cgs.clientinfo[ client ].credit         = atoi( CG_Argv( ++i ) );
 
+#ifdef UNREALARENA
 		if( cg.snap->ps.persistant[ PERS_TEAM ] != TEAM_Q )
+#else
+		if( cg.snap->ps.persistant[ PERS_TEAM ] != TEAM_ALIENS )
+#endif
 		{
 			cgs.clientinfo[ client ].upgrade = atoi( CG_Argv( ++i ) );
 		}
@@ -136,6 +140,10 @@ void CG_ParseServerinfo()
 
 	cgs.timelimit          = atoi( Info_ValueForKey( info, "timelimit" ) );
 	cgs.maxclients         = atoi( Info_ValueForKey( info, "sv_maxclients" ) );
+#ifndef UNREALARENA
+	cgs.powerReactorRange  = atoi( Info_ValueForKey( info, "g_powerReactorRange" ) );
+	cgs.powerRepeaterRange = atoi( Info_ValueForKey( info, "g_powerRepeaterRange" ) );
+#endif
 	cgs.momentumHalfLife = atof( Info_ValueForKey( info, "g_momentumHalfLife" ) );
 	cgs.unlockableMinTime  = atof( Info_ValueForKey( info, "g_unlockableMinTime" ) );
 
@@ -277,6 +285,7 @@ static void CG_ConfigStringModified()
 		{
 			trap_Cvar_Set( "ui_voteActive", cgs.voteTime[ TEAM_NONE ] ? "1" : "0" );
 		}
+#ifdef UNREALARENA
 		else if ( num - CS_VOTE_TIME == TEAM_Q )
 		{
 			trap_Cvar_Set( "ui_qTeamVoteActive",
@@ -287,6 +296,18 @@ static void CG_ConfigStringModified()
 			trap_Cvar_Set( "ui_uTeamVoteActive",
 			               cgs.voteTime[ TEAM_U ] ? "1" : "0" );
 		}
+#else
+		else if ( num - CS_VOTE_TIME == TEAM_ALIENS )
+		{
+			trap_Cvar_Set( "ui_alienTeamVoteActive",
+			               cgs.voteTime[ TEAM_ALIENS ] ? "1" : "0" );
+		}
+		else if ( num - CS_VOTE_TIME == TEAM_HUMANS )
+		{
+			trap_Cvar_Set( "ui_humanTeamVoteActive",
+			               cgs.voteTime[ TEAM_HUMANS ] ? "1" : "0" );
+		}
+#endif
 	}
 	else if ( num >= CS_VOTE_YES && num < CS_VOTE_YES + NUM_TEAMS )
 	{
@@ -411,6 +432,33 @@ void CG_Menu( int menuType, int arg )
 			menu = ROCKETMENU_TEAMSELECT;
 			break;
 
+#ifndef UNREALARENA
+		case MN_A_CLASS:
+			menu = ROCKETMENU_ALIENSPAWN;
+			break;
+
+		case MN_H_SPAWN:
+			menu = ROCKETMENU_HUMANSPAWN;
+			break;
+
+		case MN_A_BUILD:
+			menu = ROCKETMENU_ALIENBUILD;
+			break;
+
+		case MN_H_BUILD:
+			menu = ROCKETMENU_HUMANBUILD;
+			break;
+
+		case MN_H_ARMOURY:
+			menu = ROCKETMENU_ARMOURYBUY;
+			break;
+
+		case MN_H_UNKNOWNITEM:
+			shortMsg = "Unknown item";
+			break;
+#endif
+
+#ifdef UNREALARENA
 		case MN_Q_TEAMFULL:
 			longMsg = _("The Q team has too many players. Please wait until slots "
 			          "become available or join the U team.");
@@ -434,6 +482,31 @@ void CG_Menu( int menuType, int arg )
 			          "at this time.");
 			shortMsg = _("The U team is locked");
 			break;
+#else
+		case MN_A_TEAMFULL:
+			longMsg = _("The alien team has too many players. Please wait until slots "
+			          "become available or join the human team.");
+			shortMsg = _("The alien team has too many players");
+			break;
+
+		case MN_H_TEAMFULL:
+			longMsg = _("The human team has too many players. Please wait until slots "
+			          "become available or join the alien team.");
+			shortMsg = _("The human team has too many players");
+			break;
+
+		case MN_A_TEAMLOCKED:
+			longMsg = _("The alien team is locked. You cannot join the aliens "
+			          "at this time.");
+			shortMsg = _("The alien team is locked");
+			break;
+
+		case MN_H_TEAMLOCKED:
+			longMsg = _("The human team is locked. You cannot join the humans "
+			          "at this time.");
+			shortMsg = _("The human team is locked");
+			break;
+#endif
 
 		case MN_PLAYERLIMIT:
 			longMsg = _("The maximum number of playing clients has been reached. "
@@ -461,8 +534,8 @@ void CG_Menu( int menuType, int arg )
 			break;
 
 		case MN_CMD_TEAM:
-			//longMsg   = "You must be on a team to perform this action. Join a"
-			//            "team and try again.";
+			//longMsg   = "You must be on a team to perform this action. Join the alien"
+			//            "or human team and try again.";
 			shortMsg = _("Join a team first");
 			break;
 
@@ -472,6 +545,7 @@ void CG_Menu( int menuType, int arg )
 			shortMsg = _("You can only use this command when spectating");
 			break;
 
+#ifdef UNREALARENA
 		case MN_CMD_Q:
 			//longMsg   = "You must be on the Q team to perform this action.";
 			shortMsg = _("Must be on the Q team to use this command");
@@ -481,6 +555,17 @@ void CG_Menu( int menuType, int arg )
 			//longMsg   = "You must be on the U team to perform this action.";
 			shortMsg = _("Must be on the U team to use this command");
 			break;
+#else
+		case MN_CMD_ALIEN:
+			//longMsg   = "You must be on the alien team to perform this action.";
+			shortMsg = _("Must be alien to use this command");
+			break;
+
+		case MN_CMD_HUMAN:
+			//longMsg   = "You must be on the human team to perform this action.";
+			shortMsg = _("Must be human to use this command");
+			break;
+#endif
 
 		case MN_CMD_ALIVE:
 			//longMsg   = "You must be alive to perform this action.";
@@ -489,11 +574,49 @@ void CG_Menu( int menuType, int arg )
 
 			//===============================
 
+#ifndef UNREALARENA
+		case MN_B_NOROOM:
+			longMsg = _("There is no room to build here. Move until the structure turns "
+			          "translucent green, indicating a valid build location.");
+			shortMsg = _("There is no room to build here");
+			break;
+
+		case MN_B_NORMAL:
+			longMsg = _("Cannot build on this surface. The surface is too steep or "
+			          "unsuitable for building. Please choose another site for this "
+			          "structure.");
+			shortMsg = _("Cannot build on this surface");
+			break;
+
+		case MN_B_CANNOT:
+			longMsg = nullptr;
+			shortMsg = _("You cannot build that structure");
+			break;
+
 		case MN_B_LASTSPAWN:
 			longMsg = _("This action would remove your team's last spawn point, "
 			          "which often quickly results in a loss. Try building more "
 			          "spawns.");
 			shortMsg = _("You may not deconstruct the last spawn");
+			break;
+
+		case MN_B_MAINSTRUCTURE:
+			longMsg = _("The main structure is protected against instant removal. "
+			            "When it is marked, you can move it to another place by "
+			            "building it there.");
+			shortMsg = _("You may not deconstruct this structure");
+			break;
+
+		case MN_B_DISABLED:
+			longMsg = _("Building has been disabled on the server for your team.");
+			shortMsg = _("Building has been disabled for your team");
+			break;
+
+		case MN_B_REVOKED:
+			longMsg = _("Your teammates have lost faith in your ability to build "
+			          "for the team. You will not be allowed to build until your "
+			          "team votes to reinstate your building rights.");
+			shortMsg = _("Your building rights have been revoked");
 			break;
 
 		case MN_B_SURRENDER:
@@ -502,7 +625,171 @@ void CG_Menu( int menuType, int arg )
 			shortMsg = _("Cannot build after admitting defeat");
 			break;
 
+		case MN_H_NOBP:
+			longMsg = _("There are no resources remaining. Free up resources by "
+			            "marking existing buildables for deconstruction.");
+			shortMsg = _("There are no resources remaining");
+			break;
+
+		case MN_H_NOTPOWERED:
+			longMsg = _("This buildable is not powered. Build a Reactor and/or Repeater "
+			          "in order to power it.");
+			shortMsg = _("This buildable is not powered");
+			break;
+
+		case MN_H_NOPOWERHERE:
+			longMsg = _("There is not enough power in this area. Keep a distance to other "
+			            "buildables or build a repeater to increase the local capacity.");
+			shortMsg = _("There is not enough power here");
+			break;
+
+		case MN_H_NOREACTOR:
+			longMsg = _("There is no reactor and the local power supply is insufficient. "
+			            "Build the reactor or a repeater to increase the local capacity.");
+			shortMsg = _("There is no reactor and the local power supply is insufficient");
+			break;
+
+		case MN_H_ONEREACTOR:
+			longMsg = _("There can only be one Reactor. Mark the existing one if you "
+			            "wish to move it.");
+			shortMsg = _("There can only be one Reactor");
+			break;
+
+		case MN_H_NOSLOTS:
+			longMsg = _("You have no room to carry this. Please sell any conflicting "
+			          "upgrades before purchasing this item.");
+			shortMsg = _("You have no room to carry this");
+			break;
+
+		case MN_H_NOFUNDS:
+			longMsg = _("Insufficient funds. You do not have enough credits to perform "
+			          "this action.");
+			shortMsg = _("Insufficient funds");
+			break;
+
+		case MN_H_ITEMHELD:
+			longMsg = _("You already hold this item. It is not possible to carry multiple "
+			          "items of the same type.");
+			shortMsg = _("You already hold this item");
+			break;
+
+		case MN_H_NOARMOURYHERE:
+			longMsg = _("You must be near a powered Armoury in order to purchase "
+			          "weapons, upgrades or ammunition.");
+			shortMsg = _("You must be near a powered Armoury");
+			break;
+
+		case MN_H_NOENERGYAMMOHERE:
+			longMsg = _("You must be near a Reactor or a powered Armoury or Repeater "
+			          "in order to purchase energy ammunition.");
+			shortMsg = _("You must be near a Reactor or a powered Armoury or Repeater");
+			break;
+
+		case MN_H_NOROOMARMOURCHANGE:
+			longMsg = _("There is not enough room here to change armour.");
+			shortMsg = _("Not enough room here to change armour.");
+			break;
+
+		case MN_H_ARMOURYBUILDTIMER:
+			longMsg = _("You are not allowed to buy or sell weapons until your "
+			          "build timer has expired.");
+			shortMsg = _("You can not buy or sell weapons until your build timer "
+			           "expires");
+			break;
+
+		case MN_H_DEADTOCLASS:
+			shortMsg = _("You must be dead to use the class command");
+			break;
+
+		case MN_H_UNKNOWNSPAWNITEM:
+			shortMsg = _("Unknown starting item");
+			break;
+
 			//===============================
+
+		case MN_A_NOCREEP:
+			longMsg = _("There is no creep here. You must build near existing Eggs or "
+			          "the Overmind. Alien structures will not support themselves.");
+			shortMsg = _("There is no creep here");
+			break;
+
+		case MN_A_NOOVMND:
+			longMsg = _("There is no Overmind. An Overmind must be built to control "
+			          "the structure you tried to place.");
+			shortMsg = _("There is no Overmind");
+			break;
+
+		case MN_A_ONEOVERMIND:
+			longMsg = _("There can only be one Overmind. Deconstruct the existing one if you "
+			          "wish to move it.");
+			shortMsg = _("There can only be one Overmind");
+			break;
+
+		case MN_A_NOBP:
+			longMsg = _("The Overmind cannot control any more structures. Deconstruct existing "
+			          "structures to build more.");
+			shortMsg = _("The Overmind cannot control any more structures");
+			break;
+
+		case MN_A_NOEROOM:
+			longMsg = _("There is no room to evolve here. Move away from walls or other "
+			          "nearby objects and try again.");
+			shortMsg = _("There is no room to evolve here");
+			break;
+
+		case MN_A_TOOCLOSE:
+			longMsg = _("This location is too close to the enemy to evolve. Move away "
+			          "from the enemy's presence and try again.");
+			shortMsg = _("This location is too close to the enemy to evolve");
+			break;
+
+		case MN_A_NOOVMND_EVOLVE:
+			longMsg = _("There is no Overmind. An Overmind must be built to allow "
+			          "you to upgrade.");
+			shortMsg = _("There is no Overmind");
+			break;
+
+		case MN_A_EVOLVEBUILDTIMER:
+			longMsg = _("You cannot evolve until your build timer has expired.");
+			shortMsg = _("You cannot evolve until your build timer expires");
+			break;
+
+		case MN_A_INFEST:
+			trap_Cvar_Set( "ui_currentClass",
+			               va( "%d %d", cg.snap->ps.stats[ STAT_CLASS ],
+			                   cg.snap->ps.persistant[ PERS_CREDIT ] ) );
+
+			menu = ROCKETMENU_ALIENEVOLVE;
+			break;
+
+		case MN_A_CANTEVOLVE:
+			shortMsg = va( _("You cannot evolve into a %s"),
+			               _( BG_ClassModelConfig( arg )->humanName ) );
+			break;
+
+		case MN_A_EVOLVEWALLWALK:
+			shortMsg = _("You cannot evolve while wallwalking");
+			break;
+
+		case MN_A_UNKNOWNCLASS:
+			shortMsg = _("Unknown class");
+			break;
+
+		case MN_A_CLASSNOTSPAWN:
+			shortMsg = va( _("You cannot spawn as a %s"),
+			               _( BG_ClassModelConfig( arg )->humanName ) );
+			break;
+
+		case MN_A_CLASSNOTALLOWED:
+			shortMsg = va( _("The %s is not allowed"),
+			               _( BG_ClassModelConfig( arg )->humanName ) );
+			break;
+
+		case MN_A_CLASSLOCKED:
+			shortMsg = va( _("The %s has not been unlocked yet"),
+			               _( BG_ClassModelConfig( arg )->humanName ) );
+			break;
+#endif
 
 		default:
 			Com_Printf(_( "cgame: debug: no such menu %d\n"), menu );
@@ -547,6 +834,7 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 
 		name = ci->name;
 		team = ci->team;
+#ifdef UNREALARENA
 		if ( ci->team == TEAM_Q )
 		{
 			tcolor = S_COLOR_RED;
@@ -555,6 +843,16 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 		{
 			tcolor = S_COLOR_BLUE;
 		}
+#else
+		if ( ci->team == TEAM_ALIENS )
+		{
+			tcolor = S_COLOR_RED;
+		}
+		else if ( ci->team == TEAM_HUMANS )
+		{
+			tcolor = S_COLOR_CYAN;
+		}
+#endif
 
 		if ( cg_chatTeamPrefix.integer )
 		{
@@ -699,6 +997,7 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 		case SAY_TEAM:
 		case SAY_AREA:
 		case SAY_TPRIVMSG:
+#ifdef UNREALARENA
 			if ( cgs.clientinfo[ clientNum ].team == TEAM_Q )
 			{
 				trap_S_StartLocalSound( cgs.media.qTalkSound, CHAN_LOCAL_SOUND );
@@ -709,6 +1008,18 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 				trap_S_StartLocalSound( cgs.media.uTalkSound, CHAN_LOCAL_SOUND );
 				break;
 			}
+#else
+			if ( cgs.clientinfo[ clientNum ].team == TEAM_ALIENS )
+			{
+				trap_S_StartLocalSound( cgs.media.alienTalkSound, CHAN_LOCAL_SOUND );
+				break;
+			}
+			else if ( cgs.clientinfo[ clientNum ].team == TEAM_HUMANS )
+			{
+				trap_S_StartLocalSound( cgs.media.humanTalkSound, CHAN_LOCAL_SOUND );
+				break;
+			}
+#endif
 
 		default:
 			trap_S_StartLocalSound( cgs.media.talkSound, CHAN_LOCAL_SOUND );

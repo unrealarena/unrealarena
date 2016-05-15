@@ -345,7 +345,11 @@ void env_afx_ammo_touch( gentity_t *self, gentity_t *other, trace_t* )
 		return;
 	}
 
+#ifdef UNREALARENA
 	if ( other->client->pers.team != TEAM_U )
+#else
+	if ( other->client->pers.team != TEAM_HUMANS )
+#endif
 	{
 		return;
 	}

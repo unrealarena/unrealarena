@@ -99,6 +99,7 @@ void CG_ClientList_f()
 
 		switch ( ci->team )
 		{
+#ifdef UNREALARENA
 			case TEAM_Q:
 				Com_Printf( "%2d " S_COLOR_RED "Q   " S_COLOR_WHITE "%s\n", i,
 				            ci->name );
@@ -108,6 +109,17 @@ void CG_ClientList_f()
 				Com_Printf( "%2d " S_COLOR_BLUE "U   " S_COLOR_WHITE "%s\n", i,
 				            ci->name );
 				break;
+#else
+			case TEAM_ALIENS:
+				Com_Printf( "%2d " S_COLOR_RED "A   " S_COLOR_WHITE "%s\n", i,
+				            ci->name );
+				break;
+
+			case TEAM_HUMANS:
+				Com_Printf( "%2d " S_COLOR_CYAN "H   " S_COLOR_WHITE "%s\n", i,
+				            ci->name );
+				break;
+#endif
 
 			default:
 			case TEAM_NONE:
@@ -128,6 +140,97 @@ static void CG_ReloadHud_f()
 	CG_OnPlayerWeaponChange();
 }
 
+#ifndef UNREALARENA
+static void CG_CompleteClass()
+{
+	int i = 0;
+
+	if ( cgs.clientinfo[ cg.clientNum ].team == TEAM_ALIENS )
+	{
+		// TODO: Add iterator for alien/human classes
+		for ( i = PCL_ALIEN_BUILDER0; i < PCL_HUMAN_NAKED; i++ )
+		{
+			trap_CompleteCallback( BG_Class( i )->name );
+		}
+	}
+	else if ( cgs.clientinfo[ cg.clientNum ].team == TEAM_HUMANS )
+	{
+		trap_CompleteCallback( BG_Weapon( WP_HBUILD )->name );
+		trap_CompleteCallback( BG_Weapon( WP_MACHINEGUN )->name );
+	}
+}
+
+static void CG_CompleteBuy_internal( bool negatives )
+{
+	int i;
+
+	for( i = 0; i < UP_NUM_UPGRADES; i++ )
+	{
+		const upgradeAttributes_t *item = BG_Upgrade( i );
+		if ( item->purchasable && item->team == TEAM_HUMANS )
+		{
+			trap_CompleteCallback( item->name );
+
+			if ( negatives )
+			{
+				trap_CompleteCallback( va( "-%s", item->name ) );
+			}
+		}
+	}
+
+	trap_CompleteCallback( "grenade" ); // called "gren" elsewhere, so special-case it
+
+	if ( negatives )
+	{
+		trap_CompleteCallback( "-grenade" );
+
+		i = BG_GetPlayerWeapon( &cg.snap->ps );
+
+	}
+
+	for( i = 0; i < WP_NUM_WEAPONS; i++ )
+	{
+		const weaponAttributes_t *item = BG_Weapon( i );
+		if ( item->purchasable && item->team == TEAM_HUMANS )
+		{
+			trap_CompleteCallback( item->name );
+
+			if ( negatives )
+			{
+				trap_CompleteCallback( va( "-%s", BG_Weapon( i )->name ) );
+			}
+		}
+	}
+}
+
+static void CG_CompleteBuy()
+{
+	if( cgs.clientinfo[ cg.clientNum ].team != TEAM_HUMANS )
+	{
+		return;
+	}
+
+	trap_CompleteCallback( "-all" );
+	trap_CompleteCallback( "-weapons" );
+	trap_CompleteCallback( "-upgrades" );
+	CG_CompleteBuy_internal( true );
+}
+
+static void CG_CompleteSell()
+{
+	if( cgs.clientinfo[ cg.clientNum ].team != TEAM_HUMANS )
+	{
+		return;
+	}
+
+	trap_CompleteCallback( "all" );
+	trap_CompleteCallback( "weapons" );
+	trap_CompleteCallback( "upgrades" );
+	CG_CompleteBuy_internal( false );
+}
+#endif
+
+
 static void CG_CompleteBeacon()
 {
 	int i;
@@ -141,6 +244,22 @@ static void CG_CompleteBeacon()
 		}
 	}
 }
+
+#ifndef UNREALARENA
+static void CG_CompleteBuild()
+{
+	int i;
+
+	for ( i = 0; i < BA_NUM_BUILDABLES; i++ )
+	{
+		const buildableAttributes_t *item = BG_Buildable( i );
+		if ( item->team == cgs.clientinfo[ cg.clientNum ].team )
+		{
+			trap_CompleteCallback( item->name );
+		}
+	}
+}
+#endif
 
 static void CG_CompleteName()
 {
@@ -193,7 +312,11 @@ static void CG_CompleteTeamVote()
 	unsigned           i = 0;
 	static const char vote[][ 16 ] =
 	{
+#ifdef UNREALARENA
 		"kick", "spectate", "admitdefeat", "poll"
+#else
+		"kick", "spectate", "denybuild", "allowbuild", "admitdefeat", "poll"
+#endif
 	};
 
 	for( i = 0; i < ARRAY_LEN( vote ); i++ )
@@ -220,7 +343,11 @@ static void CG_CompleteItem()
 {
 	int i = 0;
 
+#ifdef UNREALARENA
 	if( cgs.clientinfo[ cg.clientNum ].team == TEAM_Q )
+#else
+	if( cgs.clientinfo[ cg.clientNum ].team == TEAM_ALIENS )
+#endif
 	{
 		return;
 	}
@@ -239,7 +366,11 @@ static void CG_CompleteItem()
 	for( i = 0; i < WP_NUM_WEAPONS; i++ )
 	{
 		const weaponAttributes_t *item = BG_Weapon( i );
+#ifdef UNREALARENA
 		if( item->team == TEAM_U )
+#else
+		if( item->team == TEAM_HUMANS )
+#endif
 		{
 			trap_CompleteCallback( item->name );
 		}
@@ -335,10 +466,21 @@ static const struct
 	{ "asay",             0,                       0                },
 	{ "beacon",           0,                       CG_CompleteBeacon },
 	{ "beaconMenu",       CG_BeaconMenu_f,         0                },
+#ifndef UNREALARENA
+	{ "build",            0,                       CG_CompleteBuild },
+	{ "buy",              0,                       CG_CompleteBuy   },
+#endif
 	{ "callteamvote",     0,                       CG_CompleteTeamVote },
 	{ "callvote",         0,                       CG_CompleteVote  },
+#ifndef UNREALARENA
+	{ "class",            0,                       CG_CompleteClass },
+#endif
 	{ "clientlist",       CG_ClientList_f,         0                },
 	{ "damage",           0,                       0                },
+#ifndef UNREALARENA
+	{ "deconstruct",      0,                       0                },
+	{ "destroy",          0,                       0                },
+#endif
 	{ "destroyTestPS",    CG_DestroyTestPS_f,      0                },
 	{ "destroyTestTS",    CG_DestroyTestTS_f,      0                },
 	{ "follow",           0,                       CG_CompleteName  },
@@ -380,11 +522,16 @@ static const struct
 	{ "say_area",         0,                       0                },
 	{ "say_area_team",    0,                       0                },
 	{ "say_team",         0,                       0                },
+#ifndef UNREALARENA
+	{ "sell",             0,                       CG_CompleteSell  },
+#endif
 	{ "setviewpos",       0,                       0                },
 	{ "showScores",       CG_ShowScores_f,         0                },
 	{ "sizedown",         CG_SizeDown_f,           0                },
 	{ "sizeup",           CG_SizeUp_f,             0                },
+#ifdef UNREALARENA
 	{ "suicide",          0,                       0                },
+#endif
 	{ "team",             0,                       0                },
 	{ "teamvote",         0,                       0                },
 	{ "testcgrade",       CG_TestCGrade_f,         0                },

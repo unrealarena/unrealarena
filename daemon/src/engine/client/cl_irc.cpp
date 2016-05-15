@@ -2185,7 +2185,11 @@ static bool IRC_InitialiseUser( const char *name )
 	}
 
 	// Set static address
+#ifdef UNREALARENA
 	strcpy( IRC_User.email, "johndoe@example.com" );
+#else
+	strcpy( IRC_User.email, "unvanquished@example.com" );
+#endif
 
 	return ( IRC_User.nicklen > 0 && replaced < IRC_User.nicklen / 2 );
 }

@@ -1,7 +1,7 @@
 /*
  * Daemon GPL source code
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  Id Software, Inc.
+ * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -679,6 +679,9 @@ const char *Com_EntityTypeName(entityType_t entityType)
 	case ET_GENERAL:          return "GENERAL";
 	case ET_PLAYER:           return "PLAYER";
 	case ET_ITEM:             return "ITEM";
+#ifndef UNREALARENA
+	case ET_BUILDABLE:        return "BUILDABLE";
+#endif
 	case ET_LOCATION:         return "LOCATION";
 	case ET_MISSILE:          return "MISSILE";
 	case ET_MOVER:            return "MOVER";

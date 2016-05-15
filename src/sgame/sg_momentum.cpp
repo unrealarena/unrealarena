@@ -33,6 +33,11 @@
 typedef enum
 {
 	CONF_GENERIC,
+#ifndef UNREALARENA
+	CONF_BUILDING,
+	CONF_DECONSTRUCTING,
+	CONF_DESTROYING,
+#endif
 	CONF_KILLING,
 
 	NUM_CONF
@@ -47,6 +52,11 @@ const char *MomentumTypeToReason( momentum_t type )
 	switch ( type )
 	{
 		case CONF_GENERIC:        return "generic actions";
+#ifndef UNREALARENA
+		case CONF_BUILDING:       return "building a structure";
+		case CONF_DECONSTRUCTING: return "deconstructing a structure";
+		case CONF_DESTROYING:     return "destryoing a structure";
+#endif
 		case CONF_KILLING:        return "killing a player";
 		default:                  return "(unknown momentum type)";
 	}
@@ -133,8 +143,13 @@ static INLINE float MomentumTimeMod()
  */
 static INLINE float MomentumPlayerCountMod()
 {
+#ifdef UNREALARENA
 	int playerCount = std::max( 2, level.team[ TEAM_Q ].numClients +
 	                               level.team[ TEAM_U ].numClients );
+#else
+	int playerCount = std::max( 2, level.team[ TEAM_ALIENS ].numClients +
+	                               level.team[ TEAM_HUMANS ].numClients );
+#endif
 
 	// HACK: This uses the average number of players taking part in development games so that the
 	//       average momentum gain through all matches remains unchanged for now.
@@ -157,6 +172,30 @@ static float MomentumMod( momentum_t type )
 			timeMod        = MomentumTimeMod();
 			playerCountMod = MomentumPlayerCountMod();
 			break;
+
+#ifndef UNREALARENA
+		case CONF_BUILDING:
+			baseMod        = g_momentumBaseMod.value;
+			typeMod        = g_momentumBuildMod.value;
+			timeMod        = MomentumTimeMod();
+			playerCountMod = 1.0f;
+			break;
+
+		case CONF_DECONSTRUCTING:
+			// always used on top of build mod, so neutral baseMod/timeMod/playerCountMod
+			baseMod        = 1.0f;
+			typeMod        = g_momentumDeconMod.value;
+			timeMod        = 1.0f;
+			playerCountMod = 1.0f;
+			break;
+
+		case CONF_DESTROYING:
+			baseMod        = g_momentumBaseMod.value;
+			typeMod        = g_momentumDestroyMod.value;
+			timeMod        = MomentumTimeMod();
+			playerCountMod = 1.0f;
+			break;
+#endif
 
 		case CONF_GENERIC:
 		default:
@@ -336,6 +375,116 @@ float G_AddMomentumGenericStep( team_t team, float amount )
 
 	return amount;
 }
+
+#ifndef UNREALARENA
+/**
+ * Predicts the momentum reward for building a buildable.
+ *
+ * Is used for the buildlog entry, which is written before the actual reward happens.
+ * Also used to calculate the deconstruction penalty for preplaced buildables.
+ */
+float G_PredictMomentumForBuilding( gentity_t *buildable )
+{
+	if ( !buildable || buildable->s.eType != ET_BUILDABLE )
+	{
+		return 0.0f;
+	}
+
+	return BG_Buildable( buildable->s.modelindex )->buildPoints * MomentumMod( CONF_BUILDING );
+}
+
+/**
+ * Adds momentum for building a buildable.
+ *
+ * Will save the reward with the buildable.
+ */
+float G_AddMomentumForBuilding( gentity_t *buildable )
+{
+	float     value, reward;
+	team_t    team;
+	gentity_t *builder;
+
+	if ( !buildable || buildable->s.eType != ET_BUILDABLE )
+	{
+		return 0.0f;
+	}
+
+	value   = BG_Buildable( buildable->s.modelindex )->buildPoints;
+	team    = BG_Buildable( buildable->s.modelindex )->team;
+
+	if ( buildable->builtBy->slot != -1 )
+	{
+		builder = &g_entities[ buildable->builtBy->slot ];
+	}
+	else
+	{
+		builder = nullptr;
+	}
+
+	reward = AddMomentum( CONF_BUILDING, team, value, builder, false );
+
+	// Save reward with buildable so it can be reverted
+	buildable->momentumEarned = reward;
+
+	return reward;
+}
+
+/**
+ * Removes momentum for deconstructing a buildable.
+ */
+float G_RemoveMomentumForDecon( gentity_t *buildable, gentity_t *deconner )
+{
+	float     value;
+	team_t    team;
+
+	// sanity check buildable
+	if ( !buildable || buildable->s.eType != ET_BUILDABLE )
+	{
+		return 0.0f;
+	}
+	team           = BG_Buildable( buildable->s.modelindex )->team;
+
+	if ( buildable->momentumEarned )
+	{
+		value = buildable->momentumEarned;
+	}
+	else
+	{
+		// assume the buildable has just been placed
+		value = G_PredictMomentumForBuilding( buildable );
+	}
+
+	value *= buildable->deconHealthFrac;
+
+	return AddMomentum( CONF_DECONSTRUCTING, team, -value, deconner, false );
+}
+
+/**
+ * Adds momentum for destroying a buildable.
+ *
+ * G_AddMomentumEnd has to be called after all G_AddMomentum*Step steps are done.
+ */
+float G_AddMomentumForDestroyingStep( gentity_t *buildable, gentity_t *attacker, float amount )
+{
+	team_t team;
+
+	// sanity check buildable
+	if ( !buildable || buildable->s.eType != ET_BUILDABLE )
+	{
+		return 0.0f;
+	}
+
+	// sanity check attacker
+	if ( !attacker || !attacker->client )
+	{
+		return 0.0f;
+	}
+
+	team = (team_t) attacker->client->pers.team;
+
+	return AddMomentum( CONF_DESTROYING, team, amount, attacker, true );
+}
+#endif
 
 /**
  * Adds momentum for killing a player.

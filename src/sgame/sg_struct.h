@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -36,8 +36,14 @@ struct gentityConditions_s
 	team_t   team;
 	int      stage;
 
+#ifndef UNREALARENA
+	class_t     classes[ PCL_NUM_CLASSES ];
+#endif
 	weapon_t    weapons[ WP_NUM_WEAPONS ];
 	upgrade_t   upgrades[ UP_NUM_UPGRADES ];
+#ifndef UNREALARENA
+	buildable_t buildables[ BA_NUM_BUILDABLES ];
+#endif
 
 	bool negated;
 };
@@ -111,7 +117,7 @@ struct gentity_s
 	const char   *classname;
 	int          spawnflags;
 
-	//entity creation time, i.e. when a missile was fired (for diminishing missile damage)
+	//entity creation time, i.e. when a building was build or a missile was fired (for diminishing missile damage)
 	int          creationTime;
 
 	char         *names[ MAX_ENTITY_ALIASES + 1 ];
@@ -119,7 +125,8 @@ struct gentity_s
 	/**
 	 * is the entity considered active?
 	 * as in 'currently doing something'
-	 * e.g. used during executing act() in general
+	 * e.g. used for buildables (e.g. medi-stations or hives can be in an active state or being inactive)
+	 * or during executing act() in general
 	 */
 	bool     active;
 	/**
@@ -134,7 +141,71 @@ struct gentity_s
 	 */
 	void ( *act )( gentity_t *self, gentity_t *caller, gentity_t *activator );
 
+#ifndef UNREALARENA
+	/**
+	 * is the entity able to become active?
+	 * e.g. used for buildables to indicate being usable or a stationary weapon being "live"
+	 * or for sensors to indicate being able to sense other entities and fire events
+	 *
+	 * as a reasonable assumption we default to entities being enabled directly after they are spawned,
+	 * since most of the time we want them to be
+	 */
+	bool     enabled;
+
+	/**
+	 * for entities taking a longer time to spawn,
+	 * this boolean indicates when this spawn process was finished
+	 * this can e.g. be indicated by an animation
+	 */
+	bool     spawned;
+#endif
 	gentity_t    *parent; // the gentity that spawned this one
+
+#ifndef UNREALARENA
+	/**
+	 * is the buildable getting support by reactor or overmind?
+	 * this is tightly coupled with enabled
+	 * but buildables might be disabled independently of rc/om support
+	 * unpowered buildables are expected to be disabled though
+	 * other entities might also consider the powergrid for behavior changes
+	 */
+	bool     powered;
+	gentity_t    *powerSource;
+
+	/**
+	 * Human buildables compete for power.
+	 * currentSparePower takes temporary influences into account and sets a buildables power state.
+	 * expectedSparePower is a prediction of the static part and is used for limiting new buildables.
+	 *
+	 * currentSparePower  >= 0: Buildable has enough power
+	 * currentSparePower  <  0: Buildable lacks power, will shut down
+	 * expectedSparePower >  0: New buildables can be built in range
+	 */
+	float        currentSparePower;
+	float        expectedSparePower;
+
+	/**
+	 * The amount of momentum this building generated on construction
+	 */
+	float        momentumEarned;
+
+	/**
+	 * Mining structures
+	 */
+	float        mineRate;
+	float        mineEfficiency;
+	float        acquiredBuildPoints;
+
+	/**
+	 * Alien buildables can burn, which is a lot of fun if they are close.
+	 */
+	bool     onFire;
+	int          fireImmunityUntil;
+	int          nextBurnDamage;
+	int          nextBurnSplashDamage;
+	int          nextBurnAction;
+	gentity_t    *fireStarter;
+#endif
 
 	/*
 	 * targets to aim at
@@ -208,6 +279,9 @@ struct gentity_s
 
 	int          lastHealth;
 	int          health;
+#ifndef UNREALARENA
+	float        deconHealthFrac;
+#endif
 
 	float        speed;
 
@@ -269,6 +343,15 @@ struct gentity_s
 	int       watertype;
 	int       waterlevel;
 
+#ifndef UNREALARENA
+	/*
+	 * Buildable statistics
+	 */
+	int       buildableStatsCount;  // players spawned/healed/killed, posion given
+	int       buildableStatsTotal;  // total damage/healing done
+	float     buildableStatsTotalF; // total resources mined
+#endif
+
 	/*
 	 * variables that got randomly semantically abused by everyone
 	 * so now we rather name them to indicate the fact, that we cannot imply any meaning by the name
@@ -280,14 +363,33 @@ struct gentity_s
 	int       customNumber;
 
 
+#ifndef UNREALARENA
+	team_t      buildableTeam; // buildable item team
+	struct namelog_s *builtBy; // clientNum of person that built this
+#endif
+
 	int         pain_debounce_time;
 	int         last_move_time;
 	int         timestamp; // body queue sinking, etc
+#ifndef UNREALARENA
+	int         shrunkTime; // time when a barricade shrunk or zero
+	gentity_t   *boosterUsed; // the booster an alien is using for healing
+	int         boosterTime; // last time alien used a booster for healing
+#endif
 	int         healthSourceTime; // last time an alien had contact to a health source
 	int         animTime; // last animation change
 	int         time1000; // timer evaluated every second
 
+#ifndef UNREALARENA
+	bool    deconstruct; // deconstruct if no BP left
+	int         deconstructTime; // time at which structure marked
+#endif
 	int         attackTimer, attackLastEvent; // self being attacked
+#ifndef UNREALARENA
+	int         warnTimer; // nearby building(s) being attacked
+	int         overmindDyingTimer;
+	int         overmindSpawnsTimer;
+#endif
 	int         nextPhysicsTime; // buildables don't need to check what they're sitting on
 	// every single frame.. so only do it periodically
 	int         clientSpawnTime; // the time until this spawn can spawn a client
@@ -301,9 +403,37 @@ struct gentity_s
 
 	int         killedBy; // clientNum of killer
 
+#ifndef UNREALARENA
+	vec3_t      buildableAim; // aim vector for buildables
+
+	// turret
+	int         turretNextShot;
+	int         turretLastLOSToTarget;
+	int         turretLastValidTargetTime;
+	int         turretLastTargetSearch;
+	int         turretLastHeadMove;
+	int         turretCurrentDamage;
+	vec3_t      turretDirToTarget;
+	vec3_t      turretBaseDir;
+	bool    turretDisabled;
+	int         turretSafeModeCheckTime;
+	bool    turretSafeMode;
+	int         turretPrepareTime; // when the turret can start locking on and/or firing
+	int         turretLockonTime;  // when the turret can start firing
+
+	// spiker
+	int         spikerRestUntil;
+	float       spikerLastScoring;
+	bool    spikerLastSensing;
+#endif
+
 	vec4_t      animation; // animated map objects
 
 	bool    nonSegModel; // this entity uses a nonsegmented player model
+
+#ifndef UNREALARENA
+	int         suicideTime; // when the client will suicide
+#endif
 
 	int         lastDamageTime;
 	int         nextRegenTime;
@@ -313,7 +443,11 @@ struct gentity_s
 	qhandle_t   obstacleHandle;
 	botMemory_t *botMind;
 
+#ifdef UNREALARENA
 	gentity_t   *qTag, *uTag;
+#else
+	gentity_t   *alienTag, *humanTag;
+#endif
 	gentity_t   **tagAttachment;
 	int         tagScore;
 	int         tagScoreTime;
@@ -358,6 +492,9 @@ struct namelog_s
 	unnamed_t        unnamedNumber;
 
 	bool         muted;
+#ifndef UNREALARENA
+	bool         denyBuild;
+#endif
 
 	int              score;
 	int              credits;
@@ -385,8 +522,15 @@ struct clientPersistant_s
 	float             flySpeed; // for spectator/noclip moves
 	bool          disableBlueprintErrors; // should the buildable blueprint never be hidden from the players?
 
+#ifndef UNREALARENA
+	class_t           classSelection; // player class (copied to ent->client->ps.stats[ STAT_CLASS ] once spawned)
+#endif
 	float             evolveHealthFraction;
+#ifdef UNREALARENA
 	weapon_t          weapon; // starting item
+#else
+	weapon_t          humanItemSelection; // humans have a starting item
+#endif
 
 	int               teamChangeTime; // level.time of last team change
 	namelog_t         *namelog;
@@ -396,7 +540,11 @@ struct clientPersistant_s
 
 	// These have a copy in playerState_t.persistent but we use them in GAME so they don't get invalidated by
 	// SPECTATOR_FOLLOW mode
+#ifdef UNREALARENA
 	team_t team;
+#else
+	int team;
+#endif
 	int credit;
 
 	int voted;
@@ -430,6 +578,9 @@ struct unlagged_s
 };
 
 #define MAX_UNLAGGED_MARKERS 256
+#ifndef UNREALARENA
+#define MAX_TRAMPLE_BUILDABLES_TRACKED 20
+#endif
 
 /**
  * this structure is cleared on each ClientSpawn(),
@@ -471,6 +622,9 @@ struct gclient_s
 	int        respawnTime; // can respawn when time > this
 	int        inactivityTime; // kick players when time > this
 	bool   inactivityWarning; // true if the five seoond warning has been given
+#ifndef UNREALARENA
+	int        boostedTime; // last time we touched a booster
+#endif
 
 	int        airOutTime;
 
@@ -488,6 +642,9 @@ struct gclient_s
 	int        lastMedKitTime;
 	int        medKitHealthToRestore;
 	int        medKitIncrementTime;
+#ifndef UNREALARENA
+	int        lastCreepSlowTime; // time until creep can be removed
+#endif
 	int        lastCombatTime; // time of last damage received/dealt from/to clients
 	int        lastAmmoRefillTime;
 	int        lastFuelRefillTime;
@@ -499,6 +656,11 @@ struct gclient_s
 
 	float      voiceEnthusiasm;
 	char       lastVoiceCmd[ MAX_VOICE_CMD_LEN ];
+
+#ifndef UNREALARENA
+	int        trampleBuildablesHitPos;
+	int        trampleBuildablesHit[ MAX_TRAMPLE_BUILDABLES_TRACKED ];
+#endif
 
 	int        nextCrushTime;
 
@@ -524,8 +686,33 @@ struct spawnQueue_s
 	int front, back;
 };
 
+#ifndef UNREALARENA
+/**
+ * data needed to revert a change in layout
+ */
+struct buildLog_s
+{
+	int         time;
+	buildFate_t fate;
+	namelog_t   *actor;
+	namelog_t   *builtBy;
+	team_t      buildableTeam;
+	buildable_t modelindex;
+	float       momentumEarned;
+	bool    deconstruct;
+	int         deconstructTime;
+	vec3_t      origin;
+	vec3_t      angles;
+	vec3_t      origin2;
+	vec3_t      angles2;
+};
+#endif
+
 #define MAX_SPAWN_VARS       64
 #define MAX_SPAWN_VARS_CHARS 4096
+#ifndef UNREALARENA
+#define MAX_BUILDLOG         1024
+#endif
 
 struct level_locals_s
 {
@@ -594,6 +781,13 @@ struct level_locals_s
 	gentity_t        *locationHead; // head of the location list
 	gentity_t        *fakeLocation; // fake location for anything which might need one
 
+#ifndef UNREALARENA
+	float            mineRate;
+
+	gentity_t        *markedBuildables[ MAX_GENTITIES ];
+	int              numBuildablesForRemoval;
+#endif
+
 	team_t           lastWin;
 
 	timeWarning_t    timelimitWarning;
@@ -618,7 +812,15 @@ struct level_locals_s
 
 	namelog_t        *namelogs;
 
-	int              baseAttackTimer;
+#ifndef UNREALARENA
+	buildLog_t       buildLog[ MAX_BUILDLOG ];
+	int              buildId;
+	int              numBuildLogs;
+
+	bool         overmindMuted;
+
+	int              humanBaseAttackTimer;
+#endif
 
 	struct
 	{
@@ -636,6 +838,9 @@ struct level_locals_s
 		int  quorum;
 
 		// gameplay state
+#ifndef UNREALARENA
+		int              numSpawns;
+#endif
 		int              numClients;
 		int              numPlayers;
 		int              numBots;
@@ -644,11 +849,19 @@ struct level_locals_s
 		float            averageNumBots;
 		int              numSamples;
 		int              numAliveClients;
+#ifndef UNREALARENA
+		float            buildPoints;
+		float            acquiredBuildPoints;
 		float            mainStructAcquiredBP;
+		float            mineEfficiency;
+#endif
 		int              kills;
 		spawnQueue_t     spawnQueue;
 		bool         locked;
 		float            momentum;
+#ifndef UNREALARENA
+		int              layoutBuildPoints;
+#endif
 	} team[ NUM_TEAMS ];
 
 	struct {

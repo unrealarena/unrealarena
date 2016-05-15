@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -34,81 +34,418 @@ void                               trap_FS_Seek( fileHandle_t f, long offset, fs
 int                                trap_FS_GetFileList( const char *path, const char *extension, char *listbuf, int bufsize );
 void                               trap_QuoteString( const char *, char *, int );
 
+#ifndef UNREALARENA
+typedef struct
+{
+	buildable_t number;
+	const char* name;
+	const char* classname;
+} buildableName_t;
+
+static const buildableName_t bg_buildableNameList[] =
+{
+	{ BA_A_SPAWN,     "eggpod",    "team_alien_spawn"     },
+	{ BA_A_OVERMIND,  "overmind",  "team_alien_overmind"  },
+	{ BA_A_BARRICADE, "barricade", "team_alien_barricade" },
+	{ BA_A_ACIDTUBE,  "acid_tube", "team_alien_acid_tube" },
+	{ BA_A_TRAPPER,   "trapper",   "team_alien_trapper"   },
+	{ BA_A_BOOSTER,   "booster",   "team_alien_booster"   },
+	{ BA_A_HIVE,      "hive",      "team_alien_hive"      },
+	{ BA_A_LEECH,     "leech",     "team_alien_leech"     },
+	{ BA_A_SPIKER,    "spiker",    "team_alien_spiker"    },
+	{ BA_H_SPAWN,     "telenode",  "team_human_spawn"     },
+	{ BA_H_MGTURRET,  "mgturret",  "team_human_mgturret"  },
+	{ BA_H_ROCKETPOD, "rocketpod", "team_human_rocketpod" },
+	{ BA_H_ARMOURY,   "arm",       "team_human_armoury"   },
+	{ BA_H_MEDISTAT,  "medistat",  "team_human_medistat"  },
+ 	{ BA_H_DRILL,     "drill",     "team_human_drill"     },
+	{ BA_H_REACTOR,   "reactor",   "team_human_reactor"   },
+	{ BA_H_REPEATER,  "repeater",  "team_human_repeater"  }
+};
+
+static const size_t bg_numBuildables = ARRAY_LEN( bg_buildableNameList );
+
+static buildableAttributes_t bg_buildableList[ ARRAY_LEN( bg_buildableNameList ) ];
+
+static const buildableAttributes_t nullBuildable {};
+
+/*
+==============
+BG_BuildableByName
+==============
+*/
+const buildableAttributes_t *BG_BuildableByName( const char *name )
+{
+	for ( unsigned i = 0; i < bg_numBuildables; i++ )
+	{
+		if ( !Q_stricmp( bg_buildableList[ i ].name, name ) )
+		{
+			return &bg_buildableList[ i ];
+		}
+	}
+
+	return &nullBuildable;
+}
+
+/*
+==============
+BG_BuildableByEntityName
+==============
+*/
+const buildableAttributes_t *BG_BuildableByEntityName( const char *name )
+{
+	for ( unsigned i = 0; i < bg_numBuildables; i++ )
+	{
+		if ( !Q_stricmp( bg_buildableList[ i ].entityName, name ) )
+		{
+			return &bg_buildableList[ i ];
+		}
+	}
+
+	return &nullBuildable;
+}
+
+/*
+==============
+BG_Buildable
+==============
+*/
+const buildableAttributes_t *BG_Buildable( int buildable )
+{
+	return ( buildable > BA_NONE && buildable < BA_NUM_BUILDABLES ) ?
+	       &bg_buildableList[ buildable - 1 ] : &nullBuildable;
+}
+
+/*
+===============
+BG_InitBuildableAttributes
+===============
+*/
+void BG_InitBuildableAttributes()
+{
+	const buildableName_t *bh;
+	buildableAttributes_t *ba;
+
+	for ( unsigned i = 0; i < bg_numBuildables; i++ )
+	{
+		bh = &bg_buildableNameList[i];
+		ba = &bg_buildableList[i];
+
+		//Initialise default values for buildables
+		Com_Memset( ba, 0, sizeof( buildableAttributes_t ) );
+
+		ba->number = bh->number;
+		ba->name = bh->name;
+		ba->entityName = bh->classname;
+
+		ba->traj = TR_GRAVITY;
+		ba->bounce = 0.0;
+		ba->minNormal = 0.0;
+
+		BG_ParseBuildableAttributeFile( va( "configs/buildables/%s.attr.cfg", ba->name ), ba );
+	}
+}
+
+static buildableModelConfig_t bg_buildableModelConfigList[ BA_NUM_BUILDABLES ];
+
+/*
+==============
+BG_BuildableModelConfig
+==============
+*/
+buildableModelConfig_t *BG_BuildableModelConfig( int buildable )
+{
+	return &bg_buildableModelConfigList[ buildable ];
+}
+
+/*
+==============
+BG_BuildableBoundingBox
+==============
+*/
+void BG_BuildableBoundingBox( int buildable,
+                              vec3_t mins, vec3_t maxs )
+{
+	buildableModelConfig_t *buildableModelConfig = BG_BuildableModelConfig( buildable );
+
+	if ( mins != nullptr )
+	{
+		VectorCopy( buildableModelConfig->mins, mins );
+	}
+
+	if ( maxs != nullptr )
+	{
+		VectorCopy( buildableModelConfig->maxs, maxs );
+	}
+}
+
+/*
+===============
+BG_InitBuildableModelConfigs
+===============
+*/
+void BG_InitBuildableModelConfigs()
+{
+	int               i;
+	buildableModelConfig_t *bc;
+
+	for ( i = BA_NONE + 1; i < BA_NUM_BUILDABLES; i++ )
+	{
+		bc = BG_BuildableModelConfig( i );
+		Com_Memset( bc, 0, sizeof( buildableModelConfig_t ) );
+
+		BG_ParseBuildableModelFile( va( "configs/buildables/%s.model.cfg",
+		                           BG_Buildable( i )->name ), bc );
+	}
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct
 {
+#ifdef UNREALARENA
 	team_t team;
+#else
+	class_t number;
+#endif
 	const char* name;
 	weapon_t startWeapon;
 } classData_t;
 
-static classData_t bg_classData[NUM_TEAMS] =
+static classData_t bg_classData[] =
 {
-	{TEAM_NONE, "spectator", WP_NONE},
-	{TEAM_Q,    "qplayer",   WP_NONE},
-	{TEAM_U,    "uplayer",   WP_NONE}
+#ifdef UNREALARENA
+	{
+		TEAM_NONE,
+		"spectator",
+		WP_NONE
+	},
+	{
+		TEAM_Q,
+		"qplayer",
+		WP_NONE
+	},
+	{
+		TEAM_U,
+		"uplayer",
+		WP_NONE
+	}
+#else
+	{
+		PCL_NONE, //int     number;
+		"spectator", //char    *name;
+		WP_NONE //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_BUILDER0, //int     number;
+		"builder", //char    *name;
+		WP_ABUILD //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_BUILDER0_UPG, //int     number;
+		"builderupg", //char    *name;
+		WP_ABUILD2 //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_LEVEL0, //int     number;
+		"level0", //char    *name;
+		WP_ALEVEL0 //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_LEVEL1, //int     number;
+		"level1", //char    *name;
+		WP_ALEVEL1 //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_LEVEL2, //int     number;
+		"level2", //char    *name;
+		WP_ALEVEL2 //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_LEVEL2_UPG, //int     number;
+		"level2upg", //char    *name;
+		WP_ALEVEL2_UPG //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_LEVEL3, //int     number;
+		"level3", //char    *name;
+		WP_ALEVEL3 //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_LEVEL3_UPG, //int     number;
+		"level3upg", //char    *name;
+		WP_ALEVEL3_UPG //weapon_t  startWeapon;
+	},
+	{
+		PCL_ALIEN_LEVEL4, //int     number;
+		"level4", //char    *name;
+		WP_ALEVEL4 //weapon_t  startWeapon;
+	},
+	{
+		PCL_HUMAN_NAKED, //int     number;
+		"human_naked", //char    *name;
+		WP_NONE //special-cased in g_client.c          //weapon_t  startWeapon;
+	},
+    {
+		PCL_HUMAN_LIGHT, //int     number;
+		"human_light", //char    *name;
+		WP_NONE //special-cased in g_client.c          //weapon_t  startWeapon;
+	},
+    {
+		PCL_HUMAN_MEDIUM, //int     number;
+		"human_medium", //char    *name;
+		WP_NONE //special-cased in g_client.c          //weapon_t  startWeapon;
+	},
+	{
+		PCL_HUMAN_BSUIT, //int     number;
+		"human_bsuit", //char    *name;
+		WP_NONE //special-cased in g_client.c          //weapon_t  startWeapon;
+	}
+#endif
 };
 
+#ifndef UNREALARENA
+static const size_t bg_numClasses = ARRAY_LEN( bg_classData );
+#endif
+
+#ifdef UNREALARENA
 static classAttributes_t bg_classList[ NUM_TEAMS ];
+#else
+static classAttributes_t bg_classList[ ARRAY_LEN( bg_classData ) ];
+#endif
 
-/**
- * Get class attributes
- *
- * XXX: move team check to a separate function
- *
- * @param team  class team
- * @return      class attributes
- */
-const classAttributes_t* BG_Class(team_t team)
+#ifndef UNREALARENA
+static const classAttributes_t nullClass {};
+static /*const*/ classModelConfig_t nullClassModelConfig {};
+
+/*
+==============
+BG_ClassByName
+==============
+*/
+const classAttributes_t *BG_ClassByName( const char *name )
 {
-	switch (team)
+	if ( name )
+	{
+		for ( unsigned i = 0; i < bg_numClasses; i++ )
+		{
+			if ( !Q_stricmp( bg_classList[ i ].name, name ) )
+			{
+				return &bg_classList[ i ];
+			}
+		}
+	}
+
+	return &nullClass;
+}
+#endif
+
+/*
+==============
+BG_Class
+==============
+*/
+#ifdef UNREALARENA
+const classAttributes_t *BG_Class( team_t team )
+{
+	switch ( team )
 	{
 		case TEAM_NONE:
 		case TEAM_Q:
 		case TEAM_U:
-			return &bg_classList[team];
+			return &bg_classList[ team ];
 			break;
 
 		default:
+			// [TODO] Assert?!
 			return nullptr;
 	}
 }
+#else
+const classAttributes_t *BG_Class( int pClass )
+{
+	return ( pClass >= PCL_NONE && pClass < PCL_NUM_CLASSES ) ?
+	       &bg_classList[ pClass ] : &nullClass;
+}
+#endif
 
+#ifdef UNREALARENA
 static classModelConfig_t bg_classModelConfigList[ NUM_TEAMS ];
+#else
+static classModelConfig_t bg_classModelConfigList[ PCL_NUM_CLASSES ];
+#endif
 
-/**
- * Get class model configuration
- *
- * XXX: move team check to a separate function
- *
- * @param team  class team
- * @return      class model configuration
- */
-classModelConfig_t* BG_ClassModelConfig(team_t team)
+#ifndef UNREALARENA
+/*
+==============
+BG_ClassModelConfigByName
+==============
+*/
+classModelConfig_t *BG_ClassModelConfigByName( const char *name )
 {
-	switch (team)
+	if ( name )
+	{
+		for ( unsigned i = 0; i < bg_numClasses; i++ )
+		{
+			if ( !Q_stricmp( bg_classModelConfigList[ i ].humanName, name ) )
+			{
+				return &bg_classModelConfigList[ i ];
+			}
+		}
+	}
+
+	return &nullClassModelConfig;
+}
+#endif
+
+/*
+==============
+BG_ClassModelConfig
+==============
+*/
+#ifdef UNREALARENA
+classModelConfig_t *BG_ClassModelConfig( team_t team )
+{
+	switch ( team )
 	{
 		case TEAM_NONE:
 		case TEAM_Q:
 		case TEAM_U:
-			return &bg_classModelConfigList[team];
+			return &bg_classModelConfigList[ team ];
 			break;
 
 		default:
+			// [TODO] Assert?!
 			return nullptr;
 	}
 }
+#else
+classModelConfig_t *BG_ClassModelConfig( int pClass )
+{
+	return &bg_classModelConfigList[ pClass ];
+}
+#endif
 
 /*
 ==============
 BG_ClassBoundingBox
 ==============
 */
+#ifdef UNREALARENA
 void BG_ClassBoundingBox( team_t team,
                           vec3_t mins, vec3_t maxs,
                           vec3_t cmaxs, vec3_t dmins, vec3_t dmaxs )
+#else
+void BG_ClassBoundingBox( int pClass,
+                          vec3_t mins, vec3_t maxs,
+                          vec3_t cmaxs, vec3_t dmins, vec3_t dmaxs )
+#endif
 {
+#ifdef UNREALARENA
 	classModelConfig_t *classModelConfig = BG_ClassModelConfig( team );
+#else
+	classModelConfig_t *classModelConfig = BG_ClassModelConfig( pClass );
+#endif
 
 	if ( mins != nullptr )
 	{
@@ -136,6 +473,98 @@ void BG_ClassBoundingBox( team_t team,
 	}
 }
 
+#ifndef UNREALARENA
+team_t BG_ClassTeam( int pClass )
+{
+	return BG_Class( pClass )->team;
+}
+
+/*
+==============
+BG_ClassHasAbility
+==============
+*/
+bool BG_ClassHasAbility( int pClass, int ability )
+{
+	int abilities = BG_Class( pClass )->abilities;
+
+	return abilities & ability;
+}
+
+/*
+==============
+BG_ClassCanEvolveFromTo
+==============
+*/
+int BG_ClassCanEvolveFromTo( int from, int to, int credits )
+{
+	int fromCost, toCost, evolveCost;
+
+	if ( from == to ||
+	     from <= PCL_NONE || from >= PCL_NUM_CLASSES ||
+	     to <= PCL_NONE || to >= PCL_NUM_CLASSES )
+	{
+		return -1;
+	}
+
+	if ( !BG_ClassUnlocked( to ) || BG_ClassDisabled( to ) )
+	{
+		return -1;
+	}
+
+	fromCost = BG_Class( from )->cost;
+	toCost = BG_Class( to )->cost;
+
+	// classes w/o a cost are for spawning only
+	if ( toCost == 0 )
+	{
+		// (adv.) granger may evolve into adv. granger or dretch at no cost
+		if ( ( from == PCL_ALIEN_BUILDER0 || from == PCL_ALIEN_BUILDER0_UPG ) &&
+		     ( to == PCL_ALIEN_BUILDER0_UPG || to == PCL_ALIEN_LEVEL0 ) )
+		{
+			return 0;
+		}
+
+		return -1;
+	}
+
+	// don't allow devolving
+	if ( toCost <= fromCost )
+	{
+		return -1;
+	}
+
+	evolveCost = toCost - fromCost;
+
+	if ( credits < evolveCost )
+	{
+		return -1;
+	}
+
+	return evolveCost;
+}
+
+/*
+==============
+BG_AlienCanEvolve
+==============
+*/
+bool BG_AlienCanEvolve( int from, int credits )
+{
+	int to;
+
+	for ( to = PCL_NONE + 1; to < PCL_NUM_CLASSES; to++ )
+	{
+		if ( BG_ClassCanEvolveFromTo( from, to, credits ) >= 0 )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+#endif
+
 /*
 ===============
 BG_InitClassAttributes
@@ -146,15 +575,26 @@ void BG_InitClassAttributes()
 	const classData_t *cd;
 	classAttributes_t *ca;
 
+#ifdef UNREALARENA
 	for ( unsigned i = 0; i < NUM_TEAMS; i++ )
+#else
+	for ( unsigned i = 0; i < bg_numClasses; i++ )
+#endif
 	{
 		cd = &bg_classData[i];
 		ca = &bg_classList[i];
 
+#ifdef UNREALARENA
 		ca->team = cd->team;
+#else
+		ca->number = cd->number;
+#endif
 		ca->name = cd->name;
 		ca->startWeapon = cd->startWeapon;
 
+#ifndef UNREALARENA
+		ca->buildDist = 0.0f;
+#endif
 		ca->bob = 0.0f;
 		ca->bobCycle = 0.0f;
 		ca->abilities = 0;
@@ -173,12 +613,23 @@ void BG_InitClassModelConfigs()
 	int           i;
 	classModelConfig_t *cc;
 
-	for ( i = 0; i < NUM_TEAMS; i++ )
+#ifdef UNREALARENA
+	for ( i = TEAM_NONE; i < NUM_TEAMS; i++ )
+#else
+	for ( i = PCL_NONE; i < PCL_NUM_CLASSES; i++ )
+#endif
 	{
+#ifdef UNREALARENA
 		cc = BG_ClassModelConfig( ( team_t ) i );
 
 		BG_ParseClassModelFile( va( "configs/classes/%s.model.cfg",
 		                       BG_Class( ( team_t ) i )->name ), cc );
+#else
+		cc = BG_ClassModelConfig( i );
+
+		BG_ParseClassModelFile( va( "configs/classes/%s.model.cfg",
+		                       BG_Class( i )->name ), cc );
+#endif
 
 		cc->segmented = cc->modelName[0] ? BG_NonSegModel( va( "models/players/%s/animation.cfg", cc->modelName ) ) : false;
 	}
@@ -211,6 +662,12 @@ static const weaponData_t bg_weaponsData[] =
 	{ WP_FLAMER,            "flamer"    },
 	{ WP_PULSE_RIFLE,       "prifle"    },
 	{ WP_LUCIFER_CANNON,    "lcannon"   },
+#ifndef UNREALARENA
+	{ WP_LOCKBLOB_LAUNCHER, "lockblob"  },
+	{ WP_HIVE,              "hive"      },
+	{ WP_ROCKETPOD,         "rocketpod" },
+	{ WP_MGTURRET,          "mgturret"  },
+#endif
 	{ WP_ABUILD,            "abuild"    },
 	{ WP_ABUILD2,           "abuildupg" },
 	{ WP_HBUILD,            "ckit"      }
@@ -363,7 +820,7 @@ void BG_InitUpgradeAttributes()
 		ud = &bg_upgradesData[i];
 		ua = &bg_upgrades[i];
 
-		//Initialise default values for attributes
+		//Initialise default values for buildables
 		Com_Memset( ua, 0, sizeof( upgradeAttributes_t ) );
 
 		ua->number = ud->number;
@@ -391,8 +848,16 @@ static const missileData_t bg_missilesData[] =
   { MIS_GRENADE,      "grenade"      },
   { MIS_FIREBOMB,     "firebomb"     },
   { MIS_FIREBOMB_SUB, "firebomb_sub" },
+#ifndef UNREALARENA
+  { MIS_HIVE,         "hive"         },
+  { MIS_LOCKBLOB,     "lockblob"     },
+  { MIS_SLOWBLOB,     "slowblob"     },
+#endif
   { MIS_BOUNCEBALL,   "bounceball"   },
-  { MIS_ROCKET,       "rocket"       }
+  { MIS_ROCKET,       "rocket"       },
+#ifndef UNREALARENA
+  { MIS_SPIKER,       "spiker"       }
+#endif
 };
 
 static const size_t              bg_numMissiles = ARRAY_LEN( bg_missilesData );
@@ -464,6 +929,9 @@ typedef struct
 
 static const meansOfDeathData_t bg_meansOfDeathData[] =
 {
+#ifndef UNREALARENA
+	{ MOD_ABUILDER_CLAW, "MOD_ABUILDER_CLAW" },
+#endif
 	{ MOD_UNKNOWN, "MOD_UNKNOWN" },
 	{ MOD_SHOTGUN, "MOD_SHOTGUN" },
 	{ MOD_BLASTER, "MOD_BLASTER" },
@@ -477,8 +945,16 @@ static const meansOfDeathData_t bg_meansOfDeathData[] =
 	{ MOD_LCANNON_SPLASH, "MOD_LCANNON_SPLASH" },
 	{ MOD_FLAMER, "MOD_FLAMER" },
 	{ MOD_FLAMER_SPLASH, "MOD_FLAMER_SPLASH" },
+#ifndef UNREALARENA
+	{ MOD_BURN, "MOD_BURN" },
+#endif
 	{ MOD_GRENADE, "MOD_GRENADE" },
 	{ MOD_FIREBOMB, "MOD_FIREBOMB" },
+#ifdef UNREALARENA
+	{ MOD_WEIGHT, "MOD_WEIGHT" },
+#else
+	{ MOD_WEIGHT_H, "MOD_WEIGHT_H" },
+#endif
 	{ MOD_WATER, "MOD_WATER" },
 	{ MOD_SLIME, "MOD_SLIME" },
 	{ MOD_LAVA, "MOD_LAVA" },
@@ -488,9 +964,33 @@ static const meansOfDeathData_t bg_meansOfDeathData[] =
 	{ MOD_SUICIDE, "MOD_SUICIDE" },
 	{ MOD_TARGET_LASER, "MOD_TARGET_LASER" },
 	{ MOD_TRIGGER_HURT, "MOD_TRIGGER_HURT" },
-	{ MOD_WEIGHT, "MOD_WEIGHT" },
+#ifndef UNREALARENA
+	{ MOD_ABUILDER_CLAW, "MOD_ABUILDER_CLAW" },
+	{ MOD_LEVEL0_BITE, "MOD_LEVEL0_BITE" },
+	{ MOD_LEVEL1_CLAW, "MOD_LEVEL1_CLAW" },
+	{ MOD_LEVEL3_CLAW, "MOD_LEVEL3_CLAW" },
+	{ MOD_LEVEL3_POUNCE, "MOD_LEVEL3_POUNCE" },
+	{ MOD_LEVEL3_BOUNCEBALL, "MOD_LEVEL3_BOUNCEBALL" },
+	{ MOD_LEVEL2_CLAW, "MOD_LEVEL2_CLAW" },
+	{ MOD_LEVEL2_ZAP, "MOD_LEVEL2_ZAP" },
+	{ MOD_LEVEL4_CLAW, "MOD_LEVEL4_CLAW" },
+	{ MOD_LEVEL4_TRAMPLE, "MOD_LEVEL4_TRAMPLE" },
+	{ MOD_WEIGHT_A, "MOD_WEIGHT_A" },
+	{ MOD_SLOWBLOB, "MOD_SLOWBLOB" },
 	{ MOD_POISON, "MOD_POISON" },
-	{ MOD_REPLACE, "MOD_REPLACE" }
+	{ MOD_SWARM, "MOD_SWARM" },
+	{ MOD_HSPAWN, "MOD_HSPAWN" },
+	{ MOD_ROCKETPOD, "MOD_ROCKETPOD" },
+	{ MOD_MGTURRET, "MOD_MGTURRET" },
+	{ MOD_REACTOR, "MOD_REACTOR" },
+	{ MOD_ASPAWN, "MOD_ASPAWN" },
+	{ MOD_ATUBE, "MOD_ATUBE" },
+	{ MOD_SPIKER, "MOD_SPIKER" },
+	{ MOD_OVERMIND, "MOD_OVERMIND" },
+	{ MOD_DECONSTRUCT, "MOD_DECONSTRUCT" },
+	{ MOD_REPLACE, "MOD_REPLACE" },
+	{ MOD_NOCREEP, "MOD_NOCREEP" }
+#endif
 };
 
 static const size_t bg_numMeansOfDeath = ARRAY_LEN( bg_meansOfDeathData );
@@ -608,6 +1108,10 @@ bool config_loaded = false;
 
 void BG_InitAllConfigs()
 {
+#ifndef UNREALARENA
+	BG_InitBuildableAttributes();
+	BG_InitBuildableModelConfigs();
+#endif
 	BG_InitClassAttributes();
 	BG_InitClassModelConfigs();
 	BG_InitWeaponAttributes();
@@ -637,7 +1141,24 @@ void BG_UnloadAllConfigs()
     }
     config_loaded = false;
 
+#ifndef UNREALARENA
+    for ( unsigned i = 0; i < bg_numBuildables; i++ )
+    {
+        buildableAttributes_t *ba = &bg_buildableList[i];
+
+        if ( ba )
+        {
+            BG_Free( (char *)ba->humanName );
+            BG_Free( (char *)ba->info );
+        }
+    }
+#endif
+
+#ifdef UNREALARENA
     for ( unsigned i = 0; i < NUM_TEAMS; i++ )
+#else
+    for ( unsigned i = 0; i < bg_numClasses; i++ )
+#endif
     {
         classAttributes_t *ca = &bg_classList[i];
 
@@ -656,10 +1177,17 @@ void BG_UnloadAllConfigs()
         }
     }
 
-    for ( unsigned i = 0; i < NUM_TEAMS; i++ )
+#ifdef UNREALARENA
+    for ( unsigned i = TEAM_NONE; i < NUM_TEAMS; i++ )
     {
         BG_Free(BG_ClassModelConfig( ( team_t ) i )->humanName);
     }
+#else
+    for ( unsigned i = PCL_NONE; i < PCL_NUM_CLASSES; i++ )
+    {
+        BG_Free(BG_ClassModelConfig( i )->humanName);
+    }
+#endif
 
     for ( unsigned i = 0; i < bg_numWeapons; i++ )
     {
@@ -905,10 +1433,43 @@ static const char *const eventnames[] =
 
   "EV_GIB_PLAYER",
 
+#ifndef UNREALARENA
+  "EV_BUILD_CONSTRUCT",
+  "EV_BUILD_DESTROY",
+  "EV_BUILD_DELAY", // can't build yet
+  "EV_BUILD_REPAIR", // repairing buildable
+  "EV_BUILD_REPAIRED", // buildable has full health
+  "EV_HUMAN_BUILDABLE_DYING",
+  "EV_HUMAN_BUILDABLE_EXPLOSION",
+  "EV_ALIEN_BUILDABLE_EXPLOSION",
+  "EV_ALIEN_ACIDTUBE",
+  "EV_ALIEN_BOOSTER",
+#endif
+
   "EV_MEDKIT_USED",
+
+#ifndef UNREALARENA
+  "EV_ALIEN_EVOLVE",
+  "EV_ALIEN_EVOLVE_FAILED",
+#endif
 
   "EV_STOPLOOPINGSOUND",
   "EV_TAUNT",
+
+#ifndef UNREALARENA
+  "EV_OVERMIND_ATTACK_1", // overmind under attack
+  "EV_OVERMIND_ATTACK_2", // overmind under attack
+  "EV_OVERMIND_DYING", // overmind close to death
+  "EV_OVERMIND_SPAWNS", // overmind needs spawns
+
+  "EV_REACTOR_ATTACK_1", // reactor under attack
+  "EV_REACTOR_ATTACK_2", // reactor under attack
+  "EV_REACTOR_DYING", // reactor destroyed
+
+  "EV_WARN_ATTACK", // a building has been destroyed and the destruction noticed by a nearby om/rc/rrep
+
+  "EV_MGTURRET_SPINUP", // turret spinup sound should play
+#endif
 
   "EV_AMMO_REFILL",     // ammo for clipless weapon has been refilled
   "EV_CLIPS_REFILL",    // weapon clips have been refilled
@@ -1033,6 +1594,17 @@ void BG_PlayerStateToEntityState( playerState_t *ps, entityState_t *s, bool snap
 		s->eFlags &= ~EF_DEAD;
 	}
 
+#ifndef UNREALARENA
+	if ( ps->stats[ STAT_STATE ] & SS_BLOBLOCKED )
+	{
+		s->eFlags |= EF_BLOBLOCKED;
+	}
+	else
+	{
+		s->eFlags &= ~EF_BLOBLOCKED;
+	}
+#endif
+
 	if ( ps->externalEvent )
 	{
 		s->event = ps->externalEvent;
@@ -1090,7 +1662,11 @@ void BG_PlayerStateToEntityState( playerState_t *ps, entityState_t *s, bool snap
 	}
 
 	// use misc field to store team/class info:
+#ifdef UNREALARENA
 	s->misc = ps->persistant[ PERS_TEAM ];
+#else
+	s->misc = ps->persistant[ PERS_TEAM ] | ( ps->stats[ STAT_CLASS ] << 8 );
+#endif
 
 	// have to get the surfNormal through somehow...
 	VectorCopy( ps->grapplePoint, s->angles2 );
@@ -1173,6 +1749,17 @@ void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s
 		s->eFlags &= ~EF_DEAD;
 	}
 
+#ifndef UNREALARENA
+	if ( ps->stats[ STAT_STATE ] & SS_BLOBLOCKED )
+	{
+		s->eFlags |= EF_BLOBLOCKED;
+	}
+	else
+	{
+		s->eFlags &= ~EF_BLOBLOCKED;
+	}
+#endif
+
 	if ( ps->externalEvent )
 	{
 		s->event = ps->externalEvent;
@@ -1230,7 +1817,11 @@ void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s
 	}
 
 	// use misc field to store team/class info:
+#ifdef UNREALARENA
 	s->misc = ps->persistant[ PERS_TEAM ];
+#else
+	s->misc = ps->persistant[ PERS_TEAM ] | ( ps->stats[ STAT_CLASS ] << 8 );
+#endif
 
 	// have to get the surfNormal through somehow...
 	VectorCopy( ps->grapplePoint, s->angles2 );
@@ -1272,6 +1863,18 @@ Does the player hold a weapon?
 */
 bool BG_InventoryContainsWeapon( int weapon, const int stats[] )
 {
+	// humans always have a blaster
+	// HACK: Determine team by checking for STAT_CLASS since we merged STAT_TEAM into PERS_TEAM
+	//       This hack will vanish as soon as the blast isn't the only possible sidearm weapon anymore
+#ifdef UNREALARENA
+	if ( stats[ STAT_MAX_HEALTH ] == 100 && weapon == WP_BLASTER )
+#else
+	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_HUMANS && weapon == WP_BLASTER )
+#endif
+	{
+		return true;
+	}
+
 	return ( stats[ STAT_WEAPON ] == weapon );
 }
 
@@ -1287,6 +1890,17 @@ int BG_SlotsForInventory( int stats[] )
 	int i, slot, slots;
 
 	slots = BG_Weapon( stats[ STAT_WEAPON ] )->slots;
+
+	// HACK: Determine team by checking for STAT_CLASS since we merged STAT_TEAM into PERS_TEAM
+	//       This hack will vanish as soon as the blast isn't the only possible sidearm weapon anymore
+#ifdef UNREALARENA
+	if ( stats[ STAT_MAX_HEALTH ] == 100 )
+#else
+	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_HUMANS )
+#endif
+	{
+		slots |= BG_Weapon( WP_BLASTER )->slots;
+	}
 
 	for ( i = UP_NONE; i < UP_NUM_UPGRADES; i++ )
 	{
@@ -1474,6 +2088,52 @@ void BG_GetClientViewOrigin( const playerState_t *ps, vec3_t viewOrigin )
 	VectorMA( ps->origin, ps->viewheight, normal, viewOrigin );
 }
 
+#ifndef UNREALARENA
+/*
+===============
+BG_PositionBuildableRelativeToPlayer
+
+Find a place to build a buildable
+===============
+*/
+void BG_PositionBuildableRelativeToPlayer( playerState_t *ps,
+    const vec3_t mins, const vec3_t maxs,
+    void ( *trace )( trace_t *, const vec3_t, const vec3_t,
+                     const vec3_t, const vec3_t, int, int, int ),
+    vec3_t outOrigin, vec3_t outAngles, trace_t *tr )
+{
+	vec3_t aimDir, forward, entityOrigin, targetOrigin;
+	vec3_t angles, playerOrigin, playerNormal;
+	float  buildDist;
+
+	BG_GetClientNormal( ps, playerNormal );
+
+	VectorCopy( ps->viewangles, angles );
+	VectorCopy( ps->origin, playerOrigin );
+
+	AngleVectors( angles, aimDir, nullptr, nullptr );
+	ProjectPointOnPlane( forward, aimDir, playerNormal );
+	VectorNormalize( forward );
+
+	buildDist = BG_Class( ps->stats[ STAT_CLASS ] )->buildDist * DotProduct( forward, aimDir );
+
+	VectorMA( playerOrigin, buildDist, forward, entityOrigin );
+
+	VectorCopy( entityOrigin, targetOrigin );
+
+	//so buildings can be placed facing slopes
+	VectorMA( entityOrigin, 32, playerNormal, entityOrigin );
+
+	//so buildings drop to floor
+	VectorMA( targetOrigin, -128, playerNormal, targetOrigin );
+
+	// The mask is MASK_DEADSOLID on purpose to avoid collisions with other entities
+	( *trace )( tr, entityOrigin, mins, maxs, targetOrigin, ps->clientNum, MASK_DEADSOLID, 0 );
+	VectorCopy( tr->endpos, outOrigin );
+	vectoangles( forward, outAngles );
+}
+#endif
+
 /**
  * @brief Calculates the "value" of a player as a base value plus a fraction of the price the
  *        player paid for upgrades.
@@ -1493,11 +2153,11 @@ int BG_GetValueOfPlayer( playerState_t *ps )
 
 	switch ( ps->persistant[ PERS_TEAM ] )
 	{
-		case TEAM_Q:
-			price += BG_Class( ( team_t ) ps->persistant[ PERS_TEAM ] )->cost;
-			break;
-
+#ifdef UNREALARENA
 		case TEAM_U:
+#else
+		case TEAM_HUMANS:
+#endif
 			// Add upgrade price
 			for ( upgradeNum = UP_NONE + 1; upgradeNum < UP_NUM_UPGRADES; upgradeNum++ )
 			{
@@ -1517,6 +2177,16 @@ int BG_GetValueOfPlayer( playerState_t *ps )
 			}
 
 			break;
+
+#ifdef UNREALARENA
+		case TEAM_Q:
+			price += BG_Class( ( team_t ) ps->persistant[ PERS_TEAM ] )->cost;
+			break;
+#else
+		case TEAM_ALIENS:
+			price += BG_Class( ps->stats[ STAT_CLASS ] )->cost;
+			break;
+#endif
 
 		default:
 			return 0;
@@ -1547,6 +2217,7 @@ bool BG_PlayerCanChangeWeapon( playerState_t *ps )
 BG_GetPlayerWeapon
 
 Returns the players current weapon or the weapon they are switching to.
+Only needs to be used for human weapons.
 =================
 */
 weapon_t BG_GetPlayerWeapon( playerState_t *ps )
@@ -1893,8 +2564,138 @@ void BG_ParseCSVEquipmentList( const char *string, weapon_t *weapons, int weapon
 	}
 }
 
+#ifndef UNREALARENA
+/*
+===============
+BG_ParseCSVClassList
+===============
+*/
+void BG_ParseCSVClassList( const char *string, class_t *classes, int classesSize )
+{
+	char     buffer[ MAX_STRING_CHARS ];
+	int      i = 0;
+	char     *p, *q;
+	bool EOS = false;
+
+	Q_strncpyz( buffer, string, MAX_STRING_CHARS );
+
+	p = q = buffer;
+
+	while ( *p != '\0' && i < classesSize - 1 )
+	{
+		//skip to first , or EOS
+		while ( *p != ',' && *p != '\0' )
+		{
+			p++;
+		}
+
+		if ( *p == '\0' )
+		{
+			EOS = true;
+		}
+
+		*p = '\0';
+
+		//strip leading whitespace
+		while ( *q == ' ' )
+		{
+			q++;
+		}
+
+		classes[ i ] = BG_ClassByName( q )->number;
+
+		if ( classes[ i ] == PCL_NONE )
+		{
+			Com_Printf( S_WARNING "unknown class %s\n", q );
+		}
+		else
+		{
+			i++;
+		}
+
+		if ( !EOS )
+		{
+			p++;
+			q = p;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	classes[ i ] = PCL_NONE;
+}
+
+/*
+===============
+BG_ParseCSVBuildableList
+===============
+*/
+void BG_ParseCSVBuildableList( const char *string, buildable_t *buildables, int buildablesSize )
+{
+	char     buffer[ MAX_STRING_CHARS ];
+	int      i = 0;
+	char     *p, *q;
+	bool EOS = false;
+
+	Q_strncpyz( buffer, string, MAX_STRING_CHARS );
+
+	p = q = buffer;
+
+	while ( *p != '\0' && i < buildablesSize - 1 )
+	{
+		//skip to first , or EOS
+		while ( *p != ',' && *p != '\0' )
+		{
+			p++;
+		}
+
+		if ( *p == '\0' )
+		{
+			EOS = true;
+		}
+
+		*p = '\0';
+
+		//strip leading whitespace
+		while ( *q == ' ' )
+		{
+			q++;
+		}
+
+		buildables[ i ] = BG_BuildableByName( q )->number;
+
+		if ( buildables[ i ] == BA_NONE )
+		{
+			Com_Printf( S_WARNING "unknown buildable %s\n", q );
+		}
+		else
+		{
+			i++;
+		}
+
+		if ( !EOS )
+		{
+			p++;
+			q = p;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	buildables[ i ] = BA_NONE;
+}
+#endif
+
 typedef struct gameElements_s
 {
+#ifndef UNREALARENA
+	buildable_t buildables[ BA_NUM_BUILDABLES ];
+	class_t     classes[ PCL_NUM_CLASSES ];
+#endif
 	weapon_t    weapons[ WP_NUM_WEAPONS ];
 	upgrade_t   upgrades[ UP_NUM_UPGRADES ];
 } gameElements_t;
@@ -1916,6 +2717,20 @@ void BG_InitAllowedGameElements()
 	BG_ParseCSVEquipmentList( cvar,
 	                          bg_disabledGameElements.weapons, WP_NUM_WEAPONS,
 	                          bg_disabledGameElements.upgrades, UP_NUM_UPGRADES );
+
+#ifndef UNREALARENA
+	trap_Cvar_VariableStringBuffer( "g_disabledClasses",
+	                                cvar, MAX_CVAR_VALUE_STRING );
+
+	BG_ParseCSVClassList( cvar,
+	                      bg_disabledGameElements.classes, PCL_NUM_CLASSES );
+
+	trap_Cvar_VariableStringBuffer( "g_disabledBuildables",
+	                                cvar, MAX_CVAR_VALUE_STRING );
+
+	BG_ParseCSVBuildableList( cvar,
+	                          bg_disabledGameElements.buildables, BA_NUM_BUILDABLES );
+#endif
 }
 
 /*
@@ -1959,6 +2774,50 @@ bool BG_UpgradeDisabled( int upgrade )
 
 	return false;
 }
+
+#ifndef UNREALARENA
+/*
+============
+BG_ClassDisabled
+============
+*/
+bool BG_ClassDisabled( int class_ )
+{
+	int i;
+
+	for ( i = 0; i < PCL_NUM_CLASSES &&
+	      bg_disabledGameElements.classes[ i ] != PCL_NONE; i++ )
+	{
+		if ( bg_disabledGameElements.classes[ i ] == class_ )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*
+============
+BG_BuildableIsAllowed
+============
+*/
+bool BG_BuildableDisabled( int buildable )
+{
+	int i;
+
+	for ( i = 0; i < BA_NUM_BUILDABLES &&
+	      bg_disabledGameElements.buildables[ i ] != BA_NONE; i++ )
+	{
+		if ( bg_disabledGameElements.buildables[ i ] == buildable )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+#endif
 
 /*
 ============
@@ -2066,15 +2925,27 @@ const char *BG_TeamName( int team )
 		return N_("spectator");
 	}
 
+#ifdef UNREALARENA
 	if ( team == TEAM_Q )
 	{
-		return N_("q");
+		return N_("Q");
 	}
 
-	if ( team == TEAM_U)
+	if ( team == TEAM_U )
 	{
-		return N_("u");
+		return N_("U");
 	}
+#else
+	if ( team == TEAM_ALIENS )
+	{
+		return N_("alien");
+	}
+
+	if ( team == TEAM_HUMANS )
+	{
+		return N_("human");
+	}
+#endif
 
 	return "<team>";
 }
@@ -2086,15 +2957,27 @@ const char *BG_TeamNamePlural( int team )
 		return N_("spectators");
 	}
 
+#ifdef UNREALARENA
 	if ( team == TEAM_Q )
 	{
-		return N_("q");
+		return N_("Q team");
 	}
 
 	if ( team == TEAM_U )
 	{
-		return N_("u");
+		return N_("U team");
 	}
+#else
+	if ( team == TEAM_ALIENS )
+	{
+		return N_("aliens");
+	}
+
+	if ( team == TEAM_HUMANS )
+	{
+		return N_("humans");
+	}
+#endif
 
 	return "<team>";
 }

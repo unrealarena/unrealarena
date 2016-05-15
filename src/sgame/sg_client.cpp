@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -43,7 +43,12 @@ void G_AddCreditToClient( gclient_t *client, short credit, bool cap )
 
 	if ( cap && credit > 0 )
 	{
+#ifdef UNREALARENA
 		capAmount = 2000;
+#else
+		capAmount = client->pers.team == TEAM_ALIENS ?
+		            ALIEN_MAX_CREDITS : HUMAN_MAX_CREDITS;
+#endif
 
 		if ( client->pers.credit < capAmount )
 		{
@@ -102,19 +107,19 @@ bool SpotWouldTelefrag( gentity_t *spot )
 	return false;
 }
 
-
+#ifdef UNREALARENA
 /**
- * Find an appropriate spawn point
+ * Find a spawn point
  *
- * XXX: flags (initial, ...)?
+ * [TODO] Add flags (initial, ...)?
  *
+ * @param team    team
  * @param origin  position
  * @param angles  orientation
- * @param team    team
- * @param data    data needed for custom spawn logics
+ * @param data    data needed for custom spawn logic
  * @return        spawn point
  */
-gentity_t *G_SelectSpawnPoint(vec3_t origin, vec3_t angles, team_t team, const void *data)
+gentity_t *G_SelectSpawnPoint(team_t team, vec3_t origin, vec3_t angles, const void *data)
 {
 	gentity_t *spawnPoint = nullptr;
 
@@ -141,10 +146,10 @@ gentity_t *G_SelectSpawnPoint(vec3_t origin, vec3_t angles, team_t team, const v
 
 
 /**
- * Find a viable spawn point for a Q player
+ * Find a spawn point for a Q player
  *
- * Pick a random spawn point among the (half) set of spawns further from the
- * last death location.
+ * Pick a random spawn point among the (half) set of spawns that are further
+ * from the last death location.
  *
  * @param origin  position
  * @param angles  orientation
@@ -205,7 +210,8 @@ gentity_t *G_SelectQSpawnPoint(vec3_t origin, vec3_t angles, const void *data)
 		}
 	}
 
-	// If there are not suitable spawn points then pick a random one (that telefrag)
+	// If there are not suitable spawn points then pick a random one
+	// (among the ones that telefrag)
 	if (!numSpawnPoints)
 	{
 		spawnPoint = G_PickRandomEntityOfClass(S_POS_PLAYER_SPAWN);
@@ -225,7 +231,7 @@ gentity_t *G_SelectQSpawnPoint(vec3_t origin, vec3_t angles, const void *data)
 	VectorCopy(spawnPoints[pick]->s.origin, origin);
 	VectorCopy(spawnPoints[pick]->s.angles, angles);
 
-	// XXX: probably related to those little ob when you spawn
+	// [FIXME] Probably related to those little OB when you spawn
 	origin[2] += 9;
 
 	return spawnPoints[pick];
@@ -233,13 +239,13 @@ gentity_t *G_SelectQSpawnPoint(vec3_t origin, vec3_t angles, const void *data)
 
 
 /**
- * Find a viable spawn point for a U player
+ * Find a spawn point for a U player
  *
- * XXX: implement the correct logic
+ * [TODO] Implement the correct logic
  *
  * @param origin  position
  * @param angles  orientation
- * @param data    data needed for custom spawn logics
+ * @param data    data needed for custom spawn logic
  * @return        spawn point
  */
 gentity_t *G_SelectUSpawnPoint(vec3_t origin, vec3_t angles, const void *data)
@@ -249,7 +255,7 @@ gentity_t *G_SelectUSpawnPoint(vec3_t origin, vec3_t angles, const void *data)
 
 
 /**
- * Find a viable spawn point for spectators
+ * Find a spawn point for spectators
  *
  * Select a "pos_player_intermission" or a "pos_player_spawn" otherwise.
  *
@@ -292,7 +298,260 @@ gentity_t *G_SelectSpectatorSpawnPoint(vec3_t origin, vec3_t angles)
 
 	return spawnPoint;
 }
+#else
+/*
+===========
+G_SelectRandomFurthestSpawnPoint
 
+Chooses a player start, deathmatch start, etc
+============
+*/
+gentity_t *G_SelectRandomFurthestSpawnPoint( vec3_t avoidPoint, vec3_t origin, vec3_t angles )
+{
+	gentity_t *spot = nullptr;
+	vec3_t    delta;
+	float     dist;
+	float     list_dist[ 64 ];
+	gentity_t *list_spot[ 64 ];
+	int       numSpots, rnd, i, j;
+
+	numSpots = 0;
+
+	while ( ( spot = G_IterateEntitiesOfClass( spot, S_POS_PLAYER_SPAWN ) ) != nullptr )
+	{
+		if ( SpotWouldTelefrag( spot ) )
+		{
+			continue;
+		}
+
+		VectorSubtract( spot->s.origin, avoidPoint, delta );
+		dist = VectorLength( delta );
+
+		for ( i = 0; i < numSpots; i++ )
+		{
+			if ( dist > list_dist[ i ] )
+			{
+				if ( numSpots >= 64 )
+				{
+					numSpots = 64 - 1;
+				}
+
+				for ( j = numSpots; j > i; j-- )
+				{
+					list_dist[ j ] = list_dist[ j - 1 ];
+					list_spot[ j ] = list_spot[ j - 1 ];
+				}
+
+				list_dist[ i ] = dist;
+				list_spot[ i ] = spot;
+				numSpots++;
+
+				if ( numSpots > 64 )
+				{
+					numSpots = 64;
+				}
+
+				break;
+			}
+		}
+
+		if ( i >= numSpots && numSpots < 64 )
+		{
+			list_dist[ numSpots ] = dist;
+			list_spot[ numSpots ] = spot;
+			numSpots++;
+		}
+	}
+
+	if ( !numSpots )
+	{
+		spot = G_IterateEntitiesOfClass( nullptr, S_POS_PLAYER_SPAWN );
+
+		if ( !spot )
+		{
+			G_Error( "Couldn't find a spawn point" );
+		}
+
+		VectorCopy( spot->s.origin, origin );
+		origin[ 2 ] += 9;
+		VectorCopy( spot->s.angles, angles );
+		return spot;
+	}
+
+	// select a random spot from the spawn points furthest away
+	rnd = random() * ( numSpots / 2 );
+
+	VectorCopy( list_spot[ rnd ]->s.origin, origin );
+	origin[ 2 ] += 9;
+	VectorCopy( list_spot[ rnd ]->s.angles, angles );
+
+	return list_spot[ rnd ];
+}
+
+/*
+================
+G_SelectSpawnBuildable
+
+find the nearest buildable of the right type that is
+spawned/healthy/unblocked etc.
+================
+*/
+static gentity_t *G_SelectSpawnBuildable( vec3_t preference, buildable_t buildable )
+{
+	gentity_t *search = nullptr;
+	gentity_t *spot = nullptr;
+
+	while ( ( search = G_IterateEntitiesOfClass( search, BG_Buildable( buildable )->entityName ) ) != nullptr )
+	{
+		if ( !search->spawned )
+		{
+			continue;
+		}
+
+		if ( search->health <= 0 )
+		{
+			continue;
+		}
+
+		if ( search->s.groundEntityNum == ENTITYNUM_NONE )
+		{
+			continue;
+		}
+
+		if ( search->clientSpawnTime > 0 )
+		{
+			continue;
+		}
+
+		if ( G_CheckSpawnPoint( search->s.number, search->s.origin,
+		                        search->s.origin2, buildable, nullptr ) != nullptr )
+		{
+			continue;
+		}
+
+		if ( !spot || DistanceSquared( preference, search->s.origin ) <
+		     DistanceSquared( preference, spot->s.origin ) )
+		{
+			spot = search;
+		}
+	}
+
+	return spot;
+}
+
+/*
+===========
+G_SelectUnvanquishedSpawnPoint
+
+Chooses a player start, deathmatch start, etc
+============
+*/
+gentity_t *G_SelectUnvanquishedSpawnPoint( team_t team, vec3_t preference, vec3_t origin, vec3_t angles )
+{
+	gentity_t *spot = nullptr;
+
+	/* team must exist, or there will be a sigsegv */
+	assert(team == TEAM_HUMANS || team == TEAM_ALIENS);
+	if( level.team[ team ].numSpawns <= 0 )
+	{
+		return nullptr;
+	}
+
+	if ( team == TEAM_ALIENS )
+	{
+		spot = G_SelectSpawnBuildable( preference, BA_A_SPAWN );
+	}
+	else if ( team == TEAM_HUMANS )
+	{
+		spot = G_SelectSpawnBuildable( preference, BA_H_SPAWN );
+	}
+
+	//no available spots
+	if ( !spot )
+	{
+		return nullptr;
+	}
+
+	if ( team == TEAM_ALIENS )
+	{
+		G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_A_SPAWN, origin );
+	}
+	else if ( team == TEAM_HUMANS )
+	{
+		G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_H_SPAWN, origin );
+	}
+
+	VectorCopy( spot->s.angles, angles );
+	angles[ ROLL ] = 0;
+
+	return spot;
+}
+
+/*
+===========
+G_SelectSpectatorSpawnPoint
+
+============
+*/
+gentity_t *G_SelectSpectatorSpawnPoint( vec3_t origin, vec3_t angles )
+{
+	FindIntermissionPoint();
+
+	VectorCopy( level.intermission_origin, origin );
+	VectorCopy( level.intermission_angle, angles );
+
+	return nullptr;
+}
+
+/*
+===========
+G_SelectAlienLockSpawnPoint
+
+Historical wrapper which should be removed. See G_SelectLockSpawnPoint.
+===========
+*/
+gentity_t *G_SelectAlienLockSpawnPoint( vec3_t origin, vec3_t angles )
+{
+	return G_SelectLockSpawnPoint(origin, angles, S_POS_ALIEN_INTERMISSION );
+}
+
+/*
+===========
+G_SelectHumanLockSpawnPoint
+
+Historical wrapper which should be removed. See G_SelectLockSpawnPoint.
+===========
+*/
+gentity_t *G_SelectHumanLockSpawnPoint( vec3_t origin, vec3_t angles )
+{
+	return G_SelectLockSpawnPoint(origin, angles, S_POS_HUMAN_INTERMISSION );
+}
+
+/*
+===========
+G_SelectLockSpawnPoint
+
+Try to find a spawn point for a team intermission otherwise
+use spectator intermission spawn.
+============
+*/
+gentity_t *G_SelectLockSpawnPoint( vec3_t origin, vec3_t angles , char const* intermission )
+{
+	gentity_t *spot;
+
+	spot = G_PickRandomEntityOfClass( intermission );
+
+	if ( !spot )
+	{
+		return G_SelectSpectatorSpawnPoint( origin, angles );
+	}
+
+	VectorCopy( spot->s.origin, origin );
+	VectorCopy( spot->s.angles, angles );
+
+	return spot;
+}
+#endif
 
 /*
 =======================================================================
@@ -366,17 +625,32 @@ static void SpawnCorpse( gentity_t *ent )
 	body->s.event = 0;
 	body->r.contents = CONTENTS_CORPSE;
 	body->clipmask = MASK_DEADSOLID;
+#ifdef UNREALARENA
 	body->s.clientNum = ent->client->ps.persistant[ PERS_TEAM ];
+#else
+	body->s.clientNum = ent->client->ps.stats[ STAT_CLASS ];
+#endif
 	body->nonSegModel = ent->client->ps.persistant[ PERS_STATE ] & PS_NONSEGMODEL;
 
-	if ( ent->client->pers.team == TEAM_Q )
-	{
-		body->classname = "qCorpse";
-	}
-	else
+#ifdef UNREALARENA
+	if ( ent->client->pers.team == TEAM_U )
 	{
 		body->classname = "uCorpse";
 	}
+	else
+	{
+		body->classname = "qCorpse";
+	}
+#else
+	if ( ent->client->pers.team == TEAM_HUMANS )
+	{
+		body->classname = "humanCorpse";
+	}
+	else
+	{
+		body->classname = "alienCorpse";
+	}
+#endif
 
 	body->s.misc = MAX_CLIENTS;
 
@@ -434,7 +708,11 @@ static void SpawnCorpse( gentity_t *ent )
 	ent->health = 0;
 
 	//change body dimensions
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) ent->client->ps.persistant[ PERS_TEAM ], mins, nullptr, nullptr, body->r.mins, body->r.maxs );
+#else
+	BG_ClassBoundingBox( ent->client->ps.stats[ STAT_CLASS ], mins, nullptr, nullptr, body->r.mins, body->r.maxs );
+#endif
 
 	//drop down to match the *model* origins of ent and body
 	origin[2] += mins[ 2 ] - body->r.mins[ 2 ];
@@ -483,6 +761,10 @@ void respawn( gentity_t *ent )
 
 	SpawnCorpse( ent );
 
+#ifndef UNREALARENA
+	// Clients can't respawn - they must go through the class cmd
+	ent->client->pers.classSelection = PCL_NONE;
+#endif
 	ClientSpawn( ent, nullptr, nullptr, nullptr );
 
 	// stop any following clients that don't have sticky spec on
@@ -941,16 +1223,45 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 		trap_SetUserinfo(clientNum, userinfo);
 	}
 
-	Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( client->pers.team )->modelName,
-	             BG_ClassModelConfig( client->pers.team )->skinName );
-
-	if ( BG_ClassModelConfig( client->pers.team )->segmented )
+#ifdef UNREALARENA
+	if ( client->pers.team == TEAM_NONE )
+#else
+	if ( client->pers.classSelection == PCL_NONE )
+#endif
 	{
-		client->ps.persistant[ PERS_STATE ] |= PS_NONSEGMODEL;
+		//This looks hacky and frankly it is. The clientInfo string needs to hold different
+		//model details to that of the spawning class or the info change will not be
+		//registered and an axis appears instead of the player model. There is zero chance
+		//the player can spawn with the battlesuit, hence this choice.
+#ifdef UNREALARENA
+		Com_sprintf( buffer, MAX_QPATH, "human_bsuit/default" );
+#else
+		Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( PCL_HUMAN_BSUIT )->modelName,
+		             BG_ClassModelConfig( PCL_HUMAN_BSUIT )->skinName );
+#endif
 	}
 	else
 	{
-		client->ps.persistant[ PERS_STATE ] &= ~PS_NONSEGMODEL;
+#ifdef UNREALARENA
+		Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( client->pers.team )->modelName,
+		             BG_ClassModelConfig( client->pers.team )->skinName );
+#else
+		Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( client->pers.classSelection )->modelName,
+		             BG_ClassModelConfig( client->pers.classSelection )->skinName );
+#endif
+
+#ifdef UNREALARENA
+		if ( BG_ClassModelConfig( client->pers.team )->segmented )
+#else
+		if ( BG_ClassModelConfig( client->pers.classSelection )->segmented )
+#endif
+		{
+			client->ps.persistant[ PERS_STATE ] |= PS_NONSEGMODEL;
+		}
+		else
+		{
+			client->ps.persistant[ PERS_STATE ] &= ~PS_NONSEGMODEL;
+		}
 	}
 
 	Q_strncpyz( model, buffer, sizeof( model ) );
@@ -1000,7 +1311,11 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 	}
 	else
 	{
+#ifdef UNREALARENA
 		client->pers.flySpeed = BG_Class( TEAM_NONE )->speed;
+#else
+		client->pers.flySpeed = BG_Class( PCL_NONE )->speed;
+#endif
 	}
 
 	// disable blueprint errors
@@ -1454,6 +1769,9 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	int                teamLocal;
 	int                eventSequence;
 	char               userinfo[ MAX_INFO_STRING ];
+#ifndef UNREALARENA
+	vec3_t             up = { 0.0f, 0.0f, 1.0f };
+#endif
 	int                maxAmmo, maxClips;
 	weapon_t           weapon;
 
@@ -1469,15 +1787,30 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		client->sess.spectatorState = SPECTATOR_FREE;
 	}
 
+#ifdef UNREALARENA
 	// Manage spawn queues
-	if ( spawn == nullptr && teamLocal == TEAM_NONE )
+	if ( spawn == nullptr )
+	{
+		if ( teamLocal == TEAM_NONE )
+		{
+			client->sess.spectatorState = SPECTATOR_FREE;
+		}
+		else
+		{
+			client->sess.spectatorState = SPECTATOR_LOCKED;
+		}
+	}
+#else
+	// only start client if chosen a class and joined a team
+	if ( client->pers.classSelection == PCL_NONE && teamLocal == TEAM_NONE )
 	{
 		client->sess.spectatorState = SPECTATOR_FREE;
 	}
-	else if ( spawn == nullptr )
+	else if ( client->pers.classSelection == PCL_NONE )
 	{
 		client->sess.spectatorState = SPECTATOR_LOCKED;
 	}
+#endif
 
 	// if client is dead and following teammate, stop following before spawning
 	if ( ent->client->sess.spectatorState == SPECTATOR_FOLLOW )
@@ -1500,15 +1833,30 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	// ranging doesn't count this client
 	if ( client->sess.spectatorState != SPECTATOR_NOT )
 	{
-		if ( teamLocal != TEAM_NONE )
+#ifdef UNREALARENA
+		if ( teamLocal == TEAM_NONE )
+		{
+			spawnPoint = G_SelectSpawnPoint( TEAM_NONE, spawn_origin, spawn_angles, nullptr );
+		}
+		else
 		{
 			G_PushSpawnQueue( &level.team[ teamLocal ].spawnQueue, index );
 			client->ps.persistant[ PERS_TEAM ] = teamLocal;
 		}
-		else
+#else
+		if ( teamLocal == TEAM_NONE )
 		{
-			spawnPoint = G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE, nullptr );
+			spawnPoint = G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
 		}
+		else if ( teamLocal == TEAM_ALIENS )
+		{
+			spawnPoint = G_SelectAlienLockSpawnPoint( spawn_origin, spawn_angles );
+		}
+		else if ( teamLocal == TEAM_HUMANS )
+		{
+			spawnPoint = G_SelectHumanLockSpawnPoint( spawn_origin, spawn_angles );
+		}
+#endif
 	}
 	else
 	{
@@ -1518,6 +1866,24 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		}
 
 		spawnPoint = spawn;
+
+#ifndef UNREALARENA
+		if ( spawnPoint->s.eType == ET_BUILDABLE )
+		{
+			G_SetBuildableAnim( spawnPoint, BANIM_SPAWN1, true );
+
+			spawnPoint->buildableStatsCount++;
+
+			if ( spawnPoint->buildableTeam == TEAM_ALIENS )
+			{
+				spawnPoint->clientSpawnTime = ALIEN_SPAWN_REPEAT_TIME;
+			}
+			else if ( spawnPoint->buildableTeam == TEAM_HUMANS )
+			{
+				spawnPoint->clientSpawnTime = HUMAN_SPAWN_REPEAT_TIME;
+			}
+		}
+#endif
 	}
 
 	// toggle the teleport bit so the client knows to not lerp
@@ -1562,6 +1928,10 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	trap_GetUserinfo( index, userinfo, sizeof( userinfo ) );
 	client->ps.eFlags = flags;
 
+#ifndef UNREALARENA
+	//Com_Printf( "ent->client->pers->pclass = %i\n", ent->client->pers.classSelection );
+#endif
+
 	ent->s.groundEntityNum = ENTITYNUM_NONE;
 	ent->client = &level.clients[ index ];
 	ent->takedamage = teamLocal != TEAM_NONE && client->sess.spectatorState == SPECTATOR_NOT; //true;
@@ -1588,12 +1958,21 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	client->ps.eFlags = flags;
 	client->ps.clientNum = index;
 
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ent->client->pers.team, ent->r.mins, ent->r.maxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( ent->client->pers.classSelection, ent->r.mins, ent->r.maxs, nullptr, nullptr, nullptr );
+#endif
 
 	if ( client->sess.spectatorState == SPECTATOR_NOT )
 	{
+#ifdef UNREALARENA
 		client->ps.stats[ STAT_MAX_HEALTH ] =
 		  BG_Class( ent->client->pers.team )->health;
+#else
+		client->ps.stats[ STAT_MAX_HEALTH ] =
+		  BG_Class( ent->client->pers.classSelection )->health;
+#endif
 	}
 	else
 	{
@@ -1601,6 +1980,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	}
 
 	// clear entity values
+#ifdef UNREALARENA
 	if ( ent->client->pers.team == TEAM_U )
 	{
 		BG_AddUpgradeToInventory( UP_MEDKIT, client->ps.stats );
@@ -1614,6 +1994,21 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	{
 		weapon = WP_NONE;
 	}
+#else
+	if ( ent->client->pers.classSelection == PCL_HUMAN_NAKED )
+	{
+		BG_AddUpgradeToInventory( UP_MEDKIT, client->ps.stats );
+		weapon = client->pers.humanItemSelection;
+	}
+	else if ( client->sess.spectatorState == SPECTATOR_NOT )
+	{
+		weapon = BG_Class( ent->client->pers.classSelection )->startWeapon;
+	}
+	else
+	{
+		weapon = WP_NONE;
+	}
+#endif
 
 	maxAmmo = BG_Weapon( weapon )->maxAmmo;
 	maxClips = BG_Weapon( weapon )->maxClips;
@@ -1627,6 +2022,12 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	client->ps.persistant[ PERS_TEAM ] = client->pers.team;
 
 	// TODO: Check whether stats can be cleared at once instead of per field
+#ifndef UNREALARENA
+	client->ps.stats[ STAT_STAMINA ] = STAMINA_MAX;
+	client->ps.stats[ STAT_FUEL ]    = JETPACK_FUEL_MAX;
+	client->ps.stats[ STAT_CLASS ] = ent->client->pers.classSelection;
+	client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
+#endif
 	client->ps.stats[ STAT_PREDICTION ] = 0;
 	client->ps.stats[ STAT_STATE ] = 0;
 
@@ -1653,6 +2054,43 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, client->ps.origin );
 
+#ifndef UNREALARENA
+	//give aliens some spawn velocity
+	if ( client->sess.spectatorState == SPECTATOR_NOT &&
+	     client->pers.team == TEAM_ALIENS )
+	{
+		if ( ent == spawn )
+		{
+			//evolution particle system
+			G_AddPredictableEvent( ent, EV_ALIEN_EVOLVE, DirToByte( up ) );
+		}
+		else
+		{
+			spawn_angles[ YAW ] += 180.0f;
+			AngleNormalize360( spawn_angles[ YAW ] );
+
+			if ( spawnPoint->s.origin2[ 2 ] > 0.0f )
+			{
+				vec3_t forward, dir;
+
+				AngleVectors( spawn_angles, forward, nullptr, nullptr );
+				VectorAdd( spawnPoint->s.origin2, forward, dir );
+				VectorNormalize( dir );
+				VectorScale( dir, BG_Class( ent->client->pers.classSelection )->jumpMagnitude,
+				             client->ps.velocity );
+			}
+
+			G_AddPredictableEvent( ent, EV_PLAYER_RESPAWN, 0 );
+		}
+	}
+	else if ( client->sess.spectatorState == SPECTATOR_NOT &&
+	          client->pers.team == TEAM_HUMANS )
+	{
+		spawn_angles[ YAW ] += 180.0f;
+		AngleNormalize360( spawn_angles[ YAW ] );
+	}
+#endif
+
 	// the respawned flag will be cleared after the attack and jump keys come up
 	client->ps.pm_flags |= PMF_RESPAWNED;
 
@@ -1664,7 +2102,11 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		trap_LinkEntity( ent );
 
 		// force the base weapon up
+#ifdef UNREALARENA
 		if ( client->pers.team == TEAM_U )
+#else
+		if ( client->pers.team == TEAM_HUMANS )
+#endif
 		{
 			G_ForceWeaponChange( ent, weapon );
 		}
@@ -1692,9 +2134,10 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	}
 	else
 	{
-		// telefrag
+#ifdef UNREALARENA
+		// telefrag any other entity in the same location
 		G_KillBox( ent );
-
+#endif
 		// fire the targets of the spawn point
 		if ( !spawn && spawnPoint )
 		{

@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -19,27 +19,6 @@
  */
 
 
-/*
-===========================================================================
-
-This file is part of Daemon.
-
-Daemon is free software; you can redistribute it
-and/or modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
-
-Daemon is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Daemon; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-===========================================================================
-*/
-
 // cg_main.c -- initialization for cgame
 
 #include "cg_local.h"
@@ -50,6 +29,10 @@ centity_t       cg_entities[ MAX_GENTITIES ];
 
 weaponInfo_t    cg_weapons[ 32 ];
 upgradeInfo_t   cg_upgrades[ 32 ];
+#ifndef UNREALARENA
+classInfo_t     cg_classes[ PCL_NUM_CLASSES ];
+buildableInfo_t cg_buildables[ BA_NUM_BUILDABLES ];
+#endif
 
 vmCvar_t        cg_teslaTrailTime;
 vmCvar_t        cg_centertime;
@@ -58,6 +41,9 @@ vmCvar_t        cg_runroll;
 vmCvar_t        cg_swingSpeed;
 vmCvar_t        cg_shadows;
 vmCvar_t        cg_playerShadows;
+#ifndef UNREALARENA
+vmCvar_t        cg_buildableShadows;
+#endif
 vmCvar_t        cg_drawTimer;
 vmCvar_t        cg_drawClock;
 vmCvar_t        cg_drawFPS;
@@ -68,6 +54,9 @@ vmCvar_t        cg_drawCrosshair;
 vmCvar_t        cg_drawCrosshairHit;
 vmCvar_t        cg_drawCrosshairFriendFoe;
 vmCvar_t        cg_drawCrosshairNames;
+#ifndef UNREALARENA
+vmCvar_t        cg_drawBuildableHealth;
+#endif
 vmCvar_t        cg_drawMinimap;
 vmCvar_t        cg_minimapActive;
 vmCvar_t        cg_crosshairSize;
@@ -134,6 +123,9 @@ vmCvar_t        cg_debugTrails;
 vmCvar_t        cg_debugPVS;
 vmCvar_t        cg_disableWarningDialogs;
 vmCvar_t        cg_disableUpgradeDialogs;
+#ifndef UNREALARENA
+vmCvar_t        cg_disableBuildDialogs;
+#endif
 vmCvar_t        cg_disableCommandDialogs;
 vmCvar_t        cg_disableScannerPlane;
 vmCvar_t        cg_tutorial;
@@ -145,7 +137,13 @@ vmCvar_t        cg_rangeMarkerSurfaceOpacity;
 vmCvar_t        cg_rangeMarkerLineOpacity;
 vmCvar_t        cg_rangeMarkerLineThickness;
 vmCvar_t        cg_rangeMarkerForBlueprint;
+#ifndef UNREALARENA
+vmCvar_t        cg_rangeMarkerBuildableTypes;
+#endif
 vmCvar_t        cg_rangeMarkerWhenSpectating;
+#ifndef UNREALARENA
+vmCvar_t        cg_buildableRangeMarkerMask;
+#endif
 vmCvar_t        cg_binaryShaderScreenScale;
 
 vmCvar_t        cg_painBlendUpRate;
@@ -167,8 +165,13 @@ vmCvar_t        ui_currentClass;
 vmCvar_t        ui_carriage;
 vmCvar_t        ui_dialog;
 vmCvar_t        ui_voteActive;
+#ifdef UNREALARENA
 vmCvar_t        ui_qTeamVoteActive;
 vmCvar_t        ui_uTeamVoteActive;
+#else
+vmCvar_t        ui_alienTeamVoteActive;
+vmCvar_t        ui_humanTeamVoteActive;
+#endif
 vmCvar_t        ui_unlockables;
 vmCvar_t        ui_momentumHalfLife;
 vmCvar_t        ui_unlockablesMinTime;
@@ -189,12 +192,25 @@ vmCvar_t        cg_animSpeed;
 vmCvar_t        cg_animBlend;
 
 vmCvar_t        cg_highPolyPlayerModels;
+#ifndef UNREALARENA
+vmCvar_t        cg_highPolyBuildableModels;
+#endif
 vmCvar_t        cg_highPolyWeaponModels;
 vmCvar_t        cg_motionblur;
 vmCvar_t        cg_motionblurMinSpeed;
 vmCvar_t        cg_spawnEffects;
 
+#ifdef UNREALARENA
 vmCvar_t        cg_fov;
+#else
+vmCvar_t        cg_fov_builder;
+vmCvar_t        cg_fov_level0;
+vmCvar_t        cg_fov_level1;
+vmCvar_t        cg_fov_level2;
+vmCvar_t        cg_fov_level3;
+vmCvar_t        cg_fov_level4;
+vmCvar_t        cg_fov_human;
+#endif
 
 vmCvar_t        ui_chatPromptColors;
 vmCvar_t        cg_sayCommand;
@@ -213,6 +229,9 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_viewsize,                    "cg_viewsize",                    "100",          0                            },
 	{ &cg_shadows,                     "cg_shadows",                     "1",            CVAR_LATCH                   },
 	{ &cg_playerShadows,               "cg_playerShadows",               "1",            0                            },
+#ifndef UNREALARENA
+	{ &cg_buildableShadows,            "cg_buildableShadows",            "0",            0                            },
+#endif
 	{ &cg_draw2D,                      "cg_draw2D",                      "1",            0                            },
 	{ &cg_drawTimer,                   "cg_drawTimer",                   "1",            0                            },
 	{ &cg_drawClock,                   "cg_drawClock",                   "0",            0                            },
@@ -224,6 +243,9 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_drawCrosshairHit,            "cg_drawCrosshairHit",            "1",            0                            },
 	{ &cg_drawCrosshairFriendFoe,      "cg_drawCrosshairFriendFoe",      "0",            0                            },
 	{ &cg_drawCrosshairNames,          "cg_drawCrosshairNames",          "1",            0                            },
+#ifndef UNREALARENA
+	{ &cg_drawBuildableHealth,         "cg_drawBuildableHealth",         "1",            0                            },
+#endif
 	{ &cg_drawMinimap,                 "cg_drawMinimap",                 "1",            0                            },
 	{ &cg_minimapActive,               "cg_minimapActive",               "0",            0                            },
 	{ &cg_crosshairSize,               "cg_crosshairSize",               "1",            0                            },
@@ -288,6 +310,9 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_debugPVS,                    "cg_debugPVS",                    "0",            CVAR_CHEAT                   },
 	{ &cg_disableWarningDialogs,       "cg_disableWarningDialogs",       "0",            0                            },
 	{ &cg_disableUpgradeDialogs,       "cg_disableUpgradeDialogs",       "0",            0                            },
+#ifndef UNREALARENA
+	{ &cg_disableBuildDialogs,         "cg_disableBuildDialogs",         "0",            0                            },
+#endif
 	{ &cg_disableCommandDialogs,       "cg_disableCommandDialogs",       "0",            0                            },
 	{ &cg_disableScannerPlane,         "cg_disableScannerPlane",         "0",            0                            },
 	{ &cg_tutorial,                    "cg_tutorial",                    "1",            0                            },
@@ -299,14 +324,25 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_rangeMarkerLineOpacity,      "cg_rangeMarkerLineOpacity",      "0.4",          0                            },
 	{ &cg_rangeMarkerLineThickness,    "cg_rangeMarkerLineThickness",    "4.0",          0                            },
 	{ &cg_rangeMarkerForBlueprint,     "cg_rangeMarkerForBlueprint",     "1",            0                            },
+#ifndef UNREALARENA
+	{ &cg_rangeMarkerBuildableTypes,   "cg_rangeMarkerBuildableTypes",   "support",      0                            },
+#endif
 	{ &cg_rangeMarkerWhenSpectating,   "cg_rangeMarkerWhenSpectating",   "0",            0                            },
+#ifndef UNREALARENA
+	{ &cg_buildableRangeMarkerMask,    "cg_buildableRangeMarkerMask",    "",             0                            },
+#endif
 	{ &cg_binaryShaderScreenScale,     "cg_binaryShaderScreenScale",     "1.0",          0                            },
 
 	{ &cg_hudFiles,                    "cg_hudFiles",                    "ui/hud.txt",   0                            },
 	{ &cg_hudFilesEnable,              "cg_hudFilesEnable",              "0",            0                            },
-	{ nullptr,                         "cg_qConfig",                     "",             0                            },
-	{ nullptr,                         "cg_uConfig",                     "",             0                            },
-	{ nullptr,                         "cg_spectatorConfig",             "",             0                            },
+#ifdef UNREALARENA
+	{ nullptr,                            "cg_qConfig",                     "",             0                            },
+	{ nullptr,                            "cg_uConfig",                     "",             0                            },
+#else
+	{ nullptr,                            "cg_alienConfig",                 "",             0                            },
+	{ nullptr,                            "cg_humanConfig",                 "",             0                            },
+#endif
+	{ nullptr,                            "cg_spectatorConfig",             "",             0                            },
 
 	{ &cg_painBlendUpRate,             "cg_painBlendUpRate",             "10.0",         0                            },
 	{ &cg_painBlendDownRate,           "cg_painBlendDownRate",           "0.5",          0                            },
@@ -346,11 +382,24 @@ static const cvarTable_t cvarTable[] =
 
 	{ &cg_chatTeamPrefix,              "cg_chatTeamPrefix",              "1",            0                            },
 	{ &cg_highPolyPlayerModels,        "cg_highPolyPlayerModels",        "1",            CVAR_LATCH                   },
+#ifndef UNREALARENA
+	{ &cg_highPolyBuildableModels,     "cg_highPolyBuildableModels",     "1",            CVAR_LATCH                   },
+#endif
 	{ &cg_highPolyWeaponModels,        "cg_highPolyWeaponModels",        "1",            CVAR_LATCH                   },
 	{ &cg_motionblur,                  "cg_motionblur",                  "0.05",         0                            },
 	{ &cg_motionblurMinSpeed,          "cg_motionblurMinSpeed",          "600",          0                            },
 	{ &cg_spawnEffects,                "cg_spawnEffects",                "1",            0                            },
+#ifdef UNREALARENA
 	{ &cg_fov,                         "cg_fov",                         "0",            0                            },
+#else
+	{ &cg_fov_builder,                 "cg_fov_builder",                 "0",            0                            },
+	{ &cg_fov_level0,                  "cg_fov_level0",                  "0",            0                            },
+	{ &cg_fov_level1,                  "cg_fov_level1",                  "0",            0                            },
+	{ &cg_fov_level2,                  "cg_fov_level2",                  "0",            0                            },
+	{ &cg_fov_level3,                  "cg_fov_level3",                  "0",            0                            },
+	{ &cg_fov_level4,                  "cg_fov_level4",                  "0",            0                            },
+	{ &cg_fov_human,                   "cg_fov_human",                   "0",            0                            },
+#endif
 
 	{ &ui_chatPromptColors,            "ui_chatPromptColors",            "1",            0                            },
 
@@ -396,6 +445,11 @@ these should refer only to playerstates that belong to the client, not the follo
 static void CG_SetPVars()
 {
 	playerState_t *ps;
+#ifndef UNREALARENA
+	char          buffer[ MAX_CVAR_VALUE_STRING ];
+	int           i;
+	bool      first;
+#endif
 
 	if ( !cg.snap )
 	{
@@ -414,12 +468,20 @@ static void CG_SetPVars()
 
 	switch ( ps->persistant[ PERS_TEAM ] )
 	{
+#ifdef UNREALARENA
 		case TEAM_Q:
 		case TEAM_U:
+#else
+		case TEAM_ALIENS:
+		case TEAM_HUMANS:
+#endif
 			break;
 
 		default:
 		case TEAM_NONE:
+#ifndef UNREALARENA
+			trap_Cvar_Set( "p_classname", "Spectator" );
+#endif
 			trap_Cvar_Set( "p_weaponname", "Nothing" );
 
 			/*
@@ -427,6 +489,9 @@ static void CG_SetPVars()
 			 * the only ones, that actually are helpful to hold on to are p_score and p_credits, since these actually
 			 * might be taken over when joining a team again, or be used to look up old values before leaving the game
 			 */
+#ifndef UNREALARENA
+			trap_Cvar_Set( "p_class" , "0" );
+#endif
 			trap_Cvar_Set( "p_weapon", "0" );
 			trap_Cvar_Set( "p_hp", "0" );
 			trap_Cvar_Set( "p_maxhp", "0" );
@@ -434,6 +499,13 @@ static void CG_SetPVars()
 			trap_Cvar_Set( "p_clips", "0" );
 			return;
 	}
+
+#ifndef UNREALARENA
+	trap_Cvar_Set( "p_class", va( "%d", ps->stats[ STAT_CLASS ] ) );
+
+	trap_Cvar_Set( "p_classname", BG_Class( ps->stats[ STAT_CLASS ] )->name );
+#endif
+
 
 	trap_Cvar_Set( "p_weapon", va( "%d", ps->stats[ STAT_WEAPON ] ) );
 	trap_Cvar_Set( "p_weaponname", BG_Weapon( ps->stats[ STAT_WEAPON ] )->humanName );
@@ -444,6 +516,28 @@ static void CG_SetPVars()
 	trap_Cvar_Set( "p_maxhp", va( "%d", ps->stats[ STAT_MAX_HEALTH ] ) );
 	trap_Cvar_Set( "p_ammo", va( "%d", ps->ammo ) );
 	trap_Cvar_Set( "p_clips", va( "%d", ps->clips ) );
+
+#ifndef UNREALARENA
+	// set p_availableBuildings to a space-separated list of buildings
+	first = true;
+	*buffer = 0;
+
+	for ( i = BA_NONE; i < BA_NUM_BUILDABLES; ++i )
+	{
+		const buildableAttributes_t *buildable = BG_Buildable( i );
+
+		if ( buildable->team == ps->persistant[ PERS_TEAM ] &&
+		     BG_BuildableUnlocked( i ) &&
+		     (buildable->buildWeapon & ( 1 << ps->stats[ STAT_WEAPON ] ) ) )
+
+		{
+			Q_strcat( buffer, sizeof( buffer ), first ? buildable->name : va( " %s", buildable->name ) );
+			first = false;
+		}
+	}
+
+	trap_Cvar_Set( "p_availableBuildings", buffer );
+#endif
 }
 
 /*
@@ -464,6 +558,128 @@ static void CG_SetUIVars()
 	trap_Cvar_Set( "ui_carriage", va( "%d %d %d", cg.snap->ps.stats[ STAT_WEAPON ],
 	               cg.snap->ps.stats[ STAT_ITEMS ], cg.snap->ps.persistant[ PERS_CREDIT ] ) );
 }
+
+#ifndef UNREALARENA
+/*
+================
+CG_UpdateBuildableRangeMarkerMask
+================
+*/
+void CG_UpdateBuildableRangeMarkerMask()
+{
+	static int btmc = 0;
+	static int spmc = 0;
+
+	if ( cg_rangeMarkerBuildableTypes.modificationCount != btmc ||
+	     cg_rangeMarkerWhenSpectating.modificationCount != spmc )
+	{
+		int         brmMask;
+		char        buffer[ MAX_CVAR_VALUE_STRING ];
+		char        *p, *q;
+		buildable_t buildable;
+
+		brmMask = cg_rangeMarkerWhenSpectating.integer ? ( 1 << BA_NONE ) : 0;
+
+		if ( !cg_rangeMarkerBuildableTypes.string[ 0 ] )
+		{
+			goto empty;
+		}
+
+		Q_strncpyz( buffer, cg_rangeMarkerBuildableTypes.string, sizeof( buffer ) );
+		p = &buffer[ 0 ];
+
+		for ( ;; )
+		{
+			q = strchr( p, ',' );
+
+			if ( q )
+			{
+				*q = '\0';
+			}
+
+			while ( *p == ' ' )
+			{
+				++p;
+			}
+
+			buildable = BG_BuildableByName( p )->number;
+
+			if ( buildable != BA_NONE )
+			{
+				brmMask |= 1 << buildable;
+			}
+			else if ( !Q_stricmp( p, "all" ) )
+			{
+				brmMask |= ( 1 << BA_A_OVERMIND ) | ( 1 << BA_A_SPAWN ) | ( 1 << BA_A_ACIDTUBE ) |
+				           ( 1 << BA_A_TRAPPER ) | ( 1 << BA_A_HIVE ) | ( 1 << BA_A_LEECH ) |
+				           ( 1 << BA_A_BOOSTER ) | ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) |
+				           ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) | ( 1 << BA_H_DRILL );
+			}
+			else if ( !Q_stricmp( p, "none" ) )
+			{
+				brmMask = 0;
+			}
+			else
+			{
+				char *pp;
+				int  only;
+
+				if ( !Q_strnicmp( p, "alien", 5 ) )
+				{
+					pp = p + 5;
+					only = ( 1 << BA_A_OVERMIND ) | ( 1 << BA_A_SPAWN ) |
+					       ( 1 << BA_A_ACIDTUBE ) | ( 1 << BA_A_TRAPPER ) | ( 1 << BA_A_HIVE ) | ( 1 << BA_A_LEECH ) | ( 1 << BA_A_BOOSTER );
+				}
+				else if ( !Q_strnicmp( p, "human", 5 ) )
+				{
+					pp = p + 5;
+					only = ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) |
+					       ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) | ( 1 << BA_H_DRILL );
+				}
+				else
+				{
+					pp = p;
+					only = ~0;
+				}
+
+				if ( pp != p && !*pp )
+				{
+					brmMask |= only;
+				}
+				else if ( !Q_stricmp( pp, "support" ) )
+				{
+					brmMask |= only & ( ( 1 << BA_A_OVERMIND ) | ( 1 << BA_A_SPAWN ) | ( 1 << BA_A_LEECH ) | ( 1 << BA_A_BOOSTER ) |
+					                    ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) | ( 1 << BA_H_DRILL ) );
+				}
+				else if ( !Q_stricmp( pp, "offensive" ) )
+				{
+					brmMask |= only & ( ( 1 << BA_A_ACIDTUBE ) | ( 1 << BA_A_TRAPPER ) | ( 1 << BA_A_HIVE ) |
+					                    ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) );
+				}
+				else
+				{
+					Com_Printf( S_WARNING "unknown buildable or group: %s\n", p );
+				}
+			}
+
+			if ( q )
+			{
+				p = q + 1;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+empty:
+		trap_Cvar_Set( "cg_buildableRangeMarkerMask", va( "%i", brmMask ) );
+
+		btmc = cg_rangeMarkerBuildableTypes.modificationCount;
+		spmc = cg_rangeMarkerWhenSpectating.modificationCount;
+	}
+}
+#endif
 
 void CG_NotifyHooks()
 {
@@ -516,6 +732,9 @@ void CG_UpdateCvars()
 	// check for modifications here
 	CG_SetPVars();
 	CG_SetUIVars();
+#ifndef UNREALARENA
+	CG_UpdateBuildableRangeMarkerMask();
+#endif
 }
 
 int CG_CrosshairPlayer()
@@ -741,6 +960,9 @@ CG_UpdateLoadingProgress
 enum {
 	LOADBAR_MEDIA,
 	LOADBAR_CHARACTER_MODELS,
+#ifndef UNREALARENA
+	LOADBAR_BUILDABLES
+#endif
 } typedef loadingBar_t;
 
 static void CG_UpdateLoadingProgress( loadingBar_t progressBar, float progress, const char *label )
@@ -755,6 +977,11 @@ static void CG_UpdateLoadingProgress( loadingBar_t progressBar, float progress, 
 		case LOADBAR_CHARACTER_MODELS:
 			cg.charModelFraction = progress;
 			break;
+#ifndef UNREALARENA
+		case LOADBAR_BUILDABLES:
+			cg.buildablesFraction = progress;
+			break;
+#endif
 		default:
 			break;
 	}
@@ -780,7 +1007,10 @@ enum {
 	LOAD_CONFIGS,
 	LOAD_WEAPONS,
 	LOAD_UPGRADES,
-	LOAD_TEAMS,
+#ifndef UNREALARENA
+	LOAD_CLASSES,
+	LOAD_BUILDINGS,
+#endif
 	LOAD_REMAINING,
 	LOAD_DONE
 } typedef cgLoadingStep_t;
@@ -812,7 +1042,11 @@ static void CG_UpdateLoadingStep( cgLoadingStep_t step )
 	switch (step) {
 		case LOAD_START:
 			cg.loading = true;
+#ifdef UNREALARENA
 			cg.mediaFraction = cg.charModelFraction = 0.0f;
+#else
+			cg.mediaFraction = cg.charModelFraction = cg.buildablesFraction = 0.0f;
+#endif
 			break;
 
 		case LOAD_TRAILS:
@@ -837,11 +1071,24 @@ static void CG_UpdateLoadingStep( cgLoadingStep_t step )
 			CG_UpdateLoadingProgress( LOADBAR_MEDIA, 0.90f, choose("Setting up the armoury", "Sharpening the aliens' claws", "Overloading lucifer cannons", nullptr) );
 			break;
 		case LOAD_UPGRADES:
-		case LOAD_TEAMS:
+#ifndef UNREALARENA
+		case LOAD_CLASSES:
+#endif
 			CG_UpdateLoadingProgress( LOADBAR_MEDIA, 0.95f, choose("Charging battery packs", "Replicating alien DNA", "Packing tents for jetcampers", nullptr) );
 			break;
+#ifndef UNREALARENA
+		case LOAD_BUILDINGS:
+			cg.mediaFraction = 1.0f;
+			CG_UpdateLoadingProgress( LOADBAR_BUILDABLES, 0.0f, choose("Finishing construction", "Adding turret spam", "Awakening the overmind", nullptr) );
+			break;
+#endif
+
 		case LOAD_DONE:
+#ifdef UNREALARENA
 			cg.mediaFraction = cg.charModelFraction = 1.0f;
+#else
+			cg.mediaFraction = cg.charModelFraction = cg.buildablesFraction = 1.0f;
+#endif
 			Q_strncpyz(cg.currentLoadingLabel, "Done!", sizeof( cg.currentLoadingLabel ) );
 			trap_UpdateScreen();
 			cg.loading = false;
@@ -865,14 +1112,32 @@ static void CG_RegisterSounds()
 	char       name[ MAX_QPATH ];
 	const char *soundName;
 
+#ifndef UNREALARENA
+	cgs.media.weHaveEvolved = trap_S_RegisterSound( "sound/announcements/overmindevolved.wav", true );
 	cgs.media.reinforcement = trap_S_RegisterSound( "sound/announcements/reinforcement.wav", true );
 
+	cgs.media.alienOvermindAttack = trap_S_RegisterSound( "sound/announcements/overmindattack.wav", true );
+	cgs.media.alienOvermindDying = trap_S_RegisterSound( "sound/announcements/overminddying.wav", true );
+	cgs.media.alienOvermindSpawns = trap_S_RegisterSound( "sound/announcements/overmindspawns.wav", true );
+
+	cgs.media.alienL4ChargePrepare = trap_S_RegisterSound( "sound/player/level4/charge_prepare.wav", true );
+	cgs.media.alienL4ChargeStart = trap_S_RegisterSound( "sound/player/level4/charge_start.wav", true );
+#endif
+
 	cgs.media.selectSound = trap_S_RegisterSound( "sound/weapons/change.wav", false );
+#ifndef UNREALARENA
+	cgs.media.turretSpinupSound = trap_S_RegisterSound( "sound/buildables/mgturret/spinup.wav", false );
+#endif
 	cgs.media.weaponEmptyClick = trap_S_RegisterSound( "sound/weapons/click.wav", false );
 
 	cgs.media.talkSound = trap_S_RegisterSound( "sound/misc/talk.wav", false );
+#ifdef UNREALARENA
 	cgs.media.qTalkSound = trap_S_RegisterSound( "sound/misc/q_talk.wav", false );
 	cgs.media.uTalkSound = trap_S_RegisterSound( "sound/misc/u_talk.wav", false );
+#else
+	cgs.media.alienTalkSound = trap_S_RegisterSound( "sound/misc/alien_talk.wav", false );
+	cgs.media.humanTalkSound = trap_S_RegisterSound( "sound/misc/human_talk.wav", false );
+#endif
 	cgs.media.landSound = trap_S_RegisterSound( "sound/player/land1.wav", false );
 
 	cgs.media.watrInSound = trap_S_RegisterSound( "sound/player/watr_in.wav", false );
@@ -917,11 +1182,39 @@ static void CG_RegisterSounds()
 
 	cgs.media.medkitUseSound = trap_S_RegisterSound( "sound/upgrades/medkit/medkit.wav", false );
 
+#ifndef UNREALARENA
+	cgs.media.alienEvolveSound = trap_S_RegisterSound( "sound/player/alienevolve.wav", false );
+
+	cgs.media.alienBuildableExplosion = trap_S_RegisterSound( "sound/buildables/alien/explosion.wav", false );
+	cgs.media.alienBuildablePrebuild = trap_S_RegisterSound( "sound/buildables/alien/prebuild.wav", false );
+
+	cgs.media.humanBuildableDying = trap_S_RegisterSound( "sound/buildables/human/dying.wav", false );
+	cgs.media.humanBuildableExplosion = trap_S_RegisterSound( "sound/buildables/human/explosion.wav", false );
+	cgs.media.humanBuildablePrebuild = trap_S_RegisterSound( "sound/buildables/human/prebuild.wav", false );
+
+	for ( i = 0; i < 4; i++ )
+	{
+		cgs.media.humanBuildableDamage[ i ] = trap_S_RegisterSound(
+		                                        va( "sound/buildables/human/damage%d.wav", i ), false );
+	}
+#endif
+
 	cgs.media.hardBounceSound1 = trap_S_RegisterSound( "sound/misc/hard_bounce1.wav", false );
 	cgs.media.hardBounceSound2 = trap_S_RegisterSound( "sound/misc/hard_bounce2.wav", false );
 
+#ifndef UNREALARENA
+	cgs.media.repeaterUseSound = trap_S_RegisterSound( "sound/buildables/repeater/use.wav", false );
+
+	cgs.media.buildableRepairSound = trap_S_RegisterSound( "sound/buildables/human/repair.wav", false );
+	cgs.media.buildableRepairedSound = trap_S_RegisterSound( "sound/buildables/human/repaired.wav", false );
+#endif
+
 	cgs.media.lCannonWarningSound = trap_S_RegisterSound( "models/weapons/lcannon/warning.wav", false );
 	cgs.media.lCannonWarningSound2 = trap_S_RegisterSound( "models/weapons/lcannon/warning2.wav", false );
+
+#ifndef UNREALARENA
+	cgs.media.rocketpodLockonSound = trap_S_RegisterSound( "sound/rocketpod/lockon.wav", false );
+#endif
 
 	cgs.media.timerBeaconExpiredSound = trap_S_RegisterSound( "sound/feedback/beacon-timer-expired.ogg", false );
 }
@@ -1033,6 +1326,10 @@ static void CG_RegisterGraphics()
 	cgs.media.connectionShader = trap_R_RegisterShader("gfx/2d/net",
 							   (RegisterShaderFlags_t) RSF_DEFAULT);
 
+#ifndef UNREALARENA
+	cgs.media.creepShader = trap_R_RegisterShader("creep", (RegisterShaderFlags_t) RSF_DEFAULT);
+#endif
+
 	cgs.media.scannerBlipShader = trap_R_RegisterShader("gfx/2d/blip",
 							    (RegisterShaderFlags_t) RSF_DEFAULT);
 
@@ -1050,6 +1347,16 @@ static void CG_RegisterGraphics()
 
 	cgs.media.backTileShader = trap_R_RegisterShader("console",
 							 (RegisterShaderFlags_t) RSF_DEFAULT);
+
+#ifndef UNREALARENA
+	// building shaders
+	cgs.media.greenBuildShader = trap_R_RegisterShader("gfx/misc/greenbuild",
+							   (RegisterShaderFlags_t) RSF_DEFAULT);
+	cgs.media.redBuildShader = trap_R_RegisterShader("gfx/misc/redbuild",
+							 (RegisterShaderFlags_t) RSF_DEFAULT);
+	cgs.media.humanSpawningShader = trap_R_RegisterShader("models/buildables/humanSpawning",
+							      (RegisterShaderFlags_t) RSF_DEFAULT);
+#endif
 
 	for ( i = 0; i < 8; i++ )
 	{
@@ -1098,12 +1405,35 @@ static void CG_RegisterGraphics()
 	cgs.media.wakeMarkShader = trap_R_RegisterShader("gfx/marks/wake",
 							 (RegisterShaderFlags_t) RSF_DEFAULT);
 
+#ifndef UNREALARENA
+	cgs.media.alienEvolvePS = CG_RegisterParticleSystem( "alienEvolvePS" );
+	cgs.media.alienAcidTubePS = CG_RegisterParticleSystem( "alienAcidTubePS" );
+	cgs.media.alienBoosterPS = CG_RegisterParticleSystem( "alienBoosterPS" );
+#endif
+
 	cgs.media.jetPackThrustPS = CG_RegisterParticleSystem( "jetPackAscendPS" );
+
+#ifndef UNREALARENA
+	cgs.media.humanBuildableDamagedPS = CG_RegisterParticleSystem( "humanBuildableDamagedPS" );
+	cgs.media.alienBuildableDamagedPS = CG_RegisterParticleSystem( "alienBuildableDamagedPS" );
+	cgs.media.humanBuildableDestroyedPS = CG_RegisterParticleSystem( "humanBuildableDestroyedPS" );
+	cgs.media.humanBuildableNovaPS = CG_RegisterParticleSystem( "humanBuildableNovaPS" );
+	cgs.media.alienBuildableDestroyedPS = CG_RegisterParticleSystem( "alienBuildableDestroyedPS" );
+
+	cgs.media.humanBuildableBleedPS = CG_RegisterParticleSystem( "humanBuildableBleedPS" );
+	cgs.media.alienBuildableBleedPS = CG_RegisterParticleSystem( "alienBuildableBleedPS" );
+	cgs.media.alienBuildableBurnPS  = CG_RegisterParticleSystem( "alienBuildableBurnPS" );
+#endif
 
 	cgs.media.floorFirePS = CG_RegisterParticleSystem( "floorFirePS" );
 
+#ifdef UNREALARENA
 	cgs.media.qBleedPS = CG_RegisterParticleSystem( "qBleedPS" );
 	cgs.media.uBleedPS = CG_RegisterParticleSystem( "uBleedPS" );
+#else
+	cgs.media.alienBleedPS = CG_RegisterParticleSystem( "alienBleedPS" );
+	cgs.media.humanBleedPS = CG_RegisterParticleSystem( "humanBleedPS" );
+#endif
 
 	cgs.media.sphereModel = trap_R_RegisterModel( "models/generic/sphere.md3" );
 	cgs.media.sphericalCone64Model = trap_R_RegisterModel( "models/generic/sphericalCone64.md3" );
@@ -1129,6 +1459,11 @@ static void CG_RegisterGraphics()
 		cgs.media.binaryShaders[ i ].b3 = trap_R_RegisterShader(va("gfx/binary/%03i_B3", i),
 									(RegisterShaderFlags_t) RSF_DEFAULT);
 	}
+
+#ifndef UNREALARENA
+	CG_BuildableStatusParse( "ui/assets/human/buildstat.cfg", &cgs.humanBuildStat );
+	CG_BuildableStatusParse( "ui/assets/alien/buildstat.cfg", &cgs.alienBuildStat );
+#endif
 
 	cgs.media.beaconIconArrow = trap_R_RegisterShader( "gfx/2d/beacons/arrow", RSF_DEFAULT );
 	cgs.media.beaconNoTarget = trap_R_RegisterShader( "gfx/2d/beacons/no-target", RSF_DEFAULT );
@@ -1261,7 +1596,8 @@ static void CG_RegisterClients()
 	cg.charModelFraction = 0.0f;
 
 	//precache all the models/sounds/etc
-	for ( i = 1; i < NUM_TEAMS; i++ )
+#ifdef UNREALARENA
+	for ( i = TEAM_NONE + 1; i < NUM_TEAMS; i++ )
 	{
 		CG_PrecacheClientInfo( ( team_t ) i, BG_ClassModelConfig( ( team_t ) i )->modelName,
 		                       BG_ClassModelConfig( ( team_t ) i )->skinName );
@@ -1269,6 +1605,16 @@ static void CG_RegisterClients()
 		cg.charModelFraction = ( float ) i / ( float ) NUM_TEAMS;
 		trap_UpdateScreen();
 	}
+#else
+	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+	{
+		CG_PrecacheClientInfo( (class_t) i, BG_ClassModelConfig( i )->modelName,
+		                       BG_ClassModelConfig( i )->skinName );
+
+		cg.charModelFraction = ( float ) i / ( float ) PCL_NUM_CLASSES;
+		trap_UpdateScreen();
+	}
+#endif
 
 	if ( !cg_highPolyPlayerModels.integer )
 	{
@@ -1287,6 +1633,24 @@ static void CG_RegisterClients()
 	cgs.media.jetpackModel = trap_R_RegisterModel( "models/players/human_base/jetpack.iqm" );
 	cgs.media.jetpackFlashModel = trap_R_RegisterModel( "models/players/human_base/jetpack_flash.md3" );
 	cgs.media.radarModel = trap_R_RegisterModel( "models/players/human_base/battpack.md3" ); // HACK: Use old battpack
+
+#ifndef UNREALARENA
+	CG_RegisterWeaponAnimation(
+	    &cgs.media.jetpackAnims[ JANIM_NONE ],
+	    "models/players/human_base/jetpack.iqm:idle",
+	    false, false, false );
+
+
+	CG_RegisterWeaponAnimation(
+	    &cgs.media.jetpackAnims[ JANIM_SLIDEOUT ],
+	    "models/players/human_base/jetpack.iqm:slideout",
+	    false, false, false );
+
+	CG_RegisterWeaponAnimation(
+	    &cgs.media.jetpackAnims[ JANIM_SLIDEIN ],
+	    "models/players/human_base/jetpack.iqm:slidein",
+	    false, false, false );
+#endif
 
 	cg.charModelFraction = 1.0f;
 	trap_UpdateScreen();
@@ -1399,6 +1763,9 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 	( 480.0f * cgs.glconfig.vidWidth ) );
 
 	// load a few needed things before we do any screen updates
+#ifndef UNREALARENA
+	trap_R_SetAltShaderTokens( "unpowered,destroyed" );
+#endif
 	cgs.media.whiteShader = trap_R_RegisterShader("white", (RegisterShaderFlags_t) RSF_DEFAULT);
 	cgs.media.charsetShader = trap_R_RegisterShader("gfx/2d/bigchars",
 							(RegisterShaderFlags_t) RSF_DEFAULT);
@@ -1427,12 +1794,21 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 	Q_strncpyz( cgs.voteString[ TEAM_NONE ],
 	            CG_ConfigString( CS_VOTE_STRING + TEAM_NONE ),
 	            sizeof( cgs.voteString ) );
+#ifdef UNREALARENA
 	Q_strncpyz( cgs.voteString[ TEAM_Q ],
 	            CG_ConfigString( CS_VOTE_STRING + TEAM_Q ),
 	            sizeof( cgs.voteString[ TEAM_Q ] ) );
 	Q_strncpyz( cgs.voteString[ TEAM_U ],
 	            CG_ConfigString( CS_VOTE_STRING + TEAM_U ),
 	            sizeof( cgs.voteString[ TEAM_U ] ) );
+#else
+	Q_strncpyz( cgs.voteString[ TEAM_ALIENS ],
+	            CG_ConfigString( CS_VOTE_STRING + TEAM_ALIENS ),
+	            sizeof( cgs.voteString[ TEAM_ALIENS ] ) );
+	Q_strncpyz( cgs.voteString[ TEAM_HUMANS ],
+	            CG_ConfigString( CS_VOTE_STRING + TEAM_HUMANS ),
+	            sizeof( cgs.voteString[ TEAM_HUMANS ] ) );
+#endif
 
 	// check version
 	s = CG_ConfigString( CS_GAME_VERSION );
@@ -1465,14 +1841,20 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 	CG_UpdateLoadingStep( LOAD_CONFIGS );
 	BG_InitAllConfigs();
 
-	// load weapons upgrades after configs
+	// load weapons upgrades and buildings after configs
 	CG_UpdateLoadingStep( LOAD_WEAPONS );
 	CG_InitWeapons();
 
 	CG_UpdateLoadingStep( LOAD_UPGRADES );
 	CG_InitUpgrades();
 
-	CG_UpdateLoadingStep( LOAD_TEAMS );
+#ifndef UNREALARENA
+	CG_UpdateLoadingStep( LOAD_CLASSES );
+	CG_InitClasses();
+
+	CG_UpdateLoadingStep( LOAD_BUILDINGS );
+	CG_InitBuildables();
+#endif
 
 	CG_UpdateLoadingStep( LOAD_REMAINING );
 

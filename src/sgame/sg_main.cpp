@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -53,6 +53,9 @@ vmCvar_t           g_showHelpOnConnection;
 
 vmCvar_t           g_timelimit;
 vmCvar_t           g_friendlyFire;
+#ifndef UNREALARENA
+vmCvar_t           g_friendlyBuildableFire;
+#endif
 vmCvar_t           g_dretchPunt;
 vmCvar_t           g_password;
 vmCvar_t           g_needpass;
@@ -65,6 +68,10 @@ vmCvar_t           g_inactivity;
 vmCvar_t           g_debugMove;
 vmCvar_t           g_debugDamage;
 vmCvar_t           g_debugKnockback;
+#ifndef UNREALARENA
+vmCvar_t           g_debugTurrets;
+vmCvar_t           g_debugFire;
+#endif
 vmCvar_t           g_motd;
 vmCvar_t           g_synchronousClients;
 vmCvar_t           g_warmup;
@@ -99,12 +106,37 @@ vmCvar_t           pmove_accurate;
 vmCvar_t           g_minNameChangePeriod;
 vmCvar_t           g_maxNameChanges;
 
+#ifndef UNREALARENA
+vmCvar_t           g_initialBuildPoints;
+vmCvar_t           g_initialMineRate;
+vmCvar_t           g_mineRateHalfLife;
+vmCvar_t           g_minimumMineRate;
+vmCvar_t           g_buildPointLossFraction;
+#endif
+
 vmCvar_t           g_debugMomentum;
 vmCvar_t           g_momentumHalfLife;
 vmCvar_t           g_momentumRewardDoubleTime;
 vmCvar_t           g_unlockableMinTime;
 vmCvar_t           g_momentumBaseMod;
 vmCvar_t           g_momentumKillMod;
+#ifndef UNREALARENA
+vmCvar_t           g_momentumBuildMod;
+vmCvar_t           g_momentumDeconMod;
+vmCvar_t           g_momentumDestroyMod;
+
+vmCvar_t           g_humanAllowBuilding;
+vmCvar_t           g_alienAllowBuilding;
+
+vmCvar_t           g_powerCompetitionRange;
+vmCvar_t           g_powerBaseSupply;
+vmCvar_t           g_powerReactorSupply;
+vmCvar_t           g_powerReactorRange;
+vmCvar_t           g_powerRepeaterSupply;
+vmCvar_t           g_powerRepeaterRange;
+
+vmCvar_t           g_alienOffCreepRegenHalfLife;
+#endif
 
 vmCvar_t           g_teamImbalanceWarnings;
 vmCvar_t           g_freeFundPeriod;
@@ -112,6 +144,10 @@ vmCvar_t           g_freeFundPeriod;
 vmCvar_t           g_unlagged;
 
 vmCvar_t           g_disabledEquipment;
+#ifndef UNREALARENA
+vmCvar_t           g_disabledClasses;
+vmCvar_t           g_disabledBuildables;
+#endif
 vmCvar_t           g_disabledVoteCalls;
 
 vmCvar_t           g_debugMapRotation;
@@ -164,10 +200,17 @@ vmCvar_t           g_geoip;
 
 vmCvar_t           g_debugEntities;
 
+#ifndef UNREALARENA
+vmCvar_t           g_instantBuilding;
+#endif
+
 
 // <bot stuff>
 
 // bot buy cvars
+#ifndef UNREALARENA
+vmCvar_t g_bot_buy;
+#endif
 vmCvar_t g_bot_rifle;
 vmCvar_t g_bot_painsaw;
 vmCvar_t g_bot_shotgun;
@@ -192,6 +235,9 @@ vmCvar_t g_bot_attackStruct;
 vmCvar_t g_bot_roam;
 vmCvar_t g_bot_rush;
 vmCvar_t g_bot_repair;
+#ifndef UNREALARENA
+vmCvar_t g_bot_build;
+#endif
 vmCvar_t g_bot_retreat;
 vmCvar_t g_bot_fov;
 vmCvar_t g_bot_chasetime;
@@ -200,6 +246,9 @@ vmCvar_t g_bot_infinite_funds;
 vmCvar_t g_bot_numInGroup;
 vmCvar_t g_bot_persistent;
 vmCvar_t g_bot_debug;
+#ifndef UNREALARENA
+vmCvar_t g_bot_buildLayout;
+#endif
 
 //</bot stuff>
 
@@ -304,14 +353,23 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_debugMove,                   "g_debugMove",                   "0",                                0,                                               0, false    , nullptr       },
 	{ &g_debugDamage,                 "g_debugDamage",                 "0",                                0,                                               0, false    , nullptr       },
 	{ &g_debugKnockback,              "g_debugKnockback",              "0",                                0,                                               0, false    , nullptr       },
+#ifndef UNREALARENA
+	{ &g_debugTurrets,                "g_debugTurrets",                "0",                                0,                                               0, false    , nullptr       },
+#endif
 	{ &g_debugMomentum,               "g_debugMomentum",               "0",                                0,                                               0, false    , nullptr       },
 	{ &g_debugMapRotation,            "g_debugMapRotation",            "0",                                0,                                               0, false    , nullptr       },
 	{ &g_debugVoices,                 "g_debugVoices",                 "0",                                0,                                               0, false    , nullptr       },
 	{ &g_debugEntities,               "g_debugEntities",               "0",                                0,                                               0, false    , nullptr       },
+#ifndef UNREALARENA
+	{ &g_debugFire,                   "g_debugFire",                   "0",                                0,                                               0, false    , nullptr       },
+#endif
 
 	// gameplay: basic
 	{ &g_timelimit,                   "timelimit",                     "45",                               CVAR_SERVERINFO,                                 0, true     , nullptr       },
 	{ &g_friendlyFire,                "g_friendlyFire",                "1",                                CVAR_SERVERINFO,                                 0, true     , nullptr       },
+#ifndef UNREALARENA
+	{ &g_friendlyBuildableFire,       "g_friendlyBuildableFire",       "1",                                CVAR_SERVERINFO,                                 0, true     , nullptr       },
+#endif
 
 	// gameplay: team balance
 	{ &g_teamForceBalance,            "g_teamForceBalance",            "0",                                0,                                               0, true     , nullptr       },
@@ -319,17 +377,50 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_warmup,                      "g_warmup",                      "10",                               0,                                               0, true     , nullptr       },
 	{ &g_doWarmup,                    "g_doWarmup",                    "0",                                0,                                               0, true     , nullptr       },
 
+#ifndef UNREALARENA
+	// gameplay: mining
+	{ &g_initialBuildPoints,          "g_initialBuildPoints",          DEFAULT_INITIAL_BUILD_POINTS,       0,                                               0, false    , nullptr       },
+	{ &g_initialMineRate,             "g_initialMineRate",             DEFAULT_INITIAL_MINE_RATE,          0,                                               0, false    , nullptr       },
+	{ &g_mineRateHalfLife,            "g_mineRateHalfLife",            DEFAULT_MINE_RATE_HALF_LIFE,        0,                                               0, false    , nullptr       },
+	{ &g_minimumMineRate,             "g_minimumMineRate",             DEFAULT_MINIMUM_MINE_RATE,          0,                                               0, false    , nullptr       },
+	{ &g_buildPointLossFraction,      "g_buildPointLossFraction",      DEFAULT_BP_LOSS_FRAC,               0,                                               0, false    , nullptr       },
+#endif
+
 	// gameplay: momentum
 	{ &g_unlockableMinTime,           "g_unlockableMinTime",           DEFAULT_UNLOCKABLE_MIN_TIME,        CVAR_SERVERINFO,                                 0, false    , nullptr       },
 	{ &g_momentumHalfLife,            "g_momentumHalfLife",            DEFAULT_MOMENTUM_HALF_LIFE,         CVAR_SERVERINFO,                                 0, false    , nullptr       },
 	{ &g_momentumRewardDoubleTime,    "g_momentumRewardDoubleTime",    DEFAULT_CONF_REWARD_DOUBLE_TIME,    0,                                               0, false    , nullptr       },
 	{ &g_momentumBaseMod,             "g_momentumBaseMod",             DEFAULT_MOMENTUM_BASE_MOD,          0,                                               0, false    , nullptr       },
 	{ &g_momentumKillMod,             "g_momentumKillMod",             DEFAULT_MOMENTUM_KILL_MOD,          0,                                               0, false    , nullptr       },
+#ifndef UNREALARENA
+	{ &g_momentumBuildMod,            "g_momentumBuildMod",            DEFAULT_MOMENTUM_BUILD_MOD,         0,                                               0, false    , nullptr       },
+	{ &g_momentumDeconMod,            "g_momentumDeconMod",            DEFAULT_MOMENTUM_DECON_MOD,         0,                                               0, false    , nullptr       },
+	{ &g_momentumDestroyMod,          "g_momentumDestroyMod",          DEFAULT_MOMENTUM_DESTROY_MOD,       0,                                               0, false    , nullptr       },
+
+	// gameplay: buildable power
+	{ &g_powerCompetitionRange,       "g_powerCompetitionRange",       "320",                              0,                                               0, false    , nullptr       },
+	{ &g_powerBaseSupply,             "g_powerBaseSupply",             "20",                               0,                                               0, false    , nullptr       },
+	{ &g_powerReactorSupply,          "g_powerReactorSupply",          "30",                               0,                                               0, false    , nullptr       },
+	{ &g_powerReactorRange,           "g_powerReactorRange",           "1000",                             CVAR_SERVERINFO,                                 0, false    , nullptr       },
+	{ &g_powerRepeaterSupply,         "g_powerRepeaterSupply",         "20",                               0,                                               0, false    , nullptr       },
+	{ &g_powerRepeaterRange,          "g_powerRepeaterRange",          "500",                              CVAR_SERVERINFO,                                 0, false    , nullptr       },
+#endif
 
 	// gameplay: limits
+#ifndef UNREALARENA
+	{ &g_humanAllowBuilding,          "g_humanAllowBuilding",          "1",                                0,                                               0, false    , nullptr       },
+	{ &g_alienAllowBuilding,          "g_alienAllowBuilding",          "1",                                0,                                               0, false    , nullptr       },
+#endif
 	{ &g_disabledEquipment,           "g_disabledEquipment",           "",                                 CVAR_SYSTEMINFO,                                 0, false    , nullptr       },
+#ifndef UNREALARENA
+	{ &g_disabledClasses,             "g_disabledClasses",             "",                                 CVAR_SYSTEMINFO,                                 0, false    , nullptr       },
+	{ &g_disabledBuildables,          "g_disabledBuildables",          "",                                 CVAR_SYSTEMINFO,                                 0, false    , nullptr       },
+#endif
 
 	// gameplay: misc
+#ifndef UNREALARENA
+	{ &g_alienOffCreepRegenHalfLife,  "g_alienOffCreepRegenHalfLife",  "0",                                0,                                               0, false    , nullptr       },
+#endif
 	{ &g_freeFundPeriod,              "g_freeFundPeriod",              DEFAULT_FREEKILL_PERIOD,            0,                                               0, true     , nullptr       },
 	{ &g_sayAreaRange,                "g_sayAreaRange",                "1000",                             0,                                               0, true     , nullptr       },
 	{ &g_speed,                       "g_speed",                       "320",                              0,                                               0, true     , nullptr       },
@@ -341,7 +432,14 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_showKillerHP,                "g_showKillerHP",                "0",                                0,                                               0, false    , nullptr       },
 	{ &g_combatCooldown,              "g_combatCooldown",              "15",                               0,                                               0, false    , nullptr       },
 
+#ifndef UNREALARENA
+	{ &g_instantBuilding,             "g_instantBuilding",             "0",                                0,                                               0, true     , nullptr       },
+#endif
+
 	// bots: buying
+#ifndef UNREALARENA
+	{ &g_bot_buy, "g_bot_buy", "1",  CVAR_NORESTART, 0, false, nullptr },
+#endif
 	{ &g_bot_rifle, "g_bot_rifle", "1",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_painsaw, "g_bot_painsaw", "1",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_shotgun, "g_bot_shotgun", "1",  CVAR_NORESTART, 0, false, nullptr },
@@ -366,18 +464,27 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_bot_roam, "g_bot_roam", "1",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_rush, "g_bot_rush", "1",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_repair, "g_bot_repair", "1",  CVAR_NORESTART, 0, false, nullptr },
+#ifndef UNREALARENA
+	{ &g_bot_build, "g_bot_build", "1",  CVAR_NORESTART, 0, false, nullptr },
+#endif
 	{ &g_bot_retreat, "g_bot_retreat", "1",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_fov, "g_bot_fov", "125",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_chasetime, "g_bot_chasetime", "5000",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_reactiontime, "g_bot_reactiontime", "500",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_infinite_funds, "g_bot_infinite_funds", "0",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_numInGroup, "g_bot_numInGroup", "3",  CVAR_NORESTART, 0, false, nullptr },
-	{ &g_bot_debug, "g_bot_debug", "0",  CVAR_NORESTART, 0, false, nullptr }
+	{ &g_bot_debug, "g_bot_debug", "0",  CVAR_NORESTART, 0, false, nullptr },
+#ifndef UNREALARENA
+	{ &g_bot_buildLayout, "g_bot_buildLayout", "botbuild",  CVAR_NORESTART, 0, false, nullptr }
+#endif
 };
 
 static const size_t gameCvarTableSize = ARRAY_LEN( gameCvarTable );
 
 void               CheckExitRules();
+#ifndef UNREALARENA
+void               G_CountSpawns();
+#endif
 static void        G_LogGameplayStats( int state );
 
 // state field of G_LogGameplayStats
@@ -776,6 +883,11 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 
 	trap_SetConfigstring( CS_INTERMISSION, "0" );
 
+#ifndef UNREALARENA
+	// test to see if a custom buildable layout will be loaded
+	G_LayoutSelect();
+#endif
+
 	// this has to be flipped after the first UpdateCvars
 	level.spawning = true;
 
@@ -786,6 +898,11 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	G_SpawnFakeEntities();
 
 	BaseClustering::Init();
+
+#ifndef UNREALARENA
+	// load up a custom building layout if there is one
+	G_LayoutLoad();
+#endif
 
 	// setup bot code
 	G_BotInit();
@@ -805,8 +922,13 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 
 	G_InitMapRotations();
 
+#ifdef UNREALARENA
 	G_InitSpawnQueue( &level.team[ TEAM_Q ].spawnQueue );
 	G_InitSpawnQueue( &level.team[ TEAM_U ].spawnQueue );
+#else
+	G_InitSpawnQueue( &level.team[ TEAM_ALIENS ].spawnQueue );
+	G_InitSpawnQueue( &level.team[ TEAM_HUMANS ].spawnQueue );
+#endif
 
 	if ( g_debugMapRotation.integer )
 	{
@@ -816,7 +938,26 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	level.voices = BG_VoiceInit();
 	BG_PrintVoices( level.voices, g_debugVoices.integer );
 
+#ifndef UNREALARENA
+	// Give both teams some build points to start out with.
+	for ( int team = TEAM_NONE + 1; team < NUM_TEAMS; team++ )
+	{
+		int startBP = std::max( 0, g_initialBuildPoints.integer -
+		                        level.team[ (team_t)team ].layoutBuildPoints );
+
+		G_ModifyBuildPoints( (team_t)team, (float)startBP );
+		G_MarkBuildPointsMined( (team_t)team, (float)startBP );
+
+		level.team[ (team_t)team ].mainStructAcquiredBP = std::max( (float)startBP, FLT_EPSILON );
+	}
+#endif
+
 	G_Printf( "-----------------------------------\n" );
+
+#ifndef UNREALARENA
+	// So the server counts the spawns without a client attached
+	G_CountSpawns();
+#endif
 
 	G_UpdateTeamConfigStrings();
 
@@ -824,8 +965,13 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 
 	if ( g_lockTeamsAtStart.integer )
 	{
+#ifdef UNREALARENA
 		level.team[ TEAM_Q ].locked = true;
 		level.team[ TEAM_U ].locked = true;
+#else
+		level.team[ TEAM_ALIENS ].locked = true;
+		level.team[ TEAM_HUMANS ].locked = true;
+#endif
 		trap_Cvar_Set( "g_lockTeamsAtStart", "0" );
 	}
 
@@ -1077,6 +1223,9 @@ int G_PopSpawnQueue( spawnQueue_t *sq )
 	{
 		sq->clients[ sq->front ] = -1;
 		sq->front = QUEUE_PLUS1( sq->front );
+#ifndef UNREALARENA
+		G_StopFollowing( g_entities + clientNum );
+#endif
 		g_entities[ clientNum ].client->ps.pm_flags &= ~PMF_QUEUED;
 
 		return clientNum;
@@ -1099,6 +1248,30 @@ int G_PeekSpawnQueue( spawnQueue_t *sq )
 	return sq->clients[ sq->front ];
 }
 
+#ifndef UNREALARENA
+/*
+============
+G_SearchSpawnQueue
+
+Look to see if clientNum is already in the spawnQueue
+============
+*/
+bool G_SearchSpawnQueue( spawnQueue_t *sq, int clientNum )
+{
+	int i;
+
+	for ( i = 0; i < MAX_CLIENTS; i++ )
+	{
+		if ( sq->clients[ i ] == clientNum )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+#endif
+
 /*
 ============
 G_PushSpawnQueue
@@ -1106,12 +1279,21 @@ G_PushSpawnQueue
 Add an element to the back of the spawn queue
 ============
 */
-void G_PushSpawnQueue( spawnQueue_t *sq, int clientNum )
+bool G_PushSpawnQueue( spawnQueue_t *sq, int clientNum )
 {
+#ifndef UNREALARENA
+	// don't add the same client more than once
+	if ( G_SearchSpawnQueue( sq, clientNum ) )
+	{
+		return false;
+	}
+#endif
+
 	sq->back = QUEUE_PLUS1( sq->back );
 	sq->clients[ sq->back ] = clientNum;
 
 	g_entities[ clientNum ].client->ps.pm_flags |= PMF_QUEUED;
+	return true;
 }
 
 /*
@@ -1156,6 +1338,78 @@ bool G_RemoveFromSpawnQueue( spawnQueue_t *sq, int clientNum )
 	return false;
 }
 
+#ifndef UNREALARENA
+/*
+============
+G_GetPosInSpawnQueue
+
+Get the position of a client in a spawn queue
+============
+*/
+int G_GetPosInSpawnQueue( spawnQueue_t *sq, int clientNum )
+{
+	int i = sq->front;
+
+	if ( G_GetSpawnQueueLength( sq ) )
+	{
+		do
+		{
+			if ( sq->clients[ i ] == clientNum )
+			{
+				if ( i < sq->front )
+				{
+					return i + MAX_CLIENTS - sq->front + 1;
+				}
+				else
+				{
+					return i - sq->front + 1;
+				}
+			}
+
+			i = QUEUE_PLUS1( i );
+		}
+		while ( i != QUEUE_PLUS1( sq->back ) );
+	}
+
+	return 0;
+}
+
+/*
+============
+G_PrintSpawnQueue
+
+Print the contents of a spawn queue
+============
+*/
+void G_PrintSpawnQueue( spawnQueue_t *sq )
+{
+	int i = sq->front;
+	int length = G_GetSpawnQueueLength( sq );
+
+	G_Printf( "l:%d f:%d b:%d    :", length, sq->front, sq->back );
+
+	if ( length > 0 )
+	{
+		do
+		{
+			if ( sq->clients[ i ] == -1 )
+			{
+				G_Printf( "*:" );
+			}
+			else
+			{
+				G_Printf( "%d:", sq->clients[ i ] );
+			}
+
+			i = QUEUE_PLUS1( i );
+		}
+		while ( i != QUEUE_PLUS1( sq->back ) );
+	}
+
+	G_Printf( "\n" );
+}
+#endif
+
 /*
 ============
 G_SpawnClients
@@ -1169,16 +1423,39 @@ void G_SpawnClients( team_t team )
 	gentity_t    *ent, *spawn;
 	vec3_t       spawn_origin, spawn_angles;
 	spawnQueue_t *sq = nullptr;
+#ifndef UNREALARENA
+	int          numSpawns = 0;
+#endif
 
+#ifdef UNREALARENA
 	assert(team == TEAM_Q || team == TEAM_U);
+#else
+	assert(team == TEAM_ALIENS || team == TEAM_HUMANS);
+#endif
 	sq = &level.team[ team ].spawnQueue;
 
+#ifndef UNREALARENA
+	numSpawns = level.team[ team ].numSpawns;
+#endif
+
+#ifdef UNREALARENA
 	if ( G_GetSpawnQueueLength( sq ) > 0 )
+#else
+	if ( G_GetSpawnQueueLength( sq ) > 0 && numSpawns > 0 )
+#endif
 	{
 		clientNum = G_PeekSpawnQueue( sq );
 		ent = &g_entities[ clientNum ];
 
-		if ( ( spawn = G_SelectSpawnPoint( spawn_origin, spawn_angles, team, ent->client->pers.lastDeathLocation ) ) )
+#ifdef UNREALARENA
+		if ( ( spawn = G_SelectSpawnPoint( team,
+		               spawn_origin, spawn_angles,
+		               ent->client->pers.lastDeathLocation ) ) )
+#else
+		if ( ( spawn = G_SelectUnvanquishedSpawnPoint( team,
+		               ent->client->pers.lastDeathLocation,
+		               spawn_origin, spawn_angles ) ) )
+#endif
 		{
 			clientNum = G_PopSpawnQueue( sq );
 
@@ -1195,6 +1472,44 @@ void G_SpawnClients( team_t team )
 		}
 	}
 }
+
+#ifndef UNREALARENA
+/*
+============
+G_CountSpawns
+
+Counts the number of spawns for each team
+============
+*/
+void G_CountSpawns()
+{
+	int       i;
+	gentity_t *ent;
+
+	//I guess this could be changed into one function call per team
+	level.team[ TEAM_ALIENS ].numSpawns = 0;
+	level.team[ TEAM_HUMANS ].numSpawns = 0;
+
+	for ( i = MAX_CLIENTS, ent = g_entities + i; i < level.num_entities; i++, ent++ )
+	{
+		if ( !ent->inuse || ent->s.eType != ET_BUILDABLE || ent->health <= 0 )
+		{
+			continue;
+			// is it really useful? Seriously?
+		}
+
+		//TODO create a function to check if a building is a spawn
+		if( ent->s.modelindex == BA_A_SPAWN )
+		{
+			level.team[ TEAM_ALIENS ].numSpawns++;
+		}
+		else if ( ent->s.modelindex == BA_H_SPAWN )
+		{
+			level.team[ TEAM_HUMANS ].numSpawns++;
+		}
+	}
+}
+#endif
 
 /*
 ============
@@ -1341,6 +1656,7 @@ void CalculateRanks()
 	}
 
 	// voting code expects level.team[ TEAM_NONE ].numPlayers to be all players, spectating or playing
+	// TODO: Use TEAM_ALL or the latter version for this everywhere
 	level.team[ TEAM_NONE ].numPlayers += level.numPlayingPlayers;
 
 	P[ clientNum ] = '\0';
@@ -1427,11 +1743,44 @@ void MoveClientToIntermission( gentity_t *ent )
 /*
 ==================
 FindIntermissionPoint
+
+This is also used for spectator spawns
 ==================
 */
 void FindIntermissionPoint()
 {
-	G_SelectSpawnPoint( level.intermission_origin, level.intermission_angle, TEAM_NONE, nullptr );
+#ifdef UNREALARENA
+	G_SelectSpawnPoint( TEAM_NONE, level.intermission_origin, level.intermission_angle, nullptr );
+#else
+	gentity_t *ent, *target;
+	vec3_t    dir;
+
+	// find the intermission spot
+	ent = G_PickRandomEntityOfClass( S_POS_PLAYER_INTERMISSION );
+
+	if ( !ent )
+	{
+		// the map creator forgot to put in an intermission point...
+		G_SelectRandomFurthestSpawnPoint( vec3_origin, level.intermission_origin, level.intermission_angle );
+	}
+	else
+	{
+		VectorCopy( ent->s.origin, level.intermission_origin );
+		VectorCopy( ent->s.angles, level.intermission_angle );
+
+		// if it has a target, look towards it
+		if ( ent->targetCount  )
+		{
+			target = G_PickRandomTargetFor( ent );
+
+			if ( target )
+			{
+				VectorSubtract( target->s.origin, level.intermission_origin, dir );
+				vectoangles( dir, level.intermission_angle );
+			}
+		}
+	}
+#endif
 }
 
 /*
@@ -1640,7 +1989,11 @@ static void GetAverageCredits( int teamCredits[], int teamValue[] )
 	gclient_t *client;
 	int       team;
 
-	for ( team = TEAM_Q; team < NUM_TEAMS ; ++team)
+#ifdef UNREALARENA
+	for ( team = TEAM_NONE + 1; team < NUM_TEAMS ; ++team)
+#else
+	for ( team = TEAM_ALIENS ; team < NUM_TEAMS ; ++team)
+#endif
 	{
 		teamCnt[ team ] = 0;
 		teamCredits[ team ] = 0;
@@ -1664,7 +2017,11 @@ static void GetAverageCredits( int teamCredits[], int teamValue[] )
 		teamCnt[ team ]++;
 	}
 
-	for ( team = TEAM_Q; team < NUM_TEAMS ; ++team)
+#ifdef UNREALARENA
+	for ( team = TEAM_NONE + 1; team < NUM_TEAMS ; ++team)
+#else
+	for ( team = TEAM_ALIENS ; team < NUM_TEAMS ; ++team)
+#endif
 	{
 		teamCredits[ team ] = ( teamCnt[ team ] == 0 ) ? 0 : ( teamCredits[ team ] / teamCnt[ team ] );
 		teamValue[ team ] = ( teamCnt[ team ] == 0 ) ? 0 : ( teamValue[ team ] / teamCnt[ team ] );
@@ -1700,6 +2057,7 @@ static void G_LogGameplayStats( int state )
 			trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
 			Com_GMTime( &t );
 
+#ifdef UNREALARENA
 			Com_sprintf( logline, sizeof( logline ),
 			             "# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
 			             "#\n"
@@ -1720,15 +2078,51 @@ static void G_LogGameplayStats( int state )
 			             t.tm_hour, t.tm_min, t.tm_sec,
 			             LOG_GAMEPLAY_STATS_VERSION,
 			             g_momentumHalfLife.integer );
+#else
+			Com_sprintf( logline, sizeof( logline ),
+			             "# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+			             "#\n"
+			             "# Version: %s\n"
+			             "# Map:     %s\n"
+			             "# Date:    %04i-%02i-%02i\n"
+			             "# Time:    %02i:%02i:%02i\n"
+			             "# Format:  %i\n"
+			             "#\n"
+			             "# g_momentumHalfLife:        %4i\n"
+			             "# g_initialBuildPoints:      %4i\n"
+			             "# g_initialMineRate:         %4i\n"
+			             "# g_mineRateHalfLife:        %4i\n"
+			             "#\n"
+			             "#  1  2  3    4    5    6    7    8    9   10   11   12   13   14   15   16\n"
+			             "#  T #A #H AMom HMom  LMR  AME  HME  ABP  HBP ABRV HBRV ACre HCre AVal HVal\n"
+			             "# -------------------------------------------------------------------------\n",
+			             Q3_VERSION,
+			             mapname,
+			             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+			             t.tm_hour, t.tm_min, t.tm_sec,
+			             LOG_GAMEPLAY_STATS_VERSION,
+			             g_momentumHalfLife.integer,
+			             g_initialBuildPoints.integer,
+			             g_initialMineRate.integer,
+			             g_mineRateHalfLife.integer );
+#endif
 
 			break;
 		}
 		case LOG_GAMEPLAY_STATS_BODY:
 		{
 			int    time;
+#ifndef UNREALARENA
+			float  LMR;
+#endif
 			int    team;
 			int    num[ NUM_TEAMS ];
 			int    Mom[ NUM_TEAMS ];
+#ifndef UNREALARENA
+			int    ME [ NUM_TEAMS ];
+			int    BP [ NUM_TEAMS ];
+			int    BRV[ NUM_TEAMS ];
+#endif
 			int    Cre[ NUM_TEAMS ];
 			int    Val[ NUM_TEAMS ];
 
@@ -1738,19 +2132,39 @@ static void G_LogGameplayStats( int state )
 			}
 
 			time = level.matchTime / 1000;
+#ifndef UNREALARENA
+			LMR  = level.mineRate; // float
+#endif
 
 			for( team = TEAM_NONE + 1; team < NUM_TEAMS; team++ )
 			{
 				num[ team ] = level.team[ team ].numClients;
 				Mom[ team ] = ( int )level.team[ team ].momentum;
+#ifndef UNREALARENA
+				ME [ team ] = ( int )level.team[ team ].mineEfficiency;
+				BP [ team ] = G_GetBuildPointsInt( (team_t)team );
+#endif
 			}
 
+#ifndef UNREALARENA
+			G_GetBuildableResourceValue( BRV );
+#endif
 			GetAverageCredits( Cre, Val );
 
+#ifdef UNREALARENA
 			Com_sprintf( logline, sizeof( logline ),
 			             "%4i %2i %2i %4i %4i %4i %4i %4i %4i\n",
 			             time, num[ TEAM_Q ], num[ TEAM_U ], Mom[ TEAM_Q ], Mom[ TEAM_U ],
-			             Cre[ TEAM_Q ], Cre[ TEAM_U ], Val[ TEAM_Q ], Val[ TEAM_U ] );
+			             Cre[ TEAM_Q ], Cre[ TEAM_U ],
+			             Val[ TEAM_Q ], Val[ TEAM_U ] );
+#else
+			Com_sprintf( logline, sizeof( logline ),
+			             "%4i %2i %2i %4i %4i %4.1f %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i\n",
+			             time, num[ TEAM_ALIENS ], num[ TEAM_HUMANS ], Mom[ TEAM_ALIENS ], Mom[ TEAM_HUMANS ],
+			             LMR, ME[ TEAM_ALIENS ], ME[ TEAM_HUMANS ], BP[ TEAM_ALIENS ], BP[ TEAM_HUMANS ],
+			             BRV[ TEAM_ALIENS ], BRV[ TEAM_HUMANS ], Cre[ TEAM_ALIENS ], Cre[ TEAM_HUMANS ],
+			             Val[ TEAM_ALIENS ], Val[ TEAM_HUMANS ] );
+#endif
 			break;
 		}
 		case LOG_GAMEPLAY_STATS_FOOTER:
@@ -1760,6 +2174,7 @@ static void G_LogGameplayStats( int state )
 
 			switch ( level.lastWin )
 			{
+#ifdef UNREALARENA
 				case TEAM_Q:
 					winner = "Q";
 					break;
@@ -1767,6 +2182,15 @@ static void G_LogGameplayStats( int state )
 				case TEAM_U:
 					winner = "U";
 					break;
+#else
+				case TEAM_ALIENS:
+					winner = "Aliens";
+					break;
+
+				case TEAM_HUMANS:
+					winner = "Humans";
+					break;
+#endif
 
 				default:
 					winner = "-";
@@ -1775,6 +2199,7 @@ static void G_LogGameplayStats( int state )
 			min = level.matchTime / 60000;
 			sec = ( level.matchTime / 1000 ) % 60;
 
+#ifdef UNREALARENA
 			Com_sprintf( logline, sizeof( logline ),
 			             "# -------------------------------------------------------------------------\n"
 			             "#\n"
@@ -1790,6 +2215,23 @@ static void G_LogGameplayStats( int state )
 			             level.team[ TEAM_Q ].averageNumBots    + level.team[ TEAM_U ].averageNumBots,
 			             level.team[ TEAM_Q ].averageNumPlayers, level.team[ TEAM_Q ].averageNumBots,
 			             level.team[ TEAM_U ].averageNumPlayers, level.team[ TEAM_U ].averageNumBots);
+#else
+			Com_sprintf( logline, sizeof( logline ),
+			             "# -------------------------------------------------------------------------\n"
+			             "#\n"
+			             "# Match duration:  %i:%02i\n"
+			             "# Winning team:    %s\n"
+			             "# Average Players: %.1f + %.1f\n"
+			             "# Average Aliens:  %.1f + %.1f\n"
+			             "# Average Humans:  %.1f + %.1f\n"
+			             "#\n",
+			             min, sec,
+			             winner,
+			             level.team[ TEAM_ALIENS ].averageNumPlayers + level.team[ TEAM_HUMANS ].averageNumPlayers,
+			             level.team[ TEAM_ALIENS ].averageNumBots    + level.team[ TEAM_HUMANS ].averageNumBots,
+			             level.team[ TEAM_ALIENS ].averageNumPlayers, level.team[ TEAM_ALIENS ].averageNumBots,
+			             level.team[ TEAM_HUMANS ].averageNumPlayers, level.team[ TEAM_HUMANS ].averageNumBots);
+#endif
 			break;
 		}
 		default:
@@ -1832,6 +2274,7 @@ void G_SendGameStat( team_t team )
 
 	switch ( team )
 	{
+#ifdef UNREALARENA
 		case TEAM_Q:
 			teamChar = 'Q';
 			break;
@@ -1839,6 +2282,15 @@ void G_SendGameStat( team_t team )
 		case TEAM_U:
 			teamChar = 'U';
 			break;
+#else
+		case TEAM_ALIENS:
+			teamChar = 'A';
+			break;
+
+		case TEAM_HUMANS:
+			teamChar = 'H';
+			break;
+#endif
 
 		case TEAM_NONE:
 			teamChar = 'L';
@@ -1848,6 +2300,7 @@ void G_SendGameStat( team_t team )
 			return;
 	}
 
+#ifdef UNREALARENA
 	Com_sprintf( data, BIG_INFO_STRING,
 	             "%s %s T:%c Q:%f U:%f M:%s D:%d CL:%d",
 	             Q3_VERSION,
@@ -1858,6 +2311,18 @@ void G_SendGameStat( team_t team )
 	             map,
 	             level.matchTime,
 	             level.numConnectedClients );
+#else
+	Com_sprintf( data, BIG_INFO_STRING,
+	             "%s %s T:%c A:%f H:%f M:%s D:%d CL:%d",
+	             Q3_VERSION,
+	             g_tag.string,
+	             teamChar,
+	             level.team[ TEAM_ALIENS ].averageNumClients,
+	             level.team[ TEAM_HUMANS ].averageNumClients,
+	             map,
+	             level.matchTime,
+	             level.numConnectedClients );
+#endif
 
 	dataLength = strlen( data );
 
@@ -1878,6 +2343,7 @@ void G_SendGameStat( team_t team )
 
 		switch ( cl->pers.team )
 		{
+#ifdef UNREALARENA
 			case TEAM_Q:
 				teamChar = 'Q';
 				break;
@@ -1885,6 +2351,15 @@ void G_SendGameStat( team_t team )
 			case TEAM_U:
 				teamChar = 'U';
 				break;
+#else
+			case TEAM_ALIENS:
+				teamChar = 'A';
+				break;
+
+			case TEAM_HUMANS:
+				teamChar = 'H';
+				break;
+#endif
 
 			case TEAM_NONE:
 				teamChar = 'S';
@@ -2148,33 +2623,65 @@ void CheckExitRules()
 		}
 	}
 
-	// XXX
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
 	return;
-
-	if ( level.unconditionalWin == TEAM_Q ||
-	      ( level.unconditionalWin != TEAM_U &&
-	        ( level.time > level.startTime + 1000 ) &&
-	        ( level.team[ TEAM_U ].numAliveClients == 0 ) ) )
-	{
-		level.lastWin = TEAM_Q;
-		trap_SendServerCommand( -1, "print_tr \"" N_("Q team win\n") "\"" );
-		trap_SetConfigstring( CS_WINNER, "Q Team Win" );
-		G_notify_sensor_end( TEAM_Q );
-		LogExit( "Q team win." );
-		G_MapLog_Result( 'q' );
-	}
-	else if ( level.unconditionalWin == TEAM_U ||
+#endif
+#ifdef UNREALARENA
+	if ( level.unconditionalWin == TEAM_U ||
 	     ( level.unconditionalWin != TEAM_Q &&
 	       ( level.time > level.startTime + 1000 ) &&
 	       ( level.team[ TEAM_Q ].numAliveClients == 0 ) ) )
 	{
 		level.lastWin = TEAM_U;
-		trap_SendServerCommand( -1, "print_tr \"" N_("U team win\n") "\"" );
-		trap_SetConfigstring( CS_WINNER, "U Team Win" );
+		trap_SendServerCommand( -1, "print_tr \"" N_("U team won\n") "\"" );
+		trap_SetConfigstring( CS_WINNER, "U team won" );
 		G_notify_sensor_end( TEAM_U );
-		LogExit( "U team win." );
+		LogExit( "U team won." );
 		G_MapLog_Result( 'u' );
 	}
+	else if ( level.unconditionalWin == TEAM_Q ||
+	          ( level.unconditionalWin != TEAM_U &&
+	            ( level.time > level.startTime + 1000 ) &&
+	            ( level.team[ TEAM_U ].numAliveClients == 0 ) ) )
+	{
+		level.lastWin = TEAM_Q;
+		trap_SendServerCommand( -1, "print_tr \"" N_("Q team won\n") "\"" );
+		trap_SetConfigstring( CS_WINNER, "Q team won" );
+		G_notify_sensor_end( TEAM_Q );
+		LogExit( "Q team won." );
+		G_MapLog_Result( 'q' );
+	}
+#else
+	if ( level.unconditionalWin == TEAM_HUMANS ||
+	     ( level.unconditionalWin != TEAM_ALIENS &&
+	       ( level.time > level.startTime + 1000 ) &&
+	       ( level.team[ TEAM_ALIENS ].numSpawns == 0 ) &&
+	       ( level.team[ TEAM_ALIENS ].numAliveClients == 0 ) ) )
+	{
+		//humans win
+		level.lastWin = TEAM_HUMANS;
+		trap_SendServerCommand( -1, "print_tr \"" N_("Humans win\n") "\"" );
+		trap_SetConfigstring( CS_WINNER, "Humans Win" );
+		G_notify_sensor_end( TEAM_HUMANS );
+		LogExit( "Humans win." );
+		G_MapLog_Result( 'h' );
+	}
+	else if ( level.unconditionalWin == TEAM_ALIENS ||
+	          ( level.unconditionalWin != TEAM_HUMANS &&
+	            ( level.time > level.startTime + 1000 ) &&
+	            ( level.team[ TEAM_HUMANS ].numSpawns == 0 ) &&
+	            ( level.team[ TEAM_HUMANS ].numAliveClients == 0 ) ) )
+	{
+		//aliens win
+		level.lastWin = TEAM_ALIENS;
+		trap_SendServerCommand( -1, "print_tr \"" N_("Aliens win\n") "\"" );
+		trap_SetConfigstring( CS_WINNER, "Aliens Win" );
+		G_notify_sensor_end( TEAM_ALIENS );
+		LogExit( "Aliens win." );
+		G_MapLog_Result( 'a' );
+	}
+#endif
 }
 
 /*
@@ -2633,6 +3140,14 @@ void G_RunFrame( int levelTime )
 			continue;
 		}
 
+#ifndef UNREALARENA
+		if ( ent->s.eType == ET_BUILDABLE )
+		{
+			G_BuildableThink( ent, msec );
+			continue;
+		}
+#endif
+
 		if ( ent->s.eType == ET_CORPSE || ent->physicsObject )
 		{
 			G_Physics( ent, msec );
@@ -2670,10 +3185,20 @@ void G_RunFrame( int levelTime )
 	// save position information for all active clients
 	G_UnlaggedStore();
 
+#ifndef UNREALARENA
+	G_CountSpawns();
+	G_SetHumanBuildablePowerState();
+	G_MineBuildPoints();
+#endif
 	G_DecreaseMomentum();
 	G_CalculateAvgPlayers();
+#ifdef UNREALARENA
 	G_SpawnClients( TEAM_Q );
 	G_SpawnClients( TEAM_U );
+#else
+	G_SpawnClients( TEAM_ALIENS );
+	G_SpawnClients( TEAM_HUMANS );
+#endif
 	G_UpdateZaps( msec );
 	Beacon::Frame( );
 

@@ -31,17 +31,36 @@ ctrl_relay
 
 void target_relay_act( gentity_t *self, gentity_t*, gentity_t *activator )
 {
+#ifndef UNREALARENA
+	if (!self->enabled)
+		return;
+#endif
+
+#ifdef UNREALARENA
 	if ( ( self->spawnflags & 1 ) && activator && activator->client &&
-	     activator->client->pers.team != TEAM_Q )
+	     activator->client->pers.team != TEAM_U )
 	{
 		return;
 	}
 
 	if ( ( self->spawnflags & 2 ) && activator && activator->client &&
-	     activator->client->pers.team != TEAM_U )
+	     activator->client->pers.team != TEAM_Q )
 	{
 		return;
 	}
+#else
+	if ( ( self->spawnflags & 1 ) && activator && activator->client &&
+	     activator->client->pers.team != TEAM_HUMANS )
+	{
+		return;
+	}
+
+	if ( ( self->spawnflags & 2 ) && activator && activator->client &&
+	     activator->client->pers.team != TEAM_ALIENS )
+	{
+		return;
+	}
+#endif
 
 	if ( self->spawnflags & 4 )
 	{
@@ -63,10 +82,18 @@ void target_relay_act( gentity_t *self, gentity_t*, gentity_t *activator )
 
 void ctrl_relay_reset( gentity_t *self )
 {
+#ifndef UNREALARENA
+	self->enabled = !(self->spawnflags & SPF_SPAWN_DISABLED);
+#endif
 }
 
 void ctrl_relay_act( gentity_t *self, gentity_t*, gentity_t *activator )
 {
+#ifndef UNREALARENA
+	if (!self->enabled)
+		return;
+#endif
+
 	if ( !self->config.wait.time )
 	{
 		G_EventFireEntity( self, activator, ON_ACT );
@@ -114,6 +141,11 @@ ctrl_limited
 
 void ctrl_limited_act(gentity_t *self, gentity_t*, gentity_t *activator)
 {
+#ifndef UNREALARENA
+	if (!self->enabled)
+		return;
+#endif
+
 	G_FireEntity( self, activator );
 	if ( self->count <= 1 )
 	{
@@ -125,6 +157,10 @@ void ctrl_limited_act(gentity_t *self, gentity_t*, gentity_t *activator)
 
 void ctrl_limited_reset( gentity_t *self )
 {
+#ifndef UNREALARENA
+	self->enabled = !(self->spawnflags & SPF_SPAWN_DISABLED);
+#endif
+
 	G_ResetIntField(&self->count, true, self->config.amount, self->eclass->config.amount, 1);
 }
 

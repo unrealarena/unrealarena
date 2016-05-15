@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -61,6 +61,14 @@ AIValue_t AIBoxToken( const pc_token_stripped_t *token )
 	}
 }
 
+#ifndef UNREALARENA
+// functions that are used to provide values to the behavior tree in condition nodes
+static AIValue_t buildingIsDamaged( gentity_t *self, const AIValue_t* )
+{
+	return AIBoxInt( self->botMind->closestDamagedBuilding.ent != nullptr );
+}
+#endif
+
 static AIValue_t haveWeapon( gentity_t *self, const AIValue_t *params )
 {
 	return AIBoxInt( BG_InventoryContainsWeapon( AIUnBoxInt( params[ 0 ] ), self->client->ps.stats ) );
@@ -107,9 +115,27 @@ static AIValue_t goalDead( gentity_t *self, const AIValue_t* )
 	{
 		dead = true;
 	}
+#ifndef UNREALARENA
+	else if ( goal->ent->s.eType == ET_BUILDABLE && goal->ent->buildableTeam == self->client->pers.team && !goal->ent->powered )
+	{
+		dead = true;
+	}
+#endif
 
 	return AIBoxInt( dead );
 }
+
+#ifndef UNREALARENA
+static AIValue_t goalBuildingType( gentity_t *self, const AIValue_t* )
+{
+	if ( BotGetTargetType( self->botMind->goal ) != ET_BUILDABLE )
+	{
+		return AIBoxInt( BA_NONE );
+	}
+
+	return AIBoxInt( self->botMind->goal.ent->s.modelindex );
+}
+#endif
 
 static AIValue_t currentWeapon( gentity_t *self, const AIValue_t* )
 {
@@ -152,7 +178,11 @@ static AIValue_t healScore( gentity_t *self, const AIValue_t* )
 
 static AIValue_t botClass( gentity_t *self, const AIValue_t* )
 {
+#ifdef UNREALARENA
 	return AIBoxInt( self->client->ps.persistant[ PERS_TEAM ] );
+#else
+	return AIBoxInt( self->client->ps.stats[ STAT_CLASS ] );
+#endif
 }
 
 static AIValue_t botSkill( gentity_t *self, const AIValue_t* )
@@ -225,6 +255,25 @@ static AIValue_t directPathTo( gentity_t *self, const AIValue_t *params )
 	return AIBoxInt( false );
 }
 
+#ifndef UNREALARENA
+static AIValue_t botCanEvolveTo( gentity_t *self, const AIValue_t *params )
+{
+	class_t c = ( class_t ) AIUnBoxInt( params[ 0 ] );
+
+	return AIBoxInt( BotCanEvolveToClass( self, c ) );
+}
+
+static AIValue_t humanMomentum( gentity_t*, const AIValue_t* )
+{
+	return AIBoxInt( level.team[ TEAM_HUMANS ].momentum );
+}
+
+static AIValue_t alienMomentum( gentity_t*, const AIValue_t* )
+{
+	return AIBoxInt( level.team[ TEAM_ALIENS ].momentum );
+}
+#endif
+
 static AIValue_t randomChance( gentity_t*, const AIValue_t* )
 {
 	return AIBoxFloat( random() );
@@ -265,9 +314,20 @@ static AIValue_t percentHealth( gentity_t *self, const AIValue_t *params )
 	{
 		health = et.ent->health;
 
+#ifndef UNREALARENA
+		if ( et.ent->s.eType == ET_BUILDABLE )
+		{
+			maxHealth = BG_Buildable( ( buildable_t ) et.ent->s.modelindex )->health;
+		}
+#endif
+
 		if ( et.ent->s.eType == ET_PLAYER )
 		{
+#ifdef UNREALARENA
 			maxHealth = BG_Class( ( team_t ) et.ent->client->ps.persistant[ PERS_TEAM ] )->health;
+#else
+			maxHealth = BG_Class( ( class_t ) et.ent->client->ps.stats[ STAT_CLASS ] )->health;
+#endif
 		}
 	}
 
@@ -284,18 +344,31 @@ static const struct AIConditionMap_s
 } conditionFuncs[] =
 {
 	{ "alertedToEnemy",    VALUE_INT,   alertedToEnemy,    0 },
+#ifndef UNREALARENA
+	{ "alienMomentum",   VALUE_INT,   alienMomentum,   0 },
+#endif
 	{ "baseRushScore",     VALUE_FLOAT, baseRushScore,     0 },
+#ifndef UNREALARENA
+	{ "buildingIsDamaged", VALUE_INT,   buildingIsDamaged, 0 },
+	{ "canEvolveTo",       VALUE_INT,   botCanEvolveTo,    1 },
+#endif
 	{ "class",             VALUE_INT,   botClass,          0 },
 	{ "cvarFloat",         VALUE_FLOAT, cvarFloat,         1 },
 	{ "cvarInt",           VALUE_INT,   cvarInt,           1 },
 	{ "directPathTo",      VALUE_INT,   directPathTo,      1 },
 	{ "distanceTo",        VALUE_FLOAT, distanceTo,        1 },
+#ifndef UNREALARENA
+	{ "goalBuildingType",  VALUE_INT,   goalBuildingType,  0 },
+#endif
 	{ "goalIsDead",        VALUE_INT,   goalDead,          0 },
 	{ "goalTeam",          VALUE_INT,   goalTeam,          0 },
 	{ "goalType",          VALUE_INT,   goalType,          0 },
 	{ "haveUpgrade",       VALUE_INT,   haveUpgrade,       1 },
 	{ "haveWeapon",        VALUE_INT,   haveWeapon,        1 },
 	{ "healScore",         VALUE_FLOAT, healScore,         0 },
+#ifndef UNREALARENA
+	{ "humanMomentum",   VALUE_INT,   humanMomentum,   0 },
+#endif
 	{ "inAttackRange",     VALUE_INT,   inAttackRange,     1 },
 	{ "isVisible",         VALUE_INT,   isVisible,         1 },
 	{ "percentAmmo",       VALUE_FLOAT, percentAmmo,       0 },
@@ -865,9 +938,17 @@ static const struct AIActionMap_s
 	{ "activateUpgrade",   BotActionActivateUpgrade,   1, 1 },
 	{ "aimAtGoal",         BotActionAimAtGoal,         0, 0 },
 	{ "alternateStrafe",   BotActionAlternateStrafe,   0, 0 },
+#ifndef UNREALARENA
+	{ "buy",               BotActionBuy,               1, 4 },
+#endif
 	{ "changeGoal",        BotActionChangeGoal,        1, 1 },
 	{ "classDodge",        BotActionClassDodge,        0, 0 },
 	{ "deactivateUpgrade", BotActionDeactivateUpgrade, 1, 1 },
+#ifndef UNREALARENA
+	{ "equip",             BotActionBuy,               0, 0 },
+	{ "evolve",            BotActionEvolve,            0, 0 },
+	{ "evolveTo",          BotActionEvolveTo,          1, 1 },
+#endif
 	{ "fight",             BotActionFight,             0, 0 },
 	{ "fireWeapon",        BotActionFireWeapon,        0, 0 },
 	{ "flee",              BotActionFlee,              0, 0 },
@@ -875,6 +956,9 @@ static const struct AIActionMap_s
 	{ "moveInDir",         BotActionMoveInDir,         1, 2 },
 	{ "moveTo",            BotActionMoveTo,            1, 2 },
 	{ "moveToGoal",        BotActionMoveToGoal,        0, 0 },
+#ifndef UNREALARENA
+	{ "repair",            BotActionRepair,            0, 0 },
+#endif
 	{ "roam",              BotActionRoam,              0, 0 },
 	{ "roamInRadius",      BotActionRoamInRadius,      2, 2 },
 	{ "rush",              BotActionRush,              0, 0 },
@@ -1208,22 +1292,71 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( WP_HBUILD );
 
 	// add teams
+#ifdef UNREALARENA
 	D( TEAM_Q );
 	D( TEAM_U );
+#else
+	D( TEAM_ALIENS );
+	D( TEAM_HUMANS );
+#endif
 	D( TEAM_NONE );
 
 	// add AIEntitys
+#ifdef UNREALARENA
 	D( E_NONE );
-	D( E_Q_SPAWN );
-	D( E_U_SPAWN );
 	D( E_GOAL );
 	D( E_ENEMY );
 	D( E_SELF );
+#else
+	D( E_NONE );
+	D( E_A_SPAWN );
+	D( E_A_OVERMIND );
+	D( E_A_BARRICADE );
+	D( E_A_ACIDTUBE );
+	D( E_A_TRAPPER );
+	D( E_A_BOOSTER );
+	D( E_A_HIVE );
+	D( E_A_LEECH );
+	D( E_H_SPAWN );
+	D( E_H_MGTURRET );
+	D( E_H_ROCKETPOD );
+	D( E_H_ARMOURY );
+	D( E_H_MEDISTAT );
+	D( E_H_DRILL );
+	D( E_H_REACTOR );
+	D( E_H_REPEATER );
+	D( E_GOAL );
+	D( E_ENEMY );
+	D( E_DAMAGEDBUILDING );
+	D( E_SELF );
+#endif
 
+#ifndef UNREALARENA
+	// add player classes
+	D( PCL_NONE );
+	D( PCL_ALIEN_BUILDER0 );
+	D( PCL_ALIEN_BUILDER0_UPG );
+	D( PCL_ALIEN_LEVEL0 );
+	D( PCL_ALIEN_LEVEL1 );
+	D( PCL_ALIEN_LEVEL2 );
+	D( PCL_ALIEN_LEVEL2_UPG );
+	D( PCL_ALIEN_LEVEL3 );
+	D( PCL_ALIEN_LEVEL3_UPG );
+	D( PCL_ALIEN_LEVEL4 );
+	D( PCL_HUMAN_NAKED );
+	D( PCL_HUMAN_LIGHT );
+	D( PCL_HUMAN_MEDIUM );
+	D( PCL_HUMAN_BSUIT );
+#endif
+	
 	D( MOVE_FORWARD );
 	D( MOVE_BACKWARD );
 	D( MOVE_RIGHT );
 	D( MOVE_LEFT );
+
+#ifndef UNREALARENA
+	D( ET_BUILDABLE );
+#endif
 
 	// node return status
 	D( STATUS_RUNNING );

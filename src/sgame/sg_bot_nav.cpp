@@ -37,27 +37,41 @@ void G_BotNavInit()
 
 	Com_Printf( "==== Bot Navigation Initialization ==== \n" );
 
-	for ( i = 1; i < NUM_TEAMS; i++ )
+#ifdef UNREALARENA
+	for ( i = TEAM_NONE + 1; i < NUM_TEAMS; i++ )
+#else
+	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+#endif
 	{
 		classModelConfig_t *model;
 		botClass_t bot;
 		bot.polyFlagsInclude = POLYFLAGS_WALK;
 		bot.polyFlagsExclude = POLYFLAGS_DISABLED;
 
+#ifdef UNREALARENA
 		model = BG_ClassModelConfig( ( team_t ) i );
+#else
+		model = BG_ClassModelConfig( i );
+#endif
+#ifndef UNREALARENA
 		if ( model->navMeshClass )
 		{
 			if ( BG_ClassModelConfig( model->navMeshClass )->navMeshClass )
 			{
 				Com_Printf( S_ERROR "class '%s': navmesh reference target class '%s' must have its own navmesh\n",
-				            BG_Class( ( team_t ) i )->name, BG_Class( model->navMeshClass )->name );
+				            BG_Class( i )->name, BG_Class( model->navMeshClass )->name );
 				return;
 			}
 
 			continue;
 		}
+#endif
 
+#ifdef UNREALARENA
 		Q_strncpyz( bot.name, BG_Class( ( team_t ) i )->name, sizeof( bot.name ) );
+#else
+		Q_strncpyz( bot.name, BG_Class( i )->name, sizeof( bot.name ) );
+#endif
 
 		if ( !trap_BotSetupNav( &bot, &model->navHandle ) )
 		{
@@ -83,20 +97,33 @@ void G_BotEnableArea( vec3_t origin, vec3_t mins, vec3_t maxs )
 	trap_BotEnableArea( origin, mins, maxs );
 }
 
+#ifdef UNREALARENA
 void BotSetNavmesh( gentity_t  *self, team_t newTeam )
+#else
+void BotSetNavmesh( gentity_t  *self, class_t newClass )
+#endif
 {
 	int navHandle;
 	const classModelConfig_t *model;
 
+#ifdef UNREALARENA
 	if ( newTeam == TEAM_NONE )
+#else
+	if ( newClass == PCL_NONE )
+#endif
 	{
 		return;
 	}
 
+#ifdef UNREALARENA
 	model = BG_ClassModelConfig( newTeam );
+	navHandle = model->navHandle;
+#else
+	model = BG_ClassModelConfig( newClass );
 	navHandle = model->navMeshClass
 	          ? BG_ClassModelConfig( model->navMeshClass )->navHandle
 	          : model->navHandle;
+#endif
 
 	trap_BotSetNavMesh( self->s.number, navHandle );
 }
@@ -118,7 +145,18 @@ float BotGetGoalRadius( gentity_t *self )
 	if ( BotTargetIsEntity( self->botMind->goal ) )
 	{
 		botTarget_t *t = &self->botMind->goal;
+#ifdef UNREALARENA
 		return RadiusFromBounds2D( t->ent->r.mins, t->ent->r.maxs ) + RadiusFromBounds2D( self->r.mins, self->r.maxs );
+#else
+		if ( t->ent->s.modelindex == BA_H_MEDISTAT || t->ent->s.modelindex == BA_A_BOOSTER )
+		{
+			return self->r.maxs[0] + t->ent->r.maxs[0];
+		}
+		else
+		{
+			return RadiusFromBounds2D( t->ent->r.mins, t->ent->r.maxs ) + RadiusFromBounds2D( self->r.mins, self->r.maxs );
+		}
+#endif
 	}
 	else
 	{
@@ -311,9 +349,17 @@ bool BotJump( gentity_t *self )
 {
 	int staminaJumpCost;
 
+#ifdef UNREALARENA
 	if ( self->client->pers.team == TEAM_U )
+#else
+	if ( self->client->pers.team == TEAM_HUMANS )
+#endif
 	{
+#ifdef UNREALARENA
 		staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
+#else
+		staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
+#endif
 
 		if ( self->client->ps.stats[STAT_STAMINA] < staminaJumpCost )
 		{
@@ -336,11 +382,21 @@ bool BotSprint( gentity_t *self, bool enable )
 		return false;
 	}
 
+#ifdef UNREALARENA
 	staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
+#else
+	staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
+#endif
 
+#ifdef UNREALARENA
 	if ( self->client->pers.team == TEAM_U
 	     && self->client->ps.stats[ STAT_STAMINA ] > staminaJumpCost
 	     && self->botMind->botSkill.level >= 5 )
+#else
+	if ( self->client->pers.team == TEAM_HUMANS
+	     && self->client->ps.stats[ STAT_STAMINA ] > staminaJumpCost
+	     && self->botMind->botSkill.level >= 5 )
+#endif
 	{
 		usercmdPressButton( botCmdBuffer->buttons, BUTTON_SPRINT );
 		BotWalk( self, false );
@@ -389,7 +445,11 @@ gentity_t* BotGetPathBlocker( gentity_t *self, const vec3_t dir )
 		return nullptr;
 	}
 
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[STAT_CLASS], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+#endif
 
 	//account for how large we can step
 	playerMins[2] += STEPSIZE;
@@ -398,7 +458,11 @@ gentity_t* BotGetPathBlocker( gentity_t *self, const vec3_t dir )
 	VectorMA( self->s.origin, TRACE_LENGTH, dir, end );
 
 	trap_Trace( &trace, self->s.origin, playerMins, playerMaxs, end, self->s.number, MASK_SHOT, 0 );
+#ifdef UNREALARENA
 	if ( trace.fraction < 1.0f && trace.plane.normal[ 2 ] < 0.7f )
+#else
+	if ( ( trace.fraction < 1.0f && trace.plane.normal[ 2 ] < 0.7f ) || g_entities[ trace.entityNum ].s.eType == ET_BUILDABLE )
+#endif
 	{
 		return &g_entities[trace.entityNum];
 	}
@@ -425,7 +489,11 @@ bool BotShouldJump( gentity_t *self, gentity_t *blocker, const vec3_t dir )
 
 	//already normalized
 
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[STAT_CLASS], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+#endif
 
 	playerMins[2] += STEPSIZE;
 	playerMaxs[2] += STEPSIZE;
@@ -440,7 +508,11 @@ bool BotShouldJump( gentity_t *self, gentity_t *blocker, const vec3_t dir )
 		return false;
 	}
 
+#ifdef UNREALARENA
 	jumpMagnitude = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->jumpMagnitude;
+#else
+	jumpMagnitude = BG_Class( ( class_t )self->client->ps.stats[STAT_CLASS] )->jumpMagnitude;
+#endif
 
 	//find the actual height of our jump
 	jumpMagnitude = Square( jumpMagnitude ) / ( self->client->ps.gravity * 2 );
@@ -453,7 +525,12 @@ bool BotShouldJump( gentity_t *self, gentity_t *blocker, const vec3_t dir )
 	trap_Trace( &trace, self->s.origin, playerMins, playerMaxs, end, self->s.number, MASK_SHOT, 0 );
 
 	//if we can jump over it, then jump
+#ifdef UNREALARENA
 	if ( trace.fraction == 1.0f )
+#else
+	//note that we also test for a blocking barricade because barricades will collapse to let us through
+	if ( blocker->s.modelindex == BA_A_BARRICADE || trace.fraction == 1.0f )
+#endif
 	{
 		return true;
 	}
@@ -479,7 +556,11 @@ bool BotFindSteerTarget( gentity_t *self, vec3_t dir )
 	}
 
 	//get bbox
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[STAT_CLASS], playerMins, playerMaxs, nullptr, nullptr, nullptr );
+#endif
 
 	//account for stepsize
 	playerMins[2] += STEPSIZE;
@@ -583,10 +664,21 @@ bool BotOnLadder( gentity_t *self )
 	vec3_t mins, maxs;
 	trace_t trace;
 
+#ifndef UNREALARENA
+	if ( !BG_ClassHasAbility( ( class_t ) self->client->ps.stats[ STAT_CLASS ], SCA_CANUSELADDERS ) )
+	{
+		return false;
+	}
+#endif
+
 	AngleVectors( self->client->ps.viewangles, forward, nullptr, nullptr );
 
 	forward[ 2 ] = 0.0f;
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
+#endif
 	VectorMA( self->s.origin, 1.0f, forward, end );
 
 	trap_Trace( &trace, self->s.origin, mins, maxs, end, self->s.number, MASK_PLAYERSOLID, 0 );
@@ -673,7 +765,11 @@ void BotClampPos( gentity_t *self )
 	trace_t trace;
 	vec3_t mins, maxs;
 	VectorSet( origin, self->botMind->nav.pos[ 0 ], self->botMind->nav.pos[ 1 ], height );
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( self->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
+#endif
 	trap_Trace( &trace, self->client->ps.origin, mins, maxs, origin, self->client->ps.clientNum,
 	            MASK_PLAYERSOLID, 0 );
 	G_SetOrigin( self, trace.endpos );
@@ -695,11 +791,20 @@ void BotMoveToGoal( gentity_t *self )
 	BotAvoidObstacles( self, dir );
 	BotSeek( self, dir );
 
+#ifdef UNREALARENA
 	staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
+#else
+	staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
+#endif
 
 	//dont sprint or dodge if we dont have enough stamina and are about to slow
+#ifdef UNREALARENA
 	if ( self->client->pers.team == TEAM_U
 	     && self->client->ps.stats[ STAT_STAMINA ] < staminaJumpCost )
+#else
+	if ( self->client->pers.team == TEAM_HUMANS
+	     && self->client->ps.stats[ STAT_STAMINA ] < staminaJumpCost )
+#endif
 	{
 		usercmd_t *botCmdBuffer = &self->botMind->cmdBuffer;
 

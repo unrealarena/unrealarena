@@ -69,6 +69,9 @@ namespace Beacon //this should eventually become a class
 		{
 			switch( ent->s.eType )
 			{
+#ifndef UNREALARENA
+				case ET_BUILDABLE:
+#endif
 				case ET_PLAYER:
 					if( ent->tagScoreTime + 2000 < level.time )
 						ent->tagScore -= 50;
@@ -365,6 +368,11 @@ namespace Beacon //this should eventually become a class
 		// Don't send enemy bases or tagged enemy entities to spectators.
 		if ( ent->s.eFlags & EF_BC_ENEMY )
 		{}
+#ifndef UNREALARENA
+		// Don't send tagged structures to spectators.
+		else if ( ent->s.modelindex == BCT_TAG && !(ent->s.eFlags & EF_BC_TAG_PLAYER) )
+		{}
+#endif
 		else
 		{
 			int loMask, hiMask;
@@ -433,15 +441,30 @@ namespace Beacon //this should eventually become a class
 
 		if ( parent->client )
 		{
+#ifdef UNREALARENA
 			BG_ClassBoundingBox( ( team_t ) parent->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
+#else
+			BG_ClassBoundingBox( parent->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
+#endif
 			BG_MoveOriginToBBOXCenter( center, mins, maxs );
 
 			// Also update weapon for humans.
+#ifdef UNREALARENA
 			if( parent->client->pers.team == TEAM_U )
+#else
+			if( parent->client->pers.team == TEAM_HUMANS )
+#endif
 			{
 				ent->s.bc_data = BG_GetPlayerWeapon( &parent->client->ps );
 			}
 		}
+#ifndef UNREALARENA
+		else if ( parent->s.eType == ET_BUILDABLE )
+		{
+			BG_BuildableBoundingBox( parent->s.modelindex, mins, maxs );
+			BG_MoveOriginToBBOXCenter( center, mins, maxs );
+		}
+#endif
 
 		Move( ent, center );
 	}
@@ -451,17 +474,33 @@ namespace Beacon //this should eventually become a class
 	 */
 	void UpdateTags( gentity_t *ent )
 	{
+#ifndef UNREALARENA
+		// Buildables are supposed to be static.
+		if( ent->s.eType == ET_BUILDABLE )
+			return;
+#endif
+
+#ifdef UNREALARENA
 		if( ent->qTag )
 			UpdateTagLocation( ent->qTag, ent );
 		if( ent->uTag )
 			UpdateTagLocation( ent->uTag, ent );
+#else
+		if( ent->alienTag )
+			UpdateTagLocation( ent->alienTag, ent );
+		if( ent->humanTag )
+			UpdateTagLocation( ent->humanTag, ent );
+#endif
 	}
 
 	/**
 	 * @brief Deletes all tags attached to an entity (plays effects).
+	 *
+	 * Deletion is deferred for the enemy team's buildable tags until their death was confirmed.
 	 */
 	void DetachTags( gentity_t *ent )
 	{
+#ifdef UNREALARENA
 		if ( ent->qTag  )
 		{
 			if ( ( ent->qTag->s.eFlags & EF_BC_ENEMY ) &&
@@ -485,6 +524,31 @@ namespace Beacon //this should eventually become a class
 			else
 				Delete( ent->uTag, true );
 		}
+#else
+		if ( ent->alienTag  )
+		{
+			if ( ( ent->alienTag->s.eFlags & EF_BC_ENEMY ) &&
+			     !( ent->alienTag->s.eFlags & EF_BC_TAG_PLAYER ) )
+			{
+				ent->alienTag->tagAttachment = nullptr;
+				ent->alienTag = nullptr;
+			}
+			else
+				Delete( ent->alienTag, true );
+		}
+
+		if ( ent->humanTag  )
+		{
+			if ( ( ent->humanTag->s.eFlags & EF_BC_ENEMY ) &&
+			     !( ent->humanTag->s.eFlags & EF_BC_TAG_PLAYER ) )
+			{
+				ent->humanTag->tagAttachment = nullptr;
+				ent->humanTag = nullptr;
+			}
+			else
+				Delete( ent->humanTag, true );
+		}
+#endif
 	}
 
 	/**
@@ -492,8 +556,13 @@ namespace Beacon //this should eventually become a class
 	 */
 	void DeleteTags( gentity_t *ent )
 	{
+#ifdef UNREALARENA
 		Delete( ent->qTag );
 		Delete( ent->uTag );
+#else
+		Delete( ent->alienTag );
+		Delete( ent->humanTag );
+#endif
 	}
 
 	/**
@@ -516,7 +585,11 @@ namespace Beacon //this should eventually become a class
 
 	static inline bool CheckRefreshTag( gentity_t *ent, team_t team )
 	{
+#ifdef UNREALARENA
 		gentity_t *existingTag = ( team == TEAM_Q ) ? ent->qTag : ent->uTag;
+#else
+		gentity_t *existingTag = ( team == TEAM_ALIENS ) ? ent->alienTag : ent->humanTag;
+#endif
 
 		if( existingTag )
 			RefreshTag( existingTag );
@@ -540,6 +613,15 @@ namespace Beacon //this should eventually become a class
 
 		switch( ent->s.eType )
 		{
+#ifndef UNREALARENA
+			case ET_BUILDABLE:
+				if( ent->health <= 0 )
+					return false;
+				if( ent->buildableTeam == team )
+					return false;
+				return true;
+#endif
+
 			case ET_PLAYER:
 				if ( trace ) return false;
 
@@ -653,8 +735,13 @@ namespace Beacon //this should eventually become a class
 
 		// Get the beacon attachment owned by the tagging team.
 		switch( team ) {
-			case TEAM_Q: attachment = &ent->qTag; break;
-			case TEAM_U: attachment = &ent->uTag; break;
+#ifdef UNREALARENA
+			case TEAM_Q: attachment = &ent->qTag;          break;
+			case TEAM_U: attachment = &ent->uTag;          break;
+#else
+			case TEAM_ALIENS: attachment = &ent->alienTag; break;
+			case TEAM_HUMANS: attachment = &ent->humanTag; break;
+#endif
 			default:                                       return;
 		}
 
@@ -665,16 +752,35 @@ namespace Beacon //this should eventually become a class
 		}
 
 		switch( ent->s.eType ) {
+#ifndef UNREALARENA
+			case ET_BUILDABLE:
+				targetTeam = ent->buildableTeam;
+				data       = ent->s.modelindex;
+				dead       = ( ent->health <= 0 );
+				player     = false;
+				BG_BuildableBoundingBox( ent->s.modelindex, mins, maxs );
+				break;
+#endif
+
 			case ET_PLAYER:
 				targetTeam = (team_t)ent->client->pers.team;
 				dead       = ( ent->client && ent->client->ps.stats[ STAT_HEALTH ] <= 0 );
 				player     = true;
+#ifdef UNREALARENA
 				BG_ClassBoundingBox( ent->client->pers.team, mins, maxs, nullptr, nullptr, nullptr );
+#else
+				BG_ClassBoundingBox( ent->client->pers.classSelection, mins, maxs, nullptr, nullptr, nullptr );
+#endif
 
-				// Set beacon data to class (Q team) or weapon (U team).
+				// Set beacon data to class (aliens) or weapon (humans).
 				switch( targetTeam ) {
-					case TEAM_Q: data = ent->client->ps.persistant[ PERS_TEAM ];    break;
-					case TEAM_U: data = BG_GetPlayerWeapon( &ent->client->ps ); break;
+#ifdef UNREALARENA
+					case TEAM_Q: data = ent->client->ps.persistant[ PERS_TEAM ];     break;
+					case TEAM_U: data = BG_GetPlayerWeapon( &ent->client->ps );      break;
+#else
+					case TEAM_ALIENS: data = ent->client->ps.stats[ STAT_CLASS ];    break;
+					case TEAM_HUMANS: data = BG_GetPlayerWeapon( &ent->client->ps ); break;
+#endif
 					default:                                                         return;
 				}
 
@@ -707,6 +813,11 @@ namespace Beacon //this should eventually become a class
 		// Set expiration time.
 		if( permanent ) beacon->s.bc_etime = 0;
 		else            RefreshTag( beacon, true );
+
+#ifndef UNREALARENA
+		// Update the base clusterings.
+		if ( ent->s.eType == ET_BUILDABLE ) BaseClustering::Update( beacon );
+#endif
 
 		Propagate( beacon );
 	}

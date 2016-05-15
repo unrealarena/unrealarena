@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -36,6 +36,7 @@ team_t G_TeamFromString( const char *str )
 		case 's':
 			return TEAM_NONE;
 
+#ifdef UNREALARENA
 		case '1':
 		case 'q':
 			return TEAM_Q;
@@ -43,6 +44,15 @@ team_t G_TeamFromString( const char *str )
 		case '2':
 		case 'u':
 			return TEAM_U;
+#else
+		case '1':
+		case 'a':
+			return TEAM_ALIENS;
+
+		case '2':
+		case 'h':
+			return TEAM_HUMANS;
+#endif
 
 		default:
 			return NUM_TEAMS;
@@ -117,6 +127,12 @@ team_t G_Team( gentity_t *ent )
 	{
 		return (team_t)ent->client->pers.team;
 	}
+#ifndef UNREALARENA
+	else if ( ent->s.eType == ET_BUILDABLE )
+	{
+		return ent->buildableTeam;
+	}
+#endif
 	else
 	{
 		return TEAM_NONE;
@@ -166,6 +182,7 @@ G_UpdateTeamConfigStrings
 */
 void G_UpdateTeamConfigStrings()
 {
+#ifdef UNREALARENA
 	clientList_t qTeam = G_ClientListForTeam( TEAM_Q );
 	clientList_t uTeam = G_ClientListForTeam( TEAM_U );
 
@@ -185,6 +202,27 @@ void G_UpdateTeamConfigStrings()
 	trap_SetConfigstringRestrictions( CS_VOTE_STRING + TEAM_U, &qTeam );
 	trap_SetConfigstringRestrictions( CS_VOTE_YES + TEAM_U,    &qTeam );
 	trap_SetConfigstringRestrictions( CS_VOTE_NO + TEAM_U,     &qTeam );
+#else
+	clientList_t alienTeam = G_ClientListForTeam( TEAM_ALIENS );
+	clientList_t humanTeam = G_ClientListForTeam( TEAM_HUMANS );
+
+	if ( level.intermissiontime )
+	{
+		// No restrictions once the game has ended
+		Com_Memset( &alienTeam, 0, sizeof( clientList_t ) );
+		Com_Memset( &humanTeam, 0, sizeof( clientList_t ) );
+	}
+
+	trap_SetConfigstringRestrictions( CS_VOTE_TIME + TEAM_ALIENS,   &humanTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_STRING + TEAM_ALIENS, &humanTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_YES + TEAM_ALIENS,    &humanTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_NO + TEAM_ALIENS,     &humanTeam );
+
+	trap_SetConfigstringRestrictions( CS_VOTE_TIME + TEAM_HUMANS,   &alienTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_STRING + TEAM_HUMANS, &alienTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_YES + TEAM_HUMANS,    &alienTeam );
+	trap_SetConfigstringRestrictions( CS_VOTE_NO + TEAM_HUMANS,     &alienTeam );
+#endif
 }
 
 /*
@@ -198,7 +236,11 @@ void G_LeaveTeam( gentity_t *self )
 	gentity_t *ent;
 	int       i;
 
+#ifdef UNREALARENA
 	if ( TEAM_Q == team || TEAM_U == team )
+#else
+	if ( TEAM_ALIENS == team || TEAM_HUMANS == team )
+#endif
 	{
 		G_RemoveFromSpawnQueue( &level.team[ team ].spawnQueue, self->client->ps.clientNum );
 	}
@@ -216,6 +258,9 @@ void G_LeaveTeam( gentity_t *self )
 	G_StopFromFollowing( self );
 
 	G_Vote( self, team, false );
+#ifndef UNREALARENA
+	self->suicideTime = 0;
+#endif
 
 	for ( i = 0; i < level.num_entities; i++ )
 	{
@@ -268,7 +313,27 @@ void G_ChangeTeam( gentity_t *ent, team_t newTeam )
 	ent->client->pers.teamChangeTime = level.time;
 	ent->client->pers.team = newTeam;
 	ent->client->pers.teamInfo = level.startTime - 1;
+#ifndef UNREALARENA
+	ent->client->pers.classSelection = PCL_NONE;
+#endif
 	ClientSpawn( ent, nullptr, nullptr, nullptr );
+
+#ifndef UNREALARENA
+	if ( oldTeam == TEAM_HUMANS && newTeam == TEAM_ALIENS )
+	{
+		// Convert from human to alien credits
+		ent->client->pers.credit =
+		  ( int )( ent->client->pers.credit *
+		           ALIEN_MAX_CREDITS / HUMAN_MAX_CREDITS + 0.5f );
+	}
+	else if ( oldTeam == TEAM_ALIENS && newTeam == TEAM_HUMANS )
+	{
+		// Convert from alien to human credits
+		ent->client->pers.credit =
+		  ( int )( ent->client->pers.credit *
+		           HUMAN_MAX_CREDITS / ALIEN_MAX_CREDITS + 0.5f );
+	}
+#endif
 
 	if ( !g_cheats.integer )
 	{
@@ -408,12 +473,11 @@ void TeamplayInfoMessage( gentity_t *ent )
 			curWeaponClass = WP_NONE;
 			upgrade = UP_NONE;
 		}
-		else if ( cl->pers.team == TEAM_Q )
-		{
-			curWeaponClass = cl->ps.persistant[ PERS_TEAM ];
-			upgrade = UP_NONE;
-		}
+#ifdef UNREALARENA
 		else if ( cl->pers.team == TEAM_U )
+#else
+		else if ( cl->pers.team == TEAM_HUMANS )
+#endif
 		{
 			curWeaponClass = cl->ps.weapon;
 
@@ -438,8 +502,25 @@ void TeamplayInfoMessage( gentity_t *ent )
 				upgrade = UP_NONE;
 			}
 		}
+#ifdef UNREALARENA
+		else if ( cl->pers.team == TEAM_Q )
+		{
+			curWeaponClass = cl->ps.persistant[ PERS_TEAM ];
+			upgrade = UP_NONE;
+		}
+#else
+		else if ( cl->pers.team == TEAM_ALIENS )
+		{
+			curWeaponClass = cl->ps.stats[ STAT_CLASS ];
+			upgrade = UP_NONE;
+		}
+#endif
 
-		if( team == TEAM_Q ) // aliens don't have upgrades
+#ifdef UNREALARENA
+		if( team == TEAM_Q )
+#else
+		if( team == TEAM_ALIENS ) // aliens don't have upgrades
+#endif
 		{
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i", i,
 						 cl->pers.location,
@@ -495,8 +576,13 @@ void CheckTeamStatus()
 				continue;
 			}
 
-			if ( ent->inuse && ( ent->client->pers.team == TEAM_Q ||
-			                     ent->client->pers.team == TEAM_U ) )
+#ifdef UNREALARENA
+			if ( ent->inuse && ( ent->client->pers.team == TEAM_U ||
+			                     ent->client->pers.team == TEAM_Q ) )
+#else
+			if ( ent->inuse && ( ent->client->pers.team == TEAM_HUMANS ||
+			                     ent->client->pers.team == TEAM_ALIENS ) )
+#endif
 			{
 				loc = Team_GetLocation( ent );
 
@@ -540,18 +626,35 @@ void CheckTeamStatus()
 	{
 		level.lastTeamImbalancedTime = level.time;
 
-		if ( level.team[ TEAM_Q ].numClients - level.team[ TEAM_U ].numClients > 2 )
+#ifdef UNREALARENA
+		if ( level.team[ TEAM_U ].numClients - level.team[ TEAM_Q ].numClients > 2 )
 		{
 			trap_SendServerCommand( -1, "print_tr \"" N_("Teams are imbalanced. "
-			                        "Q team have more players.\n") "\"" );
+			                        "U team has more players.\n") "\"" );
 			level.numTeamImbalanceWarnings++;
 		}
-		else if ( level.team[ TEAM_U ].numClients - level.team[ TEAM_Q ].numClients > 2 )
+		else if ( level.team[ TEAM_Q ].numClients - level.team[ TEAM_U ].numClients > 2 )
 		{
 			trap_SendServerCommand( -1, "print_tr \"" N_("Teams are imbalanced. "
-			                        "U team have more players.\n") "\"" );
+			                        "Q team has more players.\n") "\"" );
 			level.numTeamImbalanceWarnings++;
 		}
+#else
+		if ( level.team[ TEAM_ALIENS ].numSpawns > 0 &&
+		     level.team[ TEAM_HUMANS ].numClients - level.team[ TEAM_ALIENS ].numClients > 2 )
+		{
+			trap_SendServerCommand( -1, "print_tr \"" N_("Teams are imbalanced. "
+			                        "Humans have more players.\n") "\"" );
+			level.numTeamImbalanceWarnings++;
+		}
+		else if ( level.team[ TEAM_HUMANS ].numSpawns > 0 &&
+		          level.team[ TEAM_ALIENS ].numClients - level.team[ TEAM_HUMANS ].numClients > 2 )
+		{
+			trap_SendServerCommand( -1, "print_tr \"" N_("Teams are imbalanced. "
+			                        "Aliens have more players.\n") "\"" );
+			level.numTeamImbalanceWarnings++;
+		}
+#endif
 		else
 		{
 			level.numTeamImbalanceWarnings = 0;

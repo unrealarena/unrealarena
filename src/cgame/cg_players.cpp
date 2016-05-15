@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -342,7 +342,21 @@ static bool CG_RegisterPlayerAnimation( clientInfo_t *ci, const char *modelName,
 	char filename[ MAX_QPATH ], newModelName[ MAX_QPATH ];
 	int  frameRate;
 
+#ifdef UNREALARENA
 	Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
+#else
+	// special handling for human_(naked|light|medium)
+	if ( !Q_stricmp( modelName, "human_naked"   ) ||
+	     !Q_stricmp( modelName, "human_light"   ) ||
+	     !Q_stricmp( modelName, "human_medium" ) )
+	{
+		Q_strncpyz( newModelName, "human_nobsuit_common", sizeof( newModelName ) );
+	}
+	else
+	{
+		Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
+	}
+#endif
 
 	if ( iqm )
 	{
@@ -399,7 +413,21 @@ static bool CG_DeriveAnimationDelta( const char *modelName, weapon_t weapon, cli
 	char newModelName[ MAX_QPATH ];
 	static refSkeleton_t base, delta;
 
+#ifdef UNREALARENA
 	Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
+#else
+	// special handling for human_(naked|light|medium)
+	if ( !Q_stricmp( modelName, "human_naked"   ) ||
+		!Q_stricmp( modelName, "human_light"   ) ||
+		!Q_stricmp( modelName, "human_medium" ) )
+	{
+		Q_strncpyz( newModelName, "human_nobsuit_common", sizeof( newModelName ) );
+	}
+	else
+	{
+		Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
+	}
+#endif
 
 	if ( iqm )
 	{
@@ -906,7 +934,7 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 
 		ci->weaponAdjusted = 0;
 
-		// If model is not a qplayer, load uplayer animations
+		// If model is not an alien, load human animations
 		if ( ci->gender != GENDER_NEUTER )
 		{
 			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_IDLE, "idle", true, false, false, iqm ) )
@@ -1056,7 +1084,7 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 				ci->animations[ TORSO_RAISE ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			// TODO: Don't assume WP_BLASTER is first U team weapon
+			// TODO: Don't assume WP_BLASTER is first human weapon
 			for ( i = TORSO_GESTURE_BLASTER, j = WP_BLASTER; i <= TORSO_GESTURE_CKIT; i++, j++ )
 			{
 				if ( i == TORSO_GESTURE ) { continue; }
@@ -1068,17 +1096,21 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 				}
 			}
 
-			// TODO: Don't assume WP_BLASTER is first U team weapon
+			// TODO: Don't assume WP_BLASTER is first human weapon
 			for ( i = WP_BLASTER; i < WP_NUM_WEAPONS; i++ )
 			{
+#ifdef UNREALARENA
 				if ( BG_Weapon( i )->team != TEAM_U || !BG_Weapon( i )->purchasable ) { continue; }
+#else
+				if ( BG_Weapon( i )->team != TEAM_HUMANS || !BG_Weapon( i )->purchasable ) { continue; }
+#endif
 				CG_DeriveAnimationDelta( modelName, (weapon_t)i, ci, iqm );
 			}
 
 		}
 		else
 		{
-			// Load qplayer animations
+			// Load Alien animations
 			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_STAND, "stand", true, false, false, iqm ) )
 			{
 				Com_Printf( "Failed to load standing animation file %s\n", filename );
@@ -1433,17 +1465,30 @@ static void CG_CopyClientInfoModel( clientInfo_t *from, clientInfo_t *to )
 CG_GetCorpseNum
 ======================
 */
+#ifdef UNREALARENA
 static int CG_GetCorpseNum( team_t team )
+#else
+static int CG_GetCorpseNum( class_t class_ )
+#endif
 {
 	int          i;
 	clientInfo_t *match;
 	char         *modelName;
 	char         *skinName;
 
+#ifdef UNREALARENA
 	modelName = BG_ClassModelConfig( team )->modelName;
 	skinName = BG_ClassModelConfig( team )->skinName;
+#else
+	modelName = BG_ClassModelConfig( class_ )->modelName;
+	skinName = BG_ClassModelConfig( class_ )->skinName;
+#endif
 
-	for ( i = 1; i < NUM_TEAMS; i++ )
+#ifdef UNREALARENA
+	for ( i = TEAM_NONE + 1; i < NUM_TEAMS; i++ )
+#else
+	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+#endif
 	{
 		match = &cgs.corpseinfo[ i ];
 
@@ -1474,7 +1519,11 @@ static bool CG_ScanForExistingClientInfo( clientInfo_t *ci )
 	int          i;
 	clientInfo_t *match;
 
-	for ( i = 1; i < NUM_TEAMS; i++ )
+#ifdef UNREALARENA
+	for ( i = TEAM_NONE + 1; i < NUM_TEAMS; i++ )
+#else
+	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+#endif
 	{
 		match = &cgs.corpseinfo[ i ];
 
@@ -1502,12 +1551,20 @@ static bool CG_ScanForExistingClientInfo( clientInfo_t *ci )
 CG_PrecacheClientInfo
 ======================
 */
+#ifdef UNREALARENA
 void CG_PrecacheClientInfo( team_t team, const char *model, const char *skin )
+#else
+void CG_PrecacheClientInfo( class_t class_, const char *model, const char *skin )
+#endif
 {
 	clientInfo_t *ci;
 	clientInfo_t newInfo;
 
+#ifdef UNREALARENA
 	ci = &cgs.corpseinfo[ team ];
+#else
+	ci = &cgs.corpseinfo[ class_ ];
+#endif
 
 	// the old value
 	memset( &newInfo, 0, sizeof( newInfo ) );
@@ -1644,8 +1701,7 @@ void CG_NewClientInfo( int clientNum )
 	// so we can avoid loading checks if possible
 	if ( !CG_ScanForExistingClientInfo( ci ) )
 	{
-		// XXX: is this needed?
-		// CG_LoadClientInfo( ci );
+		CG_LoadClientInfo( ci );
 	}
 }
 
@@ -1960,11 +2016,15 @@ static void CG_PlayerMD5Animation( centity_t *cent )
 
 /*
 ===============
-CG_PlayerMD5QAnimation
+CG_PlayerMD5AlienAnimation
 ===============
 */
 
+#ifdef UNREALARENA
 static void CG_PlayerMD5QAnimation( centity_t *cent )
+#else
+static void CG_PlayerMD5AlienAnimation( centity_t *cent )
+#endif
 {
 	clientInfo_t  *ci;
 	int           clientNum;
@@ -2742,6 +2802,31 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 
 		trap_R_AddRefEntityToScene( &radar );
 	}
+
+#ifndef UNREALARENA
+	// creep below bloblocked players
+	if ( es->eFlags & EF_BLOBLOCKED )
+	{
+		vec3_t  temp, origin, up = { 0.0f, 0.0f, 1.0f };
+		trace_t tr;
+		float   size;
+
+		VectorCopy( es->pos.trBase, temp );
+		temp[ 2 ] -= 4096.0f;
+
+		CG_Trace( &tr, es->pos.trBase, nullptr, nullptr, temp, es->number, MASK_SOLID, 0 );
+		VectorCopy( tr.endpos, origin );
+
+		size = 32.0f;
+
+		if ( size > 0.0f )
+		{
+			CG_ImpactMark( cgs.media.creepShader, origin, up,
+			               0.0f, 1.0f, 1.0f, 1.0f, 1.0f, false, size, true );
+		}
+	}
+#endif
+
 #	undef battpack
 }
 
@@ -2806,7 +2891,11 @@ Returns the Z component of the surface being shadowed
 ===============
 */
 #define SHADOW_DISTANCE 128
+#ifdef UNREALARENA
 static bool CG_PlayerShadow( centity_t *cent, team_t team )
+#else
+static bool CG_PlayerShadow( centity_t *cent, class_t class_ )
+#endif
 {
 	vec3_t        end, mins, maxs;
 	trace_t       trace;
@@ -2814,7 +2903,11 @@ static bool CG_PlayerShadow( centity_t *cent, team_t team )
 	entityState_t *es = &cent->currentState;
 	vec3_t        surfNormal = { 0.0f, 0.0f, 1.0f };
 
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+#endif
 	mins[ 2 ] = 0.0f;
 	maxs[ 2 ] = 2.0f;
 
@@ -2865,9 +2958,15 @@ static bool CG_PlayerShadow( centity_t *cent, team_t team )
 
 	// add the mark as a temporary, so it goes directly to the renderer
 	// without taking a spot in the cg_marks array
+#ifdef UNREALARENA
 	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal,
 	               cent->pe.legs.yawAngle, 0.0f, 0.0f, 0.0f, alpha, false,
 	               24.0f * BG_ClassModelConfig( team )->shadowScale, true );
+#else
+	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal,
+	               cent->pe.legs.yawAngle, 0.0f, 0.0f, 0.0f, alpha, false,
+	               24.0f * BG_ClassModelConfig( class_ )->shadowScale, true );
+#endif
 
 	return true;
 }
@@ -2892,7 +2991,11 @@ CG_PlayerSplash
 Draw a mark at the water surface
 ===============
 */
+#ifdef UNREALARENA
 static void CG_PlayerSplash( centity_t *cent, team_t team )
+#else
+static void CG_PlayerSplash( centity_t *cent, class_t class_ )
+#endif
 {
 	vec3_t  start, end;
 	vec3_t  mins, maxs;
@@ -2904,7 +3007,11 @@ static void CG_PlayerSplash( centity_t *cent, team_t team )
 		return;
 	}
 
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+#endif
 
 	VectorCopy( cent->lerpOrigin, end );
 	end[ 2 ] += mins[ 2 ];
@@ -2938,9 +3045,15 @@ static void CG_PlayerSplash( centity_t *cent, team_t team )
 		return;
 	}
 
+#ifdef UNREALARENA
 	CG_ImpactMark( cgs.media.wakeMarkShader, trace.endpos, trace.plane.normal,
 	               cent->pe.legs.yawAngle, 1.0f, 1.0f, 1.0f, 1.0f, false,
 	               32.0f * BG_ClassModelConfig( team )->shadowScale, true );
+#else
+	CG_ImpactMark( cgs.media.wakeMarkShader, trace.endpos, trace.plane.normal,
+	               cent->pe.legs.yawAngle, 1.0f, 1.0f, 1.0f, 1.0f, false,
+	               32.0f * BG_ClassModelConfig( class_ )->shadowScale, true );
+#endif
 }
 
 /*
@@ -3098,7 +3211,11 @@ void CG_Player( centity_t *cent )
 	int           clientNum;
 	int           renderfx;
 	entityState_t *es = &cent->currentState;
+#ifdef UNREALARENA
 	team_t        team = ( team_t ) es->misc;
+#else
+	class_t       class_ = (class_t) ( ( es->misc >> 8 ) & 0xFF );
+#endif
 	float         scale;
 	vec3_t        tempAxis[ 3 ], tempAxis2[ 3 ];
 	vec3_t        angles;
@@ -3136,6 +3253,12 @@ void CG_Player( centity_t *cent )
 	{
 		altShaderIndex = CG_ALTSHADER_DEAD;
 	}
+#ifndef UNREALARENA
+	else if ( !(es->eFlags & EF_B_POWERED) )
+	{
+		altShaderIndex = CG_ALTSHADER_UNPOWERED;
+	}
+#endif
 	else
 	{
 		altShaderIndex = CG_ALTSHADER_DEFAULT;
@@ -3156,7 +3279,11 @@ void CG_Player( centity_t *cent )
 	{
 		vec3_t mins, maxs;
 
+#ifdef UNREALARENA
 		BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
+#else
+		BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+#endif
 		CG_DrawBoundingBox( cg_drawBBOX.integer, cent->lerpOrigin, mins, maxs );
 	}
 
@@ -3228,7 +3355,11 @@ void CG_Player( centity_t *cent )
 		}
 		else
 		{
+#ifdef UNREALARENA
 			CG_PlayerMD5QAnimation( cent );
+#else
+			CG_PlayerMD5AlienAnimation( cent );
+#endif
 		}
 
 		// add the talk baloon or disconnect icon
@@ -3238,11 +3369,19 @@ void CG_Player( centity_t *cent )
 		if ( ( es->number == cg.snap->ps.clientNum && cg.renderingThirdPerson ) ||
 			 es->number != cg.snap->ps.clientNum )
 		{
+#ifdef UNREALARENA
 			CG_PlayerShadow( cent, team );
+#else
+			CG_PlayerShadow( cent, class_ );
+#endif
 		}
 
 		// add a water splash if partially in and out of water
+#ifdef UNREALARENA
 		CG_PlayerSplash( cent, team );
+#else
+		CG_PlayerSplash( cent, class_ );
+#endif
 
 		renderfx |= RF_LIGHTING_ORIGIN; // use the same origin for all
 
@@ -3258,7 +3397,11 @@ void CG_Player( centity_t *cent )
 
 		body.renderfx = renderfx;
 
+#ifdef UNREALARENA
 		BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
+#else
+		BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+#endif
 
 		// move the origin closer into the wall with a CapTrace
 		if ( es->eFlags & EF_WALLCLIMB && !( es->eFlags & EF_DEAD ) && !( cg.intermissionStarted ) )
@@ -3320,7 +3463,7 @@ void CG_Player( centity_t *cent )
 			{
 
 				// seems only to happen when switching from an MD3 model to an MD5 model
-				// while spectating (switching between players on the U team)
+				// while spectating (switching between players on the human team)
 				// - don't treat as fatal, but doing so will (briefly?) cause rendering
 				// glitches if chasing; also, brief spam
 				CG_Printf( "[skipnotify]WARNING: cent->pe.legs.skeleton.numBones != cent->pe.torso.skeleton.numBones\n" );
@@ -3375,7 +3518,7 @@ void CG_Player( centity_t *cent )
 			QuatFromAngles( rotation, -cent->lerpAngles[ 0 ], 0, 0 );
 			QuatMultiply0( body.skeleton.bones[ ci->rightShoulderBone ].t.rot, rotation );
 
-			// Relationships are emphirically derived. They will probably need to be changed upon changes to the uplayer model
+			// Relationships are emphirically derived. They will probably need to be changed upon changes to the human model
 			QuatFromAngles( rotation, cent->lerpAngles[ 0 ], cent->lerpAngles[ 0 ] < 0 ? -cent->lerpAngles[ 0 ] / 9 : -cent->lerpAngles[ 0 ] / ( 8 - ( 5 * ( cent->lerpAngles[ 0 ] / 90 ) ) )  , 0 );
 			QuatMultiply0( body.skeleton.bones[ ci->leftShoulderBone ].t.rot, rotation );
 		}
@@ -3445,11 +3588,19 @@ void CG_Player( centity_t *cent )
 	if ( ( es->number == cg.snap->ps.clientNum && cg.renderingThirdPerson ) ||
 	     es->number != cg.snap->ps.clientNum )
 	{
+#ifdef UNREALARENA
 		CG_PlayerShadow( cent, team );
+#else
+		CG_PlayerShadow( cent, class_ );
+#endif
 	}
 
 	// add a water splash if partially in and out of water
+#ifdef UNREALARENA
 	CG_PlayerSplash( cent, team );
+#else
+	CG_PlayerSplash( cent, class_ );
+#endif
 
 	renderfx |= RF_LIGHTING_ORIGIN; // use the same origin for all
 
@@ -3488,7 +3639,11 @@ void CG_Player( centity_t *cent )
 			VectorCopy( es->angles2, surfNormal );
 		}
 
+#ifdef UNREALARENA
 		BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
+#else
+		BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
+#endif
 
 		VectorMA( legs.origin, -TRACE_DEPTH, surfNormal, end );
 		VectorMA( legs.origin, 1.0f, surfNormal, start );
@@ -3506,7 +3661,11 @@ void CG_Player( centity_t *cent )
 	}
 
 	//rescale the model
+#ifdef UNREALARENA
 	scale = BG_ClassModelConfig( team )->modelScale;
+#else
+	scale = BG_ClassModelConfig( class_ )->modelScale;
+#endif
 
 	if ( scale != 1.0f )
 	{
@@ -3518,7 +3677,11 @@ void CG_Player( centity_t *cent )
 	}
 
 	//offset on the Z axis if required
+#ifdef UNREALARENA
 	VectorMA( legs.origin, BG_ClassModelConfig( team )->zOffset, surfNormal, legs.origin );
+#else
+	VectorMA( legs.origin, BG_ClassModelConfig( class_ )->zOffset, surfNormal, legs.origin );
+#endif
 	VectorCopy( legs.origin, legs.lightingOrigin );
 	VectorCopy( legs.origin, legs.oldorigin );  // don't positionally lerp at all
 
@@ -3641,7 +3804,11 @@ void CG_Corpse( centity_t *cent )
 	vec3_t        origin, liveZ, deadZ, deadMax;
 	float         scale;
 
+#ifdef UNREALARENA
 	corpseNum = CG_GetCorpseNum( ( team_t ) es->clientNum );
+#else
+	corpseNum = CG_GetCorpseNum( (class_t) es->clientNum );
+#endif
 
 	if ( corpseNum < 0 || corpseNum >= MAX_CLIENTS )
 	{
@@ -3662,7 +3829,11 @@ void CG_Corpse( centity_t *cent )
 	memset( &head, 0, sizeof( head ) );
 
 	VectorCopy( cent->lerpOrigin, origin );
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) es->clientNum, liveZ, nullptr, nullptr, deadZ, deadMax );
+#else
+	BG_ClassBoundingBox( es->clientNum, liveZ, nullptr, nullptr, deadZ, deadMax );
+#endif
 	origin[ 2 ] -= ( liveZ[ 2 ] - deadZ[ 2 ] );
 
 	if( ci->md5 )
@@ -3731,7 +3902,11 @@ void CG_Corpse( centity_t *cent )
 	}
 
 	// add the shadow
+#ifdef UNREALARENA
 	CG_PlayerShadow( cent, ( team_t ) es->clientNum );
+#else
+	CG_PlayerShadow( cent, (class_t) es->clientNum );
+#endif
 
 	// get the player model information
 	renderfx = RF_LIGHTING_ORIGIN; // use the same origin for all
@@ -3761,11 +3936,19 @@ void CG_Corpse( centity_t *cent )
 
 	VectorCopy( origin, legs.lightingOrigin );
 	legs.renderfx = renderfx;
+#ifdef UNREALARENA
 	legs.origin[ 2 ] += BG_ClassModelConfig( ( team_t ) es->clientNum )->zOffset;
+#else
+	legs.origin[ 2 ] += BG_ClassModelConfig( es->clientNum )->zOffset;
+#endif
 	VectorCopy( legs.origin, legs.oldorigin );  // don't positionally lerp at all
 
 	//rescale the model
+#ifdef UNREALARENA
 	scale = BG_ClassModelConfig( ( team_t ) es->clientNum )->modelScale;
+#else
+	scale = BG_ClassModelConfig( es->clientNum )->modelScale;
+#endif
 
 	if ( scale != 1.0f && !ci->md5 )
 	{
@@ -3951,3 +4134,27 @@ centity_t *CG_GetPlayerLocation()
 	VectorCopy( cg.predictedPlayerState.origin, origin );
 	return CG_GetLocation( origin );
 }
+
+#ifndef UNREALARENA
+void CG_InitClasses()
+{
+	int i;
+
+	Com_Memset( cg_classes, 0, sizeof( cg_classes ) );
+
+	for ( i = PCL_NONE + 1; i < PCL_NUM_CLASSES; i++ )
+	{
+		const char *icon = BG_Class( i )->icon;
+
+		if ( icon )
+		{
+			cg_classes[ i ].classIcon = trap_R_RegisterShader( icon, RSF_DEFAULT );
+
+			if ( !cg_classes[ i ].classIcon )
+			{
+				Com_Printf( S_ERROR "Failed to load class icon file %s\n", icon );
+			}
+		}
+	}
+}
+#endif
