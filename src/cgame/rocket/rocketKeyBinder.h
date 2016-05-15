@@ -162,8 +162,13 @@ protected:
 		} labels[] = {
 			{ 0, "spectators" },
 			{ 0, "default" },
+#ifdef UNREALARENA
 			{ 1, "q" },
 			{ 2, "u" }
+#else
+			{ 1, "aliens" },
+			{ 2, "humans" }
+#endif
 		};
 		static const int NUM_LABELS = 4;
 

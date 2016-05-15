@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -177,7 +177,39 @@ bool G_RefillAmmo( gentity_t *self, bool triggerEvent )
  */
 bool G_RefillFuel( gentity_t *self, bool triggerEvent )
 {
+#ifdef UNREALARENA
 	return false;
+#else
+	if ( !self || !self->client )
+	{
+		return false;
+	}
+
+	// needs a human with jetpack
+	if ( self->client->ps.persistant[ PERS_TEAM ] != TEAM_HUMANS ||
+	     !BG_InventoryContainsUpgrade( UP_JETPACK, self->client->ps.stats ) )
+	{
+		return false;
+	}
+
+	if ( self->client->ps.stats[ STAT_FUEL ] != JETPACK_FUEL_MAX )
+	{
+		self->client->ps.stats[ STAT_FUEL ] = JETPACK_FUEL_MAX;
+
+		self->client->lastFuelRefillTime = level.time;
+
+		if ( triggerEvent )
+		{
+			G_AddEvent( self, EV_FUEL_REFILL, 0 );
+		}
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+#endif
 }
 
 /**
@@ -186,6 +218,11 @@ bool G_RefillFuel( gentity_t *self, bool triggerEvent )
  */
 bool G_FindAmmo( gentity_t *self )
 {
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+	return false;
+#else
+	gentity_t *neighbor = nullptr;
 	bool  foundSource = false;
 
 	// don't search for a source if refilling isn't possible
@@ -194,12 +231,42 @@ bool G_FindAmmo( gentity_t *self )
 		return false;
 	}
 
+	// search for ammo source
+	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, ENTITY_BUY_RANGE ) ) )
+	{
+		// only friendly, living and powered buildables provide ammo
+		if ( neighbor->s.eType != ET_BUILDABLE ||
+		     !G_OnSameTeam( self, neighbor ) ||
+		     !neighbor->spawned ||
+		     !neighbor->powered ||
+		     neighbor->health <= 0 )
+		{
+			continue;
+		}
+
+		switch ( neighbor->s.modelindex )
+		{
+			case BA_H_ARMOURY:
+				foundSource = true;
+				break;
+
+			case BA_H_REACTOR:
+			case BA_H_REPEATER:
+				if ( BG_Weapon( self->client->ps.stats[ STAT_WEAPON ] )->usesEnergy )
+				{
+					foundSource = true;
+				}
+				break;
+		}
+	}
+
 	if ( foundSource )
 	{
 		return G_RefillAmmo( self, true );
 	}
 
 	return false;
+#endif
 }
 
 /**
@@ -208,12 +275,38 @@ bool G_FindAmmo( gentity_t *self )
  */
 bool G_FindFuel( gentity_t *self )
 {
+#ifndef UNREALARENA
+	gentity_t *neighbor = nullptr;
+#endif
 	bool  foundSource = false;
 
 	if ( !self || !self->client )
 	{
 		return false;
 	}
+
+#ifndef UNREALARENA
+	// search for fuel source
+	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, ENTITY_BUY_RANGE ) ) )
+	{
+		// only friendly, living and powered buildables provide fuel
+		if ( neighbor->s.eType != ET_BUILDABLE ||
+		     !G_OnSameTeam( self, neighbor ) ||
+		     !neighbor->spawned ||
+		     !neighbor->powered ||
+		     neighbor->health <= 0 )
+		{
+			continue;
+		}
+
+		switch ( neighbor->s.modelindex )
+		{
+			case BA_H_ARMOURY:
+				foundSource = true;
+				break;
+		}
+	}
+#endif
 
 	if ( foundSource )
 	{
@@ -333,7 +426,11 @@ static void SendRangedHitEvent( gentity_t *attacker, gentity_t *target, trace_t 
 	// snap the endpos to integers, but nudged towards the line
 	G_SnapVectorTowards( tr->endpos, muzzle );
 
+#ifdef UNREALARENA
 	if ( target->takedamage && target->s.eType == ET_PLAYER )
+#else
+	if ( target->takedamage && ( target->s.eType == ET_BUILDABLE || target->s.eType == ET_PLAYER ) )
+#endif
 	{
 		event = G_NewTempEntity( tr->endpos, EV_WEAPON_HIT_ENTITY );
 	}
@@ -448,8 +545,13 @@ static void FireLevel1Melee( gentity_t *self )
 {
 	gentity_t *target;
 
+#ifdef UNREALARENA
 	target = FireMelee( self, LEVEL1_CLAW_RANGE, LEVEL1_CLAW_WIDTH, LEVEL1_CLAW_WIDTH,
 	                    LEVEL1_CLAW_DMG, MOD_UNKNOWN );
+#else
+	target = FireMelee( self, LEVEL1_CLAW_RANGE, LEVEL1_CLAW_WIDTH, LEVEL1_CLAW_WIDTH,
+	                    LEVEL1_CLAW_DMG, MOD_LEVEL1_CLAW );
+#endif
 
 	if ( target && target->client && target->takedamage )
 	{
@@ -622,6 +724,187 @@ static void FireMassdriver( gentity_t *self )
 	}
 }
 
+#ifndef UNREALARENA
+/*
+======================================================================
+
+LOCKBLOB
+
+======================================================================
+*/
+
+static void FireLockblob( gentity_t *self )
+{
+	G_SpawnMissile( MIS_LOCKBLOB, self, muzzle, forward, nullptr, G_ExplodeMissile, level.time + 15000 );
+}
+
+/*
+======================================================================
+
+HIVE
+
+======================================================================
+*/
+
+/*
+================
+Target tracking for the hive missile.
+================
+*/
+static void HiveMissileThink( gentity_t *self )
+{
+	vec3_t    dir;
+	trace_t   tr;
+	gentity_t *ent;
+	int       i;
+	float     d, nearest;
+
+	if ( level.time > self->timestamp ) // swarm lifetime exceeded
+	{
+		VectorCopy( self->r.currentOrigin, self->s.pos.trBase );
+		self->s.pos.trType = TR_STATIONARY;
+		self->s.pos.trTime = level.time;
+
+		self->think = G_ExplodeMissile;
+		self->nextthink = level.time + 50;
+		self->parent->active = false; //allow the parent to start again
+		return;
+	}
+
+	nearest = DistanceSquared( self->r.currentOrigin, self->target->r.currentOrigin );
+
+	//find the closest human
+	for ( i = 0; i < MAX_CLIENTS; i++ )
+	{
+		ent = &g_entities[ i ];
+
+		if ( ent->flags & FL_NOTARGET )
+		{
+			continue;
+		}
+
+		if ( ent->client &&
+		     ent->health > 0 &&
+		     ent->client->pers.team == TEAM_HUMANS &&
+		     nearest > ( d = DistanceSquared( ent->r.currentOrigin, self->r.currentOrigin ) ) )
+		{
+			trap_Trace( &tr, self->r.currentOrigin, self->r.mins, self->r.maxs,
+			            ent->r.currentOrigin, self->r.ownerNum, self->clipmask, 0 );
+
+			if ( tr.entityNum != ENTITYNUM_WORLD )
+			{
+				nearest = d;
+				self->target = ent;
+			}
+		}
+	}
+
+	VectorSubtract( self->target->r.currentOrigin, self->r.currentOrigin, dir );
+	VectorNormalize( dir );
+
+	//change direction towards the player
+	VectorScale( dir, HIVE_SPEED, self->s.pos.trDelta );
+	SnapVector( self->s.pos.trDelta );  // save net bandwidth
+	VectorCopy( self->r.currentOrigin, self->s.pos.trBase );
+	self->s.pos.trTime = level.time;
+
+	self->nextthink = level.time + HIVE_DIR_CHANGE_PERIOD;
+}
+
+static void FireHive( gentity_t *self )
+{
+	vec3_t    origin;
+	gentity_t *m;
+
+	// fire from the hive tip, not the center
+	VectorMA( muzzle, self->r.maxs[ 2 ], self->s.origin2, origin );
+
+	m = G_SpawnMissile( MIS_HIVE, self, origin, forward, self->target,
+	                    HiveMissileThink, level.time + HIVE_DIR_CHANGE_PERIOD );
+
+	m->timestamp = level.time + HIVE_LIFETIME;
+}
+
+/*
+======================================================================
+
+ROCKET POD
+
+======================================================================
+*/
+
+static void RocketThink( gentity_t *self )
+{
+	vec3_t currentDir, targetDir, newDir, rotAxis;
+	float  rotAngle;
+
+	if ( level.time > self->timestamp )
+	{
+		self->think     = G_ExplodeMissile;
+		self->nextthink = level.time;
+
+		return;
+	}
+
+	self->nextthink = level.time + ROCKET_TURN_PERIOD;
+
+	// Calculate current and target direction.
+	VectorNormalize2( self->s.pos.trDelta, currentDir );
+	VectorSubtract( self->target->r.currentOrigin, self->r.currentOrigin, targetDir );
+	VectorNormalize( targetDir );
+
+	// Don't turn anymore after the target was passed.
+	if ( DotProduct( currentDir, targetDir ) < 0 )
+	{
+		return;
+	}
+
+	// Calculate new direction. Use a fixed turning angle.
+	CrossProduct( currentDir, targetDir, rotAxis );
+	rotAngle = RAD2DEG( acos( DotProduct( currentDir, targetDir ) ) );
+	RotatePointAroundVector( newDir, rotAxis, currentDir,
+	                         Math::Clamp( rotAngle, -ROCKET_TURN_ANGLE, ROCKET_TURN_ANGLE ) );
+
+	// Check if new direction is safe. Turn anyway if old direction is unsafe, too.
+	if ( !G_RocketpodSafeShot( ENTITYNUM_NONE, self->r.currentOrigin, newDir ) &&
+	     G_RocketpodSafeShot( ENTITYNUM_NONE, self->r.currentOrigin, currentDir ) )
+	{
+		return;
+	}
+
+	// Update trajectory.
+	VectorScale( newDir, BG_Missile( self->s.modelindex )->speed, self->s.pos.trDelta );
+	SnapVector( self->s.pos.trDelta );
+	VectorCopy( self->r.currentOrigin, self->s.pos.trBase ); // TODO: Snap this, too?
+	self->s.pos.trTime = level.time;
+}
+
+static void FireRocket( gentity_t *self )
+{
+	G_SpawnMissile( MIS_ROCKET, self, muzzle, forward, self->target, RocketThink,
+	                level.time + ROCKET_TURN_PERIOD )->timestamp = level.time + ROCKET_LIFETIME;
+}
+
+bool G_RocketpodSafeShot( int passEntityNum, vec3_t origin, vec3_t dir )
+{
+	trace_t tr;
+	vec3_t mins, maxs, end;
+	float  size;
+	const missileAttributes_t *attr = BG_Missile( MIS_ROCKET );
+
+	size = attr->size;
+
+	VectorSet( mins, -size, -size, -size);
+	VectorSet( maxs, size, size, size );
+	VectorMA( origin, 8192, dir, end );
+
+	trap_Trace( &tr, origin, mins, maxs, end, passEntityNum, MASK_SHOT, 0 );
+
+	return !G_RadiusDamage( tr.endpos, nullptr, attr->splashDamage, attr->splashRadius, nullptr,
+	                        0, MOD_ROCKETPOD, TEAM_HUMANS );
+}
+#endif
+
 /*
 ======================================================================
 
@@ -688,9 +971,33 @@ FIREBOMB
 
 static void FirebombMissileThink( gentity_t *self )
 {
+#ifdef UNREALARENA
 	gentity_t *m;
+#else
+	gentity_t *neighbor, *m;
+#endif
 	int       subMissileNum;
+#ifdef UNREALARENA
 	vec3_t    dir;
+#else
+	vec3_t    dir, upwards = { 0.0f, 0.0f, 1.0f };
+#endif
+
+#ifndef UNREALARENA
+	// ignite alien buildables in range
+	neighbor = nullptr;
+	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, FIREBOMB_IGNITE_RANGE ) ) )
+	{
+		if ( neighbor->s.eType == ET_BUILDABLE && neighbor->buildableTeam == TEAM_ALIENS &&
+		     G_LineOfSight( self, neighbor ) )
+		{
+				G_IgniteBuildable( neighbor, self->parent );
+		}
+	}
+
+	// set floor below on fire (assumes the firebomb lays on the floor!)
+	G_SpawnFire( self->s.origin, upwards, self->parent );
+#endif
 
 	// spam fire
 	for ( subMissileNum = 0; subMissileNum < FIREBOMB_SUBMISSILE_COUNT; subMissileNum++ )
@@ -856,6 +1163,134 @@ static void FireLcannon( gentity_t *self, bool secondary )
 	self->client->ps.stats[ STAT_MISC ] = 0;
 }
 
+#ifndef UNREALARENA
+/*
+======================================================================
+
+BUILD GUN
+
+======================================================================
+*/
+
+void G_CheckCkitRepair( gentity_t *self )
+{
+	vec3_t    viewOrigin, forward, end;
+	trace_t   tr;
+	gentity_t *traceEnt;
+
+	if ( self->client->ps.weaponTime > 0 ||
+	     self->client->ps.stats[ STAT_MISC ] > 0 )
+	{
+		return;
+	}
+
+	BG_GetClientViewOrigin( &self->client->ps, viewOrigin );
+	AngleVectors( self->client->ps.viewangles, forward, nullptr, nullptr );
+	VectorMA( viewOrigin, 100, forward, end );
+
+	trap_Trace( &tr, viewOrigin, nullptr, nullptr, end, self->s.number, MASK_PLAYERSOLID, 0 );
+	traceEnt = &g_entities[ tr.entityNum ];
+
+	if ( tr.fraction < 1.0f && traceEnt->spawned && traceEnt->health > 0 &&
+	     traceEnt->s.eType == ET_BUILDABLE && traceEnt->buildableTeam == TEAM_HUMANS )
+	{
+		const buildableAttributes_t *buildable;
+
+		buildable = BG_Buildable( traceEnt->s.modelindex );
+
+		if ( traceEnt->health < buildable->health )
+		{
+			if ( G_Heal( traceEnt, HBUILD_HEALRATE ) )
+			{
+				G_AddEvent( self, EV_BUILD_REPAIR, 0 );
+			}
+			else
+			{
+				G_AddEvent( self, EV_BUILD_REPAIRED, 0 );
+			}
+
+			self->client->ps.weaponTime += BG_Weapon( self->client->ps.weapon )->repeatRate1;
+		}
+	}
+}
+
+static void CancelBuild( gentity_t *self )
+{
+	// Cancel ghost buildable
+	if ( self->client->ps.stats[ STAT_BUILDABLE ] != BA_NONE )
+	{
+		self->client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
+		self->client->ps.stats[ STAT_PREDICTION ] = 0;
+		return;
+	}
+
+	if ( self->client->ps.weapon == WP_ABUILD ||
+	     self->client->ps.weapon == WP_ABUILD2 )
+	{
+		FireMelee( self, ABUILDER_CLAW_RANGE, ABUILDER_CLAW_WIDTH,
+		             ABUILDER_CLAW_WIDTH, ABUILDER_CLAW_DMG, MOD_ABUILDER_CLAW );
+	}
+}
+
+static void FireBuild( gentity_t *self, dynMenu_t menu )
+{
+	buildable_t buildable;
+
+	if ( !self->client )
+	{
+		return;
+	}
+
+	buildable = (buildable_t) ( self->client->ps.stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
+
+	// open build menu
+	if ( buildable <= BA_NONE )
+	{
+		G_TriggerMenu( self->client->ps.clientNum, menu );
+		return;
+	}
+
+	// can't build just yet
+	if ( self->client->ps.stats[ STAT_MISC ] > 0 )
+	{
+		G_AddEvent( self, EV_BUILD_DELAY, self->client->ps.clientNum );
+		return;
+	}
+
+	// build
+	if ( G_BuildIfValid( self, buildable ) )
+	{
+		if ( !g_instantBuilding.integer )
+		{
+			int buildTime = BG_Buildable( buildable )->buildTime;
+
+			switch ( self->client->ps.persistant[ PERS_TEAM ] )
+			{
+				case TEAM_ALIENS:
+					buildTime *= ALIEN_BUILDDELAY_MOD;
+					break;
+
+				case TEAM_HUMANS:
+					buildTime *= HUMAN_BUILDDELAY_MOD;
+					break;
+
+				default:
+					break;
+			}
+
+			self->client->ps.stats[ STAT_MISC ] += buildTime;
+		}
+
+		self->client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
+	}
+}
+
+static void FireSlowblob( gentity_t *self )
+{
+	G_SpawnMissile( MIS_SLOWBLOB, self, muzzle, forward, nullptr, G_ExplodeMissile, level.time + 15000 );
+}
+#endif
+
 /*
 ======================================================================
 
@@ -887,9 +1322,21 @@ bool G_CheckVenomAttack( gentity_t *self )
 		return false;
 	}
 
+#ifndef UNREALARENA
+	// only allow bites to work against buildables in construction
+	if ( traceEnt->s.eType == ET_BUILDABLE && traceEnt->spawned )
+	{
+		return false;
+	}
+#endif
+
 	SendMeleeHitEvent( self, traceEnt, &tr );
 
+#ifdef UNREALARENA
 	G_Damage( traceEnt, self, self, forward, tr.endpos, damage, 0, MOD_UNKNOWN );
+#else
+	G_Damage( traceEnt, self, self, forward, tr.endpos, damage, 0, MOD_LEVEL0_BITE );
+#endif
 
 	self->client->ps.weaponTime += LEVEL0_BITE_REPEAT;
 
@@ -937,10 +1384,19 @@ static void FindZapChainTargets( zap_t *zap )
 
 		distance = Distance( ent->s.origin, enemy->s.origin );
 
+#ifdef UNREALARENA
 		if ( enemy->client &&
 		     enemy->client->pers.team == TEAM_U &&
 		     enemy->health > 0 && // only chain to living targets
 		     distance <= LEVEL2_AREAZAP_CHAIN_RANGE )
+#else
+		if ( ( ( enemy->client &&
+		         enemy->client->pers.team == TEAM_HUMANS ) ||
+		       ( enemy->s.eType == ET_BUILDABLE &&
+		         BG_Buildable( enemy->s.modelindex )->team == TEAM_HUMANS ) ) &&
+		     enemy->health > 0 && // only chain to living targets
+		     distance <= LEVEL2_AREAZAP_CHAIN_RANGE )
+#endif
 		{
 			// world-LOS check: trace against the world, ignoring other BODY entities
 			trap_Trace( &tr, ent->s.origin, nullptr, nullptr,
@@ -1006,17 +1462,29 @@ static void CreateNewZap( gentity_t *creator, gentity_t *target )
 		// the zap chains only through living entities
 		if ( target->health > 0 )
 		{
+#ifdef UNREALARENA
 			G_Damage( target, creator, creator, forward, target->s.origin, LEVEL2_AREAZAP_DMG,
 			          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
+#else
+			G_Damage( target, creator, creator, forward, target->s.origin, LEVEL2_AREAZAP_DMG,
+			          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL2_ZAP );
+#endif
 
 			FindZapChainTargets( zap );
 
 			for ( i = 1; i < zap->numTargets; i++ )
 			{
+#ifdef UNREALARENA
 				G_Damage( zap->targets[ i ], target, zap->creator, forward, target->s.origin,
 				          LEVEL2_AREAZAP_DMG * ( 1 - powf( ( zap->distances[ i ] /
 				                                 LEVEL2_AREAZAP_CHAIN_RANGE ), LEVEL2_AREAZAP_CHAIN_FALLOFF ) ) + 1,
 				          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
+#else
+				G_Damage( zap->targets[ i ], target, zap->creator, forward, target->s.origin,
+				          LEVEL2_AREAZAP_DMG * ( 1 - powf( ( zap->distances[ i ] /
+				                                 LEVEL2_AREAZAP_CHAIN_RANGE ), LEVEL2_AREAZAP_CHAIN_FALLOFF ) ) + 1,
+				          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL2_ZAP );
+#endif
 			}
 		}
 
@@ -1031,7 +1499,11 @@ static void CreateNewZap( gentity_t *creator, gentity_t *target )
 
 void G_UpdateZaps( int msec )
 {
+#ifdef UNREALARENA
 	int   i;
+#else
+	int   i, j;
+#endif
 	zap_t *zap;
 
 	for ( i = 0; i < MAX_ZAPS; i++ )
@@ -1045,7 +1517,26 @@ void G_UpdateZaps( int msec )
 
 		zap->timeToLive -= msec;
 
-		// the disappearance of players is handled immediately in G_ClearPlayerZapEffects()
+		// first, the disappearance of players is handled immediately in G_ClearPlayerZapEffects()
+
+#ifndef UNREALARENA
+		// the deconstruction or gibbing of a directly targeted buildable destroys the whole zap effect
+		if ( zap->timeToLive <= 0 || !zap->targets[ 0 ]->inuse )
+		{
+			G_FreeEntity( zap->effectChannel );
+			zap->used = false;
+			continue;
+		}
+
+		// the deconstruction or gibbing of chained buildables destroy the appropriate beams
+		for ( j = 1; j < zap->numTargets; j++ )
+		{
+			if ( !zap->targets[ j ]->inuse )
+			{
+				zap->targets[ j-- ] = zap->targets[ --zap->numTargets ];
+			}
+		}
+#endif
 
 		UpdateZapEffect( zap );
 	}
@@ -1101,7 +1592,13 @@ static void FireAreaZap( gentity_t *ent )
 		return;
 	}
 
+#ifdef UNREALARENA
 	if ( traceEnt->client && traceEnt->client->pers.team == TEAM_U )
+#else
+	if ( ( traceEnt->client && traceEnt->client->pers.team == TEAM_HUMANS ) ||
+	     ( traceEnt->s.eType == ET_BUILDABLE &&
+	       BG_Buildable( traceEnt->s.modelindex )->team == TEAM_HUMANS ) )
+#endif
 	{
 		CreateNewZap( ent, traceEnt );
 	}
@@ -1165,8 +1662,13 @@ bool G_CheckPounceAttack( gentity_t *self )
 	          LEVEL3_POUNCE_TIME_UPG;
 	damage = payload * LEVEL3_POUNCE_DMG / timeMax;
 	self->client->pmext.pouncePayload = 0;
+#ifdef UNREALARENA
 	G_Damage( traceEnt, self, self, forward, tr.endpos, damage,
 	          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
+#else
+	G_Damage( traceEnt, self, self, forward, tr.endpos, damage,
+	          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL3_POUNCE );
+#endif
 
 	return true;
 }
@@ -1187,6 +1689,9 @@ LEVEL4
 void G_ChargeAttack( gentity_t *self, gentity_t *victim )
 {
 	int    damage;
+#ifndef UNREALARENA
+	int    i;
+#endif
 	vec3_t forward;
 
 	if ( !self->client || self->client->ps.stats[ STAT_MISC ] <= 0 ||
@@ -1204,13 +1709,38 @@ void G_ChargeAttack( gentity_t *self, gentity_t *victim )
 		return;
 	}
 
+#ifndef UNREALARENA
+	// For buildables, track the last MAX_TRAMPLE_BUILDABLES_TRACKED buildables
+	//  hit, and do not do damage if the current buildable is in that list
+	//  in order to prevent dancing over stuff to kill it very quickly
+	if ( !victim->client )
+	{
+		for ( i = 0; i < MAX_TRAMPLE_BUILDABLES_TRACKED; i++ )
+		{
+			if ( self->client->trampleBuildablesHit[ i ] == victim - g_entities )
+			{
+				return;
+			}
+		}
+
+		self->client->trampleBuildablesHit[
+		  self->client->trampleBuildablesHitPos++ % MAX_TRAMPLE_BUILDABLES_TRACKED ] =
+		    victim - g_entities;
+	}
+#endif
+
 	SendMeleeHitEvent( self, victim, nullptr );
 
 	damage = LEVEL4_TRAMPLE_DMG * self->client->ps.stats[ STAT_MISC ] /
 	         LEVEL4_TRAMPLE_DURATION;
 
+#ifdef UNREALARENA
 	G_Damage( victim, self, self, forward, victim->s.origin, damage,
 	          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
+#else
+	G_Damage( victim, self, self, forward, victim->s.origin, damage,
+	          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL4_TRAMPLE );
+#endif
 
 	self->client->ps.weaponTime += LEVEL4_TRAMPLE_REPEAT;
 }
@@ -1225,8 +1755,71 @@ GENERIC
 
 static INLINE meansOfDeath_t ModWeight( const gentity_t *self )
 {
+#ifdef UNREALARENA
 	return MOD_WEIGHT;
+#else
+	return self->client->pers.team == TEAM_HUMANS ? MOD_WEIGHT_H : MOD_WEIGHT_A;
+#endif
 }
+
+#ifndef UNREALARENA
+void G_ImpactAttack( gentity_t *self, gentity_t *victim )
+{
+	float  impactVelocity, impactEnergy;
+	vec3_t knockbackDir;
+	int    attackerMass, impactDamage;
+
+	// self must be a client
+	if ( !self->client )
+	{
+		return;
+	}
+
+	// ignore invincible targets
+	if ( !victim->takedamage )
+	{
+		return;
+	}
+
+	// don't do friendly fire
+	if ( G_OnSameTeam( self, victim ) )
+	{
+		return;
+	}
+
+	// attacker must be above victim
+	if ( self->client->ps.origin[ 2 ] + self->r.mins[ 2 ] <
+	     victim->s.origin[ 2 ] + victim->r.maxs[ 2 ] )
+	{
+		return;
+	}
+
+	// allow the granger airlifting ritual
+	if ( victim->client && victim->client->ps.stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE &&
+	     ( self->client->pers.classSelection == PCL_ALIEN_BUILDER0 ||
+	       self->client->pers.classSelection == PCL_ALIEN_BUILDER0_UPG ) )
+	{
+		return;
+	}
+
+	// calculate impact damage
+	attackerMass = BG_Class( self->client->pers.classSelection )->mass;
+	impactVelocity = fabs( self->client->pmext.fallImpactVelocity[ 2 ] ) * QU_TO_METER; // in m/s
+	impactEnergy = attackerMass * impactVelocity * impactVelocity; // in J
+	impactDamage = ( int )( impactEnergy * IMPACTDMG_JOULE_TO_DAMAGE );
+
+	// deal impact damage to both clients and structures, use a threshold for friendly fire
+	if ( impactDamage > 0 )
+	{
+		// calculate knockback direction
+		VectorSubtract( victim->s.origin, self->client->ps.origin, knockbackDir );
+		VectorNormalize( knockbackDir );
+
+		G_Damage( victim, self, self, knockbackDir, victim->s.origin, impactDamage,
+		          DAMAGE_NO_LOCDAMAGE, ModWeight( self ) );
+	}
+}
+#endif
 
 void G_WeightAttack( gentity_t *self, gentity_t *victim )
 {
@@ -1270,8 +1863,13 @@ void G_WeightAttack( gentity_t *self, gentity_t *victim )
 		return;
 	}
 
+#ifdef UNREALARENA
 	attackerMass = BG_Class( self->client->pers.team )->mass;
 	victimMass = BG_Class( victim->client->pers.team )->mass;
+#else
+	attackerMass = BG_Class( self->client->pers.classSelection )->mass;
+	victimMass = BG_Class( victim->client->pers.classSelection )->mass;
+#endif
 	weightDPS = WEIGHTDMG_DMG_MODIFIER * MAX( attackerMass - victimMass, 0 );
 
 	if ( weightDPS > WEIGHTDMG_DPS_THRESHOLD )
@@ -1315,6 +1913,13 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 		AngleVectors( self->client->ps.viewangles, forward, right, up );
 		G_CalcMuzzlePoint( self, forward, right, up, muzzle );
 	}
+#ifndef UNREALARENA
+	else
+	{
+		AngleVectors( self->buildableAim, forward, right, up );
+		VectorCopy( self->s.pos.trBase, muzzle );
+	}
+#endif
 
 	switch ( weaponMode )
 	{
@@ -1327,28 +1932,53 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_ALEVEL3:
+#ifdef UNREALARENA
 					FireMelee( self, LEVEL3_CLAW_RANGE, LEVEL3_CLAW_WIDTH, LEVEL3_CLAW_WIDTH,
 					           LEVEL3_CLAW_DMG, MOD_UNKNOWN );
+#else
+					FireMelee( self, LEVEL3_CLAW_RANGE, LEVEL3_CLAW_WIDTH, LEVEL3_CLAW_WIDTH,
+					           LEVEL3_CLAW_DMG, MOD_LEVEL3_CLAW );
+#endif
 					break;
 
 				case WP_ALEVEL3_UPG:
+#ifdef UNREALARENA
 					FireMelee( self, LEVEL3_CLAW_UPG_RANGE, LEVEL3_CLAW_WIDTH, LEVEL3_CLAW_WIDTH,
 					           LEVEL3_CLAW_DMG, MOD_UNKNOWN );
+#else
+					FireMelee( self, LEVEL3_CLAW_UPG_RANGE, LEVEL3_CLAW_WIDTH, LEVEL3_CLAW_WIDTH,
+					           LEVEL3_CLAW_DMG, MOD_LEVEL3_CLAW );
+#endif
 					break;
 
 				case WP_ALEVEL2:
+#ifdef UNREALARENA
 					FireMelee( self, LEVEL2_CLAW_RANGE, LEVEL2_CLAW_WIDTH, LEVEL2_CLAW_WIDTH,
 					           LEVEL2_CLAW_DMG, MOD_UNKNOWN );
+#else
+					FireMelee( self, LEVEL2_CLAW_RANGE, LEVEL2_CLAW_WIDTH, LEVEL2_CLAW_WIDTH,
+					           LEVEL2_CLAW_DMG, MOD_LEVEL2_CLAW );
+#endif
 					break;
 
 				case WP_ALEVEL2_UPG:
+#ifdef UNREALARENA
 					FireMelee( self, LEVEL2_CLAW_U_RANGE, LEVEL2_CLAW_WIDTH, LEVEL2_CLAW_WIDTH,
 					           LEVEL2_CLAW_DMG, MOD_UNKNOWN );
+#else
+					FireMelee( self, LEVEL2_CLAW_U_RANGE, LEVEL2_CLAW_WIDTH, LEVEL2_CLAW_WIDTH,
+					           LEVEL2_CLAW_DMG, MOD_LEVEL2_CLAW );
+#endif
 					break;
 
 				case WP_ALEVEL4:
+#ifdef UNREALARENA
 					FireMelee( self, LEVEL4_CLAW_RANGE, LEVEL4_CLAW_WIDTH, LEVEL4_CLAW_HEIGHT,
 					           LEVEL4_CLAW_DMG, MOD_UNKNOWN );
+#else
+					FireMelee( self, LEVEL4_CLAW_RANGE, LEVEL4_CLAW_WIDTH, LEVEL4_CLAW_HEIGHT,
+					           LEVEL4_CLAW_DMG, MOD_LEVEL4_CLAW );
+#endif
 					break;
 
 				case WP_BLASTER:
@@ -1391,11 +2021,35 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					FirePainsaw( self );
 					break;
 
+#ifndef UNREALARENA
+				case WP_LOCKBLOB_LAUNCHER:
+					FireLockblob( self );
+					break;
+
+				case WP_HIVE:
+					FireHive( self );
+					break;
+
+				case WP_ROCKETPOD:
+					FireRocket( self );
+					break;
+
+				case WP_MGTURRET:
+					FireBullet( self, MGTURRET_SPREAD, self->turretCurrentDamage, MOD_MGTURRET );
+					break;
+#endif
+
 				case WP_ABUILD:
 				case WP_ABUILD2:
+#ifndef UNREALARENA
+					FireBuild( self, MN_A_BUILD );
+#endif
 					break;
 
 				case WP_HBUILD:
+#ifndef UNREALARENA
+					FireBuild( self, MN_H_BUILD );
+#endif
 					break;
 
 				default:
@@ -1418,6 +2072,9 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 				case WP_ABUILD:
 				case WP_ABUILD2:
 				case WP_HBUILD:
+#ifndef UNREALARENA
+					CancelBuild( self );
+#endif
 					break;
 
 				default:
@@ -1434,6 +2091,9 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_ABUILD2:
+#ifndef UNREALARENA
+					FireSlowblob( self );
+#endif
 					break;
 
 				default:

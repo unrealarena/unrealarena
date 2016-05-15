@@ -126,6 +126,17 @@ int   MEDKIT_POISON_IMMUNITY_TIME;
 int   MEDKIT_STARTUP_TIME;
 int   MEDKIT_STARTUP_SPEED;
 
+#ifndef UNREALARENA
+// Human buildables
+
+float REACTOR_BASESIZE;
+float REACTOR_ATTACK_RANGE;
+int   REACTOR_ATTACK_REPEAT;
+int   REACTOR_ATTACK_DAMAGE;
+
+float REPEATER_BASESIZE;
+#endif
+
 // Human Weapons
 
 int   BLASTER_SPREAD;
@@ -184,6 +195,15 @@ int   LCANNON_CHARGE_AMMO;
 // MUST BE ALPHABETICALLY SORTED!
 static configVar_t bg_configVars[] =
 {
+#ifndef UNREALARENA
+	{"b_reactor_powerRadius", FLOAT, false, &REACTOR_BASESIZE},
+	{"b_reactor_zapAttackDamage", INTEGER, false, &REACTOR_ATTACK_DAMAGE},
+	{"b_reactor_zapAttackRange", FLOAT, false, &REACTOR_ATTACK_RANGE},
+	{"b_reactor_zapAttackRepeat", INTEGER, false, &REACTOR_ATTACK_REPEAT},
+
+	{"b_repeater_powerRadius", FLOAT, false, &REPEATER_BASESIZE},
+#endif
+
 	{"u_medkit_poisonImmunityTime", INTEGER, false, &MEDKIT_POISON_IMMUNITY_TIME},
 	{"u_medkit_startupSpeed", INTEGER, false, &MEDKIT_STARTUP_SPEED},
 	{"u_medkit_startupTime", INTEGER, false, &MEDKIT_STARTUP_TIME},
@@ -346,6 +366,7 @@ bool BG_ReadWholeFile( const char *filename, char *buffer, int size)
 
 static team_t ParseTeam(const char* token)
 {
+#ifdef UNREALARENA
 	if ( !Q_strnicmp( token, "q", 1 ) )
 	{
 		return TEAM_Q;
@@ -354,6 +375,16 @@ static team_t ParseTeam(const char* token)
 	{
 		return TEAM_U;
 	}
+#else
+	if ( !Q_strnicmp( token, "alien", 5 ) ) // alien(s)
+	{
+		return TEAM_ALIENS;
+	}
+	else if ( !Q_strnicmp( token, "human", 5 ) ) // human(s)
+	{
+		return TEAM_HUMANS;
+	}
+#endif
 	else if ( !Q_stricmp( token, "none" ) )
 	{
 		return TEAM_NONE;
@@ -558,6 +589,414 @@ bool BG_CheckConfigVars()
 	return ok;
 }
 
+#ifndef UNREALARENA
+/*
+======================
+BG_ParseBuildableAttributeFile
+
+Parses a configuration file describing the attributes of a buildable
+======================
+*/
+
+void BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t *ba )
+{
+	const char *token;
+	char text_buffer[ 20000 ];
+	const char* text;
+	configVar_t* var;
+	int defined = 0;
+	enum
+	{
+		HUMANNAME = 1 << 1,
+		DESCRIPTION = 1 << 2,
+		NORMAL = 1 << 3,
+		BUILDPOINTS = 1 << 4,
+		ICON = 1 << 5,
+		HEALTH = 1 << 6,
+		DEATHMOD = 1 << 7,
+		TEAM = 1 << 8,
+		BUILDWEAPON = 1 << 9,
+		BUILDTIME = 1 << 10,
+		UNUSED_11 = 1 << 11,
+		POWERCONSUMPTION = 1 << 12,
+		UNLOCKTHRESHOLD = 1 << 13
+	};
+
+	if( !BG_ReadWholeFile( filename, text_buffer, sizeof(text_buffer) ) )
+	{
+		return;
+	}
+
+	text = text_buffer;
+
+	while ( 1 )
+	{
+		PARSE(text, token);
+
+		if ( !Q_stricmp( token, "humanName" ) )
+		{
+			PARSE(text, token);
+
+			ba->humanName = BG_strdup( token );
+
+			defined |= HUMANNAME;
+		}
+		else if ( !Q_stricmp( token, "description" ) )
+		{
+			PARSE(text, token);
+
+			ba->info = BG_strdup( token );
+
+			defined |= DESCRIPTION;
+		}
+		else if ( !Q_stricmp( token, "icon" ) )
+		{
+			PARSE(text, token);
+
+			if ( !Q_stricmp( token, "null" ) )
+			{
+				ba->icon = nullptr;
+			}
+			else
+			{
+				ba->icon = BG_strdup(token);
+			}
+
+			defined |= ICON;
+		}
+		else if ( !Q_stricmp( token, "buildPoints" ) )
+		{
+			PARSE(text, token);
+
+			ba->buildPoints = atoi(token);
+
+			defined |= BUILDPOINTS;
+		}
+		else if ( !Q_stricmp( token, "powerConsumption" ) )
+		{
+			PARSE(text, token);
+
+			ba->powerConsumption = atoi(token);
+
+			defined |= POWERCONSUMPTION;
+		}
+		else if ( !Q_stricmp( token, "health" ) )
+		{
+			PARSE(text, token);
+
+			ba->health = atoi(token);
+
+			defined |= HEALTH;
+		}
+		else if ( !Q_stricmp( token, "regen" ) )
+		{
+			PARSE(text, token);
+
+			ba->regenRate = atoi(token);
+		}
+		else if ( !Q_stricmp( token, "splashDamage" ) )
+		{
+			PARSE(text, token);
+
+			ba->splashDamage = atoi(token);
+		}
+		else if ( !Q_stricmp( token, "splashRadius" ) )
+		{
+			PARSE(text, token);
+
+			ba->splashRadius = atoi(token);
+		}
+		else if ( !Q_stricmp( token, "weapon" ) )
+		{
+			PARSE(text, token);
+
+			ba->weapon = BG_WeaponNumberByName( token );
+
+			if ( !ba->weapon )
+			{
+				Com_Printf( S_ERROR "unknown weapon name '%s'\n", token );
+			}
+		}
+		else if ( !Q_stricmp( token, "meansOfDeath" ) )
+		{
+			PARSE(text, token);
+
+			if ( !Q_stricmp( token, "alienBuildable" ) )
+			{
+				ba->meansOfDeath = MOD_ASPAWN;
+			}
+			else if ( !Q_stricmp( token, "humanBuildable" ) )
+			{
+				ba->meansOfDeath = MOD_HSPAWN;
+			}
+			else
+			{
+				Com_Printf( S_ERROR "unknown meanOfDeath value '%s'\n", token );
+			}
+
+			defined |= DEATHMOD;
+		}
+		else if ( !Q_stricmp( token, "team" ) )
+		{
+			PARSE(text, token);
+
+			ba->team = ParseTeam(token);
+
+			defined |= TEAM;
+		}
+		else if ( !Q_stricmp( token, "buildWeapon" ) )
+		{
+			PARSE(text, token);
+
+			if ( !Q_stricmp( token, "alien" ) )
+			{
+				ba->buildWeapon = (weapon_t) ( ( 1 << WP_ABUILD ) | ( 1 << WP_ABUILD2 ) );
+			}
+			else if ( !Q_stricmp( token, "human" ) )
+			{
+				ba->buildWeapon = (weapon_t) ( 1 << WP_HBUILD );
+			}
+			else
+			{
+				Com_Printf( S_ERROR "unknown buildWeapon value '%s'\n", token );
+			}
+
+			defined |= BUILDWEAPON;
+		}
+		else if ( !Q_stricmp( token, "buildTime" ) )
+		{
+			PARSE(text, token);
+
+			ba->buildTime = atoi(token);
+
+			defined |= BUILDTIME;
+		}
+		else if ( !Q_stricmp( token, "usable" ) )
+		{
+			ba->usable = true;
+		}
+		else if ( !Q_stricmp( token, "minNormal" ) )
+		{
+			PARSE(text, token);
+
+			ba->minNormal = atof(token);
+			defined |= NORMAL;
+		}
+
+		else if ( !Q_stricmp( token, "allowInvertNormal" ) )
+		{
+			ba->invertNormal = true;
+		}
+		else if ( !Q_stricmp( token, "needsCreep" ) )
+		{
+			ba->creepTest = true;
+		}
+		else if ( !Q_stricmp( token, "creepSize" ) )
+		{
+			PARSE(text, token);
+
+			ba->creepSize = atoi(token);
+		}
+		else if ( !Q_stricmp( token, "transparentTest" ) )
+		{
+			ba->transparentTest = true;
+		}
+		else if ( !Q_stricmp( token, "unique" ) )
+		{
+			ba->uniqueTest = true;
+		}
+		else if ( !Q_stricmp( token, "unlockThreshold" ) )
+		{
+			PARSE(text, token);
+
+			ba->unlockThreshold = atoi(token);
+			defined |= UNLOCKTHRESHOLD;
+		}
+		else if( (var = BG_FindConfigVar( va( "b_%s_%s", ba->name, token ) ) ) != nullptr )
+		{
+			BG_ParseConfigVar( var, &text, filename );
+		}
+		else
+		{
+			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );
+		}
+	}
+
+	if ( !( defined & HUMANNAME) ) { token = "humanName"; }
+	else if ( !( defined & DESCRIPTION) ) { token = "description"; }
+	else if ( !( defined & BUILDPOINTS) ) { token = "buildPoints"; }
+	else if ( !( defined & ICON) ) { token = "icon"; }
+	else if ( !( defined & HEALTH) ) { token = "health"; }
+	else if ( !( defined & DEATHMOD) ) { token = "meansOfDeath"; }
+	else if ( !( defined & TEAM) ) { token = "team"; }
+	else if ( !( defined & BUILDWEAPON) ) { token = "buildWeapon"; }
+	else if ( !( defined & BUILDTIME) ) { token = "buildTime"; }
+	else if ( !( defined & NORMAL) ) { token = "minNormal"; }
+
+	if ( strlen( token ) > 0 )
+	{
+		Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+	}
+}
+
+/*
+======================
+BG_ParseBuildableModelFile
+
+Parses a configuration file describing the model of a buildable
+======================
+*/
+void BG_ParseBuildableModelFile( const char *filename, buildableModelConfig_t *bc )
+{
+	const char *token;
+	char text_buffer[ 20000 ];
+	const char* text;
+	int defined = 0;
+	enum
+	{
+		MODEL = 1 << 0,
+		MODELSCALE = 1 << 1,
+		MINS = 1 << 2,
+		MAXS = 1 << 3,
+		ZOFFSET = 1 << 4,
+		OLDSCALE = 1 << 5,
+		OLDOFFSET = 1 << 6,
+		MODEL_ROTATION = 1 << 7
+	};
+
+	if( !BG_ReadWholeFile( filename, text_buffer, sizeof(text_buffer) ) )
+	{
+		return;
+	}
+
+	text = text_buffer;
+
+	// read optional parameters
+	while ( 1 )
+	{
+		PARSE(text, token);
+
+		if ( !Q_stricmp( token, "model" ) )
+		{
+			int index = 0;
+
+			PARSE(text, token);
+
+			index = atoi( token );
+
+			if ( index < 0 )
+			{
+				index = 0;
+			}
+			else if ( index >= MAX_BUILDABLE_MODELS )
+			{
+				index = MAX_BUILDABLE_MODELS - 1;
+			}
+
+			PARSE(text, token);
+
+			Q_strncpyz( bc->models[ index ], token, sizeof( bc->models[ 0 ] ) );
+
+			defined |= MODEL;
+		}
+		else if ( !Q_stricmp( token, "modelScale" ) )
+		{
+			float scale;
+
+			PARSE(text, token);
+
+			scale = atof( token );
+
+			if ( scale < 0.0f )
+			{
+				scale = 0.0f;
+			}
+
+			bc->modelScale = scale;
+
+			defined |= MODELSCALE;
+		}
+		else if ( !Q_stricmp( token, "modelRotation" ) )
+		{
+			PARSE( text, token );
+			bc->modelRotation[ 0 ] = atof( token );
+			PARSE( text, token );
+			bc->modelRotation[ 1 ] = atof( token );
+			PARSE( text, token );
+			bc->modelRotation[ 2 ] = atof( token );
+
+			defined |= MODEL_ROTATION;
+		}
+		else if ( !Q_stricmp( token, "mins" ) )
+		{
+			int i;
+
+			for ( i = 0; i <= 2; i++ )
+			{
+				PARSE(text, token);
+
+				bc->mins[ i ] = atof( token );
+			}
+
+			defined |= MINS;
+		}
+		else if ( !Q_stricmp( token, "maxs" ) )
+		{
+			int i;
+
+			for ( i = 0; i <= 2; i++ )
+			{
+				PARSE(text, token);
+
+				bc->maxs[ i ] = atof( token );
+			}
+
+			defined |= MAXS;
+		}
+		else if ( !Q_stricmp( token, "zOffset" ) )
+		{
+			PARSE(text, token);
+
+			bc->zOffset = atof( token );
+
+			defined |= ZOFFSET;
+		}
+		else if ( !Q_stricmp( token, "oldScale" ) )
+		{
+			PARSE(text, token);
+
+			bc->oldScale = atof( token );
+
+			defined |= OLDSCALE;
+		}
+		else if ( !Q_stricmp( token, "oldOffset" ) )
+		{
+			PARSE(text, token);
+
+			bc->oldOffset = atof( token );
+
+			defined |= OLDOFFSET;
+		}
+		else
+		{
+			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );
+		}
+	}
+
+	if ( !( defined & MODEL ) ) { token = "model"; }
+	else if ( !( defined & MODELSCALE ) ) { token = "modelScale"; }
+	else if ( !( defined & MINS ) ) { token = "mins"; }
+	else if ( !( defined & MAXS ) ) { token = "maxs"; }
+	else if ( !( defined & ZOFFSET ) ) { token = "zOffset"; }
+	else { token = ""; }
+
+	if ( strlen( token ) > 0 )
+	{
+		Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+	}
+}
+#endif
+
 /*
 ======================
 BG_ParseClassAttributeFile
@@ -691,6 +1130,12 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		{
 			ca->abilities |= SCA_FOVWARPS;
 		}
+#ifndef UNREALARENA
+		else if ( !Q_stricmp( token, "alienSense" ) )
+		{
+			ca->abilities |= SCA_ALIENSENSE;
+		}
+#endif
 		else if ( !Q_stricmp( token, "canUseLadders" ) )
 		{
 			ca->abilities |= SCA_CANUSELADDERS;
@@ -699,6 +1144,13 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		{
 			ca->abilities |= SCA_WALLJUMPER;
 		}
+#ifndef UNREALARENA
+		else if ( !Q_stricmp( token, "buildDistance" ) )
+		{
+			PARSE(text, token);
+			ca->buildDist = atof( token );
+		}
+#endif
 		else if ( !Q_stricmp( token, "fov" ) )
 		{
 			PARSE(text, token);
@@ -848,7 +1300,11 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 	}
 
 	// check for missing mandatory fields for the human team
+#ifdef UNREALARENA
 	if ( ca->team == TEAM_U )
+#else
+	if ( ca->team == TEAM_HUMANS )
+#endif
 	{
 		if      ( !( defined & SPRINTMOD ) )          { token = "sprintMod"; }
 		else if ( !( defined & STAMINAJUMPCOST ) )    { token = "staminaJumpCost"; }
@@ -860,8 +1316,13 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 
 		if ( token )
 		{
+#ifdef UNREALARENA
 			Com_Printf( S_ERROR "%s (mandatory for U team) not defined in %s\n",
 			            token, filename );
+#else
+			Com_Printf( S_ERROR "%s (mandatory for human team) not defined in %s\n",
+			            token, filename );
+#endif
 		}
 	}
 }
@@ -1141,23 +1602,25 @@ void BG_ParseClassModelFile( const char *filename, classModelConfig_t *cc )
 
 			defined |= SHOULDEROFFSETS;
 		}
-		// else if ( !Q_stricmp( token, "useNavMesh" ) )
-		// {
-		// 	const classModelConfig_t *model;
+#ifndef UNREALARENA
+		else if ( !Q_stricmp( token, "useNavMesh" ) )
+		{
+			const classModelConfig_t *model;
 
-		// 	PARSE(text, token);
+			PARSE(text, token);
 
-		// 	model = BG_ClassModelConfigByName( token );
+			model = BG_ClassModelConfigByName( token );
 
-		// 	if ( model && *model->modelName )
-		// 	{
-		// 		cc->navMeshClass = (playerClass_t) ( model - BG_ClassModelConfig( PCL_SPECTATOR ) );
-		// 	}
-		// 	else
-		// 	{
-		// 		Com_Printf( S_ERROR "%s: unknown or yet-unloaded player model '%s'\n", filename, token );
-		// 	}
-		// }
+			if ( model && *model->modelName )
+			{
+				cc->navMeshClass = (class_t) ( model - BG_ClassModelConfig( PCL_NONE ) );
+			}
+			else
+			{
+				Com_Printf( S_ERROR "%s: unknown or yet-unloaded player model '%s'\n", filename, token );
+			}
+		}
+#endif
 		else
 		{
 			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );

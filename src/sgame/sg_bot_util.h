@@ -34,6 +34,10 @@ void     BotSetSkillLevel( gentity_t *self, int skill );
 int        FindBots( int *botEntityNumbers, int maxBots, team_t team );
 gentity_t* BotFindClosestEnemy( gentity_t *self );
 gentity_t* BotFindBestEnemy( gentity_t *self );
+#ifndef UNREALARENA
+void       BotFindClosestBuildings( gentity_t *self );
+gentity_t* BotFindBuilding( gentity_t *self, int buildingType, int range );
+#endif
 bool   BotTeamateHasWeapon( gentity_t *self, int weapon );
 void       BotSearchForEnemy( gentity_t *self );
 void       BotPain( gentity_t *self, gentity_t *attacker, int damage );
@@ -82,10 +86,28 @@ void     BotClassMovement( gentity_t *self, bool inAttackRange );
 // human bots
 bool   WeaponIsEmpty( weapon_t weapon, playerState_t *ps );
 float      PercentAmmoRemaining( weapon_t weapon, playerState_t *ps );
+#ifndef UNREALARENA
+void       BotFindDamagedFriendlyStructure( gentity_t *self );
+bool   BotGetBuildingToBuild( gentity_t *self, vec3_t origin, vec3_t normal, buildable_t *building );
+void       BotBuyWeapon( gentity_t *self, weapon_t weapon );
+void       BotBuyUpgrade( gentity_t *self, upgrade_t upgrade );
+void       BotSellWeapons( gentity_t *self );
+void       BotSellAll( gentity_t *self );
+#endif
 int        BotValueOfWeapons( gentity_t *self );
 int        BotValueOfUpgrades( gentity_t *self );
+#ifndef UNREALARENA
+void       BotGetDesiredBuy( gentity_t *self, weapon_t *weapon, upgrade_t *upgrades, int *numUpgrades );
+#endif
 
 // alien bots
+#ifndef UNREALARENA
+#define AS_OVER_RT3         ((ALIENSENSE_RANGE*0.5f)/M_ROOT3)
+float    CalcPounceAimPitch( gentity_t *self, botTarget_t target );
+float    CalcBarbAimPitch( gentity_t *self, botTarget_t target );
+bool BotCanEvolveToClass( gentity_t *self, class_t newClass );
+bool BotEvolveToClass( gentity_t *ent, class_t newClass );
+#endif
 float    CalcAimPitch( gentity_t *self, botTarget_t target, vec_t launchSpeed );
 
 //g_bot_nav.c
@@ -104,7 +126,11 @@ void         G_BotNavInit();
 void         G_BotNavCleanup();
 bool     FindRouteToTarget( gentity_t *self, botTarget_t target, bool allowPartial );
 void         BotMoveToGoal( gentity_t *self );
+#ifdef UNREALARENA
 void         BotSetNavmesh( gentity_t  *ent, team_t newTeam );
+#else
+void         BotSetNavmesh( gentity_t  *ent, class_t newClass );
+#endif
 void         BotClampPos( gentity_t *self );
 
 // local navigation
@@ -141,4 +167,11 @@ bool BotPathIsWalkable( gentity_t *self, botTarget_t target );
 //used for clamping distance to heal structure when deciding whether to go heal
 #define MAX_HEAL_DIST 2000.0f
 
+#ifndef UNREALARENA
+//how far away we can be before we stop going forward when fighting an alien
+#define MAX_HUMAN_DANCE_DIST 300.0f
+
+//how far away we can be before we try to go around an alien when fighting an alien
+#define MIN_HUMAN_DANCE_DIST 100.0f
+#endif
 #endif

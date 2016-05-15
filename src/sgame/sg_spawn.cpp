@@ -196,6 +196,10 @@ static const fieldDescriptor_t fields[] =
 	{ "noise",               FOFS( soundIndex ),          F_SOUNDINDEX,ENT_V_UNCLEAR, nullptr },
 	{ "onAct",               FOFS( calltargets ),         F_CALLTARGET,ENT_V_UNCLEAR, nullptr },
 	{ "onDie",               FOFS( calltargets ),         F_CALLTARGET,ENT_V_UNCLEAR, nullptr },
+#ifndef UNREALARENA
+	{ "onDisable",           FOFS( calltargets ),         F_CALLTARGET,ENT_V_UNCLEAR, nullptr },
+	{ "onEnable",            FOFS( calltargets ),         F_CALLTARGET,ENT_V_UNCLEAR, nullptr },
+#endif
 	{ "onFree",              FOFS( calltargets ),         F_CALLTARGET,ENT_V_UNCLEAR, nullptr },
 	{ "onReach",             FOFS( calltargets ),         F_CALLTARGET,ENT_V_UNCLEAR, nullptr },
 	{ "onReset",             FOFS( calltargets ),         F_CALLTARGET,ENT_V_UNCLEAR, nullptr },
@@ -351,6 +355,10 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	/**
 	 * former information and misc entities, now deprecated
 	 */
+#ifndef UNREALARENA
+	{ "info_alien_intermission",  SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_ALIEN_INTERMISSION  },
+	{ "info_human_intermission",  SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_HUMAN_INTERMISSION  },
+#endif
 	{ "info_notnull",             SP_pos_target,             CHAIN_TARGET,     ENT_V_RENAMED, S_POS_TARGET },
 	{ "info_null",                SP_RemoveSelf,             (entityChainType_t) 0, ENT_V_UNCLEAR, nullptr },
 	{ "info_player_deathmatch",   SP_pos_player_spawn,       CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_PLAYER_SPAWN },
@@ -375,6 +383,10 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	 *  possibly even modeling a form of path
 	 */
 	{ S_PATH_CORNER,              SP_Nothing,                CHAIN_TARGET,     ENT_V_UNCLEAR, nullptr },
+#ifndef UNREALARENA
+	{ S_POS_ALIEN_INTERMISSION,   SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
+	{ S_POS_HUMAN_INTERMISSION,   SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
+#endif
 	{ S_POS_LOCATION,             SP_pos_location,           CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
 	{ S_POS_PLAYER_INTERMISSION,  SP_Nothing,                CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
 	{ S_POS_PLAYER_SPAWN,         SP_pos_player_spawn,       CHAIN_AUTONOMOUS, ENT_V_UNCLEAR, nullptr },
@@ -387,8 +399,15 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	 *  of another entity, event, or gamestate (timer and start being aware of the game start).
 	 *  Enabling/Disabling Sensors generally changes their ability of perceiving other entities.
 	 */
+#ifndef UNREALARENA
+	{ S_SENSOR_BUILDABLE,         SP_sensor_buildable,       CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
+	{ S_SENSOR_CREEP,             SP_sensor_creep,           CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
+#endif
 	{ S_SENSOR_END,               SP_sensor_end,             CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
 	{ S_SENSOR_PLAYER,            SP_sensor_player,          CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
+#ifndef UNREALARENA
+	{ S_SENSOR_POWER,             SP_sensor_power,           CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
+#endif
 	{ S_SENSOR_STAGE,             SP_sensor_stage,           CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
 	{ S_SENSOR_START,             SP_sensor_start,           CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
 	{ S_SENSOR_SUPPORT,           SP_sensor_support,         CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
@@ -408,22 +427,36 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	/*
 	 * former target and trigger entities, now deprecated or soon to be deprecated
 	 */
+#ifndef UNREALARENA
+	{ "target_alien_win",         SP_game_end,               CHAIN_PASSIV,     ENT_V_TMPNAME, S_GAME_END },
+#endif
 	{ "target_delay",             SP_ctrl_relay,             CHAIN_RELAY,      ENT_V_TMPNAME, S_CTRL_RELAY },
+#ifndef UNREALARENA
+	{ "target_human_win",         SP_game_end,               CHAIN_PASSIV,     ENT_V_TMPNAME, S_GAME_END },
+#endif
 	{ "target_hurt",              SP_target_hurt,            CHAIN_PASSIV,     ENT_V_UNCLEAR, nullptr },
 	{ "target_kill",              SP_game_kill,              CHAIN_PASSIV,     ENT_V_TMPNAME, S_GAME_KILL },
 	{ "target_location",          SP_pos_location,           CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_POS_LOCATION },
 	{ "target_position",          SP_pos_target,             CHAIN_TARGET,     ENT_V_RENAMED, S_POS_TARGET },
 	{ "target_print",             SP_target_print,           CHAIN_PASSIV,     ENT_V_UNCLEAR, nullptr },
 	{ "target_push",              SP_target_push,            CHAIN_PASSIV,     ENT_V_UNCLEAR, nullptr },
+#ifdef UNREALARENA
 	{ "target_q_win",             SP_game_end,               CHAIN_PASSIV,     ENT_V_TMPNAME, S_GAME_END },
+#endif
 	{ "target_relay",             SP_ctrl_relay,             CHAIN_RELAY,      ENT_V_TMPNAME, S_CTRL_RELAY },
 	{ "target_rumble",            SP_fx_rumble,              CHAIN_PASSIV,     ENT_V_TMPNAME, S_fx_rumble },
 	{ "target_score",             SP_game_score,             CHAIN_PASSIV,     ENT_V_TMPNAME, S_GAME_SCORE },
 	{ "target_speaker",           SP_sfx_speaker,            CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_sfx_speaker },
 	{ "target_teleporter",        SP_target_teleporter,      CHAIN_PASSIV,     ENT_V_UNCLEAR, nullptr },
+#ifdef UNREALARENA
 	{ "target_u_win",             SP_game_end,               CHAIN_PASSIV,     ENT_V_TMPNAME, S_GAME_END },
+#endif
 	{ "trigger_always",           SP_sensor_start,           CHAIN_ACTIVE,     ENT_V_RENAMED, S_SENSOR_START },
 	{ "trigger_ammo",             SP_env_afx_ammo,           CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_env_afx_ammo },
+#ifndef UNREALARENA
+	{ "trigger_buildable",        SP_sensor_buildable,       CHAIN_ACTIVE,     ENT_V_TMPNAME, S_SENSOR_BUILDABLE },
+	{ "trigger_class",            SP_sensor_player,          CHAIN_ACTIVE,     ENT_V_TMPNAME, S_SENSOR_PLAYER },
+#endif
 	{ "trigger_equipment",        SP_sensor_player,          CHAIN_ACTIVE,     ENT_V_TMPNAME, S_SENSOR_PLAYER },
 	{ "trigger_gravity",          SP_env_afx_gravity,        CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_env_afx_gravity },
 	{ "trigger_heal",             SP_env_afx_heal,           CHAIN_AUTONOMOUS, ENT_V_TMPNAME, S_env_afx_heal },
@@ -509,6 +542,9 @@ returning false if not found
 bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 {
 	entityClassDescriptor_t     *spawnedClass;
+#ifndef UNREALARENA
+	buildable_t buildable;
+#endif
 
 	if ( !spawnedEntity->classname )
 	{
@@ -517,6 +553,33 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 			G_Printf( S_ERROR "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " is missing classname – we are unable to spawn it.\n", spawnedEntity->s.number );
 		return false;
 	}
+
+#ifndef UNREALARENA
+	//check buildable spawn functions
+	buildable = BG_BuildableByEntityName( spawnedEntity->classname )->number;
+
+	if ( buildable != BA_NONE )
+	{
+		const buildableAttributes_t *attr = BG_Buildable( buildable );
+
+		// don't spawn built-in buildings if we are using a custom layout
+		if ( level.layout[ 0 ] && Q_stricmp( level.layout, S_BUILTIN_LAYOUT ) )
+		{
+			return false;
+		}
+
+		if ( buildable == BA_A_SPAWN || buildable == BA_H_SPAWN )
+		{
+			spawnedEntity->s.angles[ YAW ] += 180.0f;
+			AngleNormalize360( spawnedEntity->s.angles[ YAW ] );
+		}
+
+		G_SpawnBuildable( spawnedEntity, buildable );
+		level.team[ attr->team ].layoutBuildPoints += attr->buildPoints;
+
+		return true;
+	}
+#endif
 
 	// check the spawn functions for other classes
 	spawnedClass = (entityClassDescriptor_t*) bsearch( spawnedEntity->classname, entityClassDescriptions, ARRAY_LEN( entityClassDescriptions ),
@@ -532,6 +595,9 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 			return false; // results in freeing the entity
 
 		spawnedClass->spawn( spawnedEntity );
+#ifndef UNREALARENA
+		spawnedEntity->spawned = true;
+#endif
 
 		if ( g_debugEntities.integer > 2 )
 			G_Printf( S_DEBUG "Successfully spawned entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " as " S_COLOR_YELLOW "%i" S_COLOR_WHITE "th instance of " S_COLOR_CYAN "%s\n",
@@ -1013,7 +1079,17 @@ void SP_worldspawn()
 
 	G_SpawnStringIntoCVarIfSet( "gravity", "g_gravity" );
 
+#ifndef UNREALARENA
+	G_SpawnStringIntoCVarIfSet( "humanBuildPoints", "g_humanBuildPoints" );
+	G_SpawnStringIntoCVarIfSet( "humanRepeaterBuildPoints", "g_humanRepeaterBuildPoints" );
+	G_SpawnStringIntoCVarIfSet( "alienBuildPoints", "g_alienBuildPoints" );
+#endif
+
 	G_SpawnStringIntoCVar( "disabledEquipment", "g_disabledEquipment" );
+#ifndef UNREALARENA
+	G_SpawnStringIntoCVar( "disabledClasses", "g_disabledClasses" );
+	G_SpawnStringIntoCVar( "disabledBuildables", "g_disabledBuildables" );
+#endif
 
 	g_entities[ ENTITYNUM_WORLD ].s.number = ENTITYNUM_WORLD;
 	g_entities[ ENTITYNUM_WORLD ].r.ownerNum = ENTITYNUM_NONE;

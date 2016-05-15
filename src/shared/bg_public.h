@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -40,15 +40,26 @@
 #define CROUCH_VIEWHEIGHT  12
 #define DEAD_VIEWHEIGHT    4 // height from ground
 
-/**
- * Teams
- */
+#ifndef UNREALARENA
+#define POWER_REFRESH_TIME 2000 // nextthink time for power checks
+#endif
+
+// player teams
 typedef enum
 {
-	TEAM_NONE,
-	TEAM_Q,
-	TEAM_U,
-	NUM_TEAMS
+#ifndef UNREALARENA
+  TEAM_ALL = -1,
+#endif
+  TEAM_NONE,
+#ifdef UNREALARENA
+  TEAM_Q,
+  TEAM_U,
+#else
+  TEAM_ALIENS,
+  TEAM_HUMANS,
+#endif
+
+  NUM_TEAMS
 } team_t;
 
 //
@@ -225,10 +236,16 @@ typedef enum
   STAT_ACTIVEITEMS,
   STAT_WEAPON,     // current primary weapon
   STAT_MAX_HEALTH, // health limit
+#ifndef UNREALARENA
+  STAT_CLASS,      // player class
+#endif
   STAT_STATE2,     // more client states
   STAT_STAMINA,    // humans: stamina
   STAT_STATE,      // client states
   STAT_MISC,       // aliens: pounce, trample; humans: lcannon
+#ifndef UNREALARENA
+  STAT_BUILDABLE,  // ghost model to display for building
+#endif
   STAT_FALLDIST,   // distance the player fell
   STAT_VIEWLOCK,   // direction to lock the view in
   STAT_PREDICTION, // predictions for current player action
@@ -240,14 +257,28 @@ typedef enum
 #define SCA_TAKESFALLDAMAGE 0x00000002
 #define SCA_CANZOOM         0x00000004
 #define SCA_FOVWARPS        0x00000008
+#ifndef UNREALARENA
+#define SCA_ALIENSENSE      0x00000010
+#endif
 #define SCA_CANUSELADDERS   0x00000020
 #define SCA_WALLJUMPER      0x00000040
 
 // STAT_STATE fields. 16 bit available
 #define SS_WALLCLIMBING     BIT(0)
+#ifndef UNREALARENA
+#define SS_CREEPSLOWED      BIT(1)
+#endif
 #define SS_SPEEDBOOST       BIT(2)
 #define SS_UNUSED_1         BIT(3)
+#ifndef UNREALARENA
+#define SS_BLOBLOCKED       BIT(4)
+#endif
 #define SS_POISONED         BIT(5)
+#ifndef UNREALARENA
+#define SS_BOOSTED          BIT(6)
+#define SS_BOOSTEDNEW       BIT(7) // booster recharged // TODO: Unnecessary, remove
+#define SS_BOOSTEDWARNING   BIT(8) // booster poison is running out // TODO: Unnecessary, remove
+#endif
 #define SS_SLOWLOCKED       BIT(9)
 #define SS_CHARGING         BIT(10)
 #define SS_HEALING_2X       BIT(11) // humans: medistation
@@ -260,6 +291,39 @@ typedef enum
 #define SS2_JETPACK_ACTIVE  BIT(2)  // whether we are thrusting
 #define SS2_LEVEL1SLOW      BIT(3)  // hit and slowed by a Mantis attack
 
+#ifndef UNREALARENA
+// has to fit into 16 bits
+#define SB_BUILDABLE_MASK        0x00FF
+#define SB_BUILDABLE_STATE_MASK  0xFF00
+#define SB_BUILDABLE_STATE_SHIFT 8
+#define SB_BUILDABLE_FROM_IBE(x) ( ( x ) << SB_BUILDABLE_STATE_SHIFT )
+#define SB_BUILDABLE_TO_IBE(x)   ( ( ( x ) & SB_BUILDABLE_STATE_MASK ) >> SB_BUILDABLE_STATE_SHIFT )
+
+typedef enum
+{
+  IBE_NONE,             // no error, can build
+
+  IBE_NOOVERMIND,       // no overmind present
+  IBE_ONEOVERMIND,      // may not build two overminds
+  IBE_NOALIENBP,        // not enough build points (aliens)
+  IBE_NOCREEP,          // no creep in this area
+
+  IBE_NOREACTOR,        // not enough power in this area and no reactor present
+  IBE_ONEREACTOR,       // may not build two reactors
+  IBE_NOHUMANBP,        // not enough build points (humans)
+  IBE_NOPOWERHERE,      // not enough power in this area even though a reactor is present
+
+  IBE_NORMAL,           // surface is too steep
+  IBE_NOROOM,           // no room
+  IBE_SURFACE,          // map doesn't allow building on that surface
+  IBE_DISABLED,         // building has been disabled for team
+  IBE_LASTSPAWN,        // may not replace last spawn with non-spawn
+  IBE_MAINSTRUCTURE,    // may not replace main structure with other buildable
+
+  IBE_MAXERRORS
+} itemBuildError_t;
+#endif
+
 // player_state->persistent[] indexes
 // these fields are the only part of player_state that isn't
 // cleared on respawn
@@ -267,6 +331,9 @@ typedef enum
 {
   PERS_SCORE,          // !!! MUST NOT CHANGE, SERVER AND GAME BOTH REFERENCE !!!
   PERS_MOMENTUM,     // the total momentum of a team
+#ifndef UNREALARENA
+  PERS_SPAWNQUEUE,     // number of spawns and position in spawn queue
+#endif
   PERS_SPECSTATE,
   PERS_SPAWN_COUNT,    // incremented every respawn
   PERS_TEAM,           // persistant team selection
@@ -297,7 +364,19 @@ typedef enum
 #define EF_BOUNCE_HALF      0x0010 // for missiles
 #define EF_NO_BOUNCE_SOUND  0x0020 // for missiles
 
+#ifndef UNREALARENA
+// buildable flags:
+#define EF_B_SPAWNED        0x0008
+#define EF_B_POWERED        0x0010
+#define EF_B_MARKED         0x0020
+#define EF_B_ONFIRE         0x0040
+#define EF_B_LOCKON         0x0080
+#endif
+
 // for players
+#ifndef UNREALARENA
+#define EF_POWER_AVAILABLE  0x0010
+#endif
 #define EF_WARN_CHARGE      0x0020 // Lucifer Cannon is about to overcharge
 #define EF_WALLCLIMB        0x0040 // wall walking
 #define EF_WALLCLIMBCEILING 0x0080 // wall walking ceiling hack
@@ -308,6 +387,9 @@ typedef enum
 #define EF_MOVER_STOP       0x1000 // will push otherwise
 #define EF_UNUSED_1         0x2000 // UNUSED
 #define EF_CONNECTION       0x4000 // draw a connection trouble sprite
+#ifndef UNREALARENA
+#define EF_BLOBLOCKED       0x8000 // caught by a trapper
+#endif
 
 // entityState_t->modelIndex2 "public flags" when used for client entities
 #define PF_JETPACK_ENABLED  BIT(0)
@@ -358,6 +440,12 @@ typedef enum
   WP_FLAMER,
   WP_PULSE_RIFLE,
   WP_LUCIFER_CANNON,
+#ifndef UNREALARENA
+  WP_LOCKBLOB_LAUNCHER,
+  WP_HIVE,
+  WP_ROCKETPOD,
+  WP_MGTURRET,
+#endif
 
   // build weapons must remain in a block ← I'm not asking why but I can imagine
   WP_ABUILD,
@@ -398,8 +486,16 @@ typedef enum
 	MIS_GRENADE,
 	MIS_FIREBOMB,
 	MIS_FIREBOMB_SUB,
+#ifndef UNREALARENA
+	MIS_HIVE,
+	MIS_LOCKBLOB,
+	MIS_SLOWBLOB,
+#endif
 	MIS_BOUNCEBALL,
 	MIS_ROCKET,
+#ifndef UNREALARENA
+	MIS_SPIKER,
+#endif
 
 	MIS_NUM_MISSILES
 } missile_t;
@@ -414,6 +510,38 @@ typedef enum
 #define SLOT_WEAPON   0x00000020
 #define SLOT_SIDEARM  0x00000040
 #define SLOT_GRENADE  0x00000080
+
+#ifndef UNREALARENA
+typedef enum
+{
+  BA_NONE,
+
+  BA_A_SPAWN,
+  BA_A_OVERMIND,
+
+  BA_A_BARRICADE,
+  BA_A_ACIDTUBE,
+  BA_A_TRAPPER,
+  BA_A_BOOSTER,
+  BA_A_HIVE,
+  BA_A_LEECH,
+  BA_A_SPIKER,
+
+  BA_H_SPAWN,
+
+  BA_H_MGTURRET,
+  BA_H_ROCKETPOD,
+
+  BA_H_ARMOURY,
+  BA_H_MEDISTAT,
+  BA_H_DRILL,
+
+  BA_H_REACTOR,
+  BA_H_REPEATER,
+
+  BA_NUM_BUILDABLES
+} buildable_t;
+#endif
 
 // entityState_t->event values
 // entity events are for effects that take place relative
@@ -510,10 +638,43 @@ typedef enum
 
   EV_GIB_PLAYER,
 
+#ifndef UNREALARENA
+  EV_BUILD_CONSTRUCT,
+  EV_BUILD_DESTROY,
+  EV_BUILD_DELAY, // can't build yet
+  EV_BUILD_REPAIR, // repairing buildable
+  EV_BUILD_REPAIRED, // buildable has full health
+  EV_HUMAN_BUILDABLE_DYING,
+  EV_HUMAN_BUILDABLE_EXPLOSION,
+  EV_ALIEN_BUILDABLE_EXPLOSION,
+  EV_ALIEN_ACIDTUBE,
+  EV_ALIEN_BOOSTER,
+#endif
+
   EV_MEDKIT_USED,
+
+#ifndef UNREALARENA
+  EV_ALIEN_EVOLVE,
+  EV_ALIEN_EVOLVE_FAILED,
+#endif
 
   EV_STOPLOOPINGSOUND,
   EV_TAUNT,
+
+#ifndef UNREALARENA
+  EV_OVERMIND_ATTACK_1, // overmind under attack
+  EV_OVERMIND_ATTACK_2, // overmind under attack
+  EV_OVERMIND_DYING, // overmind close to death
+  EV_OVERMIND_SPAWNS, // overmind needs spawns
+
+  EV_REACTOR_ATTACK_1, // reactor under attack
+  EV_REACTOR_ATTACK_2, // reactor under attack
+  EV_REACTOR_DYING, // reactor destroyed
+
+  EV_WARN_ATTACK, // a building has been destroyed and the destruction noticed by a nearby om/rc/rrep
+
+  EV_MGTURRET_SPINUP, // turret spinup sound should play
+#endif
 
   EV_AMMO_REFILL,     // ammo for clipless weapon has been refilled
   EV_CLIPS_REFILL,    // weapon clips have been refilled
@@ -530,10 +691,17 @@ typedef enum
 
   MN_WELCOME,
   MN_TEAM,
+#ifdef UNREALARENA
   MN_Q_TEAMFULL,
   MN_U_TEAMFULL,
   MN_Q_TEAMLOCKED,
   MN_U_TEAMLOCKED,
+#else
+  MN_A_TEAMFULL,
+  MN_H_TEAMFULL,
+  MN_A_TEAMLOCKED,
+  MN_H_TEAMLOCKED,
+#endif
   MN_PLAYERLIMIT,
   MN_WARMUP,
 
@@ -542,13 +710,69 @@ typedef enum
   MN_CMD_CHEAT_TEAM,
   MN_CMD_TEAM,
   MN_CMD_SPEC,
+#ifdef UNREALARENA
   MN_CMD_Q,
   MN_CMD_U,
+#else
+  MN_CMD_ALIEN,
+  MN_CMD_HUMAN,
+#endif
   MN_CMD_ALIVE,
 
+#ifndef UNREALARENA
+  //alien stuff
+  MN_A_CLASS,
+  MN_A_BUILD,
+  MN_A_INFEST,
+  MN_A_NOEROOM,
+  MN_A_TOOCLOSE,
+  MN_A_NOOVMND_EVOLVE,
+  MN_A_EVOLVEBUILDTIMER,
+  MN_A_CANTEVOLVE,
+  MN_A_EVOLVEWALLWALK,
+  MN_A_UNKNOWNCLASS,
+  MN_A_CLASSNOTSPAWN,
+  MN_A_CLASSNOTALLOWED,
+  MN_A_CLASSLOCKED,
+
   //shared build
+  MN_B_NOROOM,
+  MN_B_NORMAL,
+  MN_B_CANNOT,
   MN_B_LASTSPAWN,
+  MN_B_MAINSTRUCTURE,
+  MN_B_DISABLED,
+  MN_B_REVOKED,
   MN_B_SURRENDER,
+
+  //alien build
+  MN_A_ONEOVERMIND,
+  MN_A_NOBP,
+  MN_A_NOCREEP,
+  MN_A_NOOVMND,
+
+  //human stuff
+  MN_H_SPAWN,
+  MN_H_BUILD,
+  MN_H_ARMOURY,
+  MN_H_UNKNOWNITEM,
+  MN_H_NOSLOTS,
+  MN_H_NOFUNDS,
+  MN_H_ITEMHELD,
+  MN_H_NOARMOURYHERE,
+  MN_H_NOENERGYAMMOHERE,
+  MN_H_NOROOMARMOURCHANGE,
+  MN_H_ARMOURYBUILDTIMER,
+  MN_H_DEADTOCLASS,
+  MN_H_UNKNOWNSPAWNITEM,
+
+  //human buildables
+  MN_H_NOPOWERHERE,
+  MN_H_NOREACTOR,
+  MN_H_NOBP,
+  MN_H_NOTPOWERED,
+  MN_H_ONEREACTOR
+#endif
 } dynMenu_t;
 
 // animations
@@ -668,6 +892,40 @@ typedef enum
   MAX_NONSEG_PLAYER_TOTALANIMATIONS
 } nonSegPlayerAnimNumber_t;
 
+#ifndef UNREALARENA
+// for buildable animations
+typedef enum
+{
+  BANIM_NONE,
+
+  BANIM_IDLE1, // inactive idle
+  BANIM_IDLE2, // active idle
+
+  BANIM_POWERDOWN, // BANIM_IDLE1 -> BANIM_IDLE_UNPOWERED
+  BANIM_IDLE_UNPOWERED,
+
+  BANIM_CONSTRUCT, // -> BANIM_IDLE1
+
+  BANIM_POWERUP, // BANIM_IDLE_UNPOWERED -> BANIM_IDLE1
+
+  BANIM_ATTACK1,
+  BANIM_ATTACK2,
+
+  BANIM_SPAWN1,
+  BANIM_SPAWN2,
+
+  BANIM_PAIN1,
+  BANIM_PAIN2,
+
+  BANIM_DESTROY, // BANIM_IDLE1 -> BANIM_DESTROYED
+  BANIM_DESTROY_UNPOWERED, // BANIM_IDLE_UNPOWERED -> BANIM_DESTROYED
+  BANIM_DESTROYED,
+  BANIM_DESTROYED_UNPOWERED,
+
+  MAX_BUILDABLE_ANIMATIONS
+} buildableAnimNumber_t;
+#endif
+
 typedef enum
 {
   WANIM_NONE,
@@ -711,6 +969,39 @@ typedef struct animation_s
 
 // Time between location updates
 #define TEAM_LOCATION_UPDATE_TIME 500
+
+#ifndef UNREALARENA
+// player classes
+typedef enum
+{
+  PCL_NONE,
+
+  //builder classes
+  PCL_ALIEN_BUILDER0,
+  PCL_ALIEN_BUILDER0_UPG,
+
+  //offensive classes
+  PCL_ALIEN_LEVEL0,
+  PCL_ALIEN_LEVEL1,
+  PCL_ALIEN_LEVEL2,
+  PCL_ALIEN_LEVEL2_UPG,
+  PCL_ALIEN_LEVEL3,
+  PCL_ALIEN_LEVEL3_UPG,
+  PCL_ALIEN_LEVEL4,
+
+  //human class
+  PCL_HUMAN_NAKED,
+  PCL_HUMAN_LIGHT,
+  PCL_HUMAN_MEDIUM,
+  PCL_HUMAN_BSUIT,
+
+  PCL_NUM_CLASSES
+} class_t;
+// convenience bitmasks
+#define PCL_ALIEN_CLASSES ( ( 1 << PCL_HUMAN_NAKED ) - ( 1 << PCL_ALIEN_BUILDER0 ) )
+#define PCL_HUMAN_CLASSES ( ( 1 << PCL_NUM_CLASSES ) - ( 1 << PCL_HUMAN_NAKED ) )
+#define PCL_ALL_CLASSES   ( PCL_ALIEN_CLASSES | PCL_HUMAN_CLASSES )
+#endif
 
 // spectator state
 typedef enum
@@ -760,8 +1051,16 @@ typedef enum
   MOD_LCANNON_SPLASH,
   MOD_FLAMER,
   MOD_FLAMER_SPLASH,
+#ifndef UNREALARENA
+  MOD_BURN,
+#endif
   MOD_GRENADE,
   MOD_FIREBOMB,
+#ifdef UNREALARENA
+  MOD_WEIGHT,
+#else
+  MOD_WEIGHT_H,
+#endif
   MOD_WATER,
   MOD_SLIME,
   MOD_LAVA,
@@ -771,11 +1070,37 @@ typedef enum
   MOD_SUICIDE,
   MOD_TARGET_LASER,
   MOD_TRIGGER_HURT,
-  MOD_WEIGHT,
 
+#ifndef UNREALARENA
+  MOD_ABUILDER_CLAW,
+  MOD_LEVEL0_BITE,
+  MOD_LEVEL1_CLAW,
+  MOD_LEVEL3_CLAW,
+  MOD_LEVEL3_POUNCE,
+  MOD_LEVEL3_BOUNCEBALL,
+  MOD_LEVEL2_CLAW,
+  MOD_LEVEL2_ZAP,
+  MOD_LEVEL4_CLAW,
+  MOD_LEVEL4_TRAMPLE,
+  MOD_WEIGHT_A,
+
+  MOD_SLOWBLOB,
   MOD_POISON,
+  MOD_SWARM,
 
-  MOD_REPLACE
+  MOD_HSPAWN,
+  MOD_ROCKETPOD,
+  MOD_MGTURRET,
+  MOD_REACTOR,
+
+  MOD_ASPAWN,
+  MOD_ATUBE,
+  MOD_SPIKER,
+  MOD_OVERMIND,
+  MOD_DECONSTRUCT,
+  MOD_REPLACE,
+  MOD_NOCREEP
+#endif
 } meansOfDeath_t;
 
 //---------------------------------------------------------
@@ -844,17 +1169,19 @@ typedef struct
 
 //---------------------------------------------------------
 
-/**
- * Class attributes
- */
+// player class record
 typedef struct
 {
-	team_t   team;
+#ifndef UNREALARENA
+	class_t  number;
+#endif
 
 	const char *name;
 	const char *info;
 	const char *icon;
 	const char *fovCvar;
+
+	team_t   team;
 
 	int      unlockThreshold;
 
@@ -865,6 +1192,10 @@ typedef struct
 	int      abilities;
 
 	weapon_t startWeapon;
+
+#ifndef UNREALARENA
+	float    buildDist;
+#endif
 
 	int      fov;
 	float    bob;
@@ -911,9 +1242,71 @@ typedef struct
 	vec3_t shoulderOffsets;
 	bool segmented;
 
-	team_t  navMeshClass;
+#ifndef UNREALARENA
+	class_t navMeshClass; // if not PCL_NONE, which model's navmesh to use
+#endif
 	int     navHandle;
 } classModelConfig_t;
+
+#ifndef UNREALARENA
+#define MAX_BUILDABLE_MODELS 3
+
+// buildable item record
+typedef struct
+{
+	buildable_t number;
+
+	const char *name;
+	const char *humanName;
+	const char *info;
+	const char *entityName;
+	const char *icon;
+
+	trType_t    traj;
+	float       bounce;
+
+	int         buildPoints;
+	int         powerConsumption;
+	int         unlockThreshold;
+
+	int         health;
+	int         regenRate;
+
+	int         splashDamage;
+	int         splashRadius;
+
+	weapon_t    weapon; // used to look up weaponInfo_t for clientside effects
+	int         meansOfDeath;
+
+	team_t      team;
+	weapon_t    buildWeapon;
+
+	int         buildTime;
+	bool    usable;
+
+	float       minNormal;
+	bool    invertNormal;
+
+	bool    creepTest;
+	int         creepSize;
+
+	bool    transparentTest;
+	bool    uniqueTest;
+} buildableAttributes_t;
+
+typedef struct
+{
+	char   models[ MAX_BUILDABLE_MODELS ][ MAX_QPATH ];
+
+	float  modelScale;
+	vec3_t modelRotation;
+	vec3_t mins;
+	vec3_t maxs;
+	float  zOffset;
+	float  oldScale;
+	float  oldOffset;
+} buildableModelConfig_t;
+#endif
 
 // weapon record
 typedef struct
@@ -1034,6 +1427,9 @@ typedef struct
 bool BG_GetTrajectoryPitch( vec3_t origin, vec3_t target, float v0, float g,
                                 vec2_t angles, vec3_t dir1, vec3_t dir2 );
 void     BG_BuildEntityDescription( char *str, size_t size, entityState_t *es );
+#ifndef UNREALARENA
+bool BG_IsMainStructure( entityState_t *es );
+#endif
 void     BG_MoveOriginToBBOXCenter( vec3_t point, const vec3_t mins, const vec3_t maxs );
 
 bool BG_WeaponIsFull(int weapon, int ammo, int clips );
@@ -1049,6 +1445,12 @@ bool BG_RotateAxis( vec3_t surfNormal, vec3_t inAxis[ 3 ],
                         vec3_t outAxis[ 3 ], bool inverse, bool ceiling );
 void     BG_GetClientNormal( const playerState_t *ps, vec3_t normal );
 void     BG_GetClientViewOrigin( const playerState_t *ps, vec3_t viewOrigin );
+#ifndef UNREALARENA
+void     BG_PositionBuildableRelativeToPlayer( playerState_t *ps, const vec3_t mins, const vec3_t maxs,
+                                               void ( *trace )( trace_t *, const vec3_t, const vec3_t,
+                                               const vec3_t, const vec3_t, int, int, int ),
+                                               vec3_t outOrigin, vec3_t outAngles, trace_t *tr );
+#endif
 int                         BG_GetValueOfPlayer( playerState_t *ps );
 bool                    BG_PlayerCanChangeWeapon( playerState_t *ps );
 weapon_t                    BG_GetPlayerWeapon( playerState_t *ps );
@@ -1057,12 +1459,47 @@ bool                    BG_PlayerLowAmmo( const playerState_t *ps, bool *energy 
 void                        BG_PackEntityNumbers( entityState_t *es, const int *entityNums, unsigned int count );
 int                         BG_UnpackEntityNumbers( entityState_t *es, int *entityNums, unsigned int count );
 
+#ifndef UNREALARENA
+const buildableAttributes_t *BG_BuildableByName( const char *name );
+const buildableAttributes_t *BG_BuildableByEntityName( const char *name );
+const buildableAttributes_t *BG_Buildable( int buildable );
+
+buildableModelConfig_t      *BG_BuildableModelConfig( int buildable );
+void                        BG_BuildableBoundingBox( int buildable, vec3_t mins, vec3_t maxs );
+
+const classAttributes_t     *BG_ClassByName( const char *name );
+#endif
+
+#ifdef UNREALARENA
 const classAttributes_t     *BG_Class( team_t team );
+#else
+const classAttributes_t     *BG_Class( int pClass );
+#endif
 
-classModelConfig_t    *BG_ClassModelConfig( team_t team );
+#ifndef UNREALARENA
+classModelConfig_t          *BG_ClassModelConfigByName( const char * );
+#endif
 
+#ifdef UNREALARENA
+classModelConfig_t          *BG_ClassModelConfig( team_t team );
+#else
+classModelConfig_t          *BG_ClassModelConfig( int pClass );
+#endif
+
+#ifdef UNREALARENA
 void                        BG_ClassBoundingBox( team_t team, vec3_t mins, vec3_t maxs, vec3_t cmaxs,
                                                  vec3_t dmins, vec3_t dmaxs );
+#else
+void                        BG_ClassBoundingBox( int pClass, vec3_t mins, vec3_t maxs, vec3_t cmaxs,
+                                                 vec3_t dmins, vec3_t dmaxs );
+#endif
+#ifndef UNREALARENA
+team_t                      BG_ClassTeam( int pClass );
+bool                    BG_ClassHasAbility( int pClass, int ability );
+
+int                         BG_ClassCanEvolveFromTo(int from, int to, int credits);
+bool                    BG_AlienCanEvolve(int from, int credits);
+#endif
 
 weapon_t                  BG_WeaponNumberByName( const char *name );
 const weaponAttributes_t  *BG_WeaponByName( const char *name );
@@ -1086,6 +1523,10 @@ void                      BG_UnloadAllConfigs();
 bool                  BG_ReadWholeFile( const char *filename, char *buffer, int size);
 bool                  BG_CheckConfigVars();
 bool                  BG_NonSegModel( const char *filename );
+#ifndef UNREALARENA
+void                      BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t *ba );
+void                      BG_ParseBuildableModelFile( const char *filename, buildableModelConfig_t *bc );
+#endif
 void                      BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca );
 void                      BG_ParseClassModelFile( const char *filename, classModelConfig_t *cc );
 void                      BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa );
@@ -1095,12 +1536,20 @@ void                      BG_ParseMissileDisplayFile( const char *filename, miss
 void                      BG_ParseBeaconAttributeFile( const char *filename, beaconAttributes_t *ba );
 
 // bg_teamprogress.c
+#ifdef UNREALARENA
 #define NUM_UNLOCKABLES WP_NUM_WEAPONS + UP_NUM_UPGRADES
+#else
+#define NUM_UNLOCKABLES WP_NUM_WEAPONS + UP_NUM_UPGRADES + BA_NUM_BUILDABLES + PCL_NUM_CLASSES
+#endif
 
 typedef enum
 {
 	UNLT_WEAPON,
 	UNLT_UPGRADE,
+#ifndef UNREALARENA
+	UNLT_BUILDABLE,
+	UNLT_CLASS,
+#endif
 	UNLT_NUM_UNLOCKABLETYPES
 } unlockableType_t;
 
@@ -1114,6 +1563,10 @@ void     BG_ImportUnlockablesFromMask( int team, int mask );
 int      BG_UnlockablesMask( int team );
 bool BG_WeaponUnlocked( int weapon );
 bool BG_UpgradeUnlocked( int upgrade );
+#ifndef UNREALARENA
+bool BG_BuildableUnlocked( int buildable );
+bool BG_ClassUnlocked( int class_ );
+#endif
 
 unlockableType_t              BG_UnlockableType( int num );
 int                           BG_UnlockableTypeIndex( int num );
@@ -1163,11 +1616,27 @@ int      atoi_neg( char *token, bool allowNegative );
 
 void     BG_ParseCSVEquipmentList( const char *string, weapon_t *weapons, int weaponsSize,
                                    upgrade_t *upgrades, int upgradesSize );
+#ifndef UNREALARENA
+void     BG_ParseCSVClassList( const char *string, class_t *classes, int classesSize );
+void     BG_ParseCSVBuildableList( const char *string, buildable_t *buildables, int buildablesSize );
+#endif
 void     BG_InitAllowedGameElements();
 bool BG_WeaponDisabled( int weapon );
 bool BG_UpgradeDisabled( int upgrade );
 
+#ifndef UNREALARENA
+bool BG_ClassDisabled( int class_ );
+bool BG_BuildableDisabled( int buildable );
+#endif
+
 weapon_t BG_PrimaryWeapon( int stats[] );
+
+#ifndef UNREALARENA
+// Friendly Fire Flags
+#define FFF_HUMANS             1
+#define FFF_ALIENS             2
+#define FFF_BUILDABLES         4
+#endif
 
 // bg_voice.c
 #define MAX_VOICES             8
@@ -1193,6 +1662,9 @@ typedef struct voiceTrack_s
 	char                *text;
 	int                 enthusiasm;
 	int                 team;
+#ifndef UNREALARENA
+	int                 pClass;
+#endif
 	int                 weapon;
 	struct voiceTrack_s *next;
 } voiceTrack_t;
@@ -1219,9 +1691,15 @@ voiceCmd_t   *BG_VoiceCmdFind( voiceCmd_t *head, const char *name, int *cmdNum )
 voiceCmd_t   *BG_VoiceCmdByNum( voiceCmd_t *head, int num );
 voiceTrack_t *BG_VoiceTrackByNum( voiceTrack_t *head, int num );
 
+#ifdef UNREALARENA
 voiceTrack_t *BG_VoiceTrackFind( voiceTrack_t *head, int team,
                                  int weapon,
                                  int enthusiasm, int *trackNum );
+#else
+voiceTrack_t *BG_VoiceTrackFind( voiceTrack_t *head, int team,
+                                 int pClass, int weapon,
+                                 int enthusiasm, int *trackNum );
+#endif
 
 int  BG_LoadEmoticons( emoticon_t *emoticons, int num );
 

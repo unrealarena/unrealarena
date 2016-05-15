@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -140,6 +140,10 @@ void Svcmd_EntityShow_f()
 		G_Printf( "Names: ");
 		G_PrintEntityNameList( selection );
 	}
+
+#ifndef UNREALARENA
+	G_Printf("State: %s\n", selection->enabled ? "enabled" : "disabled");
+#endif
 
 	if (selection->groupName)
 	{
@@ -292,7 +296,84 @@ static void Svcmd_ForceTeam_f()
 	G_ChangeTeam( &g_entities[ cl - level.clients ], team );
 }
 
+#ifndef UNREALARENA
+/*
+===================
+Svcmd_LayoutSave_f
+
+layoutsave <name>
+===================
+*/
+static void Svcmd_LayoutSave_f()
+{
+	char str[ MAX_QPATH ];
+	char str2[ MAX_QPATH - 4 ];
+	char *s;
+	int  i = 0;
+
+	if ( trap_Argc() != 2 )
+	{
+		G_Printf( "usage: layoutsave <name>\n" );
+		return;
+	}
+
+	trap_Argv( 1, str, sizeof( str ) );
+
+	// sanitize name
+	s = &str[ 0 ];
+	str2[ 0 ] = 0;
+
+	while ( *s && i < (int) sizeof( str2 ) - 1 )
+	{
+		if ( isalnum( *s ) || *s == '-' || *s == '_' )
+		{
+			str2[ i++ ] = *s;
+			str2[ i ] = '\0';
+		}
+
+		s++;
+	}
+
+	if ( !str2[ 0 ] )
+	{
+		G_Printf( "layoutsave: invalid name \"%s\"\n", str );
+		return;
+	}
+
+	G_LayoutSave( str2 );
+}
+
 char *ConcatArgs( int start );
+
+/*
+===================
+Svcmd_LayoutLoad_f
+
+layoutload [<name> [<name2> [<name3 [...]]]]
+
+This is just a silly alias for doing:
+ set g_layouts "name name2 name3"
+ map_restart
+===================
+*/
+static void Svcmd_LayoutLoad_f()
+{
+	char layouts[ MAX_CVAR_VALUE_STRING ];
+	char *s;
+
+	if ( trap_Argc() < 2 )
+	{
+		G_Printf( "usage: layoutload <name> …\n" );
+		return;
+	}
+
+	s = ConcatArgs( 1 );
+	Q_strncpyz( layouts, s, sizeof( layouts ) );
+	trap_Cvar_Set( "g_layouts", layouts );
+	trap_SendConsoleCommand( "map_restart\n" );
+	level.restarted = true;
+}
+#endif
 
 static void Svcmd_AdmitDefeat_f()
 {
@@ -308,16 +389,29 @@ static void Svcmd_AdmitDefeat_f()
 	trap_Argv( 1, teamNum, sizeof( teamNum ) );
 	team = G_TeamFromString( teamNum );
 
+#ifdef UNREALARENA
 	if ( team == TEAM_Q )
 	{
-		G_TeamCommand( TEAM_Q, "cp \"Hivemind Link Broken\" 1" );
+		G_TeamCommand( TEAM_Q, "cp \"Forfeit\" 1" );
 		trap_SendServerCommand( -1, "print_tr \"" N_("Q team has admitted defeat\n") "\"" );
 	}
 	else if ( team == TEAM_U )
 	{
-		G_TeamCommand( TEAM_U, "cp \"Life Support Terminated\" 1" );
+		G_TeamCommand( TEAM_U, "cp \"Forfeit\" 1" );
 		trap_SendServerCommand( -1, "print_tr \"" N_("U team has admitted defeat\n") "\"" );
 	}
+#else
+	if ( team == TEAM_ALIENS )
+	{
+		G_TeamCommand( TEAM_ALIENS, "cp \"Hivemind Link Broken\" 1" );
+		trap_SendServerCommand( -1, "print_tr \"" N_("Alien team has admitted defeat\n") "\"" );
+	}
+	else if ( team == TEAM_HUMANS )
+	{
+		G_TeamCommand( TEAM_HUMANS, "cp \"Life Support Terminated\" 1" );
+		trap_SendServerCommand( -1, "print_tr \"" N_("Human team has admitted defeat\n") "\"" );
+	}
+#endif
 	else
 	{
 		G_Printf( "admitdefeat: invalid team\n" );
@@ -325,6 +419,11 @@ static void Svcmd_AdmitDefeat_f()
 	}
 
 	level.surrenderTeam = (team_t) team;
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+#else
+	G_BaseSelfDestruct( (team_t) team );
+#endif
 }
 
 static void Svcmd_TeamWin_f()
@@ -335,6 +434,19 @@ static void Svcmd_TeamWin_f()
 	trap_Argv( 0, cmd, sizeof( cmd ) );
 
 	team = G_TeamFromString( cmd );
+
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+#else
+	if ( TEAM_ALIENS == team )
+	{
+		G_BaseSelfDestruct( TEAM_HUMANS );
+	}
+	if ( TEAM_HUMANS == team )
+	{
+		G_BaseSelfDestruct( TEAM_ALIENS );
+	}
+#endif
 }
 
 static void Svcmd_Evacuation_f()
@@ -517,6 +629,32 @@ static void Svcmd_Pr_f()
 	trap_SendServerCommand( cl, va( "print %s\\\n", Quote( ConcatArgs( 2 ) ) ) );
 }
 
+#ifndef UNREALARENA
+static void Svcmd_PrintQueue_f()
+{
+	team_t team;
+	char teamName[ MAX_STRING_CHARS ];
+
+	if ( trap_Argc() != 2 )
+	{
+		G_Printf( "usage: printqueue <team>\n" );
+		return;
+	}
+
+	trap_Argv( 1, teamName, sizeof( teamName ) );
+
+	team = G_TeamFromString(teamName);
+	if ( TEAM_ALIENS == team || TEAM_HUMANS == team )
+	{
+		G_PrintSpawnQueue( &level.team[ team ].spawnQueue );
+	}
+	else
+	{
+		G_Printf( "unknown team\n" );
+	}
+}
+#endif
+
 // dumb wrapper for "a", "m", "chat", and "say"
 static void Svcmd_MessageWrapper()
 {
@@ -565,6 +703,9 @@ static const struct svcmd
 	{ "a",                  true,  Svcmd_MessageWrapper         },
 	{ "admitDefeat",        false, Svcmd_AdmitDefeat_f          },
 	{ "advanceMapRotation", false, Svcmd_G_AdvanceMapRotation_f },
+#ifndef UNREALARENA
+	{ "alienWin",           false, Svcmd_TeamWin_f              },
+#endif
 	{ "asay",               true,  Svcmd_MessageWrapper         },
 	{ "chat",               true,  Svcmd_MessageWrapper         },
 	{ "cp",                 true,  Svcmd_CenterPrint_f          },
@@ -575,15 +716,27 @@ static const struct svcmd
 	{ "entityShow",         false, Svcmd_EntityShow_f           },
 	{ "evacuation",         false, Svcmd_Evacuation_f           },
 	{ "forceTeam",          false, Svcmd_ForceTeam_f            },
+#ifndef UNREALARENA
+	{ "humanWin",           false, Svcmd_TeamWin_f              },
+	{ "layoutLoad",         false, Svcmd_LayoutLoad_f           },
+	{ "layoutSave",         false, Svcmd_LayoutSave_f           },
+#endif
 	{ "m",                  true,  Svcmd_MessageWrapper         },
 	{ "maplog",             true,  Svcmd_MapLogWrapper          },
 	{ "mapRotation",        false, Svcmd_MapRotation_f          },
 	{ "pr",                 false, Svcmd_Pr_f                   },
+#ifndef UNREALARENA
+	{ "printqueue",         false, Svcmd_PrintQueue_f           },
+#endif
+#ifdef UNREALARENA
 	{ "qWin",               false, Svcmd_TeamWin_f              },
+#endif
 	{ "say",                true,  Svcmd_MessageWrapper         },
 	{ "say_team",           true,  Svcmd_TeamMessage_f          },
 	{ "stopMapRotation",    false, G_StopMapRotation            },
+#ifdef UNREALARENA
 	{ "uWin",               false, Svcmd_TeamWin_f              },
+#endif
 };
 
 /*

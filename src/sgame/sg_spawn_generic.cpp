@@ -44,12 +44,20 @@ void target_print_act( gentity_t *self, gentity_t*, gentity_t *activator )
 	{
 		if ( self->spawnflags & 1 )
 		{
-			G_TeamCommand( TEAM_Q, va( "cp %s", Quote( self->message ) ) );
+#ifdef UNREALARENA
+			G_TeamCommand( TEAM_U, va( "cp %s", Quote( self->message ) ) );
+#else
+			G_TeamCommand( TEAM_HUMANS, va( "cp %s", Quote( self->message ) ) );
+#endif
 		}
 
 		if ( self->spawnflags & 2 )
 		{
-			G_TeamCommand( TEAM_U, va( "cp %s", Quote( self->message ) ) );
+#ifdef UNREALARENA
+			G_TeamCommand( TEAM_Q, va( "cp %s", Quote( self->message ) ) );
+#else
+			G_TeamCommand( TEAM_ALIENS, va( "cp %s", Quote( self->message ) ) );
+#endif
 		}
 
 		return;

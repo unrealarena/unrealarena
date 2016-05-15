@@ -1,7 +1,7 @@
 /*
  * Daemon GPL source code
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  Id Software, Inc.
+ * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -278,11 +278,19 @@ You or the server may be running older versions of the game."
 
 // NERVE - SMF - wolf multiplayer master servers
 #ifndef MASTER_SERVER_NAME
+#ifdef UNREALARENA
 # define MASTER_SERVER_NAME    "master.example.com"
+#else
+# define MASTER_SERVER_NAME    "master.unvanquished.net"
+#endif
 #endif
 
 #ifndef MOTD_SERVER_NAME
+#ifdef UNREALARENA
 # define MOTD_SERVER_NAME      "master.example.com"
+#else
+# define MOTD_SERVER_NAME      "master.unvanquished.net"
+#endif
 #endif
 
 #define PORT_MASTER             27950

@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -200,13 +200,18 @@ bool        G_admin_speclock( gentity_t *ent );
 bool        G_admin_specunlock( gentity_t *ent );
 bool        G_admin_listadmins( gentity_t *ent );
 bool        G_admin_listinactive( gentity_t *ent );
+#ifndef UNREALARENA
 bool        G_admin_listlayouts( gentity_t *ent );
+#endif
 bool        G_admin_listgeoip( gentity_t *ent );
 bool        G_admin_listplayers( gentity_t *ent );
 bool        G_admin_listrotation( gentity_t *ent );
 bool        G_admin_changemap( gentity_t *ent );
 bool        G_admin_warn( gentity_t *ent );
 bool        G_admin_mute( gentity_t *ent );
+#ifndef UNREALARENA
+bool        G_admin_denybuild( gentity_t *ent );
+#endif
 bool        G_admin_showbans( gentity_t *ent );
 bool        G_admin_adminhelp( gentity_t *ent );
 bool        G_admin_admintest( gentity_t *ent );
@@ -222,6 +227,11 @@ bool        G_admin_lock( gentity_t *ent );
 bool        G_admin_flaglist( gentity_t *ent );
 bool        G_admin_flag( gentity_t *ent );
 bool        G_admin_pause( gentity_t *ent );
+#ifndef UNREALARENA
+bool        G_admin_builder( gentity_t *ent );
+bool        G_admin_buildlog( gentity_t *ent );
+bool        G_admin_revert( gentity_t *ent );
+#endif
 bool        G_admin_l0( gentity_t *ent );  // AA-QVM 1.2
 bool        G_admin_l1( gentity_t *ent );  // AA-QVM 1.2
 bool        G_admin_register( gentity_t *ent );  // AA-QVM 1.2

@@ -146,6 +146,12 @@ void G_namelog_restore( gclient_t *client )
 {
 	namelog_t *n = client->pers.namelog;
 
+#ifdef UNREALARENA
+	// We don't automatically put the player in game when he/she reconnects
+	// G_ChangeTeam( g_entities + n->slot, n->team );
+#else
+	G_ChangeTeam( g_entities + n->slot, n->team );
+#endif
 	client->ps.persistant[ PERS_SCORE ] = n->score;
 	client->ps.persistant[ PERS_CREDIT ] = 0;
 	G_AddCreditToClient( client, n->credits, false );

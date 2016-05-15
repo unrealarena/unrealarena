@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -70,6 +70,10 @@ static const char *UnlockableHumanName( unlockable_t *unlockable )
 	{
 		case UNLT_WEAPON:    return BG_Weapon( unlockable->num )->humanName;
 		case UNLT_UPGRADE:   return BG_Upgrade( unlockable->num )->humanName;
+#ifndef UNREALARENA
+		case UNLT_BUILDABLE: return BG_Buildable( unlockable->num )->humanName;
+		case UNLT_CLASS:     return BG_ClassModelConfig( unlockable->num )->humanName;
+#endif
 	}
 
 	Com_Error( ERR_FATAL, "UnlockableHumanName: Unlockable has unknown type" );
@@ -83,6 +87,10 @@ static bool Disabled( unlockable_t *unlockable )
 	{
 		case UNLT_WEAPON:    return BG_WeaponDisabled( unlockable->num );
 		case UNLT_UPGRADE:   return BG_UpgradeDisabled( unlockable->num );
+#ifndef UNREALARENA
+		case UNLT_BUILDABLE: return BG_BuildableDisabled( unlockable->num );
+		case UNLT_CLASS:     return BG_ClassDisabled( unlockable->num );
+#endif
 	}
 
 	Com_Error( ERR_FATAL, "Disabled: Unlockable has unknown type" );
@@ -141,13 +149,18 @@ static void InformUnlockableStatusChanges( int *statusChanges, int count )
 		textptr += strlen( textptr );
 	}
 
+#ifndef UNREALARENA
 	// TODO: Add sound for items being locked for each team
 	switch ( cg.snap->ps.persistant[ PERS_TEAM ] )
 	{
-		case TEAM_Q:
+		case TEAM_ALIENS:
+			if ( unlocked )
+			{
+				trap_S_StartLocalSound( cgs.media.weHaveEvolved, CHAN_ANNOUNCER );
+			}
 			break;
 
-		case TEAM_U:
+		case TEAM_HUMANS:
 		default:
 			if ( unlocked )
 			{
@@ -155,6 +168,7 @@ static void InformUnlockableStatusChanges( int *statusChanges, int count )
 			}
 			break;
 	}
+#endif
 
 	CG_CenterPrint( text, SCREEN_HEIGHT * 0.3, GIANTCHAR_WIDTH * 2 );
 }
@@ -245,6 +259,10 @@ void BG_InitUnlockackables()
 
 	unlockablesTypeOffset[ UNLT_WEAPON ]    = 0;
 	unlockablesTypeOffset[ UNLT_UPGRADE ]   = WP_NUM_WEAPONS;
+#ifndef UNREALARENA
+	unlockablesTypeOffset[ UNLT_BUILDABLE ] = unlockablesTypeOffset[ UNLT_UPGRADE ]   + UP_NUM_UPGRADES;
+	unlockablesTypeOffset[ UNLT_CLASS ]     = unlockablesTypeOffset[ UNLT_BUILDABLE ] + BA_NUM_BUILDABLES;
+#endif
 
 #ifdef BUILD_SGAME
 	G_UpdateUnlockables();
@@ -300,9 +318,25 @@ void BG_ImportUnlockablesFromMask( int team, int mask )
 				break;
 
 			case UNLT_UPGRADE:
+#ifdef UNREALARENA
 				currentTeam     = TEAM_U;
+#else
+				currentTeam     = TEAM_HUMANS;
+#endif
 				unlockThreshold = BG_Upgrade( itemNum )->unlockThreshold;
 				break;
+
+#ifndef UNREALARENA
+			case UNLT_BUILDABLE:
+				currentTeam     = BG_Buildable( itemNum )->team;
+				unlockThreshold = BG_Buildable( itemNum )->unlockThreshold;
+				break;
+
+			case UNLT_CLASS:
+				currentTeam     = TEAM_ALIENS;
+				unlockThreshold = BG_Class( itemNum )->unlockThreshold;
+				break;
+#endif
 
 			default:
 				Com_Error( ERR_FATAL, "BG_ImportUnlockablesFromMask: Unknown unlockable type" );
@@ -373,6 +407,15 @@ void BG_ImportUnlockablesFromMask( int team, int mask )
 
 int BG_UnlockablesMask( int team )
 {
+#ifdef UNREALARENA
+	if ( unlockablesTeamKnowledge != team && unlockablesTeamKnowledge != TEAM_NONE )
+#else
+	if ( unlockablesTeamKnowledge != team && unlockablesTeamKnowledge != TEAM_ALL )
+#endif
+	{
+		Com_Error( ERR_FATAL, "G_GetUnlockablesMask: Requested mask for a team with unknown unlockable status" );
+	}
+
 	return unlockablesMask[ team ];
 }
 
@@ -399,6 +442,22 @@ bool BG_UpgradeUnlocked( int upgrade )
 
 	return Unlocked( UNLT_UPGRADE, upgrade);
 }
+
+#ifndef UNREALARENA
+bool BG_BuildableUnlocked( int buildable )
+{
+	CheckStatusKnowledge( UNLT_BUILDABLE, buildable);
+
+	return Unlocked( UNLT_BUILDABLE, buildable);
+}
+
+bool BG_ClassUnlocked( int class_ )
+{
+	CheckStatusKnowledge( UNLT_CLASS, class_);
+
+	return Unlocked( UNLT_CLASS, class_);
+}
+#endif
 
 static int MomentumNextThreshold( int threshold )
 {
@@ -527,9 +586,25 @@ void G_UpdateUnlockables()
 				break;
 
 			case UNLT_UPGRADE:
+#ifdef UNREALARENA
 				team            = TEAM_U;
+#else
+				team            = TEAM_HUMANS;
+#endif
 				unlockThreshold = BG_Upgrade( itemNum )->unlockThreshold;
 				break;
+
+#ifndef UNREALARENA
+			case UNLT_BUILDABLE:
+				team            = BG_Buildable( itemNum )->team;
+				unlockThreshold = BG_Buildable( itemNum )->unlockThreshold;
+				break;
+
+			case UNLT_CLASS:
+				team            = TEAM_ALIENS;
+				unlockThreshold = BG_Class( itemNum )->unlockThreshold;
+				break;
+#endif
 
 			default:
 				Com_Error( ERR_FATAL, "G_UpdateUnlockables: Unknown unlockable type" );
@@ -561,6 +636,11 @@ void G_UpdateUnlockables()
 
 	// GAME knows about all teams
 	unlockablesDataAvailable = true;
+#ifdef UNREALARENA
+	unlockablesTeamKnowledge = TEAM_NONE;
+#else
+	unlockablesTeamKnowledge = TEAM_ALL;
+#endif
 
 	// generate masks for network transmission
 	UpdateUnlockablesMask();

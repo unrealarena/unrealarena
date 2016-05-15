@@ -502,8 +502,22 @@ char CG_GetColorCharForHealth( int clientnum )
 	char health_char = '2';
 	int  healthPercent;
 	int  maxHealth;
+#ifndef UNREALARENA
+	int  curWeaponClass = cgs.clientinfo[ clientnum ].curWeaponClass;
+#endif
 
+#ifdef UNREALARENA
 	maxHealth = BG_Class( cgs.clientinfo[ clientnum ].team )->health;
+#else
+	if ( cgs.clientinfo[ clientnum ].team == TEAM_ALIENS )
+	{
+		maxHealth = BG_Class( curWeaponClass )->health;
+	}
+	else
+	{
+		maxHealth = BG_Class( PCL_HUMAN_NAKED )->health;
+	}
+#endif
 
 	healthPercent = ( int )( 100.0f * ( float ) cgs.clientinfo[ clientnum ].health /
 	                         ( float ) maxHealth );

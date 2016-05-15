@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -598,6 +598,24 @@ typedef struct lightFlareStatus_s
 	qhandle_t hTest;
 } lightFlareStatus_t;
 
+#ifndef UNREALARENA
+typedef struct buildableStatus_s
+{
+	int      lastTime; // Last time status was visible
+	bool visible; // Status is visible?
+} buildableStatus_t;
+
+typedef struct buildableCache_s
+{
+	vec3_t cachedOrigin; // If any of the values differ from their
+	vec3_t cachedAngles; //  cached versions, then the cache is invalid
+	vec3_t cachedNormal;
+	buildable_t cachedType;
+	vec3_t axis[ 3 ];
+	vec3_t origin;
+} buildableCache_t;
+#endif
+
 //=================================================
 
 #define MAX_CBEACONS 50
@@ -656,8 +674,13 @@ typedef struct
 
 	// drawing
 	vec4_t        colorNeutral;
+#ifdef UNREALARENA
 	vec4_t        colorQ;
 	vec4_t        colorU;
+#else
+	vec4_t        colorAlien;
+	vec4_t        colorHuman;
+#endif
 	float         fadeInAlpha;
 	float         fadeInScale;
 
@@ -736,6 +759,20 @@ typedef struct centity_s
 	vec3_t                lerpAngles;
 
 	lerpFrame_t           lerpFrame;
+
+#ifndef UNREALARENA
+	buildableAnimNumber_t buildableAnim; //persistent anim number
+	buildableAnimNumber_t oldBuildableAnim; //to detect when new anims are set
+	bool              buildableIdleAnim; //to check if new idle anim
+	particleSystem_t      *buildablePS;
+	particleSystem_t      *buildableStatusPS; // used for steady effects like fire
+	buildableStatus_t     buildableStatus;
+	buildableCache_t      buildableCache; // so we don't recalculate things
+	float                 lastBuildableHealth;
+	int                   lastBuildableDamageSoundTime;
+
+	vec3_t                overmindEyeAngle;
+#endif
 
 	lightFlareStatus_t    lfs;
 
@@ -955,6 +992,13 @@ typedef struct upgradeInfo_s
 	qhandle_t upgradeIcon;
 } upgradeInfo_t;
 
+#ifndef UNREALARENA
+typedef struct
+{
+	qhandle_t classIcon;
+} classInfo_t;
+#endif
+
 typedef struct
 {
 	bool    looped;
@@ -962,6 +1006,21 @@ typedef struct
 
 	sfxHandle_t sound;
 } sound_t;
+
+#ifndef UNREALARENA
+typedef struct
+{
+	qhandle_t   models[ MAX_BUILDABLE_MODELS ];
+	animation_t animations[ MAX_BUILDABLE_ANIMATIONS ];
+
+	//same number of sounds as animations
+	sound_t  sounds[ MAX_BUILDABLE_ANIMATIONS ];
+
+	qhandle_t buildableIcon;
+
+	bool md5;
+} buildableInfo_t;
+#endif
 
 //======================================================================
 
@@ -992,6 +1051,17 @@ typedef struct
 
 typedef struct
 {
+#ifndef UNREALARENA
+	vec3_t alienBuildablePos[ MAX_GENTITIES ];
+	float  alienBuildableIntensity[ MAX_GENTITIES ];
+	int    numAlienBuildables;
+
+	vec3_t humanBuildablePos[ MAX_GENTITIES ];
+	float  humanBuildableIntensity[ MAX_GENTITIES ];
+	int    numHumanBuildables;
+#endif
+
+#ifdef UNREALARENA
 	vec3_t qClientPos[ MAX_CLIENTS ];
 	float  qClientIntensity[ MAX_CLIENTS ];
 	int    qClients;
@@ -999,6 +1069,15 @@ typedef struct
 	vec3_t uClientPos[ MAX_CLIENTS ];
 	float  uClientIntensity[ MAX_CLIENTS ];
 	int    uClients;
+#else
+	vec3_t alienClientPos[ MAX_CLIENTS ];
+	float  alienClientIntensity[ MAX_CLIENTS ];
+	int    numAlienClients;
+
+	vec3_t humanClientPos[ MAX_CLIENTS ];
+	float  humanClientIntensity[ MAX_CLIENTS ];
+	int    numHumanClients;
+#endif
 
 	int    lastUpdateTime;
 	vec3_t origin;
@@ -1220,7 +1299,11 @@ typedef struct
 	char                    currentLoadingLabel[ MAX_LOADING_LABEL_LENGTH ];
 	float                   charModelFraction; // loading percentages
 	float                   mediaFraction;
+#ifndef UNREALARENA
+	float                   buildablesFraction;
 
+	int                     lastBuildAttempt;
+#endif
 	int                     lastEvolveAttempt;
 
 	char                    consoleText[ MAX_CONSOLE_TEXT ];
@@ -1242,6 +1325,9 @@ typedef struct
 	float                   chargeMeterValue;
 	qhandle_t               lastHealthCross;
 	float                   healthCrossFade;
+#ifndef UNREALARENA
+	int                     nearUsableBuildable;
+#endif
 
 	int                     nextWeaponClickTime;
 
@@ -1371,9 +1457,31 @@ typedef struct
 
 	int selectedTeamIndex;
 
-	int selectedQSpawnClass;
+#ifndef UNREALARENA
+	int selectedHumanSpawnItem;
 
-	int selectedUSpawnItem;
+	int selectedAlienSpawnClass;
+
+	int armouryBuyList[3][ ( WP_LUCIFER_CANNON - WP_BLASTER ) + UP_NUM_UPGRADES + 1 ];
+	int selectedArmouryBuyItem[3];
+	int armouryBuyListCount[3];
+
+	int armourySellList[ WP_NUM_WEAPONS + UP_NUM_UPGRADES ];
+	int selectedArmourySellItem;
+	int armourySellListCount;
+
+	int alienEvolveList[ PCL_NUM_CLASSES ];
+	int selectedAlienEvolve;
+	int alienEvolveListCount;
+
+	int humanBuildList[ BA_NUM_BUILDABLES ];
+	int selectedHumanBuild;
+	int humanBuildListCount;
+
+	int alienBuildList[ BA_NUM_BUILDABLES ];
+	int selectedAlienBuild;
+	int alienBuildListCount;
+#endif
 
 	int beaconList[ NUM_BEACON_TYPES ];
 	int selectedBeacon;
@@ -1427,6 +1535,10 @@ typedef struct
 	qhandle_t crosshairShader[ WP_NUM_WEAPONS ];
 	qhandle_t backTileShader;
 
+#ifndef UNREALARENA
+	qhandle_t creepShader;
+#endif
+
 	qhandle_t scannerShader;
 	qhandle_t scannerBlipShader;
 	qhandle_t scannerBlipBldgShader;
@@ -1438,6 +1550,13 @@ typedef struct
 
 	qhandle_t shadowMarkShader;
 	qhandle_t wakeMarkShader;
+
+#ifndef UNREALARENA
+	// buildable shaders
+	qhandle_t             greenBuildShader;
+	qhandle_t             redBuildShader;
+	qhandle_t             humanSpawningShader;
+#endif
 
 	qhandle_t             sphereModel;
 	qhandle_t             sphericalCone64Model;
@@ -1456,10 +1575,18 @@ typedef struct
 	sfxHandle_t selectSound;
 	sfxHandle_t footsteps[ FOOTSTEP_TOTAL ][ 4 ];
 	sfxHandle_t talkSound;
+#ifdef UNREALARENA
 	sfxHandle_t qTalkSound;
 	sfxHandle_t uTalkSound;
+#else
+	sfxHandle_t alienTalkSound;
+	sfxHandle_t humanTalkSound;
+#endif
 	sfxHandle_t landSound;
 	sfxHandle_t fallSound;
+#ifndef UNREALARENA
+	sfxHandle_t turretSpinupSound;
+#endif
 
 	sfxHandle_t hardBounceSound1;
 	sfxHandle_t hardBounceSound2;
@@ -1474,7 +1601,24 @@ typedef struct
 
 	sfxHandle_t medkitUseSound;
 
+#ifndef UNREALARENA
+	sfxHandle_t weHaveEvolved;
 	sfxHandle_t reinforcement;
+
+	sfxHandle_t alienOvermindAttack;
+	sfxHandle_t alienOvermindDying;
+	sfxHandle_t alienOvermindSpawns;
+
+	sfxHandle_t alienBuildableExplosion;
+	sfxHandle_t alienBuildablePrebuild;
+	sfxHandle_t humanBuildableDying;
+	sfxHandle_t humanBuildableExplosion;
+	sfxHandle_t humanBuildablePrebuild;
+	sfxHandle_t humanBuildableDamage[ 4 ];
+
+	sfxHandle_t alienL4ChargePrepare;
+	sfxHandle_t alienL4ChargeStart;
+#endif
 
 	qhandle_t   cursor;
 	qhandle_t   selectCursor;
@@ -1489,8 +1633,35 @@ typedef struct
 	qhandle_t   jetpackFlashModel;
 	qhandle_t   radarModel;
 
+#ifndef UNREALARENA
+	sfxHandle_t repeaterUseSound;
+
+	sfxHandle_t buildableRepairSound;
+	sfxHandle_t buildableRepairedSound;
+
+	qhandle_t   alienEvolvePS;
+	qhandle_t   alienAcidTubePS;
+	qhandle_t   alienBoosterPS;
+
+	sfxHandle_t alienEvolveSound;
+
+	qhandle_t   humanBuildableDamagedPS;
+	qhandle_t   humanBuildableDestroyedPS;
+	qhandle_t   humanBuildableNovaPS;
+	qhandle_t   alienBuildableDamagedPS;
+	qhandle_t   alienBuildableDestroyedPS;
+#endif
+
+#ifdef UNREALARENA
 	qhandle_t   qBleedPS;
 	qhandle_t   uBleedPS;
+#else
+	qhandle_t   alienBleedPS;
+	qhandle_t   humanBleedPS;
+	qhandle_t   alienBuildableBleedPS;
+	qhandle_t   humanBuildableBleedPS;
+	qhandle_t   alienBuildableBurnPS;
+#endif
 
 	qhandle_t   floorFirePS;
 
@@ -1498,6 +1669,10 @@ typedef struct
 
 	sfxHandle_t lCannonWarningSound;
 	sfxHandle_t lCannonWarningSound2;
+
+#ifndef UNREALARENA
+	sfxHandle_t rocketpodLockonSound;
+#endif
 
 	qhandle_t   buildWeaponTimerPie[ 8 ];
 	qhandle_t   healthCross;
@@ -1526,6 +1701,9 @@ typedef struct
 {
 	qhandle_t frameShader;
 	qhandle_t overlayShader;
+#ifndef UNREALARENA
+	qhandle_t noPowerShader;
+#endif
 	qhandle_t markedShader;
 	vec4_t    healthSevereColor;
 	vec4_t    healthHighColor;
@@ -1563,6 +1741,10 @@ typedef struct
 	int      timelimit;
 	int      maxclients;
 	char     mapname[ MAX_QPATH ];
+#ifndef UNREALARENA
+	int      powerReactorRange;
+	int      powerRepeaterRange;
+#endif
 	float    momentumHalfLife; // used for momentum bar (un)lock markers
 	float    unlockableMinTime;  // used for momentum bar (un)lock markers
 
@@ -1605,6 +1787,11 @@ typedef struct
 	int          cursorY;
 	void         *capturedItem;
 	qhandle_t    activeCursor;
+
+#ifndef UNREALARENA
+	buildStat_t  alienBuildStat;
+	buildStat_t  humanBuildStat;
+#endif
 
 	// media
 	cgMedia_t    media;
@@ -1650,8 +1837,13 @@ typedef enum
 	ELEMENT_ALL,
 	ELEMENT_GAME,
 	ELEMENT_LOADING,
-	ELEMENT_Q,
+#ifdef UNREALARENA
 	ELEMENT_U,
+	ELEMENT_Q,
+#else
+	ELEMENT_HUMANS,
+	ELEMENT_ALIENS,
+#endif
 	ELEMENT_DEAD,
 	ELEMENT_BOTH,
 } rocketElementType_t;
@@ -1659,6 +1851,9 @@ typedef enum
 typedef enum
 {
   CG_ALTSHADER_DEFAULT, // must be first
+#ifndef UNREALARENA
+  CG_ALTSHADER_UNPOWERED,
+#endif
   CG_ALTSHADER_DEAD
 } altShader_t;
 
@@ -1670,6 +1865,10 @@ extern  centity_t           cg_entities[ MAX_GENTITIES ];
 
 extern  weaponInfo_t        cg_weapons[ 32 ];
 extern  upgradeInfo_t       cg_upgrades[ 32 ];
+#ifndef UNREALARENA
+extern  classInfo_t         cg_classes[ PCL_NUM_CLASSES ];
+extern  buildableInfo_t     cg_buildables[ BA_NUM_BUILDABLES ];
+#endif
 
 extern  const vec3_t        cg_shaderColors[ SHC_NUM_SHADER_COLORS ];
 
@@ -1682,6 +1881,9 @@ extern  vmCvar_t            cg_runroll;
 extern  vmCvar_t            cg_swingSpeed;
 extern  vmCvar_t            cg_shadows;
 extern  vmCvar_t            cg_playerShadows;
+#ifndef UNREALARENA
+extern  vmCvar_t            cg_buildableShadows;
+#endif
 extern  vmCvar_t            cg_drawTimer;
 extern  vmCvar_t            cg_drawClock;
 extern  vmCvar_t            cg_drawFPS;
@@ -1692,6 +1894,9 @@ extern  vmCvar_t            cg_drawCrosshair;
 extern  vmCvar_t            cg_drawCrosshairHit;
 extern  vmCvar_t            cg_drawCrosshairFriendFoe;
 extern  vmCvar_t            cg_drawCrosshairNames;
+#ifndef UNREALARENA
+extern  vmCvar_t            cg_drawBuildableHealth;
+#endif
 extern  vmCvar_t            cg_drawMinimap;
 extern  vmCvar_t            cg_minimapActive;
 extern  vmCvar_t            cg_crosshairSize;
@@ -1759,6 +1964,9 @@ extern  vmCvar_t            cg_debugTrails;
 extern  vmCvar_t            cg_debugPVS;
 extern  vmCvar_t            cg_disableWarningDialogs;
 extern  vmCvar_t            cg_disableUpgradeDialogs;
+#ifndef UNREALARENA
+extern  vmCvar_t            cg_disableBuildDialogs;
+#endif
 extern  vmCvar_t            cg_disableCommandDialogs;
 extern  vmCvar_t            cg_disableScannerPlane;
 extern  vmCvar_t            cg_tutorial;
@@ -1770,7 +1978,13 @@ extern  vmCvar_t            cg_rangeMarkerSurfaceOpacity;
 extern  vmCvar_t            cg_rangeMarkerLineOpacity;
 extern  vmCvar_t            cg_rangeMarkerLineThickness;
 extern  vmCvar_t            cg_rangeMarkerForBlueprint;
+#ifndef UNREALARENA
+extern  vmCvar_t            cg_rangeMarkerBuildableTypes;
+#endif
 extern  vmCvar_t            cg_rangeMarkerWhenSpectating;
+#ifndef UNREALARENA
+extern  vmCvar_t            cg_buildableRangeMarkerMask;
+#endif
 extern  vmCvar_t            cg_binaryShaderScreenScale;
 
 extern  vmCvar_t            cg_painBlendUpRate;
@@ -1792,8 +2006,13 @@ extern  vmCvar_t            ui_currentClass;
 extern  vmCvar_t            ui_carriage;
 extern  vmCvar_t            ui_dialog;
 extern  vmCvar_t            ui_voteActive;
+#ifdef UNREALARENA
 extern  vmCvar_t            ui_qTeamVoteActive;
 extern  vmCvar_t            ui_uTeamVoteActive;
+#else
+extern  vmCvar_t            ui_alienTeamVoteActive;
+extern  vmCvar_t            ui_humanTeamVoteActive;
+#endif
 extern  vmCvar_t            ui_unlockables;
 
 extern vmCvar_t             cg_debugRandom;
@@ -1811,6 +2030,9 @@ extern vmCvar_t             cg_chatTeamPrefix;
 extern vmCvar_t             cg_animBlend;
 
 extern vmCvar_t             cg_highPolyPlayerModels;
+#ifndef UNREALARENA
+extern vmCvar_t             cg_highPolyBuildableModels;
+#endif
 extern vmCvar_t             cg_highPolyWeaponModels;
 extern vmCvar_t             cg_motionblur;
 extern vmCvar_t             cg_motionblurMinSpeed;
@@ -1849,6 +2071,9 @@ void       CG_BuildSpectatorString();
 bool   CG_FileExists( const char *filename );
 void       CG_RemoveNotifyLine();
 void       CG_AddNotifyText();
+#ifndef UNREALARENA
+void       CG_UpdateBuildableRangeMarkerMask();
+#endif
 void       CG_RegisterGrading( int slot, const char *str );
 
 //
@@ -1936,11 +2161,32 @@ void        CG_Corpse( centity_t *cent );
 void        CG_ResetPlayerEntity( centity_t *cent );
 void        CG_NewClientInfo( int clientNum );
 
+#ifdef UNREALARENA
 void        CG_PrecacheClientInfo( team_t team, const char *model, const char *skin );
+#else
+void        CG_PrecacheClientInfo( class_t class_, const char *model, const char *skin );
+#endif
 sfxHandle_t CG_CustomSound( int clientNum, const char *soundName );
 void        CG_PlayerDisconnect( vec3_t org );
 centity_t   *CG_GetLocation( vec3_t );
 centity_t   *CG_GetPlayerLocation();
+
+#ifndef UNREALARENA
+void        CG_InitClasses();
+
+//
+// cg_buildable.c
+//
+void     CG_GhostBuildable( int buildableInfo );
+void     CG_Buildable( centity_t *cent );
+void     CG_BuildableStatusParse( const char *filename, buildStat_t *bs );
+void     CG_DrawBuildableStatus();
+void     CG_InitBuildables();
+void     CG_HumanBuildableDying( buildable_t buildable, vec3_t origin );
+void     CG_HumanBuildableExplosion( buildable_t buildable, vec3_t origin, vec3_t dir );
+void     CG_AlienBuildableExplosion( vec3_t origin, vec3_t dir );
+bool CG_GetBuildableRangeMarkerProperties( buildable_t bType, rangeMarker_t *rmType, float *range, vec3_t rgb );
+#endif
 
 //
 // cg_animation.c
@@ -2020,7 +2266,11 @@ void CG_HandleMissileHitWall( entityState_t *es, vec3_t origin );
 
 void CG_AddViewWeapon( playerState_t *ps );
 void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent );
+#ifdef UNREALARENA
 void CG_DrawUInventory();
+#else
+void CG_DrawHumanInventory();
+#endif
 void CG_DrawItemSelectText();
 float CG_ChargeProgress();
 
@@ -2216,6 +2466,10 @@ int CG_Rocket_GetDataSourceIndex( const char *dataSource, const char *table );
 void CG_Rocket_FilterDataSource( const char *dataSource, const char *table, const char *filter );
 void CG_Rocket_BuildServerInfo();
 void CG_Rocket_BuildServerList( const char *args );
+#ifndef UNREALARENA
+void CG_Rocket_BuildArmourySellList( const char *table );
+void CG_Rocket_BuildArmouryBuyList( const char *table );
+#endif
 void CG_Rocket_BuildPlayerList( const char *table );
 
 //

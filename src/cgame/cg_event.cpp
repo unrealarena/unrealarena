@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -38,22 +38,41 @@ static const struct {
 	team_t   team;
 } meansOfDeath[] = {
 	// Icon            Envkill Assist? (Team)
-	{ "☠",             false, false, TEAM_U },
-	{ "[shotgun]",     false, true,  TEAM_U },
-	{ "[blaster]",     false, true,  TEAM_U },
-	{ "[painsaw]",     false, true,  TEAM_U },
-	{ "[rifle]",       false, true,  TEAM_U },
-	{ "[chaingun]",    false, true,  TEAM_U },
-	{ "[prifle]",      false, true,  TEAM_U },
-	{ "[mdriver]",     false, true,  TEAM_U },
-	{ "[lasgun]",      false, true,  TEAM_U },
-	{ "[lcannon]",     false, true,  TEAM_U },
-	{ "[lcannon]",     false, true,  TEAM_U }, // splash
-	{ "[flamer]",      false, true,  TEAM_U },
-	{ "[flamer]",      false, true,  TEAM_U }, // splash
-	{ "[flamer]",      false, true,  TEAM_U }, // burn
-	{ "[grenade]",     false, true,  TEAM_U },
-	{ "[firebomb]",    false, true,  TEAM_U },
+#ifdef UNREALARENA
+	{ "☠",             false, false, TEAM_U      },
+	{ "[shotgun]",     false, true,  TEAM_U      },
+	{ "[blaster]",     false, true,  TEAM_U      },
+	{ "[painsaw]",     false, true,  TEAM_U      },
+	{ "[rifle]",       false, true,  TEAM_U      },
+	{ "[chaingun]",    false, true,  TEAM_U      },
+	{ "[prifle]",      false, true,  TEAM_U      },
+	{ "[mdriver]",     false, true,  TEAM_U      },
+	{ "[lasgun]",      false, true,  TEAM_U      },
+	{ "[lcannon]",     false, true,  TEAM_U      },
+	{ "[lcannon]",     false, true,  TEAM_U      }, // splash
+	{ "[flamer]",      false, true,  TEAM_U      },
+	{ "[flamer]",      false, true,  TEAM_U      }, // splash
+	// { "[flamer]",      false, true,  TEAM_U      }, // burn
+	{ "[grenade]",     false, true,  TEAM_U      },
+	{ "[firebomb]",    false, true,  TEAM_U      },
+#else
+	{ "☠",             false, false, TEAM_HUMANS },
+	{ "[shotgun]",     false, true,  TEAM_HUMANS },
+	{ "[blaster]",     false, true,  TEAM_HUMANS },
+	{ "[painsaw]",     false, true,  TEAM_HUMANS },
+	{ "[rifle]",       false, true,  TEAM_HUMANS },
+	{ "[chaingun]",    false, true,  TEAM_HUMANS },
+	{ "[prifle]",      false, true,  TEAM_HUMANS },
+	{ "[mdriver]",     false, true,  TEAM_HUMANS },
+	{ "[lasgun]",      false, true,  TEAM_HUMANS },
+	{ "[lcannon]",     false, true,  TEAM_HUMANS },
+	{ "[lcannon]",     false, true,  TEAM_HUMANS }, // splash
+	{ "[flamer]",      false, true,  TEAM_HUMANS },
+	{ "[flamer]",      false, true,  TEAM_HUMANS }, // splash
+	{ "[flamer]",      false, true,  TEAM_HUMANS }, // burn
+	{ "[grenade]",     false, true,  TEAM_HUMANS },
+	{ "[firebomb]",    false, true,  TEAM_HUMANS },
+#endif
 	{ "crushed",       true,  false, TEAM_NONE   }, // weight (H) // FIXME
 	{ LONGFORM,        true,  false, TEAM_NONE   }, // water
 	{ LONGFORM,        true,  false, TEAM_NONE   }, // slime
@@ -65,26 +84,44 @@ static const struct {
 	{ LONGFORM,        true,  false, TEAM_NONE   }, // target laser - shouldn't happen
 	{ LONGFORM,        true,  false, TEAM_NONE   }, // trigger hurt
 
-	{ "[granger]",     false, true,  TEAM_Q },
-	{ "[dretch]",      false, true,  TEAM_Q },
-	{ "[basilisk]",    false, true,  TEAM_Q },
-	{ "[dragoon]",     false, true,  TEAM_Q },
-	{ "[dragoon]",     false, true,  TEAM_Q }, // pounce
-	{ "[advdragoon]",  false, true,  TEAM_Q },
-	{ "[marauder]",    false, true,  TEAM_Q },
-	{ "[advmarauder]", false, true,  TEAM_Q },
-	{ "[tyrant]",      false, true,  TEAM_Q },
-	{ "[tyrant]",      false, true,  TEAM_Q }, // trample
-	{ "crushed",       false, true,  TEAM_Q }, // weight (A) // FIXME
+#ifndef UNREALARENA
+	{ "[granger]",     false, true,  TEAM_ALIENS },
+	{ "[dretch]",      false, true,  TEAM_ALIENS },
+	{ "[basilisk]",    false, true,  TEAM_ALIENS },
+	{ "[dragoon]",     false, true,  TEAM_ALIENS },
+	{ "[dragoon]",     false, true,  TEAM_ALIENS }, // pounce
+	{ "[advdragoon]",  false, true,  TEAM_ALIENS },
+	{ "[marauder]",    false, true,  TEAM_ALIENS },
+	{ "[advmarauder]", false, true,  TEAM_ALIENS },
+	{ "[tyrant]",      false, true,  TEAM_ALIENS },
+	{ "[tyrant]",      false, true,  TEAM_ALIENS }, // trample
+	{ "crushed",       false, true,  TEAM_ALIENS }, // weight (A) // FIXME
 
-	{ LONGFORM,        true,  false, TEAM_Q }, // Q spawn
-	{ LONGFORM,        true,  false, TEAM_U }, // U spawn
+	{ "[granger]",     false, true,  TEAM_ALIENS }, // granger spit (slowblob)
+	{ "[booster]",     false, true,  TEAM_ALIENS }, // poison
+	{ "[hive]",        true,  true,  TEAM_ALIENS },
+
+	{ LONGFORM,        true,  false, TEAM_HUMANS }, // H spawn
+	{ "[rocketpod]",   true,  true,  TEAM_HUMANS },
+	{ "[turret]",      true,  true,  TEAM_HUMANS },
+	{ "[reactor]",     true,  true,  TEAM_HUMANS },
+
+	{ LONGFORM,        true,  false, TEAM_ALIENS }, // A spawn
+	{ "[acidtube]",    true,  true,  TEAM_ALIENS },
+	{ "[overmind]",    true,  true,  TEAM_ALIENS },
+	{ "",              true,  false, TEAM_NONE },
+	{ "",              true,  false, TEAM_NONE },
+	{ "",              true,  false, TEAM_NONE },
+#endif
 };
 
 static void CG_Obituary( entityState_t *ent )
 {
 	int          mod;
 	int          target, attacker, assistant;
+#ifndef UNREALARENA
+	int          attackerClass = -1;
+#endif
 	const char   *message;
 	const char   *messageAssisted = nullptr;
 	const char   *messageSuicide = nullptr;
@@ -255,6 +292,60 @@ static void CG_Obituary( entityState_t *ent )
 				message = G_( "%s%s ^7was in the wrong place\n" );
 				break;
 
+#ifndef UNREALARENA
+			// Building explosions
+
+			case MOD_HSPAWN:
+				message = G_( "%s%s ^7was caught in the explosion\n" );
+				break;
+
+			case MOD_ASPAWN:
+				message = G_( "%s%s ^7was caught in the acid\n" );
+				break;
+
+			// Attacked by a building
+
+			case MOD_MGTURRET:
+				message = G_( "%s%s ^7was gunned down by a turret\n" );
+				messageAssisted = G_( "%s%s ^7was gunned down by a turret; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_ROCKETPOD:
+				message = G_( "%s%s ^7caught a rocket\n" );
+				messageAssisted = G_( "%s%s ^7caught a rocket; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_ATUBE:
+				message = G_( "%s%s ^7was melted by an acid tube\n" );
+				messageAssisted = G_( "%s%s ^7was melted by an acid tube; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_SPIKER:
+				message = G_( "%s%s ^7was flechetted by a spiker\n" );
+				messageAssisted = G_( "%s%s ^7was flechetted by a spiker; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_OVERMIND:
+				message = G_( "%s%s ^7was whipped by the overmind\n" );
+				messageAssisted = G_( "%s%s ^7was whipped by the overmind; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_REACTOR:
+				message = G_( "%s%s ^7was fried by the reactor\n" );
+				messageAssisted = G_( "%s%s ^7was fried by the reactor; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_SLOWBLOB:
+				message = G_( "%s%s ^7couldn't avoid the granger\n" );
+				messageAssisted = G_( "%s%s ^7couldn't avoid the granger; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_SWARM:
+				message = G_( "%s%s ^7was consumed by the swarm\n" );
+				messageAssisted = G_( "%s%s ^7was consumed by the swarm; %s%s^7 assisted\n" );
+				break;
+#endif
+
 			// Shouldn't happen
 
 			case MOD_TARGET_LASER:
@@ -331,6 +422,14 @@ static void CG_Obituary( entityState_t *ent )
 				messageSuicide = G_( "%s%s ^7was charred to a crisp" );
 				break;
 
+#ifndef UNREALARENA
+			case MOD_BURN:
+				message = G_( "%s%s ^7was burned by %s%s^7's fire\n" );
+				messageAssisted = G_( "%s%s ^7was burned by %s%s^7's fire; %s%s^7 assisted\n" );
+				messageSuicide = G_( "%s%s ^7was burned to death" );
+				break;
+#endif
+
 			case MOD_LCANNON:
 				message = G_( "%s%s ^7was annihilated by %s%s^7's plasma blast\n" );
 				messageAssisted = G_( "%s%s ^7was annihilated by %s%s^7's plasma blast; %s%s^7 assisted\n" );
@@ -354,15 +453,83 @@ static void CG_Obituary( entityState_t *ent )
 				messageSuicide = G_( "%s%s ^7was incinerated" );
 				break;
 
+#ifndef UNREALARENA
+			case MOD_ABUILDER_CLAW:
+				message = G_( "%s%s ^7was gently nibbled by %s%s^7's granger\n" );
+				messageAssisted = G_( "%s%s ^7was gently nibbled by %s%s^7's granger; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_LEVEL0_BITE:
+				message = G_( "%s%s ^7was bitten by %s%s\n" );
+				messageAssisted = G_( "%s%s ^7was bitten by %s%s^7; %s%s^7 assisted\n" );
+				break;
+
+			case MOD_LEVEL1_CLAW:
+				message = G_( "%s%s ^7was sliced by %s%s^7's %s\n" );
+				messageAssisted = G_( "%s%s ^7was sliced by %s%s^7's %s^7; %s%s^7 assisted\n" );
+				attackerClass = PCL_ALIEN_LEVEL1;
+				break;
+
+			case MOD_LEVEL2_CLAW:
+				message = G_( "%s%s ^7was shredded by %s%s^7's %s\n" );
+				messageAssisted = G_( "%s%s ^7was shredded by %s%s^7's %s^7; %s%s^7 assisted\n" );
+				attackerClass = PCL_ALIEN_LEVEL2;
+				break;
+
+			case MOD_LEVEL2_ZAP:
+				message = G_( "%s%s ^7was electrocuted by %s%s^7's %s\n" );
+				messageAssisted = G_( "%s%s ^7was electrocuted by %s%s^7's %s^7; %s%s^7 assisted\n" );
+				attackerClass = PCL_ALIEN_LEVEL2;
+				break;
+
+			case MOD_LEVEL3_CLAW:
+				message = G_( "%s%s ^7was chomped by %s%s^7's %s\n" );
+				messageAssisted = G_( "%s%s ^7was chomped by %s%s^7's %s^7; %s%s^7 assisted\n" );
+				attackerClass = PCL_ALIEN_LEVEL3;
+				break;
+
+			case MOD_LEVEL3_POUNCE:
+				message = G_( "%s%s ^7was pounced upon by %s%s^7's %s\n" );
+				messageAssisted = G_( "%s%s ^7was pounced upon by %s%s^7's %s^7; %s%s^7 assisted\n" );
+				attackerClass = PCL_ALIEN_LEVEL3;
+				break;
+
+			case MOD_LEVEL3_BOUNCEBALL:
+				message = G_( "%s%s ^7was barbed by %s%s^7's %s\n" );
+				messageAssisted = G_( "%s%s ^7was barbed by %s%s^7's %s^7; %s%s^7 assisted\n" );
+				messageSuicide = G_( "%s%s ^7was barbed" );
+				attackerClass = PCL_ALIEN_LEVEL3;
+				break;
+
+			case MOD_LEVEL4_CLAW:
+				message = G_( "%s%s ^7was mauled by %s%s^7's %s\n" );
+				messageAssisted = G_( "%s%s ^7was mauled by %s%s^7's %s^7; %s%s^7 assisted\n" );
+				attackerClass = PCL_ALIEN_LEVEL4;
+				break;
+
+			case MOD_LEVEL4_TRAMPLE:
+				message = G_( "%s%s ^7should have gotten out of the way of %s%s^7's %s\n" );
+				messageAssisted = G_( "%s%s ^7should have gotten out of the way of %s%s^7's %s^7; %s%s^7 assisted\n" );
+				attackerClass = PCL_ALIEN_LEVEL4;
+				break;
+#endif
+
+#ifdef UNREALARENA
 			case MOD_WEIGHT:
+#else
+			case MOD_WEIGHT_H:
+			case MOD_WEIGHT_A:
+#endif
 				message = G_( "%s%s ^7was crushed under %s%s^7's weight\n" );
 				messageAssisted = G_( "%s%s ^7was crushed under %s%s^7's weight; %s%s^7 assisted\n" );
 				break;
 
+#ifndef UNREALARENA
 			case MOD_POISON:
 				message = G_( "%s%s ^7should have used a medkit against %s%s^7's poison\n" );
 				messageAssisted = G_( "%s%s ^7should have used a medkit against %s%s^7's poison; %s%s^7 assisted\n" );
 				break;
+#endif
 
 			case MOD_TELEFRAG:
 				message = G_( "%s%s ^7tried to invade %s%s^7's personal space\n" );
@@ -377,23 +544,47 @@ static void CG_Obituary( entityState_t *ent )
 
 		if ( message )
 		{
+#ifndef UNREALARENA
 			// shouldn't need to do this here, but it avoids
-			char attackerTeamName[ 64 ];
+			char attackerClassName[ 64 ];
 
-			Q_strncpyz( attackerTeamName, _( BG_ClassModelConfig( attackerTeam )->humanName ), sizeof( attackerTeamName ) );
+			if ( attackerClass == -1 )
+			{
+				*attackerClassName = 0;
+			}
+			else
+			{
+				Q_strncpyz( attackerClassName, _( BG_ClassModelConfig( attackerClass )->humanName ), sizeof( attackerClassName ) );
+			}
+#endif
 
-			// Argument order: victim, attacker, [team,] [assistant]. Each has team tag first.
+			// Argument order: victim, attacker, [class,] [assistant]. Each has team tag first.
 			if ( messageSuicide && attacker == target )
 			{
 				CG_Printf( messageSuicide, teamTag[ ci->team ], targetName );
 			}
 			else if ( messageAssisted && assistantInfo )
 			{
-				CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, attackerTeamName, teamTag[ assistantTeam ], assistantName );
+#ifdef UNREALARENA
+				CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, teamTag[ assistantTeam ], assistantName );
+#else
+				if ( attackerClass != -1 )
+				{
+					CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, attackerClassName, teamTag[ assistantTeam ], assistantName );
+				}
+				else
+				{
+					CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, teamTag[ assistantTeam ], assistantName );
+				}
+#endif
 			}
 			else
 			{
-				CG_Printf( message, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, attackerTeamName );
+#ifdef UNREALARENA
+				CG_Printf( message, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, nullptr );
+#else
+				CG_Printf( message, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, attackerClassName );
+#endif
 			}
 
 			if ( attackerTeam == ci->team && attacker == cg.clientNum && attacker != target )
@@ -468,6 +659,15 @@ void CG_OnPlayerWeaponChange()
 	// Change the HUD to match the weapon. Close the old hud first
 	Rocket_ShowHud( ps->weapon );
 
+#ifndef UNREALARENA
+	// Rebuild weapon lists if UI is in focus.
+	if ( trap_Key_GetCatcher() == KEYCATCH_UI && ps->persistant[ PERS_TEAM ] == TEAM_HUMANS )
+	{
+		CG_Rocket_BuildArmourySellList( "default" );
+		CG_Rocket_BuildArmouryBuyList( "default" );
+	}
+#endif
+
 	cg.weaponOffsetsFilter.Reset( );
 
 	cg.predictedPlayerEntity.pe.weapon.animationNumber = -1; //force weapon lerpframe recalculation
@@ -483,6 +683,18 @@ Called on upgrade change
 
 void CG_OnPlayerUpgradeChange()
 {
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+#else
+	playerState_t *ps = &cg.snap->ps;
+
+	// Rebuild weapon lists if UI is in focus.
+	if ( trap_Key_GetCatcher() == KEYCATCH_UI && ps->persistant[ PERS_TEAM ] == TEAM_HUMANS )
+	{
+		CG_Rocket_BuildArmourySellList( "default" );
+		CG_Rocket_BuildArmouryBuyList( "default" );
+	}
+#endif
 }
 
 /*
@@ -533,6 +745,9 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 {
 	entityState_t *es;
 	int           event;
+#ifndef UNREALARENA
+	vec3_t        dir;
+#endif
 	const char    *s;
 	int           clientNum;
 	clientInfo_t  *ci;
@@ -544,7 +759,11 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 	}
 	else
 	{
+#ifdef UNREALARENA
 		steptime = BG_Class( ( team_t ) cg.snap->ps.persistant[ PERS_TEAM ] )->steptime;
+#else
+		steptime = BG_Class( cg.snap->ps.stats[ STAT_CLASS ] )->steptime;
+#endif
 	}
 
 	es = &cent->currentState;
@@ -748,7 +967,48 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 		case EV_JUMP:
 			trap_S_StartSound( nullptr, es->number, CHAN_VOICE, CG_CustomSound( es->number, "*jump1.wav" ) );
+
+#ifndef UNREALARENA
+			if ( BG_ClassHasAbility( cg.predictedPlayerState.stats[ STAT_CLASS ], SCA_WALLJUMPER ) )
+			{
+				vec3_t surfNormal, refNormal = { 0.0f, 0.0f, 1.0f };
+				vec3_t rotAxis;
+
+				if ( clientNum != cg.predictedPlayerState.clientNum )
+				{
+					break;
+				}
+
+				//set surfNormal
+				VectorCopy( cg.predictedPlayerState.grapplePoint, surfNormal );
+
+				//if we are moving from one surface to another smooth the transition
+				if ( !VectorCompare( surfNormal, cg.lastNormal ) && surfNormal[ 2 ] != 1.0f )
+				{
+					CrossProduct( refNormal, surfNormal, rotAxis );
+					VectorNormalize( rotAxis );
+
+					//add the op
+					CG_addSmoothOp( rotAxis, 15.0f, 1.0f );
+				}
+
+				//copy the current normal to the lastNormal
+				VectorCopy( surfNormal, cg.lastNormal );
+			}
+#endif
+
 			break;
+
+#ifndef UNREALARENA
+		case EV_LEV4_TRAMPLE_PREPARE:
+			trap_S_StartSound( nullptr, es->number, CHAN_VOICE, cgs.media.alienL4ChargePrepare );
+			break;
+
+		case EV_LEV4_TRAMPLE_START:
+			//FIXME: stop cgs.media.alienL4ChargePrepare playing here
+			trap_S_StartSound( nullptr, es->number, CHAN_VOICE, cgs.media.alienL4ChargeStart );
+			break;
+#endif
 
 		case EV_TAUNT:
 			if ( !cg_noTaunt.integer )
@@ -829,10 +1089,21 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			CG_PlayerDisconnect( position );
 			break;
 
+#ifndef UNREALARENA
+		case EV_BUILD_CONSTRUCT:
+			break;
+
+		case EV_BUILD_DESTROY:
+			break;
+#endif
+
 		case EV_AMMO_REFILL:
 		case EV_CLIPS_REFILL:
 		case EV_FUEL_REFILL:
+#ifndef UNREALARENA
 			// TODO: Add different sounds for EV_AMMO_REFILL, EV_CLIPS_REFILL, EV_FUEL_REFILL
+			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.repeaterUseSound );
+#endif
 			break;
 
 		case EV_GRENADE_BOUNCE:
@@ -867,6 +1138,22 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 		case EV_SHOTGUN:
 			CG_HandleFireShotgun( es );
 			break;
+
+#ifndef UNREALARENA
+		case EV_HUMAN_BUILDABLE_DYING:
+			CG_HumanBuildableDying( (buildable_t) es->modelindex, position );
+			break;
+
+		case EV_HUMAN_BUILDABLE_EXPLOSION:
+			ByteToDir( es->eventParm, dir );
+			CG_HumanBuildableExplosion( (buildable_t) es->modelindex, position, dir );
+			break;
+
+		case EV_ALIEN_BUILDABLE_EXPLOSION:
+			ByteToDir( es->eventParm, dir );
+			CG_AlienBuildableExplosion( position, dir );
+			break;
+#endif
 
 		case EV_TESLATRAIL:
 			{
@@ -945,6 +1232,167 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			trap_S_StopLoopingSound( es->number );
 			es->loopSound = 0;
 			break;
+
+#ifndef UNREALARENA
+		case EV_BUILD_DELAY:
+			if ( clientNum == cg.predictedPlayerState.clientNum )
+			{
+				trap_S_StartLocalSound( cgs.media.buildableRepairedSound, CHAN_LOCAL_SOUND );
+				cg.lastBuildAttempt = cg.time;
+			}
+
+			break;
+
+		case EV_BUILD_REPAIR:
+			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.buildableRepairSound );
+			break;
+
+		case EV_BUILD_REPAIRED:
+			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.buildableRepairedSound );
+			break;
+
+		case EV_OVERMIND_ATTACK_1:
+		case EV_OVERMIND_ATTACK_2:
+			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+			{
+				trap_S_StartLocalSound( cgs.media.alienOvermindAttack, CHAN_ANNOUNCER );
+				CG_CenterPrint( va( "^%c%s", "31"[ event - EV_OVERMIND_ATTACK_1 ], _( "The Overmind is under attack!" ) ), 200, GIANTCHAR_WIDTH * 4 );
+			}
+
+			break;
+
+		case EV_OVERMIND_DYING:
+			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+			{
+				trap_S_StartLocalSound( cgs.media.alienOvermindDying, CHAN_ANNOUNCER );
+				CG_CenterPrint( _( "^1The Overmind is dying!" ), 200, GIANTCHAR_WIDTH * 4 );
+			}
+
+			break;
+
+		case EV_REACTOR_ATTACK_1:
+		case EV_REACTOR_ATTACK_2:
+			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_HUMANS )
+			{
+				CG_CenterPrint( va( "^%c%s", "31"[ event - EV_REACTOR_ATTACK_1 ], _( "The reactor is under attack!" ) ), 200, GIANTCHAR_WIDTH * 4 );
+			}
+
+			break;
+
+		case EV_REACTOR_DYING:
+			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_HUMANS )
+			{
+				CG_CenterPrint( _( "^1The reactor is about to explode!" ), 200, GIANTCHAR_WIDTH * 4 );
+			}
+
+			break;
+
+		case EV_WARN_ATTACK:
+			// if eventParm is non-zero, this is for humans and there's a nearby reactor or repeater, otherwise it's for aliens
+			if ( es->eventParm >= MAX_CLIENTS && es->eventParm < MAX_GENTITIES )
+			{
+				const char *location;
+				bool    base = cg_entities[ es->eventParm ].currentState.modelindex == BA_H_REACTOR;
+				centity_t  *locent = CG_GetLocation( cg_entities[ es->eventParm ].currentState.origin );
+
+				CG_CenterPrint( base ? _( "Our base is under attack!" ) : _( "A forward base is under attack!" ), 200, GIANTCHAR_WIDTH * 4 );
+
+				if ( locent )
+				{
+					location = CG_ConfigString( CS_LOCATIONS + locent->currentState.generic1 );
+				}
+				else
+				{
+					location = CG_ConfigString( CS_LOCATIONS );
+				}
+
+				if ( location && *location )
+				{
+					Com_Printf( _( "%s Under attack – %s\n" ), base ? "[reactor]" : "[repeater]", location );
+				}
+				else
+				{
+					Com_Printf( _( "%s Under attack\n" ), base ? "[reactor]" : "[repeater]" );
+				}
+			}
+			else // this is for aliens, and the overmind is in range
+			{
+				CG_CenterPrint( _( "Our base is under attack!" ), 200, GIANTCHAR_WIDTH * 4 );
+			}
+
+			break;
+
+		case EV_MGTURRET_SPINUP:
+			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.turretSpinupSound );
+			break;
+
+		case EV_OVERMIND_SPAWNS:
+			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+			{
+				trap_S_StartLocalSound( cgs.media.alienOvermindSpawns, CHAN_ANNOUNCER );
+				CG_CenterPrint( "The Overmind needs spawns!", 200, GIANTCHAR_WIDTH * 4 );
+			}
+
+			break;
+
+		case EV_ALIEN_EVOLVE:
+			trap_S_StartSound( nullptr, es->number, CHAN_BODY, cgs.media.alienEvolveSound );
+			{
+				particleSystem_t *ps = CG_SpawnNewParticleSystem( cgs.media.alienEvolvePS );
+
+				if ( CG_IsParticleSystemValid( &ps ) )
+				{
+					CG_SetAttachmentCent( &ps->attachment, cent );
+					CG_AttachToCent( &ps->attachment );
+				}
+			}
+
+			if ( es->number == cg.clientNum )
+			{
+				CG_ResetPainBlend();
+				cg.spawnTime = cg.time;
+			}
+
+			break;
+
+		case EV_ALIEN_EVOLVE_FAILED:
+			if ( clientNum == cg.predictedPlayerState.clientNum )
+			{
+				//FIXME: change to "negative" sound
+				trap_S_StartLocalSound( cgs.media.buildableRepairedSound, CHAN_LOCAL_SOUND );
+				cg.lastEvolveAttempt = cg.time;
+			}
+
+			break;
+
+		case EV_ALIEN_ACIDTUBE:
+			{
+				particleSystem_t *ps = CG_SpawnNewParticleSystem( cgs.media.alienAcidTubePS );
+
+				if ( CG_IsParticleSystemValid( &ps ) )
+				{
+					CG_SetAttachmentCent( &ps->attachment, cent );
+					ByteToDir( es->eventParm, dir );
+					CG_SetParticleSystemNormal( ps, dir );
+					CG_AttachToCent( &ps->attachment );
+				}
+			}
+			break;
+
+		case EV_ALIEN_BOOSTER:
+			{
+				particleSystem_t *ps = CG_SpawnNewParticleSystem( cgs.media.alienBoosterPS );
+
+				if ( CG_IsParticleSystemValid( &ps ) )
+				{
+					CG_SetAttachmentCent( &ps->attachment, cent );
+					ByteToDir( es->eventParm, dir );
+					CG_SetParticleSystemNormal( ps, dir );
+					CG_AttachToCent( &ps->attachment );
+				}
+			}
+			break;
+#endif
 
 		case EV_MEDKIT_USED:
 			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.medkitUseSound );

@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -24,14 +24,40 @@
 #define __BOT_AI_HEADER
 
 // integer constants given to the behavior tree to use as parameters
+// values E_A_SPAWN to E_H_REPEATER are meant to have the same
+// integer values as the corresponding enum in buildable_t
+// TODO: get rid of dependence on buildable_t
 typedef enum
 {
+#ifdef UNREALARENA
 	E_NONE,
-	E_Q_SPAWN,
-	E_U_SPAWN,
 	E_GOAL,
 	E_ENEMY,
 	E_SELF
+#else
+	E_NONE,
+	E_A_SPAWN,
+	E_A_OVERMIND,
+	E_A_BARRICADE,
+	E_A_ACIDTUBE,
+	E_A_TRAPPER,
+	E_A_BOOSTER,
+	E_A_HIVE,
+	E_A_LEECH,
+	E_H_SPAWN,
+	E_H_MGTURRET,
+	E_H_ROCKETPOD,
+	E_H_ARMOURY,
+	E_H_MEDISTAT,
+	E_H_DRILL,
+	E_H_REACTOR,
+	E_H_REPEATER,
+	E_NUM_BUILDABLES,
+	E_GOAL = E_NUM_BUILDABLES,
+	E_ENEMY,
+	E_DAMAGEDBUILDING,
+	E_SELF
+#endif
 } AIEntity_t;
 
 // all behavior tree nodes must return one of 
@@ -226,9 +252,19 @@ AINodeStatus_t BotActionMoveInDir( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionClassDodge( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionActivateUpgrade( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionDeactivateUpgrade( gentity_t *self, AIGenericNode_t *node );
+#ifndef UNREALARENA
+AINodeStatus_t BotActionEvolveTo( gentity_t *self, AIGenericNode_t *node );
+#endif
 AINodeStatus_t BotActionSay( gentity_t *self, AIGenericNode_t *node );
 
 AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node );
+#ifndef UNREALARENA
+AINodeStatus_t BotActionBuy( gentity_t *self, AIGenericNode_t *node );
+AINodeStatus_t BotActionRepair( gentity_t *self, AIGenericNode_t *node );
+AINodeStatus_t BotActionEvolve ( gentity_t *self, AIGenericNode_t *node );
+AINodeStatus_t BotActionHealH( gentity_t *self, AIGenericNode_t *node );
+AINodeStatus_t BotActionHealA( gentity_t *self, AIGenericNode_t *node );
+#endif
 AINodeStatus_t BotActionHeal( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionFlee( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionRoam( gentity_t *self, AIGenericNode_t *node );

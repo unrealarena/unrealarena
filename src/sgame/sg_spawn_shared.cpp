@@ -187,6 +187,14 @@ shared field spawn functions
 void SP_ConditionFields( gentity_t *self ) {
 	char *buffer;
 
+#ifndef UNREALARENA
+	if ( G_SpawnString( "buildables", "", &buffer ) )
+		BG_ParseCSVBuildableList( buffer, self->conditions.buildables, BA_NUM_BUILDABLES );
+
+	if ( G_SpawnString( "classes", "", &buffer ) )
+		BG_ParseCSVClassList( buffer, self->conditions.classes, PCL_NUM_CLASSES );
+#endif
+
 	if ( G_SpawnString( "equipment", "", &buffer ) )
 		BG_ParseCSVEquipmentList( buffer, self->conditions.weapons, WP_NUM_WEAPONS,
 	                          self->conditions.upgrades, UP_NUM_UPGRADES );

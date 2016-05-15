@@ -179,14 +179,25 @@ static bool BG_VoiceParseTrack( int handle, voiceTrack_t *voiceTrack )
 					voiceTrack->team = 0;
 				}
 
-				if ( !Q_stricmp( token.string, "q" ) )
-				{
-					voiceTrack->team |= 1 << TEAM_Q;
-				}
-				else if ( !Q_stricmp( token.string, "u" ) )
+#ifdef UNREALARENA
+				if ( !Q_stricmp( token.string, "u" ) )
 				{
 					voiceTrack->team |= 1 << TEAM_U;
 				}
+				else if ( !Q_stricmp( token.string, "q" ) )
+				{
+					voiceTrack->team |= 1 << TEAM_Q;
+				}
+#else
+				if ( !Q_stricmp( token.string, "humans" ) )
+				{
+					voiceTrack->team |= 1 << TEAM_HUMANS;
+				}
+				else if ( !Q_stricmp( token.string, "aliens" ) )
+				{
+					voiceTrack->team |= 1 << TEAM_ALIENS;
+				}
+#endif
 				else
 				{
 					break;
@@ -203,6 +214,86 @@ static bool BG_VoiceParseTrack( int handle, voiceTrack_t *voiceTrack )
 
 			continue;
 		}
+#ifndef UNREALARENA
+		else if ( !Q_stricmp( token.string, "class" ) )
+		{
+			bool negate = false;
+
+			foundToken = trap_Parse_ReadToken( handle, &token );
+			found = false;
+
+			while ( foundToken )
+			{
+				classModelConfig_t *model;
+				int                modelno = -1;
+
+				if ( voiceTrack->pClass < 0 )
+				{
+					voiceTrack->pClass = 0;
+				}
+
+				if ( !Q_stricmp( token.string, "all" ) )
+				{
+					modelno = PCL_ALL_CLASSES;
+				}
+				else if ( !Q_stricmp( token.string, "humans" ) )
+				{
+					modelno = PCL_HUMAN_CLASSES;
+				}
+				else if ( !Q_stricmp( token.string, "aliens" ) )
+				{
+					modelno = PCL_ALIEN_CLASSES;
+				}
+				else if ( !Q_stricmp( token.string, "-" ) ) // this must be outside quotation marks
+				{
+					negate = true;
+					modelno = 0;
+				}
+				else
+				{
+					model = BG_ClassModelConfigByName( token.string );
+
+					if ( model != BG_ClassModelConfigByName( nullptr ) )
+					{
+						modelno = 1 << ( model - BG_ClassModelConfig( 0 ) );
+
+						if ( modelno <= 1)
+						{
+							modelno = -1; // match failure
+						}
+					}
+
+				}
+
+				if ( modelno > 0 )
+				{
+					if ( negate )
+					{
+						negate = false;
+						voiceTrack->pClass &= ~modelno;
+					}
+					else
+					{
+						voiceTrack->pClass |= modelno;
+					}
+				}
+				else if ( modelno < 0 )
+				{
+				        break; // possibly the next keyword
+				}
+
+				found = true;
+				foundToken = trap_Parse_ReadToken( handle, &token );
+			}
+
+			if ( !found )
+			{
+				BG_VoiceParseError( handle, "BG_VoiceParseTrack(): missing \"class\" name" );
+			}
+
+			continue;
+		}
+#endif
 		else if ( !Q_stricmp( token.string, "text" ) )
 		{
 			if ( foundText )
@@ -324,6 +415,9 @@ static voiceTrack_t *BG_VoiceParseCommand( int handle )
 		}
 
 		voiceTracks->team = -1;
+#ifndef UNREALARENA
+		voiceTracks->pClass = -1;
+#endif
 		voiceTracks->weapon = -1;
 		voiceTracks->enthusiasm = 0;
 		voiceTracks->text = nullptr;
@@ -481,6 +575,9 @@ void BG_PrintVoices( voice_t *voices, int debugLevel )
 				if ( debugLevel > 2 )
 				{
 					Com_Printf( "    team -> %d\n", voiceTrack->team );
+#ifndef UNREALARENA
+					Com_Printf( "    class -> %d\n", voiceTrack->pClass );
+#endif
 					Com_Printf( "    weapon -> %d\n", voiceTrack->weapon );
 					Com_Printf( "    enthusiasm -> %d\n", voiceTrack->enthusiasm );
 #ifdef BUILD_CGAME
@@ -613,9 +710,15 @@ voiceTrack_t *BG_VoiceTrackByNum( voiceTrack_t *head, int num )
 BG_VoiceTrackFind
 ============
 */
+#ifdef UNREALARENA
 voiceTrack_t *BG_VoiceTrackFind( voiceTrack_t *head, int team,
                                  int,
                                  int enthusiasm, int *trackNum )
+#else
+voiceTrack_t *BG_VoiceTrackFind( voiceTrack_t *head, int team,
+                                 int class_, int,
+                                 int enthusiasm, int *trackNum )
+#endif
 {
 	voiceTrack_t *vt = head;
 	int          highestMatch = 0;
@@ -627,8 +730,14 @@ voiceTrack_t *BG_VoiceTrackFind( voiceTrack_t *head, int team,
 	// find highest enthusiasm without going over
 	while ( vt )
 	{
+#ifdef UNREALARENA
 		if ( ( vt->team >= 0 && !( vt->team  & ( 1 << team ) ) ) ||
 		     vt->enthusiasm > enthusiasm )
+#else
+		if ( ( vt->team >= 0 && !( vt->team  & ( 1 << team ) ) ) ||
+		     ( vt->pClass >= 0 && !( vt->pClass & ( 1 << class_ ) ) ) ||
+		     vt->enthusiasm > enthusiasm )
+#endif
 		{
 			vt = vt->next;
 			continue;
@@ -663,8 +772,14 @@ voiceTrack_t *BG_VoiceTrackFind( voiceTrack_t *head, int team,
 	{
 		j++;
 
+#ifdef UNREALARENA
 		if ( ( vt->team >= 0 && !( vt->team  & ( 1 << team ) ) ) ||
 		     vt->enthusiasm != highestMatch )
+#else
+		if ( ( vt->team >= 0 && !( vt->team  & ( 1 << team ) ) ) ||
+		     ( vt->pClass >= 0 && !( vt->pClass & ( 1 << class_ ) ) ) ||
+		     vt->enthusiasm != highestMatch )
+#endif
 		{
 			vt = vt->next;
 			continue;

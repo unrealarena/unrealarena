@@ -1400,7 +1400,11 @@ static void CG_CalculateWeaponPosition( vec3_t out_origin, vec3_t out_angles )
 	filter.SetWidth( 350 );
 
 	// bobbing
+#ifdef UNREALARENA
 	if( BG_Class( ( team_t ) cg.predictedPlayerState.persistant[ PERS_TEAM ] )->bob )
+#else
+	if( BG_Class( cg.predictedPlayerState.stats[ STAT_CLASS ] )->bob )
+#endif
 	{
 		offsets.bob = Vec3(
 			cg.xyspeed * cg.bobfracsin * 0.005,
@@ -1852,7 +1856,11 @@ void CG_AddViewWeapon( playerState_t *ps )
 			break;
 
 		case 1:
+#ifdef UNREALARENA
 			if ( BG_Weapon( weapon )->team == TEAM_Q )
+#else
+			if ( BG_Weapon( weapon )->team == TEAM_ALIENS )
+#endif
 			{
 				drawGun = false;
 			}
@@ -1878,6 +1886,14 @@ void CG_AddViewWeapon( playerState_t *ps )
 	{
 		return;
 	}
+
+#ifndef UNREALARENA
+	// draw a prospective buildable infront of the player
+	if ( ( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK ) > BA_NONE )
+	{
+		CG_GhostBuildable( ps->stats[ STAT_BUILDABLE ] );
+	}
+#endif
 
 	// no gun if in third person view
 	if ( cg.renderingThirdPerson )
@@ -2028,7 +2044,11 @@ static bool CG_UpgradeSelectable( upgrade_t upgrade )
 CG_DrawItemSelect
 ===================
 */
+#ifdef UNREALARENA
 void CG_DrawUInventory()
+#else
+void CG_DrawHumanInventory()
+#endif
 {
 	int           i;
 	int           items[ 64 ];
@@ -2457,6 +2477,7 @@ static void DrawEntityHitEffect( vec3_t origin, vec3_t normal, int targetNum )
 	{
 		team = cgs.clientinfo[ targetNum ].team;
 
+#ifdef UNREALARENA
 		if ( team == TEAM_Q )
 		{
 			psHandle = cgs.media.qBleedPS;
@@ -2465,11 +2486,40 @@ static void DrawEntityHitEffect( vec3_t origin, vec3_t normal, int targetNum )
 		{
 			psHandle = cgs.media.uBleedPS;
 		}
+#else
+		if ( team == TEAM_ALIENS )
+		{
+			psHandle = cgs.media.alienBleedPS;
+		}
+		else if ( team == TEAM_HUMANS )
+		{
+			psHandle = cgs.media.humanBleedPS;
+		}
+#endif
 		else
 		{
 			return;
 		}
 	}
+#ifndef UNREALARENA
+	else if ( target->currentState.eType == ET_BUILDABLE )
+	{
+		team = BG_Buildable( target->currentState.modelindex )->team;
+
+		if ( team == TEAM_ALIENS )
+		{
+			psHandle = cgs.media.alienBuildableBleedPS;
+		}
+		else if ( team == TEAM_HUMANS )
+		{
+			psHandle = cgs.media.humanBuildableBleedPS;
+		}
+		else
+		{
+			return;
+		}
+	}
+#endif
 	else
 	{
 		return;
@@ -2606,7 +2656,12 @@ static void ShotgunPattern( vec3_t origin, vec3_t origin2, int seed, int attacke
 			dummy.otherEntityNum2 = attackerNum;
 			dummy.torsoAnim       = 0; // Make sure it is not used uninitialized
 
+#ifdef UNREALARENA
 			if ( cg_entities[ tr.entityNum ].currentState.eType == ET_PLAYER )
+#else
+			if ( cg_entities[ tr.entityNum ].currentState.eType == ET_PLAYER ||
+			     cg_entities[ tr.entityNum ].currentState.eType == ET_BUILDABLE )
+#endif
 			{
 				CG_HandleWeaponHitEntity( &dummy, tr.endpos );
 			}
@@ -2730,6 +2785,13 @@ void CG_HandleWeaponHitEntity( entityState_t *es, vec3_t origin )
 	{
 		PlayHitSound( origin, wim->impactFleshSound );
 	}
+#ifndef UNREALARENA
+	else if ( victim->currentState.eType == ET_BUILDABLE &&
+			  BG_Buildable( victim->currentState.modelindex )->team == TEAM_ALIENS )
+	{
+		PlayHitSound( origin, wim->impactFleshSound );
+	}
+#endif
 	else
 	{
 		PlayHitSound( origin, wim->impactSound );
@@ -2816,6 +2878,13 @@ void CG_HandleMissileHitEntity( entityState_t *es, vec3_t origin )
 	{
 		PlayHitSound( origin, ma->impactFleshSound );
 	}
+#ifndef UNREALARENA
+	else if ( victim->currentState.eType == ET_BUILDABLE &&
+			  BG_Buildable( victim->currentState.modelindex )->team == TEAM_ALIENS )
+	{
+		PlayHitSound( origin, ma->impactFleshSound );
+	}
+#endif
 	else
 	{
 		PlayHitSound( origin, ma->impactSound );

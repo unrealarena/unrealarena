@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -39,8 +39,15 @@ static bind_t bindings[] =
 	{ "+attack",        N_( "Primary Attack" ),                        { -1, -1 } },
 	{ "+attack2",       N_( "Secondary Attack" ),                      { -1, -1 } },
 	{ "reload",         N_( "Reload" ),                                { -1, -1 } },
+#ifndef UNREALARENA
+	{ "buy ammo",       N_( "Buy Ammo" ),                              { -1, -1 } },
+#endif
 	{ "itemact medkit", N_( "Use Medkit" ),                            { -1, -1 } },
 	{ "+activate",      N_( "Use Structure/Evolve" ),                  { -1, -1 } },
+#ifndef UNREALARENA
+	{ "modcase alt \"/deconstruct marked\" /deconstruct",
+                            N_( "Deconstruct Structure" ),                 { -1, -1 } },
+#endif
 	{ "weapprev",       N_( "Previous Upgrade" ),                      { -1, -1 } },
 	{ "weapnext",       N_( "Next Upgrade" ),                          { -1, -1 } },
 	{ "toggleconsole",  N_( "Toggle Console" ),                        { -1, -1 } },
@@ -127,18 +134,152 @@ static const char *CG_KeyNameForCommand( const char *command )
 
 #define MAX_TUTORIAL_TEXT 4096
 
+#ifndef UNREALARENA
 /*
 ===============
-CG_QText
+CG_BuildableInRange
 ===============
 */
+static entityState_t *CG_BuildableInRange( playerState_t *ps, float *healthFraction )
+{
+	vec3_t        view, point;
+	trace_t       trace;
+	entityState_t *es;
+	int           health;
+
+	AngleVectors( cg.refdefViewAngles, view, nullptr, nullptr );
+	VectorMA( cg.refdef.vieworg, 64, view, point );
+	CG_Trace( &trace, cg.refdef.vieworg, nullptr, nullptr, point, ps->clientNum, MASK_SHOT, 0 );
+
+	es = &cg_entities[ trace.entityNum ].currentState;
+
+	if ( healthFraction )
+	{
+		health = es->generic1;
+		*healthFraction = ( float ) health / BG_Buildable( es->modelindex )->health;
+	}
+
+	if ( es->eType == ET_BUILDABLE &&
+	     ps->persistant[ PERS_TEAM ] == BG_Buildable( es->modelindex )->team )
+	{
+		return es;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+/*
+===============
+CG_BuilderText
+===============
+*/
+static void CG_BuilderText( char *text, playerState_t *ps )
+{
+	buildable_t   buildable = (buildable_t) ( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
+	entityState_t *es;
+
+	if ( buildable > BA_NONE )
+	{
+		const char *item = _( BG_Buildable( buildable )->humanName );
+		Q_strcat( text, MAX_TUTORIAL_TEXT,
+		          va( _( "Press %s to place the %s\n"),
+		              CG_KeyNameForCommand( "+attack" ), item ) );
+		Q_strcat( text, MAX_TUTORIAL_TEXT,
+		          va( _( "Press %s to cancel placing the %s\n" ),
+		              CG_KeyNameForCommand( "+attack2" ), item ) );
+	}
+	else
+	{
+		Q_strcat( text, MAX_TUTORIAL_TEXT,
+		          va( _( "Press %s to build a structure\n" ),
+		              CG_KeyNameForCommand( "+attack" ) ) );
+	}
+
+	if ( ( es = CG_BuildableInRange( ps, nullptr ) ) )
+	{
+		const char *key = CG_KeyNameForCommand( "modcase alt \"/deconstruct marked\" /deconstruct" );
+
+		if ( es->eFlags & EF_B_MARKED )
+		{
+			Q_strcat( text, MAX_TUTORIAL_TEXT,
+					  va( _( "Press %s to unmark this structure for replacement\n" ), key ) );
+		}
+		else
+		{
+			Q_strcat( text, MAX_TUTORIAL_TEXT,
+					  va( _( "Press %s to mark this structure for replacement\n" ), key ) );
+		}
+	}
+}
+
+/*
+===============
+CG_AlienBuilderText
+===============
+*/
+static void CG_AlienBuilderText( char *text, playerState_t *ps )
+{
+	CG_BuilderText( text, ps );
+
+	if ( ( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK ) == BA_NONE )
+	{
+		Q_strcat( text, MAX_TUTORIAL_TEXT,
+		          va( _( "Press %s to swipe\n" ),
+		              CG_KeyNameForCommand( "+attack2" ) ) );
+	}
+
+	if ( ps->stats[ STAT_CLASS ] == PCL_ALIEN_BUILDER0_UPG )
+	{
+		Q_strcat( text, MAX_TUTORIAL_TEXT,
+		          va( _( "Press %s to launch a projectile\n" ),
+		              CG_KeyNameForCommand( "+useitem" ) ) );
+
+		Q_strcat( text, MAX_TUTORIAL_TEXT,
+		          va( _( "Press %s to walk on walls\n" ),
+		              CG_KeyNameForCommand( "+movedown" ) ) );
+	}
+}
+#endif
+
+/*
+===============
+CG_AlienLevel0Text
+===============
+*/
+#ifdef UNREALARENA
 static void CG_QText( char *text, playerState_t *ps )
+#else
+static void CG_AlienLevel0Text( char *text, playerState_t *ps )
+#endif
 {
 	Q_UNUSED(ps);
 
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+#else
 	Q_strcat( text, MAX_TUTORIAL_TEXT,
 	          _( "Touch humans to damage them\n"
 	             "Aim at their heads to cause more damage\n" ) );
+
+	Q_strcat( text, MAX_TUTORIAL_TEXT,
+	          va( _( "Press %s to walk on walls\n" ),
+	              CG_KeyNameForCommand( "+movedown" ) ) );
+#endif
+}
+
+#ifndef UNREALARENA
+/*
+===============
+CG_AlienLevel1Text
+===============
+*/
+static void CG_AlienLevel1Text( char *text )
+{
+	Q_strcat( text, MAX_TUTORIAL_TEXT,
+	          va( _( "Press %s to swipe\n" ),
+	              CG_KeyNameForCommand( "+attack" ) ) );
 
 	Q_strcat( text, MAX_TUTORIAL_TEXT,
 	          va( _( "Press %s to walk on walls\n" ),
@@ -147,10 +288,89 @@ static void CG_QText( char *text, playerState_t *ps )
 
 /*
 ===============
-CG_UText
+CG_AlienLevel2Text
 ===============
 */
+static void CG_AlienLevel2Text( char *text, playerState_t *ps )
+{
+	Q_strcat( text, MAX_TUTORIAL_TEXT,
+	          va( _( "Press %s to bite\n" ),
+	              CG_KeyNameForCommand( "+attack" ) ) );
+
+	if ( ps->stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL2_UPG )
+	{
+		Q_strcat( text, MAX_TUTORIAL_TEXT,
+		          va( _( "Press %s to invoke an electrical attack\n" ),
+		              CG_KeyNameForCommand( "+attack2" ) ) );
+	}
+
+	Q_strcat( text, MAX_TUTORIAL_TEXT,
+	          va( _( "Hold down %s then touch a wall to wall jump\n" ),
+	              CG_KeyNameForCommand( "+moveup" ) ) );
+}
+
+/*
+===============
+CG_AlienLevel3Text
+===============
+*/
+static void CG_AlienLevel3Text( char *text, playerState_t *ps )
+{
+	Q_strcat( text, MAX_TUTORIAL_TEXT,
+	          va( _( "Press %s to bite\n" ),
+	              CG_KeyNameForCommand( "+attack" ) ) );
+
+	if ( ps->stats[ STAT_CLASS ] == PCL_ALIEN_LEVEL3_UPG )
+	{
+		Q_strcat( text, MAX_TUTORIAL_TEXT,
+		          va( _( "Press %s to launch a projectile\n" ),
+		              CG_KeyNameForCommand( "+useitem" ) ) );
+	}
+
+	Q_strcat( text, MAX_TUTORIAL_TEXT,
+	          va( _( "Hold down and release %s to pounce\n" ),
+	              CG_KeyNameForCommand( "+attack2" ) ) );
+}
+
+/*
+===============
+CG_AlienLevel4Text
+===============
+*/
+static void CG_AlienLevel4Text( char *text, playerState_t *ps )
+{
+	Q_UNUSED(ps);
+
+	Q_strcat( text, MAX_TUTORIAL_TEXT,
+	          va( _( "Press %s to swipe\n" ),
+	              CG_KeyNameForCommand( "+attack" ) ) );
+
+	Q_strcat( text, MAX_TUTORIAL_TEXT,
+	          va( _( "Hold down and release %s while moving forwards to trample\n" ),
+	              CG_KeyNameForCommand( "+attack2" ) ) );
+}
+
+/*
+===============
+CG_HumanCkitText
+===============
+*/
+static void CG_HumanCkitText( char *text, playerState_t *ps )
+{
+	CG_BuilderText( text, ps );
+}
+#endif
+
+/*
+===============
+CG_HumanText
+===============
+*/
+#ifdef UNREALARENA
 static void CG_UText( char *text, playerState_t *ps )
+#else
+static void CG_HumanText( char *text, playerState_t *ps )
+#endif
 {
 	const char *name;
 	upgrade_t upgrade = UP_NONE;
@@ -168,6 +388,31 @@ static void CG_UText( char *text, playerState_t *ps )
 	if ( !ps->ammo && !ps->clips && !BG_Weapon( ps->weapon )->infiniteAmmo )
 	{
 		//no ammo
+#ifdef UNREALARENA
+		// [TODO] UNIMPLEMENTED
+#else
+		switch ( ps->weapon )
+		{
+			case WP_MACHINEGUN:
+			case WP_CHAINGUN:
+			case WP_SHOTGUN:
+			case WP_FLAMER:
+				Q_strcat( text, MAX_TUTORIAL_TEXT,
+				          _( "Find an Armoury for more ammo\n" ) );
+				break;
+
+			case WP_LAS_GUN:
+			case WP_PULSE_RIFLE:
+			case WP_MASS_DRIVER:
+			case WP_LUCIFER_CANNON:
+				Q_strcat( text, MAX_TUTORIAL_TEXT,
+				          _( "Find an Armoury, Reactor, or Repeater for more ammo\n" ) );
+				break;
+
+			default:
+				break;
+		}
+#endif
 	}
 	else
 	{
@@ -216,6 +461,9 @@ static void CG_UText( char *text, playerState_t *ps )
 				break;
 
 			case WP_HBUILD:
+#ifndef UNREALARENA
+				CG_HumanCkitText( text, ps );
+#endif
 				break;
 
 			default:
@@ -241,6 +489,28 @@ static void CG_UText( char *text, playerState_t *ps )
 		              _( BG_Upgrade( UP_MEDKIT )->humanName ) ) );
 	}
 
+#ifndef UNREALARENA
+	switch ( cg.nearUsableBuildable )
+	{
+		case BA_H_ARMOURY:
+			Q_strcat( text, MAX_TUTORIAL_TEXT,
+			          va( _( "Press %s to buy equipment upgrades at the %s\n" ),
+			              CG_KeyNameForCommand( "+activate" ),
+			              _( BG_Buildable( cg.nearUsableBuildable )->humanName ) ) );
+			break;
+
+		case BA_NONE:
+			break;
+
+		default:
+			Q_strcat( text, MAX_TUTORIAL_TEXT,
+			          va( _( "Press %s to use the %s\n" ),
+			              CG_KeyNameForCommand( "+activate" ),
+			              _( BG_Buildable( cg.nearUsableBuildable )->humanName ) ) );
+			break;
+	}
+#endif
+
 	Q_strcat( text, MAX_TUTORIAL_TEXT,
 	          va( _( "Press %s and any direction to sprint\n" ),
 	              CG_KeyNameForCommand( "+sprint" ) ) );
@@ -263,9 +533,24 @@ static void CG_SpectatorText( char *text, playerState_t *ps )
 {
 	if ( cgs.clientinfo[ cg.clientNum ].team != TEAM_NONE )
 	{
+#ifdef UNREALARENA
 		Q_strcat( text, MAX_TUTORIAL_TEXT,
 		          va( _( "Press %s to spawn\n" ),
-					  CG_KeyNameForCommand( "+attack" ) ) );
+		              CG_KeyNameForCommand( "+attack" ) ) );
+#else
+		if ( ps->pm_flags & PMF_QUEUED )
+		{
+			Q_strcat( text, MAX_TUTORIAL_TEXT,
+			          va( _( "Press %s to leave spawn queue\n" ),
+			              CG_KeyNameForCommand( "+attack" ) ) );
+		}
+		else
+		{
+			Q_strcat( text, MAX_TUTORIAL_TEXT,
+			          va( _( "Press %s to spawn\n" ),
+			              CG_KeyNameForCommand( "+attack" ) ) );
+		}
+#endif
 	}
 	else
 	{
@@ -337,6 +622,7 @@ const char *CG_TutorialText()
 		}
 		else if ( ps->stats[ STAT_HEALTH ] > 0 )
 		{
+#ifdef UNREALARENA
 			switch ( ps->persistant[ PERS_TEAM ] )
 			{
 				case TEAM_Q:
@@ -350,6 +636,57 @@ const char *CG_TutorialText()
 				default:
 					break;
 			}
+#else
+			switch ( ps->stats[ STAT_CLASS ] )
+			{
+				case PCL_ALIEN_BUILDER0:
+				case PCL_ALIEN_BUILDER0_UPG:
+					CG_AlienBuilderText( text, ps );
+					break;
+
+				case PCL_ALIEN_LEVEL0:
+					CG_AlienLevel0Text( text, ps );
+					break;
+
+				case PCL_ALIEN_LEVEL1:
+					CG_AlienLevel1Text( text );
+					break;
+
+				case PCL_ALIEN_LEVEL2:
+				case PCL_ALIEN_LEVEL2_UPG:
+					CG_AlienLevel2Text( text, ps );
+					break;
+
+				case PCL_ALIEN_LEVEL3:
+				case PCL_ALIEN_LEVEL3_UPG:
+					CG_AlienLevel3Text( text, ps );
+					break;
+
+				case PCL_ALIEN_LEVEL4:
+					CG_AlienLevel4Text( text, ps );
+					break;
+
+				case PCL_HUMAN_NAKED:
+				case PCL_HUMAN_LIGHT:
+				case PCL_HUMAN_MEDIUM:
+				case PCL_HUMAN_BSUIT:
+					CG_HumanText( text, ps );
+					break;
+
+				default:
+					break;
+			}
+
+			if ( ps->persistant[ PERS_TEAM ] == TEAM_ALIENS )
+			{
+				if ( BG_AlienCanEvolve( ps->stats[ STAT_CLASS ], ps->persistant[ PERS_CREDIT ] ) )
+				{
+					Q_strcat( text, MAX_TUTORIAL_TEXT,
+					          va( _( "Press %s to evolve\n" ),
+					              CG_KeyNameForCommand( "+activate" ) ) );
+				}
+			}
+#endif
 		}
 	}
 	else if ( !cg.demoPlayback )

@@ -157,10 +157,26 @@ botEntityAndDistance_t AIEntityToGentity( gentity_t *self, AIEntity_t e )
 	static const botEntityAndDistance_t nullEntity = { nullptr, HUGE_QFLT };
 	botEntityAndDistance_t              ret = nullEntity;
 
+#ifndef UNREALARENA
+	if ( e > E_NONE && e < E_NUM_BUILDABLES )
+	{
+		return self->botMind->closestBuildings[ e ];
+	}
+#endif
+#ifdef UNREALARENA
 	if ( e == E_ENEMY )
+#else
+	else if ( e == E_ENEMY )
+#endif
 	{
 		return self->botMind->bestEnemy;
 	}
+#ifndef UNREALARENA
+	else if ( e == E_DAMAGEDBUILDING )
+	{
+		return self->botMind->closestDamagedBuilding;
+	}
+#endif
 	else if ( e == E_GOAL )
 	{
 		ret.ent = self->botMind->goal.ent;
@@ -512,7 +528,11 @@ to the rest of the behavior tree
 
 AINodeStatus_t BotActionFireWeapon( gentity_t *self, AIGenericNode_t* ) 
 {
+#ifdef UNREALARENA
 	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && self->client->pers.team == TEAM_U )
+#else
+	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && self->client->pers.team == TEAM_HUMANS )
+#endif
 	{
 		G_ForceWeaponChange( self, WP_BLASTER );
 	}
@@ -625,6 +645,26 @@ AINodeStatus_t BotActionChangeGoal( gentity_t *self, AIGenericNode_t *node )
 	return STATUS_SUCCESS;
 }
 
+#ifndef UNREALARENA
+AINodeStatus_t BotActionEvolveTo( gentity_t *self, AIGenericNode_t *node )
+{
+	AIActionNode_t *action = ( AIActionNode_t * ) node;
+	class_t c = ( class_t )  AIUnBoxInt( action->params[ 0 ] );
+
+	if ( self->client->ps.stats[ STAT_CLASS ] == c )
+	{
+		return STATUS_SUCCESS;
+	}
+
+	if ( BotEvolveToClass( self, c ) )
+	{
+		return STATUS_SUCCESS;
+	}
+
+	return STATUS_FAILURE;
+}
+#endif
+
 AINodeStatus_t BotActionSay( gentity_t *self, AIGenericNode_t *node )
 {
 	AIActionNode_t *action = ( AIActionNode_t * ) node;
@@ -666,7 +706,11 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 		return STATUS_FAILURE;
 	}
 
+#ifdef UNREALARENA
 	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && myTeam == TEAM_U )
+#else
+	if ( WeaponIsEmpty( BG_GetPlayerWeapon( &self->client->ps ), &self->client->ps ) && myTeam == TEAM_HUMANS )
+#endif
 	{
 		G_ForceWeaponChange( self, WP_BLASTER );
 	}
@@ -675,6 +719,14 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 	{
 		G_ForceWeaponChange( self, WP_BLASTER );
 	}
+
+#ifndef UNREALARENA
+	//aliens have radar so they will always 'see' the enemy if they are in radar range
+	if ( myTeam == TEAM_ALIENS && DistanceToGoalSquared( self ) <= Square( ALIENSENSE_RANGE ) )
+	{
+		self->botMind->enemyLastSeen = level.time;
+	}
+#endif
 
 	if ( !BotTargetIsVisible( self, self->botMind->goal, CONTENTS_SOLID ) )
 	{
@@ -701,7 +753,11 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 		bool inAttackRange = BotTargetInAttackRange( self, self->botMind->goal );
 		self->botMind->enemyLastSeen = level.time;
 
+#ifdef UNREALARENA
 		if ( ( inAttackRange && myTeam == TEAM_U ) || self->botMind->nav.directPathToGoal )
+#else
+		if ( ( inAttackRange && myTeam == TEAM_HUMANS ) || self->botMind->nav.directPathToGoal )
+#endif
 		{
 			BotAimAtEnemy( self );
 
@@ -712,15 +768,54 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 				BotFireWeaponAI( self );
 			}
 
-			if ( myTeam == TEAM_Q )
+#ifdef UNREALARENA
+			if ( myTeam == TEAM_U )
 			{
-				BotClassMovement( self, inAttackRange );
-			}
-			else if ( myTeam == TEAM_U )
-			{
+				// [TODO] UNIMPLEMENTED
 				BotStandStill( self );
 				BotSprint( self, true );
 			}
+			else if ( myTeam == TEAM_Q )
+			{
+				BotClassMovement( self, inAttackRange );
+			}
+#else
+			if ( myTeam == TEAM_HUMANS )
+			{
+				if ( self->botMind->botSkill.level >= 3 && DistanceToGoalSquared( self ) < Square( MAX_HUMAN_DANCE_DIST )
+				        && ( DistanceToGoalSquared( self ) > Square( MIN_HUMAN_DANCE_DIST ) || self->botMind->botSkill.level < 5 )
+				        && self->client->ps.weapon != WP_PAIN_SAW )
+				{
+					BotMoveInDir( self, MOVE_BACKWARD );
+				}
+				else if ( DistanceToGoalSquared( self ) <= Square( MIN_HUMAN_DANCE_DIST ) ) //we wont hit this if skill < 5
+				{
+					//we will be moving toward enemy, strafe too
+					//the result: we go around the enemy
+					BotAlternateStrafe( self );
+				}
+				else if ( DistanceToGoalSquared( self ) >= Square( MAX_HUMAN_DANCE_DIST ) && self->client->ps.weapon != WP_PAIN_SAW )
+				{
+					if ( DistanceToGoalSquared( self ) - Square( MAX_HUMAN_DANCE_DIST ) < 100 )
+					{
+						BotStandStill( self );
+					}
+
+					BotStrafeDodge( self );
+				}
+
+				if ( inAttackRange && BotGetTargetType( self->botMind->goal ) == ET_BUILDABLE )
+				{
+					BotStandStill( self );
+				}
+
+				BotSprint( self, true );
+			}
+			else if ( myTeam == TEAM_ALIENS )
+			{
+				BotClassMovement( self, inAttackRange );
+			}
+#endif
 		}
 		else
 		{
@@ -912,5 +1007,408 @@ AINodeStatus_t BotActionRush( gentity_t *self, AIGenericNode_t *node )
 
 AINodeStatus_t BotActionHeal( gentity_t *self, AIGenericNode_t *node )
 {
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+	return STATUS_RUNNING;
+#else
+	if ( self->client->pers.team == TEAM_HUMANS )
+	{
+		return BotActionHealH( self, node );
+	}
+	else
+	{
+		return BotActionHealA( self, node );
+	}
+#endif
+}
+
+#ifndef UNREALARENA
+/*
+	alien specific actions
+*/
+AINodeStatus_t BotActionEvolve ( gentity_t *self, AIGenericNode_t* )
+{
+	AINodeStatus_t status = STATUS_FAILURE;
+	if ( !g_bot_evolve.integer )
+	{
+		return status;
+	}
+
+	if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL4 ) && g_bot_level4.integer )
+	{
+		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL4 ) )
+		{
+			status = STATUS_SUCCESS;
+		}
+	}
+	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL3_UPG ) && g_bot_level3upg.integer )
+	{
+		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL3_UPG ) )
+		{
+			status = STATUS_SUCCESS;
+		}
+	}
+	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL3 ) &&
+	          ( !BG_ClassUnlocked( PCL_ALIEN_LEVEL3_UPG ) ||!g_bot_level2upg.integer ||
+	            !g_bot_level3upg.integer ) && g_bot_level3.integer )
+	{
+		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL3 ) )
+		{
+			status = STATUS_SUCCESS;
+		}
+	}
+	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL2_UPG ) && g_bot_level2upg.integer )
+	{
+		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL2_UPG ) )
+		{
+			status = STATUS_SUCCESS;
+		}
+	}
+	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL2 ) && g_bot_level2.integer )
+	{
+		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL2 ) )
+		{
+			status = STATUS_SUCCESS;
+		}
+	}
+	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL1 ) && g_bot_level1.integer )
+	{
+		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL1 ) )
+		{
+			status = STATUS_SUCCESS;
+		}
+	}
+	else if ( BotCanEvolveToClass( self, PCL_ALIEN_LEVEL0 ) )
+	{
+		if ( BotEvolveToClass( self, PCL_ALIEN_LEVEL0 ) )
+		{
+			status = STATUS_SUCCESS;
+		}
+	}
+
+	return status;
+}
+
+AINodeStatus_t BotActionHealA( gentity_t *self, AIGenericNode_t *node )
+{
+	const int maxHealth = BG_Class( ( class_t )self->client->ps.stats[STAT_CLASS] )->health;
+	gentity_t *healTarget = nullptr;
+
+	if ( self->botMind->closestBuildings[BA_A_BOOSTER].ent )
+	{
+		healTarget = self->botMind->closestBuildings[BA_A_BOOSTER].ent;
+	}
+	else if ( self->botMind->closestBuildings[BA_A_OVERMIND].ent )
+	{
+		healTarget = self->botMind->closestBuildings[BA_A_OVERMIND].ent;
+	}
+	else if ( self->botMind->closestBuildings[BA_A_SPAWN].ent )
+	{
+		healTarget = self->botMind->closestBuildings[BA_A_SPAWN].ent;
+	}
+
+	if ( !healTarget )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( self->client->pers.team != TEAM_ALIENS )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( self->botMind->currentNode != node )
+	{
+		// already fully healed
+		if ( maxHealth == self->client->ps.stats[ STAT_HEALTH ] )
+		{
+			return STATUS_FAILURE;
+		}
+
+		if ( !BotChangeGoalEntity( self, healTarget ) )
+		{
+			return STATUS_FAILURE;
+		}
+
+		self->botMind->currentNode = node;
+	}
+
+	//we are fully healed now
+	if ( maxHealth == self->client->ps.stats[STAT_HEALTH] )
+	{
+		return STATUS_SUCCESS;
+	}
+
+	if ( !BotTargetIsEntity( self->botMind->goal ) )
+	{
+		return STATUS_FAILURE;
+	}
+
+	//target has died, signal goal is unusable
+	if ( self->botMind->goal.ent->health <= 0 )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( !GoalInRange( self, 100 ) )
+	{
+		BotMoveToGoal( self );
+	}
 	return STATUS_RUNNING;
 }
+
+/*
+	human specific actions
+*/
+AINodeStatus_t BotActionHealH( gentity_t *self, AIGenericNode_t *node )
+{
+	vec3_t targetPos;
+	vec3_t myPos;
+	bool fullyHealed = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->health <= self->client->ps.stats[ STAT_HEALTH ] &&
+	                       BG_InventoryContainsUpgrade( UP_MEDKIT, self->client->ps.stats );
+
+	if ( self->client->pers.team != TEAM_HUMANS )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( self->botMind->currentNode != node )
+	{
+		if ( fullyHealed )
+		{
+			return STATUS_FAILURE;
+		}
+
+		if ( !BotChangeGoalEntity( self, self->botMind->closestBuildings[ BA_H_MEDISTAT ].ent ) )
+		{
+			return STATUS_FAILURE;
+		}
+		self->botMind->currentNode = node;
+	}
+
+	if ( fullyHealed )
+	{
+		return STATUS_SUCCESS;
+	}
+
+	//safety check
+	if ( !BotTargetIsEntity( self->botMind->goal ) )
+	{
+		return STATUS_FAILURE;
+	}
+
+	//the medi has died so signal that the goal is unusable
+	if ( self->botMind->goal.ent->health <= 0 )
+	{
+		return STATUS_FAILURE;
+	}
+
+	//this medi is no longer powered so signal that the goal is unusable
+	if ( !self->botMind->goal.ent->powered )
+	{
+		return STATUS_FAILURE;
+	}
+
+	BotGetTargetPos( self->botMind->goal, targetPos );
+	VectorCopy( self->s.origin, myPos );
+	targetPos[2] += BG_BuildableModelConfig( BA_H_MEDISTAT )->maxs[2];
+	myPos[2] += self->r.mins[2]; //mins is negative
+
+	//keep moving to the medi until we are on top of it
+	if ( DistanceSquared( myPos, targetPos ) > Square( BG_BuildableModelConfig( BA_H_MEDISTAT )->mins[1] ) )
+	{
+		BotMoveToGoal( self );
+	}
+	return STATUS_RUNNING;
+}
+AINodeStatus_t BotActionRepair( gentity_t *self, AIGenericNode_t *node )
+{
+	vec3_t forward;
+	vec3_t targetPos;
+	vec3_t selfPos;
+
+	if ( node != self->botMind->currentNode )
+	{
+		if ( !BotChangeGoalEntity( self, self->botMind->closestDamagedBuilding.ent ) )
+		{
+			return STATUS_FAILURE;
+		}
+		self->botMind->currentNode = node;
+	}
+
+	if ( !BotTargetIsEntity( self->botMind->goal ) )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( self->botMind->goal.ent->health <= 0 )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( self->botMind->goal.ent->health >= BG_Buildable( ( buildable_t )self->botMind->goal.ent->s.modelindex )->health )
+	{
+		return STATUS_SUCCESS;
+	}
+
+	if ( BG_GetPlayerWeapon( &self->client->ps ) != WP_HBUILD )
+	{
+		G_ForceWeaponChange( self, WP_HBUILD );
+	}
+
+	AngleVectors( self->client->ps.viewangles, forward, nullptr, nullptr );
+	BotGetTargetPos( self->botMind->goal, targetPos );
+	VectorMA( self->s.origin, self->r.maxs[1], forward, selfPos );
+
+	//move to the damaged building until we are in range
+	if ( !BotTargetIsVisible( self, self->botMind->goal, MASK_SHOT ) || DistanceToGoalSquared( self ) > Square( 100 ) )
+	{
+		BotMoveToGoal( self );
+	}
+	else
+	{
+		//aim at the buildable
+		BotSlowAim( self, targetPos, 0.5 );
+		BotAimAtLocation( self, targetPos );
+		// we automatically heal a building if close enough and aiming at it
+	}
+	return STATUS_RUNNING;
+}
+AINodeStatus_t BotActionBuy( gentity_t *self, AIGenericNode_t *node )
+{
+	AIActionNode_t *buy = ( AIActionNode_t * ) node;
+	weapon_t  weapon;
+	upgrade_t upgrades[4];
+	int numUpgrades;
+	int i;
+
+	if ( buy->nparams == 0 )
+	{
+		// equip action
+		BotGetDesiredBuy( self, &weapon, upgrades, &numUpgrades );
+	}
+	else
+	{
+		// first parameter should always be a weapon
+		weapon = ( weapon_t ) AIUnBoxInt( buy->params[ 0 ] );
+
+		if ( weapon < WP_NONE || weapon >= WP_NUM_WEAPONS )
+		{
+			BotDPrintf( S_COLOR_YELLOW "WARNING: parameter 1 to action buy out of range\n" );
+			weapon = WP_NONE;
+		}
+
+		numUpgrades = 0;
+
+		// other parameters are always upgrades
+		for ( i = 1; i < buy->nparams; i++ )
+		{
+			upgrades[ numUpgrades ] = ( upgrade_t ) AIUnBoxInt( buy->params[ i ] );
+
+			if ( upgrades[ numUpgrades ] <= UP_NONE || upgrades[ numUpgrades ] >= UP_NUM_UPGRADES )
+			{
+				BotDPrintf( S_COLOR_YELLOW "WARNING: parameter %d to action buy out of range\n", i + 1 );
+				continue;
+			}
+
+			numUpgrades++;
+		}
+	}
+
+	if ( !g_bot_buy.integer )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( BotGetEntityTeam( self ) != TEAM_HUMANS )
+	{
+		return STATUS_FAILURE;
+	}
+
+	//check if we already have everything
+	if ( BG_InventoryContainsWeapon( weapon, self->client->ps.stats ) || weapon == WP_NONE )
+	{
+		int numContain = 0;
+
+		for ( i = 0; i < numUpgrades; i++ )
+		{
+			if ( BG_InventoryContainsUpgrade( upgrades[i], self->client->ps.stats ) )
+			{
+				numContain++;
+			}
+		}
+
+		//we have every upgrade we want to buy
+		if ( numContain == numUpgrades )
+		{
+			return STATUS_FAILURE;
+		}
+	}
+
+	if ( self->botMind->currentNode != node )
+	{
+		botEntityAndDistance_t *ngoal;
+
+		ngoal = &self->botMind->closestBuildings[ BA_H_ARMOURY ];
+
+		if ( !ngoal->ent )
+		{
+			return STATUS_FAILURE; // no suitable goal found
+		}
+
+		if ( !BotChangeGoalEntity( self, ngoal->ent ) )
+		{
+			return STATUS_FAILURE;
+		}
+		self->botMind->currentNode = node;
+	}
+
+	if ( !BotTargetIsEntity( self->botMind->goal ) )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( self->botMind->goal.ent->health <= 0 )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( !self->botMind->goal.ent->powered )
+	{
+		return STATUS_FAILURE;
+	}
+
+	if ( GoalInRange( self, ENTITY_BUY_RANGE ) )
+	{
+		if ( numUpgrades )
+		{
+			BotSellAll( self );
+		}
+		else if ( weapon != WP_NONE )
+		{
+			BotSellWeapons( self );
+		}
+
+		if ( weapon != WP_NONE )
+		{
+			BotBuyWeapon( self, weapon );
+		}
+
+		for ( i = 0; i < numUpgrades; i++ )
+		{
+			BotBuyUpgrade( self, upgrades[i] );
+		}
+
+		// make sure that we're not using the blaster
+		if ( weapon != WP_NONE )
+		{
+			G_ForceWeaponChange( self, weapon );
+		}
+		
+		return STATUS_SUCCESS;
+	}
+
+	BotMoveToGoal( self );
+	return STATUS_RUNNING;
+}
+#endif

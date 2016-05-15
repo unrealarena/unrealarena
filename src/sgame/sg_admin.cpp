@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -50,6 +50,10 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	// each one listed affects a command's output or limits its functionality
 	// none of these prevent all use of the command if denied
 	// (in this list, *function is re-used for the command name)
+#ifndef UNREALARENA
+	{ nullptr, 0, false, "buildlog",       "builder",       nullptr },
+	{ nullptr, 0, false, "buildlog_admin", "buildlog",      nullptr },
+#endif
 	{ nullptr, 0, false, "gametimelimit",  "time",          nullptr },
 	{ nullptr, 0, false, "setlevel",       "listplayers",   nullptr },
 
@@ -77,6 +81,14 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		""
 	},
 
+#ifndef UNREALARENA
+	{
+		"allowbuild",   G_admin_denybuild,   false, "denybuild",
+		N_("restore a player's ability to build"),
+		N_("[^3name|slot#^7]")
+	},
+#endif
+
 	{
 		"allready",     G_admin_allready,    false, "allready",
 		N_("makes everyone ready in intermission"),
@@ -91,23 +103,60 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		"specified"),
 		N_("[^3name|slot#|IP(/mask)^7] (^5duration^7) (^5reason^7)")
 	},
+#ifdef UNREALARENA
 	{
 		"bot",          G_admin_bot,         false, "bot",
 		N_("Add/Del/Spec bots"),
 		N_("[^5add|del|spec|unspec^7] [^5name|all^7] [^5q/u^7] (^5skill^7)")
 	},
+#else
+	{
+		"bot",          G_admin_bot,         false, "bot",
+		N_("Add/Del/Spec bots"),
+		N_("[^5add|del|spec|unspec^7] [^5name|all^7] [^5aliens/humans^7] (^5skill^7)")
+	},
+#endif
+#ifndef UNREALARENA
+	{
+		"builder",      G_admin_builder,     true,  "builder",
+		N_("show who built a structure"),
+		""
+	},
 
+	{
+		"buildlog",     G_admin_buildlog,    false, "buildlog",
+		N_("show buildable log"),
+		N_("(^5name|slot#^7) (^5id^7)")
+	},
+#endif
+
+#ifdef UNREALARENA
 	{
 		"cancelvote",   G_admin_endvote,     false, "cancelvote",
 		N_("cancel a vote taking place"),
 		"(^5q|u^7)"
 	},
+#else
+	{
+		"cancelvote",   G_admin_endvote,     false, "cancelvote",
+		N_("cancel a vote taking place"),
+		"(^5a|h^7)"
+	},
+#endif
 
 	{
 		"changemap",    G_admin_changemap,   false, "changemap",
 		N_("load a map (and optionally force layout)"),
 		N_("[^3mapname^7] (^5layout^7)")
 	},
+
+#ifndef UNREALARENA
+	{
+		"denybuild",    G_admin_denybuild,   false, "denybuild",
+		N_("take away a player's ability to build"),
+		N_("[^3name|slot#^7]")
+	},
+#endif
 
 	{
 		"flag",          G_admin_flag,       false, "flag",
@@ -158,11 +207,13 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		N_("[^5months^7] (^5start admin#^7)")
 	},
 
+#ifndef UNREALARENA
 	{
 		"listlayouts",  G_admin_listlayouts, true,  "listlayouts",
 		N_("display a list of all available layouts for a map"),
 		N_("(^5mapname^7)")
 	},
+#endif
 
 	{
 		"listplayers",  G_admin_listplayers, true,  "listplayers",
@@ -170,11 +221,19 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		""
 	},
 
+#ifdef UNREALARENA
 	{
 		"lock",         G_admin_lock,        false, "lock",
 		N_("lock a team to prevent anyone from joining it"),
 		"[^3q|u^7]"
 	},
+#else
+	{
+		"lock",         G_admin_lock,        false, "lock",
+		N_("lock a team to prevent anyone from joining it"),
+		"[^3a|h^7]"
+	},
+#endif
 
 	{
 		"maprestarted", G_admin_maprestarted, false, "",
@@ -200,11 +259,19 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		""
 	},
 
+#ifdef UNREALARENA
 	{
 		"passvote",     G_admin_endvote,     false, "passvote",
 		N_("pass a vote currently taking place"),
 		"(^5q|u^7)"
 	},
+#else
+	{
+		"passvote",     G_admin_endvote,     false, "passvote",
+		N_("pass a vote currently taking place"),
+		"(^5a|h^7)"
+	},
+#endif
 
 	{
 		"pause",        G_admin_pause,       false, "pause",
@@ -212,11 +279,19 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		""
 	},
 
+#ifdef UNREALARENA
 	{
 		"putteam",      G_admin_putteam,     false, "putteam",
 		N_("move a player to a specified team"),
 		N_("[^3name|slot#^7] [^3q|u|s^7]")
 	},
+#else
+	{
+		"putteam",      G_admin_putteam,     false, "putteam",
+		N_("move a player to a specified team"),
+		N_("[^3name|slot#^7] [^3h|a|s^7]")
+	},
+#endif
 
 	{
 		"readconfig",   G_admin_readconfig,  false, "readconfig",
@@ -241,6 +316,14 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		N_("restart the current map (optionally using named layout or keeping/switching teams)"),
 		N_("(^5layout^7) (^5keepteams|switchteams|keepteamslock|switchteamslock^7)")
 	},
+
+#ifndef UNREALARENA
+	{
+		"revert",       G_admin_revert,      false, "revert",
+		N_("revert buildables to a given time"),
+		N_("[^3id^7]")
+	},
+#endif
 
 	{
 		"setlevel",     G_admin_setlevel,    false, "setlevel",
@@ -293,11 +376,19 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 		N_("[^3name|slot#|admin#|*level#^7] (^5+^7|^5-^7)[^3flag^7]")
 	},
 
+#ifdef UNREALARENA
 	{
 		"unlock",       G_admin_lock,        false, "lock",
 		N_("unlock a locked team"),
 		N_("[^3q|u^7]")
 	},
+#else
+	{
+		"unlock",       G_admin_lock,        false, "lock",
+		N_("unlock a locked team"),
+		N_("[^3a|h^7]")
+	},
+#endif
 
 	{
 		"unmute",       G_admin_mute,        false, "mute",
@@ -940,18 +1031,32 @@ static void admin_default_levels()
 	l = l->next = (g_admin_level_t*) BG_Alloc( sizeof( g_admin_level_t ) );
 	l->level = level++;
 	Q_strncpyz( l->name, "^2Junior Admin", sizeof( l->name ) );
+#ifdef UNREALARENA
 	Q_strncpyz( l->flags,
 	            "listplayers admintest adminhelp time putteam spec999 warn kick mute ADMINCHAT "
 	            "register unregister l0 l1",
 	            sizeof( l->flags ) );
+#else
+	Q_strncpyz( l->flags,
+	            "listplayers admintest adminhelp time putteam spec999 warn kick mute ADMINCHAT "
+	            "buildlog register unregister l0 l1",
+	            sizeof( l->flags ) );
+#endif
 
 	l = l->next = (g_admin_level_t*) BG_Alloc( sizeof( g_admin_level_t ) );
 	l->level = level++;
 	Q_strncpyz( l->name, "^3Senior Admin", sizeof( l->name ) );
+#ifdef UNREALARENA
 	Q_strncpyz( l->flags,
 	            "listplayers admintest adminhelp time putteam spec999 warn kick mute showbans ban "
 	            "namelog ADMINCHAT register unregister l0 l1",
 	            sizeof( l->flags ) );
+#else
+	Q_strncpyz( l->flags,
+	            "listplayers admintest adminhelp time putteam spec999 warn kick mute showbans ban "
+	            "namelog buildlog ADMINCHAT register unregister l0 l1",
+	            sizeof( l->flags ) );
+#endif
 
 	l = l->next = (g_admin_level_t*) BG_Alloc( sizeof( g_admin_level_t ) );
 	l->level = level++;
@@ -2967,7 +3072,11 @@ bool G_admin_putteam( gentity_t *ent )
 
 	if ( trap_Argc() < 3 )
 	{
+#ifdef UNREALARENA
 		ADMP( QQ( N_("^3putteam: ^7usage: putteam [name] [q|u|s]\n") ) );
+#else
+		ADMP( QQ( N_("^3putteam: ^7usage: putteam [name] [h|a|s]\n") ) );
+#endif
 		return false;
 	}
 
@@ -3325,6 +3434,85 @@ bool G_admin_mute( gentity_t *ent )
 	return true;
 }
 
+#ifndef UNREALARENA
+bool G_admin_denybuild( gentity_t *ent )
+{
+	char      name[ MAX_NAME_LENGTH ];
+	char      command[ MAX_ADMIN_CMD_LEN ];
+	namelog_t *vic;
+
+	RETURN_IF_INTERMISSION;
+
+	trap_Argv( 0, command, sizeof( command ) );
+
+	if ( trap_Argc() < 2 )
+	{
+		ADMP( va( "%s %s %s", QQ( N_("^3$1$: ^7usage: $2$ [name|slot#]\n") ), command, command ) );
+		return false;
+	}
+
+	trap_Argv( 1, name, sizeof( name ) );
+
+	if ( !( vic = G_NamelogFromString( ent, name ) ) )
+	{
+		ADMP( va( "%s %s", QQ( N_("^3$1$: ^7no match\n") ), command ) );
+		return false;
+	}
+
+	if ( ent && !admin_higher_admin( ent->client->pers.admin,
+	                                 G_admin_admin( vic->guid ) ) )
+	{
+		ADMP( va( "%s %s", QQ( N_("^3$1$: ^7sorry, but your intended victim has a higher admin"
+		          " level than you\n") ), command ) );
+		return false;
+	}
+
+	if ( vic->denyBuild )
+	{
+		if ( !Q_stricmp( command, "denybuild" ) )
+		{
+			ADMP( QQ( N_("^3denybuild: ^7player already has no building rights\n" ) ) );
+			return false;
+		}
+
+		vic->denyBuild = false;
+
+		if ( vic->slot > -1 )
+		{
+			CPx( vic->slot, "cp_tr " QQ(N_("^1You've regained your building rights")) );
+		}
+
+		AP( va( "print_tr %s %s %s", QQ( N_("^3allowbuild: ^7building rights for ^7$1$^7 restored by $2$\n") ),
+		        Quote( vic->name[ vic->nameOffset ] ),
+		        G_quoted_admin_name( ent ) ) );
+	}
+	else
+	{
+		if ( !Q_stricmp( command, "allowbuild" ) )
+		{
+			ADMP( QQ( N_("^3allowbuild: ^7player already has building rights\n" ) ) );
+			return false;
+		}
+
+		vic->denyBuild = true;
+
+		if ( vic->slot > -1 )
+		{
+			level.clients[ vic->slot ].ps.stats[ STAT_BUILDABLE ] = BA_NONE;
+			CPx( vic->slot, "cp_tr " QQ(N_("^1You've lost your building rights")) );
+		}
+
+		AP( va( "print_tr %s %s %s", QQ( N_("^3denybuild: ^7building rights for ^7$1$^7 revoked by $2$\n") ),
+		        Quote( vic->name[ vic->nameOffset ] ),
+		        G_quoted_admin_name( ent ) ) );
+	}
+
+	admin_log( va( "%d (%s) \"%s" S_COLOR_WHITE "\"", vic->slot, vic->guid,
+	               vic->name[ vic->nameOffset ] ) );
+	return true;
+}
+#endif
+
 bool G_admin_listadmins( gentity_t *ent )
 {
 	int  i;
@@ -3426,6 +3614,7 @@ bool G_admin_listinactive( gentity_t *ent )
 	return true;
 }
 
+#ifndef UNREALARENA
 bool G_admin_listlayouts( gentity_t *ent )
 {
 	char list[ MAX_CVAR_VALUE_STRING ];
@@ -3444,6 +3633,7 @@ bool G_admin_listlayouts( gentity_t *ent )
 		trap_Cvar_VariableStringBuffer( "mapname", map, sizeof( map ) );
 	}
 
+	count = G_LayoutList( map, list, sizeof( list ) );
 	ADMP( va( "%s %d %s", QQ( N_("^3listlayouts:^7 $1$ layouts found for '$2$':\n") ), count, map ) );
 	ADMBP_begin();
 	s = &list[ 0 ];
@@ -3473,6 +3663,7 @@ bool G_admin_listlayouts( gentity_t *ent )
 	ADMBP_end();
 	return true;
 }
+#endif
 
 bool G_admin_listgeoip( gentity_t *ent )
 {
@@ -3540,7 +3731,11 @@ bool G_admin_listplayers( gentity_t *ent )
 	char            c, t; // color and team letter
 	char            *registeredname;
 	char            lname[ MAX_NAME_LENGTH ];
+#ifdef UNREALARENA
+	char            bot, muted;
+#else
 	char            bot, muted, denied;
+#endif
 	int             colorlen;
 	int             authed = 1;
 	char            namecleaned[ MAX_NAME_LENGTH ];
@@ -3573,14 +3768,25 @@ bool G_admin_listplayers( gentity_t *ent )
 		{
 			t = toupper( * ( BG_TeamName( p->pers.team ) ) );
 
-			if ( p->pers.team == TEAM_Q )
-			{
-				c = COLOR_RED;
-			}
-			else if ( p->pers.team == TEAM_U )
+#ifdef UNREALARENA
+			if ( p->pers.team == TEAM_U )
 			{
 				c = COLOR_BLUE;
 			}
+			else if ( p->pers.team == TEAM_Q )
+			{
+				c = COLOR_RED;
+			}
+#else
+			if ( p->pers.team == TEAM_HUMANS )
+			{
+				c = COLOR_CYAN;
+			}
+			else if ( p->pers.team == TEAM_ALIENS )
+			{
+				c = COLOR_RED;
+			}
+#endif
 			else
 			{
 				c = COLOR_WHITE;
@@ -3589,7 +3795,9 @@ bool G_admin_listplayers( gentity_t *ent )
 
 		bot = ( level.gentities[ i ].r.svFlags & SVF_BOT ) ? 'R' : ' ';
 		muted = p->pers.namelog->muted ? 'M' : ' ';
-		denied = ' ';
+#ifndef UNREALARENA
+		denied = p->pers.namelog->denyBuild ? 'B' : ' ';
+#endif
 
 		l = d;
 		registeredname = nullptr;
@@ -3640,6 +3848,24 @@ bool G_admin_listplayers( gentity_t *ent )
 			}
 		}
 
+#ifdef UNREALARENA
+		ADMBP( va( "%2i ^%c%c^7 %-2i^2%c^7 %*s^7 ^5%c^1%c%c%s^7 %s^7 %s%s%s %s\n",
+		           i,
+		           c,
+		           t,
+		           l ? l->level : 0,
+		           hint ? '*' : ' ',
+		           admin_level_maxname + colorlen,
+		           lname,
+		           bot,
+		           muted,
+		           canseeWarn ? ( p->pers.hasWarnings ? S_COLOR_YELLOW "W" : " " ) : "",
+		           p->pers.netname,
+		           ( registeredname ) ? "(a.k.a. " : "",
+		           ( registeredname ) ? registeredname : "",
+		           ( registeredname ) ? S_COLOR_WHITE ")" : "",
+		           ( !authed ) ? S_COLOR_RED "NOT AUTHED" : "" ) );
+#else
 		ADMBP( va( "%2i ^%c%c^7 %-2i^2%c^7 %*s^7 ^5%c^1%c%c%s^7 %s^7 %s%s%s %s\n",
 		           i,
 		           c,
@@ -3657,6 +3883,7 @@ bool G_admin_listplayers( gentity_t *ent )
 		           ( registeredname ) ? registeredname : "",
 		           ( registeredname ) ? S_COLOR_WHITE ")" : "",
 		           ( !authed ) ? S_COLOR_RED "NOT AUTHED" : "" ) );
+#endif
 	}
 
 	ADMBP_end();
@@ -4219,14 +4446,25 @@ bool G_admin_restart( gentity_t *ent )
 				continue;
 			}
 
-			if ( cl->pers.team == TEAM_Q )
-			{
-				cl->sess.restartTeam = TEAM_U;
-			}
-			else if ( cl->pers.team == TEAM_U )
+#ifdef UNREALARENA
+			if ( cl->pers.team == TEAM_U )
 			{
 				cl->sess.restartTeam = TEAM_Q;
 			}
+			else if ( cl->pers.team == TEAM_Q )
+			{
+				cl->sess.restartTeam = TEAM_U;
+			}
+#else
+			if ( cl->pers.team == TEAM_HUMANS )
+			{
+				cl->sess.restartTeam = TEAM_ALIENS;
+			}
+			else if ( cl->pers.team == TEAM_ALIENS )
+			{
+				cl->sess.restartTeam = TEAM_HUMANS;
+			}
+#endif
 		}
 
 		trap_Cvar_Set( "g_mapRestarted", "yks" );
@@ -4496,7 +4734,11 @@ namelog_t *G_NamelogFromString( gentity_t *ent, char *s )
 bool G_admin_lock( gentity_t *ent )
 {
 	char     command[ MAX_ADMIN_CMD_LEN ];
-	char     teamName[ sizeof( "u" ) ];
+#ifdef UNREALARENA
+	char     teamName[ sizeof( "q" ) ];
+#else
+	char     teamName[ sizeof( "aliens" ) ];
+#endif
 	team_t   team;
 	bool lock, fail = false;
 
@@ -4506,7 +4748,11 @@ bool G_admin_lock( gentity_t *ent )
 
 	if ( trap_Argc() < 2 )
 	{
+#ifdef UNREALARENA
 		ADMP( va( "%s %s", QQ( N_("^3$1$: ^7usage: $1$ [q|u]\n") ), command ) );
+#else
+		ADMP( va( "%s %s", QQ( N_("^3$1$: ^7usage: $1$ [a|h]\n") ), command ) );
+#endif
 		return false;
 	}
 
@@ -4514,7 +4760,11 @@ bool G_admin_lock( gentity_t *ent )
 	trap_Argv( 1, teamName, sizeof( teamName ) );
 	team = G_TeamFromString( teamName );
 
+#ifdef UNREALARENA
 	if ( team == TEAM_Q || team== TEAM_U )
+#else
+	if ( team == TEAM_ALIENS || team== TEAM_HUMANS )
+#endif
 	{
 		if ( level.team[ team ].locked == lock )
 		{
@@ -4889,6 +5139,108 @@ bool G_admin_flag( gentity_t *ent )
 	return true;
 }
 
+#ifndef UNREALARENA
+bool G_admin_builder( gentity_t *ent )
+{
+	vec3_t     forward, right, up;
+	vec3_t     start, end, dist;
+	trace_t    tr;
+	gentity_t  *traceEnt;
+	buildLog_t *log;
+	int        i = 0;
+	bool   buildlog;
+
+	RETURN_IF_INTERMISSION;
+
+	if ( !ent )
+	{
+		ADMP( QQ( N_("^3builder: ^7console can't aim.\n") ) );
+		return false;
+	}
+
+	buildlog = G_admin_permission( ent, "buildlog" );
+
+	AngleVectors( ent->client->ps.viewangles, forward, right, up );
+
+	if ( ent->client->pers.team != TEAM_NONE &&
+	     ent->client->sess.spectatorState == SPECTATOR_NOT )
+	{
+		G_CalcMuzzlePoint( ent, forward, right, up, start );
+	}
+	else
+	{
+		VectorCopy( ent->client->ps.origin, start );
+	}
+
+	VectorMA( start, 1000, forward, end );
+
+	trap_Trace( &tr, start, nullptr, nullptr, end, ent->s.number, MASK_PLAYERSOLID, 0 );
+	traceEnt = &g_entities[ tr.entityNum ];
+
+	if ( tr.fraction < 1.0f && ( traceEnt->s.eType == ET_BUILDABLE ) )
+	{
+		const char *builder, *buildingName;
+
+		if ( !buildlog &&
+		     ent->client->pers.team != TEAM_NONE &&
+		     ent->client->pers.team != traceEnt->buildableTeam )
+		{
+			ADMP( QQ( N_("^3builder: ^7structure not owned by your team\n" ) ) );
+			return false;
+		}
+
+		if ( buildlog )
+		{
+			// i is only valid if buildlog is set (i.e. actor has that flag)
+			for ( i = 0; i < level.numBuildLogs; i++ )
+			{
+				log = &level.buildLog[( level.buildId - i - 1 ) % MAX_BUILDLOG ];
+
+				if ( log->fate == BF_CONSTRUCT && traceEnt->s.modelindex == log->modelindex )
+				{
+				        VectorSubtract( traceEnt->s.pos.trBase, log->origin, dist );
+
+				        if ( VectorLengthSquared( dist ) < 2.0f )
+				        {
+						break;
+					}
+				}
+			}
+		}
+
+		builder = traceEnt->builtBy ? traceEnt->builtBy->name[ traceEnt->builtBy->nameOffset ] : "<world>";
+		buildingName = BG_Buildable( traceEnt->s.modelindex )->humanName;
+
+		if ( !buildingName )
+		{
+			buildingName = "[unknown building]";
+		}
+
+		if ( buildlog && traceEnt->builtBy && i < level.numBuildLogs )
+		{
+			ADMP( va( "%s %s %s %d", QQ( N_("^3builder: ^7$1$ built by $2$^7, buildlog #$3$\n") ),
+				  Quote( buildingName ), Quote( builder ), MAX_CLIENTS + level.buildId - i - 1 ) );
+		}
+		else if ( traceEnt->builtBy )
+		{
+			ADMP( va( "%s %s %s", QQ( N_("^3builder: ^7$1$ built by $2$^7\n") ),
+				  Quote( buildingName ), Quote( builder ) ) );
+		}
+		else
+		{
+			ADMP( va( "%s %s", QQ( N_("^3builder: ^7$1$ appears to be a layout item\n") ),
+				  Quote( buildingName ) ) );
+		}
+	}
+	else
+	{
+		ADMP( QQ( N_("^3builder: ^7no structure found under crosshair\n") ) );
+	}
+
+	return true;
+}
+#endif
+
 bool G_admin_pause( gentity_t *ent )
 {
 	if ( !level.pausedTime )
@@ -4917,6 +5269,237 @@ bool G_admin_pause( gentity_t *ent )
 
 	return true;
 }
+
+#ifndef UNREALARENA
+static const char *const fates[] =
+{
+	N_("^2built^7"),
+	N_("^3deconstructed^7"),
+	N_("^7replaced^7"),
+	N_("^5destroyed^7"),
+	N_("^1TEAMKILLED^7"),
+	N_("^7unpowered^7"),
+	N_("removed")
+};
+bool G_admin_buildlog( gentity_t *ent )
+{
+	char       search[ MAX_NAME_LENGTH ] = { "" };
+	char       s[ MAX_NAME_LENGTH ] = { "" };
+	char       n[ MAX_NAME_LENGTH ];
+	char       stamp[ 8 ];
+	int        id = -1;
+	int        printed = 0;
+	int        time;
+	int        start = MAX_CLIENTS + level.buildId - level.numBuildLogs;
+	int        i = 0, j;
+	int        team;
+	bool   admin;
+	buildLog_t *log;
+
+	admin = !ent || G_admin_permission( ent, "buildlog_admin" );
+	team = admin ? TEAM_NONE : ent->client->pers.team;
+
+	if ( !admin && team == TEAM_NONE )
+	{
+		ADMP( QQ( N_("^3buildlog: ^7spectators have no buildings\n") ) );
+		return false;
+	}
+
+	if ( !level.buildId )
+	{
+		ADMP( QQ( N_("^3buildlog: ^7log is empty\n") ) );
+		return true;
+	}
+
+	if ( trap_Argc() == 3 )
+	{
+		trap_Argv( 2, search, sizeof( search ) );
+		start = atoi( search );
+	}
+
+	if ( trap_Argc() > 1 )
+	{
+		trap_Argv( 1, search, sizeof( search ) );
+
+		for ( i = search[ 0 ] == '-'; isdigit( search[ i ] ); i++ ) {; }
+
+		if ( i && !search[ i ] )
+		{
+			id = atoi( search );
+
+			if ( trap_Argc() == 2 && ( id < 0 || id >= MAX_CLIENTS ) )
+			{
+				start = id;
+				id = -1;
+			}
+			else if ( id < 0 || id >= MAX_CLIENTS ||
+			          level.clients[ id ].pers.connected != CON_CONNECTED )
+			{
+				ADMP( QQ( N_("^3buildlog: ^7invalid client id\n") ) );
+				return false;
+			}
+		}
+		else
+		{
+			G_SanitiseString( search, s, sizeof( s ) );
+		}
+	}
+	else
+	{
+		start = MAX( -MAX_ADMIN_LISTITEMS, -level.buildId );
+	}
+
+	if ( start < 0 )
+	{
+		start = MAX( level.buildId - level.numBuildLogs, start + level.buildId );
+	}
+	else
+	{
+		start -= MAX_CLIENTS;
+	}
+
+	if ( start < level.buildId - level.numBuildLogs || start >= level.buildId )
+	{
+		ADMP( QQ( N_("^3buildlog: ^7invalid build ID\n") ) );
+		return false;
+	}
+
+	if ( ent && ent->client->pers.team != TEAM_NONE )
+	{
+		if ( team == TEAM_NONE )
+		{
+			trap_SendServerCommand( -1,
+			                        va( "print_tr %s %s", QQ( N_("^3buildlog: ^7$1$^7 requested a log of recent building activity\n") ),
+			                            Quote( ent->client->pers.netname ) ) );
+		}
+		else
+		{
+			// FIXME? Send only to team-mates
+			trap_SendServerCommand( -1,
+			                        va( "print_tr %s %s %s", QQ( N_("^3buildlog: ^7$1$^7 requested a log of recent $2$ building activity\n") ),
+			                            Quote( ent->client->pers.netname ), Quote( BG_TeamName( team ) ) ) );
+		}
+	}
+
+	ADMBP_begin();
+
+	for ( i = start; i < level.buildId && printed < MAX_ADMIN_LISTITEMS; i++ )
+	{
+		log = &level.buildLog[ i % MAX_BUILDLOG ];
+
+		if ( id >= 0 && id < MAX_CLIENTS )
+		{
+			if ( log->actor != level.clients[ id ].pers.namelog )
+			{
+				continue;
+			}
+		}
+		else if ( s[ 0 ] )
+		{
+			if ( !log->actor )
+			{
+				continue;
+			}
+
+			for ( j = 0; j < MAX_NAMELOG_NAMES && log->actor->name[ j ][ 0 ]; j++ )
+			{
+				G_SanitiseString( log->actor->name[ j ], n, sizeof( n ) );
+
+				if ( strstr( n, s ) )
+				{
+					break;
+				}
+			}
+
+			if ( j >= MAX_NAMELOG_NAMES || !log->actor->name[ j ][ 0 ] )
+			{
+				continue;
+			}
+		}
+		else if ( !admin && BG_Buildable( log->modelindex )->team != team )
+		{
+			continue;
+		}
+
+		printed++;
+		time = ( log->time - level.startTime ) / 1000;
+		Com_sprintf( stamp, sizeof( stamp ), "%3d:%02d", time / 60, time % 60 );
+		ADMBP( va( "^2%c^7%-3d %s ^7%s^7%s%s%s %s%s%s\n",
+		           log->actor && log->fate != BF_REPLACE && log->fate != BF_UNPOWER ?
+		           '*' : ' ',
+		           i + MAX_CLIENTS,
+		           log->actor && ( log->fate == BF_REPLACE || log->fate == BF_UNPOWER ) ?
+		           "    \\_" : stamp,
+		           BG_Buildable( log->modelindex )->humanName,
+		           log->builtBy && log->fate != BF_CONSTRUCT ? " (built by " : "",
+		           log->builtBy && log->fate != BF_CONSTRUCT ? log->builtBy->name[ log->builtBy->nameOffset ] : "",
+		           log->builtBy && log->fate != BF_CONSTRUCT ? "^7)" : "",
+		           fates[ log->fate ],
+		           log->actor ? " by " : "",
+		           log->actor ?
+		           log->actor->name[ log->actor->nameOffset ] :
+		           "" ) );
+	}
+
+	ADMBP_end();
+
+	ADMP( va( "%s %d %d %d %d %d %s", QQ( N_("^3buildlog: ^7showing $1$ build logs $2$–$3$ of $4$–$5$.  $6$\n") ),
+	           printed, start + MAX_CLIENTS, i + MAX_CLIENTS - 1,
+	           level.buildId + MAX_CLIENTS - level.numBuildLogs,
+	           level.buildId + MAX_CLIENTS - 1,
+	           i < level.buildId ? va( "run 'buildlog %s%s%d' to see more",
+	                                   search, search[ 0 ] ? " " : "", i + MAX_CLIENTS ) : "" ) );
+	return true;
+}
+
+bool G_admin_revert( gentity_t *ent )
+{
+	char       arg[ MAX_TOKEN_CHARS ];
+	char       duration[ MAX_DURATION_LENGTH ];
+	char       time[ MAX_DURATION_LENGTH ];
+	int        id;
+	buildLog_t *log;
+
+	RETURN_IF_INTERMISSION;
+
+	if ( trap_Argc() != 2 )
+	{
+		ADMP( QQ( N_("^3revert: ^7usage: revert [id]\n") ) );
+		return false;
+	}
+
+	trap_Argv( 1, arg, sizeof( arg ) );
+	id = atoi( arg ) - MAX_CLIENTS;
+
+	if ( id < level.buildId - level.numBuildLogs || id >= level.buildId )
+	{
+		ADMP( QQ( N_("^3revert: ^7invalid id\n") ) );
+		return false;
+	}
+
+	log = &level.buildLog[ id % MAX_BUILDLOG ];
+
+	if ( !log->actor || log->fate == BF_REPLACE || log->fate == BF_UNPOWER )
+	{
+		// fixme: then why list them with an id # in build log ? - rez
+		ADMP( QQ( N_("^3revert: ^7you can only revert direct player actions, "
+		      "indicated by ^2* ^7in buildlog\n") ) );
+		return false;
+	}
+
+	G_admin_duration( ( level.time - log->time ) / 1000, time,
+	                  sizeof( time ), duration, sizeof( duration ) );
+	admin_log( arg );
+	AP( va( "print_tr %s %s %d %s %s", ( level.buildId - id ) > 1 ?
+		QQ( N_("^3revert: ^7$1$^7 reverted $2$ changes over the past $3$ $4t$\n") ) :
+		QQ( N_("^3revert: ^7$1$^7 reverted $2$ change over the past $3$ $4t$\n") ),
+		G_quoted_admin_name( ent ),
+	    level.buildId - id,
+	    time, duration ) );
+	G_BuildLogRevert( id );
+	return true;
+}
+#endif
 
 bool G_admin_l0( gentity_t *ent )
 {
@@ -5179,10 +5762,17 @@ bool G_admin_bot( gentity_t *ent )
 	int i;
 	int clientNum;
 
+#ifdef UNREALARENA
 	static const char bot_usage[] = QQ( N_( "^3bot: ^7usage: bot add [^5name|*^7] [^5q|u^7] (^5skill^7) (^5behavior^7)\n"
 	                                        "            bot [^5del|spec|unspec^7] [^5name|all^7]\n"
 	                                        "            bot names [^5q|u^7] [^5names…^7]\n"
 	                                        "            bot names [^5clear|list^7]\n" ) );
+#else
+	static const char bot_usage[] = QQ( N_( "^3bot: ^7usage: bot add [^5name|*^7] [^5aliens|humans^7] (^5skill^7) (^5behavior^7)\n"
+	                                        "            bot [^5del|spec|unspec^7] [^5name|all^7]\n"
+	                                        "            bot names [^5aliens|humans^7] [^5names…^7]\n"
+	                                        "            bot names [^5clear|list^7]\n" ) );
+#endif
 
 	if ( trap_Argc() < min_args )
 	{
@@ -5239,15 +5829,8 @@ bool G_admin_bot( gentity_t *ent )
 			trap_Argv( 5, behavior, sizeof( behavior ) );
 		}
 		//choose team
-		if ( !Q_stricmp( team, "q" ) )
-		{
-			if ( !G_BotAdd( name, TEAM_Q, skill_int, behavior ) )
-			{
-				ADMP( QQ( N_( "Can't add a bot\n" ) ) );
-				return false;
-			}
-		}
-		else if ( !Q_stricmp( team, "u" ) )
+#ifdef UNREALARENA
+		if ( !Q_stricmp( team, "u" ) )
 		{
 			if ( !G_BotAdd( name, TEAM_U, skill_int, behavior ) )
 			{
@@ -5255,6 +5838,32 @@ bool G_admin_bot( gentity_t *ent )
 				return false;
 			}
 		}
+		else if ( !Q_stricmp( team, "q" ) )
+		{
+			if ( !G_BotAdd( name, TEAM_Q, skill_int, behavior ) )
+			{
+				ADMP( QQ( N_( "Can't add a bot\n" ) ) );
+				return false;
+			}
+		}
+#else
+		if ( !Q_stricmp( team, "humans" ) || !Q_stricmp( team, "h" ) )
+		{
+			if ( !G_BotAdd( name, TEAM_HUMANS, skill_int, behavior ) )
+			{
+				ADMP( QQ( "Can't add a bot\n" ) );
+				return false;
+			}
+		}
+		else if ( !Q_stricmp( team, "aliens" ) || !Q_stricmp( team, "a" ) )
+		{
+			if ( !G_BotAdd( name, TEAM_ALIENS, skill_int, behavior ) )
+			{
+				ADMP( QQ( N_( "Can't add a bot\n" ) ) );
+				return false;
+			}
+		}
+#endif
 		else
 		{
 			ADMP( QQ( N_( "Invalid team name\n" ) ) );
@@ -5351,16 +5960,29 @@ bool G_admin_bot( gentity_t *ent )
 	}
 	else if ( !Q_stricmp( arg1, "names" ) )
 	{
-		if ( !Q_stricmp( name, "q" ) )
-		{
-			i = G_BotAddNames( TEAM_Q, 3, trap_Argc() );
-			ADMP( va( "%s %d", Quote( P_( "added $1$ Q bot name\n", "added $1$ Q bot names\n", i ) ), i ) );
-		}
-		else if ( !Q_stricmp( name, "u" ) )
+#ifdef UNREALARENA
+		if ( !Q_stricmp( name, "u" ) )
 		{
 			i = G_BotAddNames( TEAM_U, 3, trap_Argc() );
 			ADMP( va( "%s %d", Quote( P_( "added $1$ U bot name\n", "added $1$ U bot names\n", i ) ), i ) );
 		}
+		else if ( !Q_stricmp( name, "q" ) )
+		{
+			i = G_BotAddNames( TEAM_Q, 3, trap_Argc() );
+			ADMP( va( "%s %d", Quote( P_( "added $1$ Q bot name\n", "added $1$ Q bot names\n", i ) ), i ) );
+		}
+#else
+		if ( !Q_stricmp( name, "humans" ) || !Q_stricmp( name, "h" ) )
+		{
+			i = G_BotAddNames( TEAM_HUMANS, 3, trap_Argc() );
+			ADMP( va( "%s %d", Quote( P_( "added $1$ human bot name\n", "added $1$ human bot names\n", i ) ), i ) );
+		}
+		else if ( !Q_stricmp( name, "aliens" ) || !Q_stricmp( name, "a" ) )
+		{
+			i = G_BotAddNames( TEAM_ALIENS, 3, trap_Argc() );
+			ADMP( va( "%s %d", Quote( P_( "added $1$ alien bot name\n", "added $1$ alien bot names\n", i ) ), i ) );
+		}
+#endif
 		else if ( !Q_stricmp( name, "clear" ) || !Q_stricmp( name, "c" ) )
 		{
 			if ( !G_BotClearNames() )

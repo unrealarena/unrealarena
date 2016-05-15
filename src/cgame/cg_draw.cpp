@@ -326,6 +326,14 @@ static void CG_Draw2D()
 		return;
 	}
 
+#ifndef UNREALARENA
+	if ( cg.snap->ps.persistant[ PERS_SPECSTATE ] == SPECTATOR_NOT &&
+	     cg.snap->ps.stats[ STAT_HEALTH ] > 0 && !cg.zoomed )
+	{
+		CG_DrawBuildableStatus();
+	}
+#endif
+
 	// get an up-to-date list of beacons
 	CG_RunBeacons();
 
@@ -416,6 +424,7 @@ static void CG_PainBlend()
 		return;
 	}
 
+#ifdef UNREALARENA
 	if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_Q )
 	{
 		VectorSet( color, 0.43f, 0.8f, 0.37f );
@@ -424,6 +433,16 @@ static void CG_PainBlend()
 	{
 		VectorSet( color, 0.8f, 0.0f, 0.0f );
 	}
+#else
+	if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+	{
+		VectorSet( color, 0.43f, 0.8f, 0.37f );
+	}
+	else if ( cg.snap->ps.persistant[ PERS_TEAM ] == TEAM_HUMANS )
+	{
+		VectorSet( color, 0.8f, 0.0f, 0.0f );
+	}
+#endif
 
 	if ( cg.painBlendValue > cg.painBlendTarget )
 	{

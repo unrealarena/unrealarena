@@ -135,6 +135,15 @@ bool G_TryPushingEntity( gentity_t *check, gentity_t *pusher, vec3_t move, vec3_
 		return false;
 	}
 
+#ifndef UNREALARENA
+	//don't try to move buildables unless standing on a mover
+	if ( check->s.eType == ET_BUILDABLE &&
+	     check->s.groundEntityNum != pusher->s.number )
+	{
+		return false;
+	}
+#endif
+
 	// save off the old position
 	if ( pushed_p > &pushed[ MAX_GENTITIES ] )
 	{
@@ -308,8 +317,15 @@ bool G_MoverPush( gentity_t *pusher, vec3_t move, vec3_t amove, gentity_t **obst
 		check = &g_entities[ entityList[ e ] ];
 
 		// only push items and players
-		if ( check->s.eType != ET_ITEM && check->s.eType != ET_CORPSE &&
-		     check->s.eType != ET_PLAYER && !check->physicsObject )
+#ifdef UNREALARENA
+		if ( check->s.eType != ET_ITEM &&
+		     check->s.eType != ET_CORPSE && check->s.eType != ET_PLAYER &&
+		     !check->physicsObject )
+#else
+		if ( check->s.eType != ET_ITEM && check->s.eType != ET_BUILDABLE &&
+		     check->s.eType != ET_CORPSE && check->s.eType != ET_PLAYER &&
+		     !check->physicsObject )
+#endif
 		{
 			continue;
 		}
@@ -748,8 +764,15 @@ void Think_CloseModelDoor( gentity_t *ent )
 		check = &g_entities[ entityList[ i ] ];
 
 		//only test items and players
-		if ( check->s.eType != ET_ITEM && check->s.eType != ET_CORPSE &&
-		     check->s.eType != ET_PLAYER && !check->physicsObject )
+#ifdef UNREALARENA
+		if ( check->s.eType != ET_ITEM &&
+		     check->s.eType != ET_CORPSE && check->s.eType != ET_PLAYER &&
+		     !check->physicsObject )
+#else
+		if ( check->s.eType != ET_ITEM && check->s.eType != ET_BUILDABLE &&
+		     check->s.eType != ET_CORPSE && check->s.eType != ET_PLAYER &&
+		     !check->physicsObject )
+#endif
 		{
 			continue;
 		}
@@ -1351,8 +1374,12 @@ Blocked_Door
 */
 void func_door_block( gentity_t *self, gentity_t *other )
 {
-	// remove anything other than a client
+	// remove anything other than a client or buildable
+#ifdef UNREALARENA
 	if ( !other->client )
+#else
+	if ( !other->client && other->s.eType != ET_BUILDABLE )
+#endif
 	{
 		G_FreeEntity( other );
 		return;
@@ -1380,6 +1407,14 @@ Touch_DoorTrigger
 void door_trigger_touch( gentity_t *self, gentity_t *other, trace_t* )
 {
 	moverState_t groupState;
+
+#ifndef UNREALARENA
+	//buildables don't trigger movers
+	if ( other->s.eType == ET_BUILDABLE )
+	{
+		return;
+	}
+#endif
 
 	groupState = GetMoverGroupState( self->parent );
 
@@ -2296,6 +2331,29 @@ void func_train_blocked( gentity_t *self, gentity_t *other )
 
 			//KILL!!1!!!
 			G_Damage( other, self, self, nullptr, nullptr, 10000, 0, MOD_CRUSH );
+
+#ifndef UNREALARENA
+			//buildables need to be handled differently since even when
+			//dealt fatal amounts of damage they won't instantly become non-solid
+			if ( other->s.eType == ET_BUILDABLE && other->spawned )
+			{
+				vec3_t    dir;
+				gentity_t *tent;
+
+				if ( other->buildableTeam == TEAM_ALIENS )
+				{
+					VectorCopy( other->s.origin2, dir );
+					tent = G_NewTempEntity( other->s.origin, EV_ALIEN_BUILDABLE_EXPLOSION );
+					tent->s.eventParm = DirToByte( dir );
+				}
+				else if ( other->buildableTeam == TEAM_HUMANS )
+				{
+					VectorSet( dir, 0.0f, 0.0f, 1.0f );
+					tent = G_NewTempEntity( other->s.origin, EV_HUMAN_BUILDABLE_EXPLOSION );
+					tent->s.eventParm = DirToByte( dir );
+				}
+			}
+#endif
 
 			G_FreeEntity( other );
 

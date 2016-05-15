@@ -73,14 +73,25 @@ void game_end_act( gentity_t *self, gentity_t*, gentity_t* )
 
 void SP_game_end( gentity_t *self )
 {
-	if(!Q_stricmp(self->classname, "target_q_win"))
-	{
-		self->conditions.team = TEAM_Q;
-	}
-	else if(!Q_stricmp(self->classname, "target_u_win"))
+#ifdef UNREALARENA
+	if(!Q_stricmp(self->classname, "target_u_win"))
 	{
 		self->conditions.team = TEAM_U;
 	}
+	else if(!Q_stricmp(self->classname, "target_q_win"))
+	{
+		self->conditions.team = TEAM_Q;
+	}
+#else
+	if(!Q_stricmp(self->classname, "target_human_win"))
+	{
+		self->conditions.team = TEAM_HUMANS;
+	}
+	else if(!Q_stricmp(self->classname, "target_alien_win"))
+	{
+		self->conditions.team = TEAM_ALIENS;
+	}
+#endif
 
 	self->act = game_end_act;
 }

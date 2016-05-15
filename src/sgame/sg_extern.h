@@ -47,6 +47,9 @@ extern  vmCvar_t g_maxNameChanges;
 extern  vmCvar_t g_showHelpOnConnection;
 extern  vmCvar_t g_timelimit;
 extern  vmCvar_t g_friendlyFire;
+#ifndef UNREALARENA
+extern  vmCvar_t g_friendlyBuildableFire;
+#endif
 extern  vmCvar_t g_dretchPunt;
 extern  vmCvar_t g_password;
 extern  vmCvar_t g_needpass;
@@ -56,6 +59,10 @@ extern  vmCvar_t g_inactivity;
 extern  vmCvar_t g_debugMove;
 extern  vmCvar_t g_debugDamage;
 extern  vmCvar_t g_debugKnockback;
+#ifndef UNREALARENA
+extern  vmCvar_t g_debugTurrets;
+extern  vmCvar_t g_debugFire;
+#endif
 extern  vmCvar_t g_motd;
 extern  vmCvar_t g_warmup;
 extern  vmCvar_t g_doWarmup;
@@ -78,12 +85,37 @@ extern  vmCvar_t g_botKickVotesAllowedThisMap;
 extern  vmCvar_t g_teamForceBalance;
 extern  vmCvar_t g_smoothClients;
 
+#ifndef UNREALARENA
+extern  vmCvar_t g_initialMineRate;
+extern  vmCvar_t g_initialBuildPoints;
+extern  vmCvar_t g_mineRateHalfLife;
+extern  vmCvar_t g_minimumMineRate;
+extern  vmCvar_t g_buildPointLossFraction;
+#endif
+
 extern  vmCvar_t g_debugMomentum;
 extern  vmCvar_t g_momentumHalfLife;
 extern  vmCvar_t g_momentumRewardDoubleTime;
 extern  vmCvar_t g_unlockableMinTime;
 extern  vmCvar_t g_momentumBaseMod;
 extern  vmCvar_t g_momentumKillMod;
+#ifndef UNREALARENA
+extern  vmCvar_t g_momentumBuildMod;
+extern  vmCvar_t g_momentumDeconMod;
+extern  vmCvar_t g_momentumDestroyMod;
+
+extern  vmCvar_t g_humanAllowBuilding;
+extern  vmCvar_t g_alienAllowBuilding;
+
+extern  vmCvar_t g_powerCompetitionRange;
+extern  vmCvar_t g_powerBaseSupply;
+extern  vmCvar_t g_powerReactorSupply;
+extern  vmCvar_t g_powerReactorRange;
+extern  vmCvar_t g_powerRepeaterSupply;
+extern  vmCvar_t g_powerRepeaterRange;
+
+extern  vmCvar_t g_alienOffCreepRegenHalfLife;
+#endif
 
 extern  vmCvar_t g_teamImbalanceWarnings;
 extern  vmCvar_t g_freeFundPeriod;
@@ -91,6 +123,10 @@ extern  vmCvar_t g_freeFundPeriod;
 extern  vmCvar_t g_unlagged;
 
 extern  vmCvar_t g_disabledEquipment;
+#ifndef UNREALARENA
+extern  vmCvar_t g_disabledClasses;
+extern  vmCvar_t g_disabledBuildables;
+#endif
 extern  vmCvar_t g_disabledVoteCalls;
 
 extern  vmCvar_t g_debugMapRotation;
@@ -141,7 +177,14 @@ extern  vmCvar_t g_geoip;
 
 extern  vmCvar_t g_debugEntities;
 
+#ifndef UNREALARENA
+extern  vmCvar_t g_instantBuilding;
+#endif
+
 // bot buy cvars
+#ifndef UNREALARENA
+extern vmCvar_t g_bot_buy;
+#endif
 extern vmCvar_t g_bot_rifle;
 extern vmCvar_t g_bot_painsaw;
 extern vmCvar_t g_bot_shotgun;
@@ -165,6 +208,9 @@ extern vmCvar_t g_bot_level4;
 extern vmCvar_t g_bot_attackStruct;
 extern vmCvar_t g_bot_roam;
 extern vmCvar_t g_bot_rush;
+#ifndef UNREALARENA
+extern vmCvar_t g_bot_build;
+#endif
 extern vmCvar_t g_bot_repair;
 extern vmCvar_t g_bot_retreat;
 extern vmCvar_t g_bot_fov;
@@ -173,6 +219,9 @@ extern vmCvar_t g_bot_reactiontime;
 extern vmCvar_t g_bot_infinite_funds;
 extern vmCvar_t g_bot_numInGroup;
 extern vmCvar_t g_bot_persistent;
+#ifndef UNREALARENA
+extern vmCvar_t g_bot_buildLayout;
+#endif
 extern vmCvar_t g_bot_debug;
 
 #endif // SG_EXTERN_H_

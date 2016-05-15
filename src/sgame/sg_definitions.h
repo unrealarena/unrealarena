@@ -30,6 +30,11 @@
 #define N_( text ) text
 #define P_( one, many, count ) ( ( count ) == 1 ? ( one ) : ( many ) )
 
+#ifndef UNREALARENA
+// factor applied to burning durations for randomization
+#define BURN_PERIODS_RAND_MOD ( 1.0f + ( random() - 0.5f ) * 2.0f * BURN_PERIODS_RAND )
+#endif
+
 // resolves a variatingTime_t to a variated next level.time
 #define VariatedLevelTime( variableTime ) level.time + ( variableTime.time + variableTime.variance * crandom() ) * 1000
 

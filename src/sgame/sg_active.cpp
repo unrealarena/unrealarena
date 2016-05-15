@@ -216,6 +216,7 @@ static int GetClientMass( gentity_t *ent )
 {
 	int entMass = 100;
 
+#ifdef UNREALARENA
 	if ( ent->client->pers.team == TEAM_Q )
 	{
 		entMass = BG_Class( ent->client->pers.team )->health;
@@ -227,6 +228,19 @@ static int GetClientMass( gentity_t *ent )
 			entMass *= 2;
 		}
 	}
+#else
+	if ( ent->client->pers.team == TEAM_ALIENS )
+	{
+		entMass = BG_Class( ent->client->pers.classSelection )->health;
+	}
+	else if ( ent->client->pers.team == TEAM_HUMANS )
+	{
+		if ( BG_InventoryContainsUpgrade( UP_BATTLESUIT, ent->client->ps.stats ) )
+		{
+			entMass *= 2;
+		}
+	}
+#endif
 	else
 	{
 		return 0;
@@ -370,6 +384,9 @@ void ClientImpacts( gentity_t *ent, pmove_t *pm )
 		}
 
 		// deal impact and weight damage
+#ifndef UNREALARENA
+		G_ImpactAttack( ent, other );
+#endif
 		G_WeightAttack( ent, other );
 
 		// tyrant trample
@@ -440,8 +457,13 @@ void  G_TouchTriggers( gentity_t *ent )
 		return;
 	}
 
+#ifdef UNREALARENA
 	BG_ClassBoundingBox( ( team_t ) ent->client->ps.persistant[ PERS_TEAM ],
 	                     pmins, pmaxs, nullptr, nullptr, nullptr );
+#else
+	BG_ClassBoundingBox( ent->client->ps.stats[ STAT_CLASS ],
+	                     pmins, pmaxs, nullptr, nullptr, nullptr );
+#endif
 
 	VectorAdd( ent->client->ps.origin, pmins, mins );
 	VectorAdd( ent->client->ps.origin, pmaxs, maxs );
@@ -468,6 +490,13 @@ void  G_TouchTriggers( gentity_t *ent )
 		{
 			continue;
 		}
+
+#ifndef UNREALARENA
+		if ( !hit->enabled )
+		{
+			continue;
+		}
+#endif
 
 		// ignore most entities if a spectator
 		if ( ent->client->sess.spectatorState != SPECTATOR_NOT && hit->s.eType != ET_TELEPORTER )
@@ -499,13 +528,25 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 	pmove_t   pm;
 	gclient_t *client;
 	int       clientNum;
+#ifdef UNREALARENA
 	bool  following;
+#else
+	bool  attack1, following, queued, attackReleased;
+#endif
 	team_t    team;
 
 	client = ent->client;
 
 	usercmdCopyButtons( client->oldbuttons, client->buttons );
 	usercmdCopyButtons( client->buttons, ucmd->buttons );
+
+#ifndef UNREALARENA
+	attack1 = usercmdButtonPressed( client->buttons, BUTTON_ATTACK ) &&
+	          !usercmdButtonPressed( client->oldbuttons, BUTTON_ATTACK );
+
+	attackReleased = !usercmdButtonPressed( client->buttons, BUTTON_ATTACK ) &&
+		  usercmdButtonPressed( client->oldbuttons, BUTTON_ATTACK );
+#endif
 
 	//if bot
 	if( ent->r.svFlags & SVF_BOT ) {
@@ -530,6 +571,68 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 
 	team = (team_t) client->pers.team;
 
+#ifndef UNREALARENA
+	// Check to see if we are in the spawn queue
+	// Also, do some other checks and updates which players need while spectating
+	if ( team == TEAM_ALIENS || team == TEAM_HUMANS )
+	{
+		client->ps.persistant[ PERS_UNLOCKABLES ] = BG_UnlockablesMask( client->pers.team );
+		queued = G_SearchSpawnQueue( &level.team[ team ].spawnQueue, ent - g_entities );
+
+		if ( !ClientInactivityTimer( ent, queued || !level.team[ team ].numSpawns ) )
+		{
+			return;
+		}
+	}
+	else
+	{
+		queued = false;
+	}
+
+	// Wants to get out of spawn queue
+	if ( attack1 && queued )
+	{
+		if ( client->sess.spectatorState == SPECTATOR_FOLLOW )
+		{
+			G_StopFollowing( ent );
+		}
+
+		//be sure that only valid team "numbers" can be used.
+		assert(team == TEAM_ALIENS || team == TEAM_HUMANS);
+		G_RemoveFromSpawnQueue( &level.team[ team ].spawnQueue, client->ps.clientNum );
+
+		client->pers.classSelection = PCL_NONE;
+		client->pers.humanItemSelection = WP_NONE;
+		client->ps.stats[ STAT_CLASS ] = PCL_NONE;
+		client->ps.pm_flags &= ~PMF_QUEUED;
+		queued = false;
+	}
+	else if ( attack1 )
+	{
+		// Wants to get into spawn queue
+		if ( client->sess.spectatorState == SPECTATOR_FOLLOW )
+		{
+			G_StopFollowing( ent );
+		}
+	}
+	else if ( attackReleased )
+	{
+		if ( team == TEAM_NONE )
+		{
+			G_TriggerMenu( client->ps.clientNum, MN_TEAM );
+		}
+		else if ( team == TEAM_ALIENS )
+		{
+			G_TriggerMenu( client->ps.clientNum, MN_A_CLASS );
+		}
+		else if ( team == TEAM_HUMANS )
+		{
+			G_TriggerMenu( client->ps.clientNum, MN_H_SPAWN );
+		}
+	}
+#endif
+
+
 	// We are either not following anyone or following a spectator
 	if ( !following )
 	{
@@ -547,11 +650,25 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 			client->ps.pm_type = PM_SPECTATOR;
 		}
 
+#ifndef UNREALARENA
+		if ( queued )
+		{
+			client->ps.pm_flags |= PMF_QUEUED;
+		}
+#endif
+
 		client->ps.speed = client->pers.flySpeed;
 		client->ps.stats[ STAT_STAMINA ] = 0;
 		client->ps.stats[ STAT_FUEL ] = 0;
 		client->ps.stats[ STAT_MISC ] = 0;
+#ifndef UNREALARENA
+		client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
+#endif
+#ifdef UNREALARENA
 		client->ps.persistant[ PERS_TEAM ] = TEAM_NONE;
+#else
+		client->ps.stats[ STAT_CLASS ] = PCL_NONE;
+#endif
 		client->ps.weapon = WP_NONE;
 
 		// Set up for pmove
@@ -571,6 +688,18 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 
 		G_TouchTriggers( ent );
 		trap_UnlinkEntity( ent );
+
+#ifndef UNREALARENA
+		// Set the queue position and spawn count for the client side
+		if ( client->ps.pm_flags & PMF_QUEUED )
+		{
+			/* team must exist, or there will be a sigsegv */
+			assert(team == TEAM_HUMANS || team == TEAM_ALIENS);
+			client->ps.persistant[ PERS_SPAWNQUEUE ] = level.team[ team ].numSpawns;
+			client->ps.persistant[ PERS_SPAWNQUEUE ] |= G_GetPosInSpawnQueue( &level.team[ team ].spawnQueue,
+			                                                                  client->ps.clientNum ) << 8;
+		}
+#endif
 	}
 }
 
@@ -634,6 +763,68 @@ bool ClientInactivityTimer( gentity_t *ent, bool active )
 	return true;
 }
 
+#ifndef UNREALARENA
+static void G_ReplenishHumanHealth( gentity_t *self )
+{
+	gclient_t *client;
+	int       remainingStartupTime;
+
+	if ( !self )
+	{
+		return;
+	}
+
+	client = self->client;
+
+	if ( !client || client->pers.team != TEAM_HUMANS )
+	{
+		return;
+	}
+
+	// check if medikit is active
+	if ( !( client->ps.stats[ STAT_STATE ] & SS_HEALING_4X ) )
+	{
+		return;
+	}
+
+	// stop if client is fully healed
+	if ( self->health >= client->ps.stats[ STAT_MAX_HEALTH ] )
+	{
+		client->medKitHealthToRestore = 0;
+		client->ps.stats[ STAT_STATE ] &= ~SS_HEALING_4X;
+
+		return;
+	}
+
+	// stop if client is dead or medikit is depleted
+	if ( client->medKitHealthToRestore <= 0 || client->ps.pm_type == PM_DEAD )
+	{
+		client->medKitHealthToRestore = 0;
+		client->ps.stats[ STAT_STATE ] &= ~SS_HEALING_4X;
+
+		return;
+	}
+
+	remainingStartupTime = MEDKIT_STARTUP_TIME - ( level.time - client->lastMedKitTime );
+
+	// increase heal rate during startup
+	if ( remainingStartupTime > 0 )
+	{
+		if ( level.time < client->medKitIncrementTime )
+		{
+			return;
+		}
+		else
+		{
+			client->medKitIncrementTime = level.time + ( remainingStartupTime / MEDKIT_STARTUP_SPEED );
+		}
+	}
+
+	// heal
+	client->medKitHealthToRestore -= G_Heal( self, 1 );
+}
+#endif
+
 static void BeaconAutoTag( gentity_t *self, int timePassed )
 {
 	gentity_t *traceEnt, *target;
@@ -657,20 +848,35 @@ static void BeaconAutoTag( gentity_t *self, int timePassed )
 
 	for ( target = nullptr; ( target = G_IterateEntities( target ) ); )
 	{
-		// Tag entity directly hit and entities in human radar range,
-		// make sure the latter are also in vis
+		// Tag entity directly hit and entities in human radar range, make sure the latter are also
+		// in vis and, for buildables, are in a line of sight.
+#ifdef UNREALARENA
 		if( ( target == traceEnt ) ||
 		    ( team == TEAM_U &&
 		      BG_InventoryContainsUpgrade( UP_RADAR, client->ps.stats ) &&
 		      Distance( self->s.origin, target->s.origin ) < RADAR_RANGE &&
 		      Beacon::EntityTaggable( target->s.number, team, false ) &&
 		      trap_InPVSIgnorePortals( self->s.origin, target->s.origin ) ) )
+#else
+		if( ( target == traceEnt ) ||
+		    ( team == TEAM_HUMANS &&
+		      BG_InventoryContainsUpgrade( UP_RADAR, client->ps.stats ) &&
+		      Distance( self->s.origin, target->s.origin ) < RADAR_RANGE &&
+		      Beacon::EntityTaggable( target->s.number, team, false ) &&
+		      trap_InPVSIgnorePortals( self->s.origin, target->s.origin ) &&
+		      ( target->s.eType != ET_BUILDABLE ||
+		        G_LineOfSight( self, target, MASK_SOLID, false ) ) ) )
+#endif
 		{
 			target->tagScore     += timePassed;
 			target->tagScoreTime  = level.time;
 
 			if( target->tagScore > 1000 )
+#ifdef UNREALARENA
 				Beacon::Tag( target, team, false );
+#else
+				Beacon::Tag( target, team, ( target->s.eType == ET_BUILDABLE ) );
+#endif
 
 			client->ps.stats[ STAT_TAGSCORE ] = Math::Clamp(
 				target->tagScore, client->ps.stats[ STAT_TAGSCORE ], 1000 );
@@ -689,6 +895,10 @@ void ClientTimerActions( gentity_t *ent, int msec )
 {
 	playerState_t *ps;
 	gclient_t     *client;
+#ifndef UNREALARENA
+	int           i;
+	buildable_t   buildable;
+#endif
 
 	if ( !ent || !ent->client )
 	{
@@ -728,14 +938,120 @@ void ClientTimerActions( gentity_t *ent, int msec )
 			}
 		}
 
+#ifndef UNREALARENA
+		// Building related
+		switch ( weapon )
+		{
+			case WP_ABUILD:
+			case WP_ABUILD2:
+			case WP_HBUILD:
+				buildable = (buildable_t) ( client->ps.stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
+
+				// Set validity bit on buildable
+				if ( buildable > BA_NONE )
+				{
+					vec3_t forward, aimDir, normal;
+					vec3_t dummy, dummy2;
+					int dummy3;
+					int dist;
+
+					BG_GetClientNormal( &client->ps,normal );
+					AngleVectors( client->ps.viewangles, aimDir, nullptr, nullptr );
+					ProjectPointOnPlane( forward, aimDir, normal );
+					VectorNormalize( forward );
+
+					dist = BG_Class( ent->client->ps.stats[ STAT_CLASS ] )->buildDist * DotProduct( forward, aimDir );
+
+					client->ps.stats[ STAT_BUILDABLE ] &= ~SB_BUILDABLE_STATE_MASK;
+					client->ps.stats[ STAT_BUILDABLE ] |= SB_BUILDABLE_FROM_IBE( G_CanBuild( ent, buildable, dist, dummy, dummy2, &dummy3 ) );
+
+					if ( buildable == BA_H_DRILL || buildable == BA_A_LEECH )
+					{
+						client->ps.stats[ STAT_PREDICTION ] =
+							( int )( G_RGSPredictEfficiencyDelta( dummy, ( team_t )ps->persistant[ PERS_TEAM ] ) * 100.0f );
+					}
+
+					// Let the client know which buildables will be removed by building
+					for ( i = 0; i < MAX_MISC; i++ )
+					{
+						if ( i < level.numBuildablesForRemoval )
+						{
+							client->ps.misc[ i ] = level.markedBuildables[ i ]->s.number;
+						}
+						else
+						{
+							client->ps.misc[ i ] = 0;
+						}
+					}
+				}
+				else
+				{
+					for ( i = 0; i < MAX_MISC; i++ )
+					{
+						client->ps.misc[ i ] = 0;
+					}
+				}
+
+				break;
+
+			default:
+				break;
+		}
+#endif
+
 		BeaconAutoTag( ent, 100 );
+
+#ifndef UNREALARENA
+		// replenish human health
+		G_ReplenishHumanHealth( ent );
+
+		// refill weapon ammo
+		if ( ent->client->lastAmmoRefillTime + HUMAN_AMMO_REFILL_PERIOD < level.time &&
+		     ps->weaponTime == 0 )
+		{
+			G_FindAmmo( ent );
+		}
+
+		// refill jetpack fuel
+		if ( client->ps.stats[ STAT_FUEL ] < JETPACK_FUEL_REFUEL )
+		{
+			G_FindFuel( ent );
+		}
+
+		// remove orphaned tags for enemy structures when the structure's death was confirmed
+		{
+			gentity_t *other = nullptr;
+			while ( ( other = G_IterateEntities( other ) ) )
+			{
+				if ( other->s.eType == ET_BEACON &&
+				     other->s.modelindex == BCT_TAG &&
+				     ( other->s.eFlags & EF_BC_ENEMY ) &&
+				     !other->tagAttachment &&
+				     ent->client->pers.team == other->s.generic1 &&
+				     G_LineOfSight( ent, other, CONTENTS_SOLID, true ) )
+				{
+					Beacon::Delete( other, true );
+				}
+			}
+		}
+#endif
 	}
 
 	while ( client->time1000 >= 1000 )
 	{
 		client->time1000 -= 1000;
 
+#ifndef UNREALARENA
+		// deal poison damage
+		if ( client->ps.stats[ STAT_STATE ] & SS_POISONED )
+		{
+			G_Damage( ent, client->lastPoisonClient, client->lastPoisonClient, nullptr,
+			          nullptr, ALIEN_POISON_DMG, DAMAGE_NO_LOCDAMAGE, MOD_POISON );
+		}
+#endif
+
 		// turn off life support when a team admits defeat
+#ifdef UNREALARENA
 		if ( client->pers.team == TEAM_Q &&
 		     level.surrenderTeam == TEAM_Q )
 		{
@@ -748,6 +1064,20 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		{
 			G_Damage( ent, nullptr, nullptr, nullptr, nullptr, 5, DAMAGE_NO_ARMOR, MOD_SUICIDE );
 		}
+#else
+		if ( client->pers.team == TEAM_ALIENS &&
+		     level.surrenderTeam == TEAM_ALIENS )
+		{
+			G_Damage( ent, nullptr, nullptr, nullptr, nullptr,
+			          BG_Class( client->ps.stats[ STAT_CLASS ] )->regenRate,
+			          DAMAGE_NO_ARMOR, MOD_SUICIDE );
+		}
+		else if ( client->pers.team == TEAM_HUMANS &&
+		          level.surrenderTeam == TEAM_HUMANS )
+		{
+			G_Damage( ent, nullptr, nullptr, nullptr, nullptr, 5, DAMAGE_NO_ARMOR, MOD_SUICIDE );
+		}
+#endif
 
 		// lose some voice enthusiasm
 		if ( client->voiceEnthusiasm > 0.0f )
@@ -765,6 +1095,7 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		     client->pers.aliveSeconds % g_freeFundPeriod.integer == 0 )
 		{
 			// Give clients some credit periodically
+#ifdef UNREALARENA
 			if ( client->pers.team == TEAM_Q )
 			{
 				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
@@ -773,12 +1104,34 @@ void ClientTimerActions( gentity_t *ent, int msec )
 			{
 				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
 			}
+#else
+			if ( client->pers.team == TEAM_ALIENS )
+			{
+				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
+			}
+			else if ( client->pers.team == TEAM_HUMANS )
+			{
+				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
+			}
+#endif
 		}
 	}
 
 	while ( client->time10000 >= 10000 )
 	{
 		client->time10000 -= 10000;
+
+#ifndef UNREALARENA
+		if ( ent->client->ps.weapon == WP_ABUILD ||
+		     ent->client->ps.weapon == WP_ABUILD2 )
+		{
+			G_AddCreditsToScore( ent, ALIEN_BUILDER_SCOREINC );
+		}
+		else if ( ent->client->ps.weapon == WP_HBUILD )
+		{
+			G_AddCreditsToScore( ent, HUMAN_BUILDER_SCOREINC );
+		}
+#endif
 	}
 
 	// Regenerate Adv. Dragoon barbs
@@ -841,10 +1194,18 @@ void ClientEvents( gentity_t *ent, int oldEventSequence )
 	vec3_t    dir;
 	vec3_t    point, mins;
 	float     fallDistance;
+#ifdef UNREALARENA
 	team_t    team;
+#else
+	class_t   pcl;
+#endif
 
 	client = ent->client;
+#ifdef UNREALARENA
 	team = ( team_t ) client->ps.persistant[ PERS_TEAM ];
+#else
+	pcl = (class_t) client->ps.stats[ STAT_CLASS ];
+#endif
 
 	if ( oldEventSequence < client->ps.eventSequence - MAX_EVENTS )
 	{
@@ -876,11 +1237,20 @@ void ClientEvents( gentity_t *ent, int oldEventSequence )
 					fallDistance = 1.0f;
 				}
 
+#ifdef UNREALARENA
 				damage = ( int )( ( float ) BG_Class( team )->health *
 				                  BG_Class( team )->fallDamage * fallDistance );
+#else
+				damage = ( int )( ( float ) BG_Class( pcl )->health *
+				                  BG_Class( pcl )->fallDamage * fallDistance );
+#endif
 
 				VectorSet( dir, 0, 0, 1 );
+#ifdef UNREALARENA
 				BG_ClassBoundingBox( team, mins, nullptr, nullptr, nullptr, nullptr );
+#else
+				BG_ClassBoundingBox( pcl, mins, nullptr, nullptr, nullptr, nullptr );
+#endif
 				mins[ 0 ] = mins[ 1 ] = 0.0f;
 				VectorAdd( client->ps.origin, mins, point );
 
@@ -1321,6 +1691,163 @@ static void G_UnlaggedDetectCollisions( gentity_t *ent )
 	G_UnlaggedOff();
 }
 
+#ifndef UNREALARENA
+/**
+ * @brief Attempt to find a health source for an alien.
+ * @return A mask of SS_HEALING_* flags.
+ */
+static int FindAlienHealthSource( gentity_t *self )
+{
+	int       ret = 0, closeTeammates = 0;
+	float     distance, minBoosterDistance = FLT_MAX;
+	bool  needsHealing;
+	gentity_t *ent;
+
+	if ( !self || !self->client )
+	{
+		return 0;
+	}
+
+	needsHealing = self->client->ps.stats[ STAT_HEALTH ] <
+	               BG_Class( self->client->ps.stats[ STAT_CLASS ] )->health;
+
+	self->boosterUsed = nullptr;
+
+	for ( ent = nullptr; ( ent = G_IterateEntities( ent, nullptr, true, 0, nullptr ) ); )
+	{
+		if ( !G_OnSameTeam( self, ent ) ) continue;
+		if ( ent->health <= 0 )           continue;
+
+		distance = Distance( ent->s.origin, self->s.origin );
+
+		if ( ent->client && self != ent && distance < REGEN_TEAMMATE_RANGE &&
+		     G_LineOfSight( self, ent, MASK_SOLID, false ) )
+		{
+			closeTeammates++;
+			ret |= ( closeTeammates > 1 ) ? SS_HEALING_4X : SS_HEALING_2X;
+		}
+		else if ( ent->s.eType == ET_BUILDABLE && ent->spawned && ent->powered )
+		{
+			if ( ent->s.modelindex == BA_A_BOOSTER && ent->powered &&
+			     distance < REGEN_BOOSTER_RANGE )
+			{
+				// Booster healing
+				ret |= SS_HEALING_8X;
+
+				// The closest booster used will play an effect
+				if ( needsHealing && distance < minBoosterDistance )
+				{
+					minBoosterDistance = distance;
+					self->boosterUsed  = ent;
+				}
+			}
+			else if ( distance < BG_Buildable( ent->s.modelindex )->creepSize )
+			{
+				// Creep healing
+				ret |= SS_HEALING_4X;
+			}
+			else if ( ( ent->s.modelindex == BA_A_OVERMIND || ent->s.modelindex == BA_A_SPAWN ) &&
+			          distance < CREEP_BASESIZE )
+			{
+				// Base healing
+				ret |= SS_HEALING_2X;
+			}
+		}
+	}
+
+	if ( ret & SS_HEALING_8X ) ret |= SS_HEALING_4X;
+	if ( ret & SS_HEALING_4X ) ret |= SS_HEALING_2X;
+
+	if ( ret )
+	{
+		self->healthSourceTime = level.time;
+
+		if ( self->boosterUsed )
+		{
+			self->boosterTime = level.time;
+		}
+	}
+
+	return ret;
+}
+
+// TODO: Synchronize
+static void G_ReplenishAlienHealth( gentity_t *self )
+{
+	gclient_t *client;
+	float     regenBaseRate, modifier;
+	int       count, interval;
+	bool  wasHealing;
+
+	client = self->client;
+
+	// Check if client is an alien and has the healing ability
+	if ( !client || client->pers.team != TEAM_ALIENS ||
+	     self->health <= 0 || level.surrenderTeam == client->pers.team )
+	{
+		return;
+	}
+
+	regenBaseRate = BG_Class( client->ps.stats[ STAT_CLASS ] )->regenRate;
+
+	if ( regenBaseRate <= 0 )
+	{
+		return;
+	}
+
+	wasHealing = client->ps.stats[ STAT_STATE ] & SS_HEALING_2X;
+
+	// Check for health sources
+	client->ps.stats[ STAT_STATE ] &= ~( SS_HEALING_2X | SS_HEALING_4X | SS_HEALING_8X );
+	client->ps.stats[ STAT_STATE ] |= FindAlienHealthSource( self );
+
+	if ( self->nextRegenTime < level.time )
+	{
+		if      ( client->ps.stats[ STAT_STATE ] & SS_HEALING_8X )
+		{
+			modifier = 8.0f;
+		}
+		else if ( client->ps.stats[ STAT_STATE ] & SS_HEALING_4X )
+		{
+			modifier = 4.0f;
+		}
+		else if ( client->ps.stats[ STAT_STATE ] & SS_HEALING_2X )
+		{
+			modifier = 2.0f;
+		}
+		else
+		{
+			if ( g_alienOffCreepRegenHalfLife.value < 1 )
+			{
+				modifier = 1.0f;
+			}
+			else
+			{
+				// Exponentially decrease healing rate when not on creep. ln(2) ~= 0.6931472
+				modifier = exp( ( 0.6931472f / ( 1000.0f * g_alienOffCreepRegenHalfLife.value ) ) *
+				                ( self->healthSourceTime - level.time ) );
+				modifier = MAX( modifier, ALIEN_REGEN_NOCREEP_MIN );
+			}
+		}
+
+		interval = ( int )( 1000.0f / ( regenBaseRate * modifier ) );
+
+		// If recovery interval is less than frametime, compensate by healing more
+		count = 1 + ( level.time - self->nextRegenTime ) / interval;
+
+		G_Heal( self, count );
+
+		self->nextRegenTime = level.time + count * interval;
+	}
+	else if ( !wasHealing && client->ps.stats[ STAT_STATE ] & SS_HEALING_2X )
+	{
+		// Don't immediately start regeneration to prevent players from quickly
+		// hopping in and out of a creep area to increase their heal rate
+		self->nextRegenTime = level.time + ( 1000 / regenBaseRate );
+	}
+}
+#endif
+
 /*
 ==============
 ClientThink_real
@@ -1433,16 +1960,71 @@ void ClientThink_real( gentity_t *self )
 	{
 		client->ps.pm_type = PM_DEAD;
 	}
+#ifndef UNREALARENA
+	else if ( client->ps.stats[ STAT_STATE ] & SS_BLOBLOCKED )
+	{
+		client->ps.pm_type = PM_GRABBED;
+	}
+#endif
 	else
 	{
 		client->ps.pm_type = PM_NORMAL;
 	}
+
+#ifndef UNREALARENA
+	if ( ( client->ps.stats[ STAT_STATE ] & SS_BLOBLOCKED ) &&
+	     client->lastLockTime + LOCKBLOB_LOCKTIME < level.time )
+	{
+		client->ps.stats[ STAT_STATE ] &= ~SS_BLOBLOCKED;
+	}
+#endif
 
 	if ( ( client->ps.stats[ STAT_STATE ] & SS_SLOWLOCKED ) &&
 	     client->lastSlowTime + ABUILDER_BLOB_TIME < level.time )
 	{
 		client->ps.stats[ STAT_STATE ] &= ~SS_SLOWLOCKED;
 	}
+
+#ifndef UNREALARENA
+	// Is power/creep available for the client's team?
+	if ( client->pers.team == TEAM_HUMANS && G_ActiveReactor() )
+	{
+		client->ps.eFlags |= EF_POWER_AVAILABLE;
+	}
+	else if ( client->pers.team == TEAM_ALIENS && G_ActiveOvermind() )
+	{
+		client->ps.eFlags |= EF_POWER_AVAILABLE;
+	}
+	else
+	{
+		client->ps.eFlags &= ~EF_POWER_AVAILABLE;
+	}
+
+	// Update boosted state flags
+	client->ps.stats[ STAT_STATE ] &= ~SS_BOOSTEDWARNING;
+
+	if ( client->ps.stats[ STAT_STATE ] & SS_BOOSTED )
+	{
+		if ( level.time - client->boostedTime != BOOST_TIME )
+		{
+			client->ps.stats[ STAT_STATE ] &= ~SS_BOOSTEDNEW;
+		}
+		if ( level.time - client->boostedTime >= BOOST_TIME )
+		{
+			client->ps.stats[ STAT_STATE ] &= ~SS_BOOSTED;
+		}
+		else if ( level.time - client->boostedTime >= BOOST_WARN_TIME )
+		{
+			client->ps.stats[ STAT_STATE ] |= SS_BOOSTEDWARNING;
+		}
+	}
+
+	if ( (client->ps.stats[ STAT_STATE ] & SS_POISONED) &&
+	     client->lastPoisonTime + ALIEN_POISON_TIME < level.time )
+	{
+		client->ps.stats[ STAT_STATE ] &= ~SS_POISONED;
+	}
+#endif
 
 	// copy global gravity to playerstate
 	client->ps.gravity = g_gravity.value;
@@ -1478,6 +2060,11 @@ void ClientThink_real( gentity_t *self )
 		}
 	}
 
+#ifndef UNREALARENA
+	// Replenish alien health
+	G_ReplenishAlienHealth( self );
+#endif
+
 	// Throw human grenade
 	if ( BG_InventoryContainsUpgrade( UP_GRENADE, client->ps.stats ) &&
 	     BG_UpgradeIsActive( UP_GRENADE, client->ps.stats ) )
@@ -1507,9 +2094,22 @@ void ClientThink_real( gentity_t *self )
 	}
 	else
 	{
+#ifdef UNREALARENA
 		client->ps.speed = g_speed.value *
 		                   BG_Class( ( team_t ) client->ps.persistant[ PERS_TEAM ] )->speed;
+#else
+		client->ps.speed = g_speed.value *
+		                   BG_Class( client->ps.stats[ STAT_CLASS ] )->speed;
+#endif
 	}
+
+#ifndef UNREALARENA
+	// unset creepslowed flag if it's time
+	if ( client->lastCreepSlowTime + CREEP_TIMEOUT < level.time )
+	{
+		client->ps.stats[ STAT_STATE ] &= ~SS_CREEPSLOWED;
+	}
+#endif
 
 	// unset level1slow flag if it's time
 	if ( client->lastLevel1SlowTime + LEVEL1_SLOW_TIME < level.time )
@@ -1609,9 +2209,22 @@ void ClientThink_real( gentity_t *self )
 			break;
 
 		case WP_ALEVEL4:
+
+#ifndef UNREALARENA
+			// If not currently in a trample, reset the trample bookkeeping data
+			if ( !( client->ps.pm_flags & PMF_CHARGE ) && client->trampleBuildablesHitPos )
+			{
+				client->trampleBuildablesHitPos = 0;
+				memset( client->trampleBuildablesHit, 0, sizeof( client->trampleBuildablesHit ) );
+			}
+#endif
+
 			break;
 
 		case WP_HBUILD:
+#ifndef UNREALARENA
+			G_CheckCkitRepair( self );
+#endif
 			break;
 
 		default:
@@ -1677,8 +2290,14 @@ void ClientThink_real( gentity_t *self )
 
 		ent = &g_entities[ trace.entityNum ];
 
+#ifdef UNREALARENA
 		if ( ent && ent->use &&
 		     ( !ent->conditions.team || ent->conditions.team == client->pers.team ) )
+#else
+		if ( ent && ent->use &&
+		     ( !ent->buildableTeam   || ent->buildableTeam   == client->pers.team ) &&
+		     ( !ent->conditions.team || ent->conditions.team == client->pers.team ) )
+#endif
 		{
 			if ( g_debugEntities.integer > 1 )
 			{
@@ -1692,7 +2311,11 @@ void ClientThink_real( gentity_t *self )
 			// no entity in front of player - do a small area search
 			for ( ent = nullptr; ( ent = G_IterateEntitiesWithinRadius( ent, client->ps.origin, ENTITY_USE_RANGE ) ); )
 			{
+#ifdef UNREALARENA
 				if ( ent && ent->use )
+#else
+				if ( ent && ent->use && ent->buildableTeam == client->pers.team)
+#endif
 				{
 					if ( g_debugEntities.integer > 1 )
 					{
@@ -1704,8 +2327,29 @@ void ClientThink_real( gentity_t *self )
 					break;
 				}
 			}
+
+#ifndef UNREALARENA
+			if ( !ent && client->pers.team == TEAM_ALIENS )
+			{
+				if ( BG_AlienCanEvolve( client->ps.stats[ STAT_CLASS ], client->pers.credit ) )
+				{
+					// no nearby objects and alien - show class menu
+					G_TriggerMenu( client->ps.clientNum, MN_A_INFEST );
+				}
+				else
+				{
+					// flash frags
+					G_AddEvent( self, EV_ALIEN_EVOLVE_FAILED, 0 );
+				}
+			}
+#endif
 		}
 	}
+
+#ifndef UNREALARENA
+	client->ps.persistant[ PERS_BP ] = G_GetBuildPointsInt( (team_t) client->pers.team );
+	client->ps.persistant[ PERS_MARKEDBP ] = G_GetMarkedBuildPointsInt( (team_t) client->pers.team );
+#endif
 
 	if ( client->ps.persistant[ PERS_BP ] < 0 )
 	{
@@ -1714,6 +2358,16 @@ void ClientThink_real( gentity_t *self )
 
 	// perform once-a-second actions
 	ClientTimerActions( self, msec );
+
+#ifndef UNREALARENA
+	if ( self->suicideTime > 0 && self->suicideTime < level.time )
+	{
+		client->ps.stats[ STAT_HEALTH ] = self->health = 0;
+		G_PlayerDie( self, self, self, MOD_SUICIDE );
+
+		self->suicideTime = 0;
+	}
+#endif
 }
 
 /*

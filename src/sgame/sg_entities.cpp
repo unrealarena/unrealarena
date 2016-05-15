@@ -32,6 +32,9 @@ basic gentity lifecycle handling
 void G_InitGentity( gentity_t *entity )
 {
 	entity->inuse = true;
+#ifndef UNREALARENA
+	entity->enabled = true;
+#endif
 	entity->classname = "noclass";
 	entity->s.number = entity - g_entities;
 	entity->r.ownerNum = ENTITYNUM_NONE;
@@ -272,7 +275,11 @@ or nullptr if there are no further matching gentities.
 Set nullptr as previous gentity to start the iteration from the beginning
 =============
 */
+#ifdef UNREALARENA
 gentity_t *G_IterateEntities( gentity_t *entity, const char *classname, size_t fieldofs, const char *match )
+#else
+gentity_t *G_IterateEntities( gentity_t *entity, const char *classname, bool skipdisabled, size_t fieldofs, const char *match )
+#endif
 {
 	char *fieldString;
 
@@ -293,6 +300,12 @@ gentity_t *G_IterateEntities( gentity_t *entity, const char *classname, size_t f
 		if ( !entity->inuse )
 			continue;
 
+#ifndef UNREALARENA
+		if( skipdisabled && !entity->enabled)
+			continue;
+#endif
+
+
 		if ( classname && Q_stricmp( entity->classname, classname ) )
 			continue;
 
@@ -311,12 +324,20 @@ gentity_t *G_IterateEntities( gentity_t *entity, const char *classname, size_t f
 
 gentity_t *G_IterateEntities( gentity_t *entity )
 {
+#ifdef UNREALARENA
 	return G_IterateEntities( entity, nullptr, 0, nullptr );
+#else
+	return G_IterateEntities( entity, nullptr, true, 0, nullptr );
+#endif
 }
 
 gentity_t *G_IterateEntitiesOfClass( gentity_t *entity, const char *classname )
 {
+#ifdef UNREALARENA
 	return G_IterateEntities( entity, classname, 0, nullptr );
+#else
+	return G_IterateEntities( entity, classname, true, 0, nullptr );
+#endif
 }
 
 /*
@@ -335,7 +356,11 @@ if we are not searching for player entities it is recommended to start searching
 */
 gentity_t *G_IterateEntitiesWithField( gentity_t *entity, size_t fieldofs, const char *match )
 {
+#ifdef UNREALARENA
 	return G_IterateEntities( entity, nullptr, fieldofs, match );
+#else
+	return G_IterateEntities( entity, nullptr, true, fieldofs, match );
+#endif
 }
 
 // from quakestyle.telefragged.com
@@ -422,7 +447,11 @@ gentity_t *G_PickRandomEntity( const char *classname, size_t fieldofs, const cha
 	gentity_t *choices[ MAX_GENTITIES - 2 - MAX_CLIENTS ];
 
 	//collects the targets
+#ifdef UNREALARENA
 	while( ( foundEntity = G_IterateEntities( foundEntity, classname, fieldofs, match ) ) != nullptr )
+#else
+	while( ( foundEntity = G_IterateEntities( foundEntity, classname, true, fieldofs, match ) ) != nullptr )
+#endif
 		choices[ totalChoiceCount++ ] = foundEntity;
 
 	if ( !totalChoiceCount )
@@ -479,6 +508,10 @@ static const entityCallEventDescription_t gentityEventDescriptions[] =
 {
 		{ "onAct",       ON_ACT       },
 		{ "onDie",       ON_DIE       },
+#ifndef UNREALARENA
+		{ "onDisable",   ON_DISABLE   },
+		{ "onEnable",    ON_ENABLE    },
+#endif
 		{ "onFree",      ON_FREE      },
 		{ "onReach",     ON_REACH     },
 		{ "onReset",     ON_RESET     },
@@ -513,10 +546,17 @@ typedef struct
 static const entityActionDescription_t actionDescriptions[] =
 {
 		{ "act",       ECA_ACT       },
+#ifndef UNREALARENA
+		{ "disable",   ECA_DISABLE   },
+		{ "enable",    ECA_ENABLE    },
+#endif
 		{ "free",      ECA_FREE      },
 		{ "nop",       ECA_NOP       },
 		{ "propagate", ECA_PROPAGATE },
 		{ "reset",     ECA_RESET     },
+#ifndef UNREALARENA
+		{ "toggle",    ECA_TOGGLE    },
+#endif
 		{ "use",       ECA_USE       },
 };
 
@@ -569,14 +609,22 @@ gentity_t *G_IterateTargets(gentity_t *entity, int *targetIndex, gentity_t *self
 		if(self->targets[*targetIndex][0] == '$')
 		{
 			possibleTarget = G_ResolveEntityKeyword( self, self->targets[*targetIndex] );
+#ifdef UNREALARENA
 			if(possibleTarget)
+#else
+			if(possibleTarget && possibleTarget->enabled)
+#endif
 				return possibleTarget;
 			return nullptr;
 		}
 
 		for( entity = &g_entities[ MAX_CLIENTS ]; entity < &g_entities[ level.num_entities ]; entity++ )
 		{
+#ifdef UNREALARENA
 			if ( !entity->inuse )
+#else
+			if ( !entity->inuse || !entity->enabled)
+#endif
 				continue;
 
 			if( G_MatchesName(entity, self->targets[*targetIndex]) )
@@ -808,6 +856,27 @@ void G_CallEntity(gentity_t *targetedEntity, gentityCall_t *call)
 		case ECA_PROPAGATE:
 			G_FireEntity( targetedEntity, call->activator);
 			break;
+
+#ifndef UNREALARENA
+		case ECA_ENABLE:
+			if(!targetedEntity->enabled) //only fire an event if we weren't already enabled
+			{
+				targetedEntity->enabled = true;
+				G_EventFireEntity( targetedEntity, call->activator, ON_ENABLE );
+			}
+			break;
+		case ECA_DISABLE:
+			if(targetedEntity->enabled) //only fire an event if we weren't already disabled
+			{
+				targetedEntity->enabled = false;
+				G_EventFireEntity( targetedEntity, call->activator, ON_DISABLE );
+			}
+			break;
+		case ECA_TOGGLE:
+			targetedEntity->enabled = !targetedEntity->enabled;
+			G_EventFireEntity( targetedEntity, call->activator, targetedEntity->enabled ? ON_ENABLE : ON_DISABLE );
+			break;
+#endif
 
 		case ECA_USE:
 			if (!targetedEntity->use)

@@ -1,5 +1,5 @@
 # Unvanquished BSD Source Code
-# Copyright (c) 2015, Unreal Arena
+# Copyright (c) 2015-2016, Unreal Arena
 # Copyright (c) 2013-2014, Unvanquished Developers
 # All rights reserved.
 #
@@ -28,6 +28,12 @@
 
 cmake_minimum_required(VERSION 2.8)
 project("Unreal Arena" C CXX)
+
+option(UNREALARENA "Build Unreal Arena gamecode" 1)
+
+if (UNREALARENA)
+    add_definitions(-DUNREALARENA)
+endif()
 
 set(Daemon_OUT ${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(daemon daemon_build)

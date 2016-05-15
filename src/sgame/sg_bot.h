@@ -70,6 +70,10 @@ typedef struct
 
 	botSkill_t botSkill;
 	botEntityAndDistance_t bestEnemy;
+#ifndef UNREALARENA
+	botEntityAndDistance_t closestDamagedBuilding;
+	botEntityAndDistance_t closestBuildings[ BA_NUM_BUILDABLES ];
+#endif
 
 	AIBehaviorTree_t *behaviorTree;
 	AIGenericNode_t  *currentNode;

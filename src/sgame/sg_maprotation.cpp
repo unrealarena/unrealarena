@@ -333,6 +333,7 @@ static bool G_ParseNode( mrNode_t **node, char *token, const char **text_p, bool
 				return false;
 			}
 
+#ifdef UNREALARENA
 			if ( !Q_stricmp( token, "q" ) )
 			{
 				condition->lastWin = TEAM_Q;
@@ -341,6 +342,16 @@ static bool G_ParseNode( mrNode_t **node, char *token, const char **text_p, bool
 			{
 				condition->lastWin = TEAM_U;
 			}
+#else
+			if ( !Q_stricmp( token, "aliens" ) )
+			{
+				condition->lastWin = TEAM_ALIENS;
+			}
+			else if ( !Q_stricmp( token, "humans" ) )
+			{
+				condition->lastWin = TEAM_HUMANS;
+			}
+#endif
 			else
 			{
 				G_Printf( S_ERROR "invalid right hand side in expression: %s\n", token );

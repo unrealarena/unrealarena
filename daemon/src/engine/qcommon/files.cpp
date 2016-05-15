@@ -1,7 +1,7 @@
 /*
  * Daemon GPL source code
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 2013  Unvanquished
+ * Copyright (C) 2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,11 @@
 const char TEMP_SUFFIX[] = ".tmp";
 
 // Default base package
+#ifdef UNREALARENA
 const char DEFAULT_BASE_PAK[] = "unrealarena";
+#else
+const char DEFAULT_BASE_PAK[] = "unvanquished";
+#endif
 
 // Cvars to select the base and extra packages to use
 static Cvar::Cvar<std::string> fs_basepak("fs_basepak", "base pak to load", 0, DEFAULT_BASE_PAK);

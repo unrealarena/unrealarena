@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -27,8 +27,13 @@
 #define CMD_MESSAGE      0x0004 // sends message to others (skip when muted)
 #define CMD_TEAM         0x0008 // must be on a team
 #define CMD_SPEC         0x0010 // must be a spectator
+#ifdef UNREALARENA
 #define CMD_Q            0x0020
 #define CMD_U            0x0040
+#else
+#define CMD_ALIEN        0x0020
+#define CMD_HUMAN        0x0040
+#endif
 #define CMD_ALIVE        0x0080
 #define CMD_INTERMISSION 0x0100 // valid during intermission
 
@@ -424,8 +429,13 @@ void ScoreboardMessage( gentity_t *ent )
 		stringlength += j;
 	}
 
+#ifdef UNREALARENA
 	trap_SendServerCommand( ent - g_entities, va( "scores %i %i%s",
 	                        level.team[ TEAM_Q ].kills, level.team[ TEAM_U ].kills, string ) );
+#else
+	trap_SendServerCommand( ent - g_entities, va( "scores %i %i%s",
+	                        level.team[ TEAM_ALIENS ].kills, level.team[ TEAM_HUMANS ].kills, string ) );
+#endif
 }
 
 /*
@@ -559,8 +569,13 @@ void Cmd_Give_f( gentity_t *ent )
 		}
 		else
 		{
+#ifdef UNREALARENA
 			amount = atof( name + strlen("funds") ) *
 			          ( ent->client->pers.team == TEAM_Q ? CREDITS_PER_EVO : 1.0f );
+#else
+			amount = atof( name + strlen("funds") ) *
+			          ( ent->client->pers.team == TEAM_ALIENS ? CREDITS_PER_EVO : 1.0f );
+#endif
 			// clamp credits as G_AddCreditToClient() expects a short int
 			amount = Math::Clamp(amount, -30000.0f, 30000.0f);
 		}
@@ -579,6 +594,11 @@ void Cmd_Give_f( gentity_t *ent )
 		{
 			amount = atof( name + strlen("bp") );
 		}
+
+#ifndef UNREALARENA
+		G_ModifyBuildPoints( (team_t)ent->client->pers.team, amount );
+		G_MarkBuildPointsMined( (team_t)ent->client->pers.team, amount );
+#endif
 	}
 
 	// give momentum
@@ -616,6 +636,13 @@ void Cmd_Give_f( gentity_t *ent )
 		}
 	}
 
+#ifndef UNREALARENA
+	if ( give_all || Q_stricmp( name, "stamina" ) == 0 )
+	{
+		ent->client->ps.stats[ STAT_STAMINA ] = STAMINA_MAX;
+	}
+#endif
+
 	if ( give_all || Q_stricmp( name, "fuel" ) == 0 )
 	{
 		G_RefillFuel(ent, false);
@@ -623,12 +650,26 @@ void Cmd_Give_f( gentity_t *ent )
 
 	if ( Q_stricmp( name, "poison" ) == 0 )
 	{
+#ifdef UNREALARENA
 		if ( ent->client->pers.team == TEAM_U )
 		{
 			ent->client->ps.stats[ STAT_STATE ] |= SS_POISONED;
 			ent->client->lastPoisonTime = level.time;
 			ent->client->lastPoisonClient = ent;
 		}
+#else
+		if ( ent->client->pers.team == TEAM_HUMANS )
+		{
+			ent->client->ps.stats[ STAT_STATE ] |= SS_POISONED;
+			ent->client->lastPoisonTime = level.time;
+			ent->client->lastPoisonClient = ent;
+		}
+		else
+		{
+			ent->client->ps.stats[ STAT_STATE ] |= SS_BOOSTED;
+			ent->client->boostedTime = level.time;
+		}
+#endif
 	}
 
 	if ( give_all || Q_stricmp( name, "ammo" ) == 0 )
@@ -731,8 +772,30 @@ Cmd_Kill_f
 */
 void Cmd_Kill_f( gentity_t *ent )
 {
+#ifdef UNREALARENA
+	// Kill instantly
 	ent->client->ps.stats[ STAT_HEALTH ] = ent->health = 0;
 	G_PlayerDie( ent, ent, ent, MOD_SUICIDE );
+#else
+	if ( g_cheats.integer )
+	{
+		ent->client->ps.stats[ STAT_HEALTH ] = ent->health = 0;
+		G_PlayerDie( ent, ent, ent, MOD_SUICIDE );
+	}
+	else
+	{
+		if ( ent->suicideTime == 0 )
+		{
+			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You will suicide in 20 seconds\n") "\"" );
+			ent->suicideTime = level.time + 20000;
+		}
+		else if ( ent->suicideTime > level.time )
+		{
+			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("Suicide cancelled\n") "\"" );
+			ent->suicideTime = 0;
+		}
+	}
+#endif
 }
 
 /*
@@ -750,10 +813,19 @@ void Cmd_Team_f( gentity_t *ent )
 	int      t;
 	const g_admin_spec_t *specOnly;
 
+#ifdef UNREALARENA
 	players[ TEAM_Q ] = level.team[ TEAM_Q ].numClients;
 	players[ TEAM_U ] = level.team[ TEAM_U ].numClients;
+#else
+	players[ TEAM_ALIENS ] = level.team[ TEAM_ALIENS ].numClients;
+	players[ TEAM_HUMANS ] = level.team[ TEAM_HUMANS ].numClients;
+#endif
 
+#ifdef UNREALARENA
 	if ( TEAM_Q == oldteam || TEAM_U == oldteam )
+#else
+	if ( TEAM_ALIENS == oldteam || TEAM_HUMANS == oldteam )
+#endif
 	{
 		players[ oldteam ]--;
 	}
@@ -764,6 +836,25 @@ void Cmd_Team_f( gentity_t *ent )
 	{
 		return;
 	}
+
+#ifndef UNREALARENA
+	// Cannot leave a team while in combat.
+	if ( !g_cheats.integer &&
+	     g_combatCooldown.integer &&
+	     ent->client->lastCombatTime &&
+	     ent->client->sess.spectatorState == SPECTATOR_NOT &&
+	     ent->health > 0 &&
+	     ent->client->lastCombatTime + g_combatCooldown.integer * 1000 > level.time )
+	{
+		float remaining = ( ( ent->client->lastCombatTime + g_combatCooldown.integer * 1000 ) - level.time ) / 1000;
+
+		trap_SendServerCommand( ent - g_entities,
+		    va( "print_tr %s %i %.0f", QQ( N_("You cannot leave your team until $1$ after combat. Try again in $2$s.\n") ),
+		        g_combatCooldown.integer, remaining ) );
+
+		return;
+	}
+#endif
 
 	// disallow joining teams during warmup
 	if ( g_doWarmup.integer && ( ( level.warmupTime - level.time ) / 1000 ) > 0 )
@@ -783,22 +874,42 @@ void Cmd_Team_f( gentity_t *ent )
 
 	if ( !Q_stricmp( s, "auto" ) )
 	{
-		if ( level.team[ TEAM_Q ].locked && level.team[ TEAM_U ].locked )
+#ifdef UNREALARENA
+		if ( level.team[ TEAM_U ].locked && level.team[ TEAM_Q ].locked )
 		{
 			team = TEAM_NONE;
-		}
-		else if ( level.team[ TEAM_Q ].locked || players[ TEAM_Q ] > players[ TEAM_U ] )
-		{
-			team = TEAM_U;
 		}
 		else if ( level.team[ TEAM_U ].locked || players[ TEAM_U ] > players[ TEAM_Q ] )
 		{
 			team = TEAM_Q;
 		}
+		else if ( level.team[ TEAM_Q ].locked || players[ TEAM_Q ] > players[ TEAM_U ] )
+		{
+			team = TEAM_U;
+		}
 		else
 		{
 			team = (team_t) ( TEAM_Q + rand() / ( RAND_MAX / 2 + 1 ) );
 		}
+#else
+		if ( level.team[ TEAM_HUMANS ].locked && level.team[ TEAM_ALIENS ].locked )
+		{
+			team = TEAM_NONE;
+		}
+		else if ( level.team[ TEAM_HUMANS ].locked || players[ TEAM_HUMANS ] > players[ TEAM_ALIENS ] )
+		{
+			team = TEAM_ALIENS;
+		}
+
+		else if ( level.team[ TEAM_ALIENS ].locked || players[ TEAM_ALIENS ] > players[ TEAM_HUMANS ] )
+		{
+			team = TEAM_HUMANS;
+		}
+		else
+		{
+			team = (team_t) ( TEAM_ALIENS + rand() / ( RAND_MAX / 2 + 1 ) );
+		}
+#endif
 	}
 	else
 	{
@@ -808,6 +919,7 @@ void Cmd_Team_f( gentity_t *ent )
 				team = TEAM_NONE;
 				break;
 
+#ifdef UNREALARENA
 			case TEAM_Q:
 				//TODO move code in a function common with next case
 				if ( level.team[ TEAM_Q ].locked )
@@ -849,6 +961,49 @@ void Cmd_Team_f( gentity_t *ent )
 
 				team = TEAM_U;
 				break;
+#else
+			case TEAM_ALIENS:
+				//TODO move code in a function common with next case
+				if ( level.team[ TEAM_ALIENS ].locked )
+				{
+					G_TriggerMenu( ent - g_entities, MN_A_TEAMLOCKED );
+					return;
+				}
+				else if ( level.team[ TEAM_HUMANS ].locked )
+				{
+					force = true;
+				}
+
+				if ( !force && g_teamForceBalance.integer && players[ TEAM_ALIENS ] > players[ TEAM_HUMANS ])
+				{
+					G_TriggerMenu( ent - g_entities, MN_A_TEAMFULL );
+					return;
+				}
+
+				team = TEAM_ALIENS;
+				break;
+
+			case TEAM_HUMANS:
+				//TODO move code in a function common with previous case
+				if ( level.team[ TEAM_HUMANS ].locked )
+				{
+					G_TriggerMenu( ent - g_entities, MN_H_TEAMLOCKED );
+					return;
+				}
+				else if ( level.team[ TEAM_ALIENS ].locked )
+				{
+					force = true;
+				}
+
+				if ( !force && g_teamForceBalance.integer && players[ TEAM_HUMANS ] > players[ TEAM_ALIENS ] )
+				{
+					G_TriggerMenu( ent - g_entities, MN_H_TEAMFULL );
+					return;
+				}
+
+				team = TEAM_HUMANS;
+				break;
+#endif
 
 			default:
 				trap_SendServerCommand( ent - g_entities,
@@ -1281,18 +1436,33 @@ void Cmd_VSay_f( gentity_t *ent )
 		weapon = BG_PrimaryWeapon( ent->client->ps.stats );
 	}
 
+#ifdef UNREALARENA
 	track = BG_VoiceTrackFind( cmd->tracks, ent->client->pers.team,
 	                           weapon, ( int ) ent->client->voiceEnthusiasm,
 	                           &trackNum );
+#else
+	track = BG_VoiceTrackFind( cmd->tracks, ent->client->pers.team,
+	                           ent->client->pers.classSelection, weapon, ( int ) ent->client->voiceEnthusiasm,
+	                           &trackNum );
+#endif
 
 	if ( !track )
 	{
+#ifdef UNREALARENA
 		trap_SendServerCommand( ent - g_entities, va("print_tr %s %s %s %d %d %d %s",
 		                          QQ( N_("$1$: no available track for command '$2$', team $3$, "
 		                          "weapon $4$, and enthusiasm $5$ in voice '$6$'\n") ),
 		                          vsay, Quote( voiceCmd ), ent->client->pers.team,
 		                          weapon,
 		                          ( int ) ent->client->voiceEnthusiasm, Quote( voiceName ) ) );
+#else
+		trap_SendServerCommand( ent - g_entities, va("print_tr %s %s %s %d %d %d %d %s",
+		                          QQ( N_("$1$: no available track for command '$2$', team $3$, "
+		                          "class $4$, weapon $5$, and enthusiasm $6$ in voice '$7$'\n") ),
+		                          vsay, Quote( voiceCmd ), ent->client->pers.team,
+		                          ent->client->pers.classSelection, weapon,
+		                          ( int ) ent->client->voiceEnthusiasm, Quote( voiceName ) ) );
+#endif
 		return;
 	}
 
@@ -1385,6 +1555,10 @@ static const struct {
 	{ "spectate",     false, V_ANY,    T_PLAYER,  true,   true,  qyes,   &g_kickVotesPercent, VOTE_ALWAYS, nullptr, nullptr },
 	{ "mute",         true,  V_PUBLIC, T_PLAYER,  true,   true,  qyes,   &g_denyVotesPercent, VOTE_ALWAYS, nullptr, nullptr },
 	{ "unmute",       true,  V_PUBLIC, T_PLAYER,  false,  true,  qno,    &g_denyVotesPercent, VOTE_ALWAYS, nullptr, nullptr },
+#ifndef UNREALARENA
+	{ "denybuild",    true,  V_TEAM,   T_PLAYER,  true,   true,  qyes,   &g_denyVotesPercent, VOTE_ALWAYS, nullptr, nullptr },
+	{ "allowbuild",   true,  V_TEAM,   T_PLAYER,  false,  true,  qno,    &g_denyVotesPercent, VOTE_ALWAYS, nullptr, nullptr },
+#endif
 	{ "extend",       true,  V_PUBLIC, T_OTHER,   false,  false, qno,    &g_extendVotesPercent,      VOTE_REMAIN, &g_extendVotesTime, nullptr },
 	{ "admitdefeat",  true,  V_TEAM,   T_NONE,    false,  true,  qno,    &g_admitDefeatVotesPercent, VOTE_ALWAYS, nullptr, nullptr },
 	{ "draw",         true,  V_PUBLIC, T_NONE,    true,   true,  qyes,   &g_drawVotesPercent,        VOTE_AFTER,  &g_drawVotesAfter,  &g_drawVoteReasonRequired },
@@ -1774,6 +1948,38 @@ vote_is_disabled:
 		             N_("Unmute player '%s'"), name );
 		break;
 
+#ifndef UNREALARENA
+	case VOTE_DENYBUILD:
+		if ( level.clients[ clientNum ].pers.namelog->denyBuild )
+		{
+			trap_SendServerCommand( ent - g_entities,
+			                        va( "print_tr %s %s", QQ( N_("$1$: player already lost building rights\n") ), cmd ) );
+			return;
+		}
+
+		Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ),
+		             "denybuild %d", id );
+		Com_sprintf( level.team[ team ].voteDisplayString,
+		             sizeof( level.team[ team ].voteDisplayString ),
+		             "Take away building rights from '%s'", name );
+		break;
+
+	case VOTE_ALLOWBUILD:
+		if ( !level.clients[ clientNum ].pers.namelog->denyBuild )
+		{
+			trap_SendServerCommand( ent - g_entities,
+			                        va( "print_tr %s %s", QQ( N_("$1$: player already has building rights\n") ), cmd ) );
+			return;
+		}
+
+		Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ),
+		             "allowbuild %d", id );
+		Com_sprintf( level.team[ team ].voteDisplayString,
+		             sizeof( level.team[ team ].voteDisplayString ),
+		             "Allow '%s' to build", name );
+		break;
+#endif
+
 	case VOTE_EXTEND:
 		Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ),
 		             "time %i", level.timelimit + g_extendVotesTime.integer );
@@ -2073,6 +2279,455 @@ void Cmd_SetViewpos_f( gentity_t *ent )
 	G_TeleportPlayer( ent, origin, angles, 0.0f );
 }
 
+#ifndef UNREALARENA
+#define AS_OVER_RT3 (( ALIENSENSE_RANGE * 0.5f ) / M_ROOT3 )
+
+bool G_RoomForClassChange( gentity_t *ent, class_t pcl, vec3_t newOrigin )
+{
+	vec3_t  fromMins, fromMaxs;
+	vec3_t  toMins, toMaxs;
+	vec3_t  temp;
+	trace_t tr;
+	float   nudgeHeight;
+	float   maxHorizGrowth;
+	class_t oldClass = (class_t) ent->client->ps.stats[ STAT_CLASS ];
+
+	BG_ClassBoundingBox( oldClass, fromMins, fromMaxs, nullptr, nullptr, nullptr );
+	BG_ClassBoundingBox( pcl, toMins, toMaxs, nullptr, nullptr, nullptr );
+
+	VectorCopy( ent->client->ps.origin, newOrigin );
+
+	// find max x/y diff
+	maxHorizGrowth = toMaxs[ 0 ] - fromMaxs[ 0 ];
+
+	if ( toMaxs[ 1 ] - fromMaxs[ 1 ] > maxHorizGrowth )
+	{
+		maxHorizGrowth = toMaxs[ 1 ] - fromMaxs[ 1 ];
+	}
+
+	if ( toMins[ 0 ] - fromMins[ 0 ] > -maxHorizGrowth )
+	{
+		maxHorizGrowth = - ( toMins[ 0 ] - fromMins[ 0 ] );
+	}
+
+	if ( toMins[ 1 ] - fromMins[ 1 ] > -maxHorizGrowth )
+	{
+		maxHorizGrowth = - ( toMins[ 1 ] - fromMins[ 1 ] );
+	}
+
+	if ( maxHorizGrowth > 0.0f )
+	{
+		// test by moving the player up the max required on a 60 degree slope
+		nudgeHeight = maxHorizGrowth * 2.0f;
+	}
+	else
+	{
+		// player is shrinking, so there's no need to nudge them upwards
+		nudgeHeight = 0.0f;
+	}
+
+	// find what the new origin would be on a level surface
+	newOrigin[ 2 ] -= toMins[ 2 ] - fromMins[ 2 ];
+
+	if ( ent->client->noclip )
+	{
+		return true;
+	}
+
+	//compute a place up in the air to start the real trace
+	VectorCopy( newOrigin, temp );
+	temp[ 2 ] += nudgeHeight;
+	trap_Trace( &tr, newOrigin, toMins, toMaxs, temp, ent->s.number, MASK_PLAYERSOLID, 0 );
+
+	//trace down to the ground so that we can evolve on slopes
+	VectorCopy( newOrigin, temp );
+	temp[ 2 ] += ( nudgeHeight * tr.fraction );
+	trap_Trace( &tr, temp, toMins, toMaxs, newOrigin, ent->s.number, MASK_PLAYERSOLID, 0 );
+	VectorCopy( tr.endpos, newOrigin );
+
+	//make REALLY sure
+	trap_Trace( &tr, newOrigin, toMins, toMaxs, newOrigin, ent->s.number, MASK_PLAYERSOLID, 0 );
+
+	//check there is room to evolve
+	return ( !tr.startsolid && tr.fraction == 1.0f );
+}
+
+/*
+=================
+Cmd_Class_f
+=================
+*/
+static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
+{
+	int       clientNum;
+	int       i;
+	vec3_t    infestOrigin;
+	class_t   currentClass = ent->client->pers.classSelection;
+	class_t   newClass;
+	int       entityList[ MAX_GENTITIES ];
+	vec3_t    range = { AS_OVER_RT3, AS_OVER_RT3, AS_OVER_RT3 };
+	vec3_t    mins, maxs;
+	int       num;
+	gentity_t *other;
+	int       oldBoostTime = -1;
+	vec3_t    oldVel;
+
+	clientNum = ent->client - level.clients;
+	newClass = BG_ClassByName( s )->number;
+
+	if ( ent->client->sess.spectatorState != SPECTATOR_NOT )
+	{
+		team_t team;
+		if ( ent->client->sess.spectatorState == SPECTATOR_FOLLOW )
+		{
+			G_StopFollowing( ent );
+		}
+
+		team = (team_t) ent->client->pers.team;
+		if ( team == TEAM_ALIENS )
+		{
+			if ( newClass != PCL_ALIEN_BUILDER0 &&
+			     newClass != PCL_ALIEN_BUILDER0_UPG &&
+			     newClass != PCL_ALIEN_LEVEL0 )
+			{
+				if ( report )
+				{
+					G_TriggerMenuArgs( ent->client->ps.clientNum, MN_A_CLASSNOTSPAWN, newClass );
+				}
+				return false;
+			}
+
+			if ( BG_ClassDisabled( newClass ) )
+			{
+				if ( report )
+				{
+					G_TriggerMenuArgs( ent->client->ps.clientNum, MN_A_CLASSNOTALLOWED, newClass );
+				}
+				return false;
+			}
+
+			if ( !BG_ClassUnlocked( newClass ) )
+			{
+				if ( report )
+				{
+					G_TriggerMenuArgs( ent->client->ps.clientNum, MN_A_CLASSLOCKED, newClass );
+				}
+				return false;
+			}
+
+			// spawn from an egg
+			//TODO merge with human's code
+			if ( G_PushSpawnQueue( &level.team[ team ].spawnQueue, clientNum ) )
+			{
+				ent->client->pers.classSelection = newClass;
+				ent->client->ps.stats[ STAT_CLASS ] = newClass;
+
+				return true;
+			}
+		}
+		else if ( team == TEAM_HUMANS )
+		{
+			//set the item to spawn with
+			if ( !Q_stricmp( s, BG_Weapon( WP_MACHINEGUN )->name ) &&
+			     !BG_WeaponDisabled( WP_MACHINEGUN ) )
+			{
+				ent->client->pers.humanItemSelection = WP_MACHINEGUN;
+			}
+			else if ( !Q_stricmp( s, BG_Weapon( WP_HBUILD )->name ) &&
+			          !BG_WeaponDisabled( WP_HBUILD ) )
+			{
+				ent->client->pers.humanItemSelection = WP_HBUILD;
+			}
+			else
+			{
+				if ( report )
+				{
+					G_TriggerMenu( ent->client->ps.clientNum, MN_H_UNKNOWNSPAWNITEM );
+				}
+				return false;
+			}
+
+			// spawn from a telenode
+			//TODO merge with alien's code
+			newClass = PCL_HUMAN_NAKED;
+			if ( G_PushSpawnQueue( &level.team[ team ].spawnQueue, clientNum ) )
+			{
+				ent->client->pers.classSelection = newClass;
+				ent->client->ps.stats[ STAT_CLASS ] = newClass;
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	if ( ent->health <= 0 )
+	{
+		return true; // dead, can't evolve; no point in trying other classes (if any listed)
+	}
+
+	if ( ent->client->pers.team == TEAM_ALIENS )
+	{
+		if ( newClass == PCL_NONE )
+		{
+			if ( report )
+			{
+				G_TriggerMenu( ent->client->ps.clientNum, MN_A_UNKNOWNCLASS );
+			}
+			return false;
+		}
+
+		//if we are not currently spectating, we are attempting evolution
+		if ( ent->client->pers.classSelection != PCL_NONE )
+		{
+			int cost;
+
+			//check that we have an overmind
+			if ( !G_ActiveOvermind() )
+			{
+				if ( report )
+				{
+					G_TriggerMenu( clientNum, MN_A_NOOVMND_EVOLVE );
+				}
+				return false;
+			}
+
+			//check there are no humans nearby
+			VectorAdd( ent->client->ps.origin, range, maxs );
+			VectorSubtract( ent->client->ps.origin, range, mins );
+
+			num = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
+
+			for ( i = 0; i < num; i++ )
+			{
+				other = &g_entities[ entityList[ i ] ];
+
+				if ( ( other->client && other->client->pers.team == TEAM_HUMANS ) ||
+				     ( other->s.eType == ET_BUILDABLE && other->buildableTeam == TEAM_HUMANS &&
+				       other->powered ) )
+				{
+					if ( report )
+					{
+						G_TriggerMenu( clientNum, MN_A_TOOCLOSE );
+					}
+					return false;
+				}
+			}
+
+			//check that we are not wallwalking
+			if ( ent->client->ps.eFlags & EF_WALLCLIMB )
+			{
+				if ( report )
+				{
+					G_TriggerMenu( clientNum, MN_A_EVOLVEWALLWALK );
+				}
+				return false;
+			}
+
+			if ( ent->client->sess.spectatorState == SPECTATOR_NOT &&
+			     ( currentClass == PCL_ALIEN_BUILDER0 ||
+			       currentClass == PCL_ALIEN_BUILDER0_UPG ) &&
+			     ent->client->ps.stats[ STAT_MISC ] > 0 )
+			{
+				if ( report )
+				{
+					G_TriggerMenu( ent->client->ps.clientNum, MN_A_EVOLVEBUILDTIMER );
+				}
+				return false;
+			}
+
+			cost = BG_ClassCanEvolveFromTo( currentClass, newClass, ent->client->pers.credit );
+
+			if ( G_RoomForClassChange( ent, newClass, infestOrigin ) )
+			{
+				if ( cost >= 0 )
+				{
+					ent->client->pers.evolveHealthFraction = ( float ) ent->client->ps.stats[ STAT_HEALTH ] /
+					    ( float ) BG_Class( currentClass )->health;
+
+					if ( ent->client->pers.evolveHealthFraction < 0.0f )
+					{
+						ent->client->pers.evolveHealthFraction = 0.0f;
+					}
+					else if ( ent->client->pers.evolveHealthFraction > 1.0f )
+					{
+						ent->client->pers.evolveHealthFraction = 1.0f;
+					}
+
+					//remove credit
+					G_AddCreditToClient( ent->client, -cost, true );
+					ent->client->pers.classSelection = newClass;
+					ClientUserinfoChanged( clientNum, false );
+					VectorCopy( infestOrigin, ent->s.pos.trBase );
+					VectorCopy( ent->client->ps.velocity, oldVel );
+
+					if ( ent->client->ps.stats[ STAT_STATE ] & SS_BOOSTED )
+					{
+						oldBoostTime = ent->client->boostedTime;
+					}
+
+					ClientSpawn( ent, ent, ent->s.pos.trBase, ent->s.apos.trBase );
+
+					VectorCopy( oldVel, ent->client->ps.velocity );
+
+					if ( oldBoostTime > 0 )
+					{
+						ent->client->boostedTime = oldBoostTime;
+						ent->client->ps.stats[ STAT_STATE ] |= SS_BOOSTED;
+					}
+				}
+				else
+				{
+					if ( report )
+					{
+						G_TriggerMenuArgs( clientNum, MN_A_CANTEVOLVE, newClass );
+					}
+					return false;
+				}
+			}
+			else
+			{
+				if ( report )
+				{
+					G_TriggerMenu( clientNum, MN_A_NOEROOM );
+				}
+				return false;
+			}
+		}
+	}
+	else if ( ent->client->pers.team == TEAM_HUMANS )
+	{
+		if ( report )
+		{
+			G_TriggerMenu( clientNum, MN_H_DEADTOCLASS );
+		}
+		return false;
+	}
+
+	// if we reach this, found a valid class and changed to it
+	return true;
+}
+
+void Cmd_Class_f( gentity_t *ent )
+{
+	char s[ MAX_TOKEN_CHARS ];
+	int  i;
+	int  args = trap_Argc() - 1;
+
+	for ( i = 1; i <= args; ++i )
+	{
+		trap_Argv( i, s, sizeof( s ) );
+
+		if ( Cmd_Class_internal( ent, s, i == args ) ) break;
+	}
+}
+
+void Cmd_Deconstruct_f( gentity_t *ent )
+{
+	char      arg[ 32 ];
+	vec3_t    viewOrigin, forward, end;
+	trace_t   trace;
+	gentity_t *buildable;
+	bool  instant;
+
+	// check for revoked building rights
+	if ( ent->client->pers.namelog->denyBuild )
+	{
+		G_TriggerMenu( ent->client->ps.clientNum, MN_B_REVOKED );
+		return;
+	}
+
+	// trace for target
+	BG_GetClientViewOrigin( &ent->client->ps, viewOrigin );
+	AngleVectors( ent->client->ps.viewangles, forward, nullptr, nullptr );
+	VectorMA( viewOrigin, 100, forward, end );
+	trap_Trace( &trace, viewOrigin, nullptr, nullptr, end, ent->s.number, MASK_PLAYERSOLID, 0 );
+	buildable = &g_entities[ trace.entityNum ];
+
+	// check if target is valid
+	if ( trace.fraction >= 1.0f ||
+	     buildable->s.eType != ET_BUILDABLE ||
+	     !G_OnSameTeam( ent, buildable ) )
+	{
+		return;
+	}
+
+	// check for valid build weapon
+	switch ( ent->client->ps.weapon )
+	{
+		case WP_HBUILD:
+		case WP_ABUILD:
+		case WP_ABUILD2:
+			break;
+
+		default:
+			return;
+	}
+
+	// always let the builder prevent the explosion of a buildable
+	if ( buildable->health <= 0 )
+	{
+		G_RewardAttackers( buildable );
+		G_FreeEntity( buildable );
+		return;
+	}
+
+	// check for instant mode
+	if ( trap_Argc() == 2 )
+	{
+		trap_Argv( 1, arg, sizeof( arg ) );
+		instant = !Q_stricmp( arg, "marked" );
+	}
+	else
+	{
+		instant = false;
+	}
+
+	if ( instant && buildable->deconstruct )
+	{
+		if ( !g_cheats.integer )
+		{
+			// check if the buildable is protected from instant deconstruction
+			switch ( buildable->s.modelindex )
+			{
+				case BA_A_OVERMIND:
+				case BA_H_REACTOR:
+					G_TriggerMenu( ent->client->ps.clientNum, MN_B_MAINSTRUCTURE );
+					return;
+
+				case BA_A_SPAWN:
+				case BA_H_SPAWN:
+					if ( level.team[ ent->client->ps.persistant[ PERS_TEAM ] ].numSpawns <= 1 )
+					{
+						G_TriggerMenu( ent->client->ps.clientNum, MN_B_LASTSPAWN );
+						return;
+					}
+					break;
+			}
+
+			// deny if build timer active
+			if ( ent->client->ps.stats[ STAT_MISC ] > 0 )
+			{
+				G_AddEvent( ent, EV_BUILD_DELAY, ent->client->ps.clientNum );
+				return;
+			}
+
+			// add to build timer
+			ent->client->ps.stats[ STAT_MISC ] += BG_Buildable( buildable->s.modelindex )->buildTime / 4;
+		}
+
+		G_Deconstruct( buildable, ent, MOD_DECONSTRUCT );
+	}
+	else
+	{
+		// toggle mark
+		buildable->deconstruct     = !buildable->deconstruct;
+		buildable->deconstructTime = level.time;
+	}
+}
+#endif
+
 /*
 =================
 Cmd_Ignite_f
@@ -2089,6 +2744,15 @@ void Cmd_Ignite_f( gentity_t *player )
 	VectorMA( viewOrigin, 100, forward, end );
 	trap_Trace( &trace, viewOrigin, nullptr, nullptr, end, player->s.number, MASK_PLAYERSOLID, 0 );
 	target = &g_entities[ trace.entityNum ];
+
+#ifndef UNREALARENA
+	if ( !target || target->s.eType != ET_BUILDABLE || target->buildableTeam != TEAM_ALIENS )
+	{
+		return;
+	}
+
+	G_IgniteBuildable( target, player );
+#endif
 }
 
 /*
@@ -2234,6 +2898,599 @@ void Cmd_ToggleItem_f( gentity_t *ent )
 	}
 }
 
+#ifndef UNREALARENA
+/*
+=================
+Cmd_Sell_f
+=================
+*/
+static bool Cmd_Sell_weapons( gentity_t *ent )
+{
+	int      i;
+	weapon_t selected = BG_GetPlayerWeapon( &ent->client->ps );
+	bool sold = false;
+
+	if ( !BG_PlayerCanChangeWeapon( &ent->client->ps ) )
+	{
+		return false;
+	}
+
+	for ( i = WP_NONE + 1; i < WP_NUM_WEAPONS; i++ )
+	{
+		// guard against selling the HBUILD weapons exploit
+		if ( i == WP_HBUILD && ent->client->ps.stats[ STAT_MISC ] > 0 )
+		{
+			G_TriggerMenu( ent->client->ps.clientNum, MN_H_ARMOURYBUILDTIMER );
+			continue;
+		}
+
+		if ( BG_InventoryContainsWeapon( i, ent->client->ps.stats ) &&
+		     BG_Weapon( i )->purchasable )
+		{
+			ent->client->ps.stats[ STAT_WEAPON ] = WP_NONE;
+
+			// add to funds
+			G_AddCreditToClient( ent->client, ( short ) BG_Weapon( i )->price, false );
+
+			sold = true;
+		}
+
+		// if we have this weapon selected, force a new selection
+		if ( i == selected )
+		{
+			G_ForceWeaponChange( ent, WP_NONE );
+		}
+	}
+
+	return sold;
+}
+
+static bool Cmd_Sell_upgradeItem( gentity_t *ent, upgrade_t item )
+{
+	// check if carried and sellable
+	if ( !BG_InventoryContainsUpgrade( item, ent->client->ps.stats ) ||
+	     !BG_Upgrade( item )->purchasable )
+	{
+		return false;
+	}
+
+	// shouldn't really need to test for this, but just to be safe
+	if ( item == UP_LIGHTARMOUR || item == UP_MEDIUMARMOUR || item == UP_BATTLESUIT )
+	{
+		vec3_t newOrigin;
+
+		if ( !G_RoomForClassChange( ent, PCL_HUMAN_NAKED, newOrigin ) )
+		{
+			G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOROOMARMOURCHANGE );
+			return false;
+		}
+
+		VectorCopy( newOrigin, ent->client->ps.origin );
+		ent->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_NAKED;
+		ent->client->pers.classSelection = PCL_HUMAN_NAKED;
+		ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
+	}
+
+	// remove from inventory
+	BG_RemoveUpgradeFromInventory( item, ent->client->ps.stats );
+
+	// add to funds
+	G_AddCreditToClient( ent->client, ( short ) BG_Upgrade( item )->price, false );
+
+	return true;
+}
+
+static bool Cmd_Sell_upgrades( gentity_t *ent )
+{
+	int      i;
+	bool sold = false;
+
+	for ( i = UP_NONE + 1; i < UP_NUM_UPGRADES; i++ )
+	{
+		sold |= Cmd_Sell_upgradeItem( ent, (upgrade_t) i );
+	}
+
+	return sold;
+}
+
+static bool Cmd_Sell_armour( gentity_t *ent )
+{
+	return Cmd_Sell_upgradeItem( ent, UP_LIGHTARMOUR ) |
+	       Cmd_Sell_upgradeItem( ent, UP_MEDIUMARMOUR ) |
+	       Cmd_Sell_upgradeItem( ent, UP_BATTLESUIT ) |
+	       Cmd_Sell_upgradeItem( ent, UP_RADAR );
+}
+
+static bool Cmd_Sell_internal( gentity_t *ent, const char *s )
+{
+	weapon_t  weapon;
+	upgrade_t upgrade;
+
+	//no armoury nearby
+	if ( !G_BuildableInRange( ent->client->ps.origin, ENTITY_BUY_RANGE, BA_H_ARMOURY ) )
+	{
+		G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOARMOURYHERE );
+		return false;
+	}
+
+	if ( !Q_strnicmp( s, "weapon", 6 ) )
+	{
+		weapon = (weapon_t) ent->client->ps.stats[ STAT_WEAPON ];
+	}
+	else
+	{
+		weapon = BG_WeaponNumberByName( s );
+	}
+
+	upgrade = BG_UpgradeByName( s )->number;
+
+	if ( weapon != WP_NONE )
+	{
+		weapon_t selected = BG_GetPlayerWeapon( &ent->client->ps );
+
+		if ( !BG_PlayerCanChangeWeapon( &ent->client->ps ) )
+		{
+			return false;
+		}
+
+		//are we /allowed/ to sell this?
+		if ( !BG_Weapon( weapon )->purchasable )
+		{
+			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You can't sell this weapon\n") "\"" );
+			return false;
+		}
+
+		//remove weapon if carried
+		if ( BG_InventoryContainsWeapon( weapon, ent->client->ps.stats ) )
+		{
+			//guard against selling the HBUILD weapons exploit
+			if ( weapon == WP_HBUILD && ent->client->ps.stats[ STAT_MISC ] > 0 )
+			{
+				G_TriggerMenu( ent->client->ps.clientNum, MN_H_ARMOURYBUILDTIMER );
+				return false;
+			}
+
+			ent->client->ps.stats[ STAT_WEAPON ] = WP_NONE;
+			// Cancel ghost buildables
+			ent->client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
+
+			//add to funds
+			G_AddCreditToClient( ent->client, ( short ) BG_Weapon( weapon )->price, false );
+		}
+
+		//if we have this weapon selected, force a new selection
+		if ( weapon == selected )
+		{
+			G_ForceWeaponChange( ent, WP_NONE );
+		}
+	}
+	else if ( upgrade != UP_NONE )
+	{
+		//are we /allowed/ to sell this?
+		if ( !BG_Upgrade( upgrade )->purchasable )
+		{
+			trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You can't sell this item\n") "\"" );
+			return false;
+		}
+
+		return Cmd_Sell_upgradeItem( ent, upgrade );
+	}
+	else if ( !Q_stricmp( s, "weapons" ) )
+	{
+		return Cmd_Sell_weapons( ent );
+	}
+	else if ( !Q_stricmp( s, "upgrades" ) )
+	{
+		return Cmd_Sell_upgrades( ent );
+	}
+	else if ( !Q_stricmp( s, "armour" ) || !Q_stricmp( s, "armor" ) )
+	{
+		return Cmd_Sell_armour( ent );
+	}
+	else if ( !Q_stricmp( s, "all" ) )
+	{
+		return Cmd_Sell_weapons( ent ) | Cmd_Sell_upgrades( ent );
+	}
+	else
+	{
+		G_TriggerMenu( ent->client->ps.clientNum, MN_H_UNKNOWNITEM );
+	}
+
+	return false;
+}
+
+void Cmd_Sell_f( gentity_t *ent )
+{
+	char     s[ MAX_TOKEN_CHARS ];
+	int      c, args;
+	bool updated = false;
+
+	args = trap_Argc();
+
+	for ( c = 1; c < args; ++c )
+	{
+		trap_Argv( c, s, sizeof( s ) );
+		updated |= Cmd_Sell_internal( ent, s );
+	}
+
+	//update ClientInfo
+	if ( updated )
+	{
+		ClientUserinfoChanged( ent->client->ps.clientNum, false );
+		ent->client->pers.infoChangeTime = level.time;
+	}
+}
+
+/*
+=================
+Cmd_Buy_f
+=================
+*/
+static bool Cmd_Sell_conflictingUpgrades( gentity_t *ent, upgrade_t upgrade )
+{
+	const int  slots = BG_Upgrade( upgrade )->slots;
+	int        i;
+	bool   sold = false;
+	int *const stats = ent->client->ps.stats;
+
+	for ( i = UP_NONE; i < UP_NUM_UPGRADES; i++ )
+	{
+		if ( i != upgrade && BG_InventoryContainsUpgrade( i, stats ) )
+		{
+			int slot = BG_Upgrade( i )->slots;
+
+			if ( slots & slot )
+			{
+				sold |= Cmd_Sell_upgradeItem( ent, (upgrade_t) i );
+			}
+		}
+	}
+
+	return sold;
+}
+
+
+static bool Cmd_Buy_internal( gentity_t *ent, const char *s, bool sellConflicting, bool quiet )
+{
+#define Maybe_TriggerMenu(num, reason) do { if ( !quiet ) G_TriggerMenu( (num), (reason) ); } while ( 0 )
+	weapon_t  weapon;
+	upgrade_t upgrade;
+	vec3_t    newOrigin;
+
+	weapon = BG_WeaponNumberByName( s );
+	upgrade = BG_UpgradeByName( s )->number;
+
+	// check if armoury is in reach
+	if ( !G_BuildableInRange( ent->client->ps.origin, ENTITY_BUY_RANGE, BA_H_ARMOURY ) )
+	{
+		G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOARMOURYHERE );
+
+		return false;
+	}
+
+	if ( weapon != WP_NONE )
+	{
+		//already got this?
+		if ( BG_InventoryContainsWeapon( weapon, ent->client->ps.stats ) )
+		{
+			Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_ITEMHELD );
+			return false;
+		}
+
+		// Only humans can buy stuff
+		if ( BG_Weapon( weapon )->team != TEAM_HUMANS )
+		{
+			goto not_alien;
+		}
+
+		//are we /allowed/ to buy this?
+		if ( !BG_Weapon( weapon )->purchasable )
+		{
+			goto cant_buy;
+		}
+
+		//are we /allowed/ to buy this?
+		if ( !BG_WeaponUnlocked( weapon ) || BG_WeaponDisabled( weapon ) )
+		{
+			goto cant_buy;
+		}
+
+		// In some instances, weapons can't be changed
+		if ( !BG_PlayerCanChangeWeapon( &ent->client->ps ) )
+		{
+			return false;
+		}
+
+		for (;;)
+		{
+			//can afford this?
+			if ( BG_Weapon( weapon )->price > ( short ) ent->client->pers.credit )
+			{
+				// if requested, try to sell then recheck
+				if ( sellConflicting && Cmd_Sell_weapons( ent ) )
+				{
+					continue;
+				}
+
+				Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_NOFUNDS );
+				return false;
+			}
+
+			//have space to carry this?
+			if ( BG_Weapon( weapon )->slots & BG_SlotsForInventory( ent->client->ps.stats ) )
+			{
+				// if requested, try to sell then recheck
+				if ( sellConflicting && Cmd_Sell_weapons( ent ) )
+				{
+					continue;
+				}
+
+				Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_NOSLOTS );
+				return false;
+			}
+
+			break; // okay, can buy this
+		}
+
+		ent->client->ps.stats[ STAT_WEAPON ] = weapon;
+		G_GiveMaxAmmo( ent );
+		G_ForceWeaponChange( ent, weapon );
+
+		//set build delay/pounce etc to 0
+		ent->client->ps.stats[ STAT_MISC ] = 0;
+
+		//subtract from funds
+		G_AddCreditToClient( ent->client, - ( short ) BG_Weapon( weapon )->price, false );
+
+		return true;
+	}
+	else if ( upgrade != UP_NONE )
+	{
+		//already got this?
+		if ( BG_InventoryContainsUpgrade( upgrade, ent->client->ps.stats ) )
+		{
+			Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_ITEMHELD );
+			return false;
+		}
+
+		// Only humans can buy stuff
+		if ( BG_Upgrade( upgrade )->team != TEAM_HUMANS )
+		{
+			goto not_alien;
+		}
+
+		//are we /allowed/ to buy this?
+		if ( !BG_Upgrade( upgrade )->purchasable )
+		{
+			goto cant_buy;
+		}
+
+		//are we /allowed/ to buy this?
+		if ( !BG_UpgradeUnlocked( upgrade ) || BG_UpgradeDisabled( upgrade ) )
+		{
+			goto cant_buy;
+		}
+
+		for (;;)
+		{
+			//can afford this?
+			if ( BG_Upgrade( upgrade )->price > ( short ) ent->client->pers.credit )
+			{
+				// if requested, try to sell then recheck
+				if ( sellConflicting && Cmd_Sell_conflictingUpgrades( ent, upgrade ) )
+				{
+					continue;
+				}
+
+				Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_NOFUNDS );
+				return false;
+			}
+
+			//have space to carry this?
+			if ( BG_Upgrade( upgrade )->slots & BG_SlotsForInventory( ent->client->ps.stats ) )
+			{
+				// if requested, try to sell then recheck
+				if ( sellConflicting && Cmd_Sell_conflictingUpgrades( ent, upgrade ) )
+				{
+					continue;
+				}
+
+				Maybe_TriggerMenu( ent->client->ps.clientNum, MN_H_NOSLOTS );
+				return false;
+			}
+
+			break; // okay, can buy this
+		}
+
+		if ( upgrade == UP_LIGHTARMOUR )
+		{
+			if ( !G_RoomForClassChange( ent, PCL_HUMAN_LIGHT, newOrigin ) )
+			{
+				G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOROOMARMOURCHANGE );
+				return false;
+			}
+
+			VectorCopy( newOrigin, ent->client->ps.origin );
+			ent->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_LIGHT;
+			ent->client->pers.classSelection = PCL_HUMAN_LIGHT;
+			ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
+		}
+		else if ( upgrade == UP_MEDIUMARMOUR )
+		{
+			if ( !G_RoomForClassChange( ent, PCL_HUMAN_MEDIUM, newOrigin ) )
+			{
+				G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOROOMARMOURCHANGE );
+				return false;
+			}
+
+			VectorCopy( newOrigin, ent->client->ps.origin );
+			ent->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_MEDIUM;
+			ent->client->pers.classSelection = PCL_HUMAN_MEDIUM;
+			ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
+		}
+		else if ( upgrade == UP_BATTLESUIT )
+		{
+			if ( !G_RoomForClassChange( ent, PCL_HUMAN_BSUIT, newOrigin ) )
+			{
+				G_TriggerMenu( ent->client->ps.clientNum, MN_H_NOROOMARMOURCHANGE );
+				return false;
+			}
+
+			VectorCopy( newOrigin, ent->client->ps.origin );
+			ent->client->ps.stats[ STAT_CLASS ] = PCL_HUMAN_BSUIT;
+			ent->client->pers.classSelection = PCL_HUMAN_BSUIT;
+			ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
+		}
+
+		//add to inventory
+		BG_AddUpgradeToInventory( upgrade, ent->client->ps.stats );
+
+		//subtract from funds
+		G_AddCreditToClient( ent->client, - ( short ) BG_Upgrade( upgrade )->price, false );
+
+		return true;
+	}
+	else
+	{
+		G_TriggerMenu( ent->client->ps.clientNum, MN_H_UNKNOWNITEM );
+	}
+
+	return false;
+
+cant_buy:
+	trap_SendServerCommand( ent - g_entities, va( "print_tr \"" N_("You can't buy this item ($1$)\n") "\" %s", Quote( s ) ) );
+	return false;
+
+not_alien:
+	trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("You can't buy alien items\n") "\"" );
+	return false;
+}
+
+void Cmd_Buy_f( gentity_t *ent )
+{
+	char     s[ MAX_TOKEN_CHARS ];
+	int      c, args;
+	bool updated = false;
+
+	args = trap_Argc();
+
+	c = 1;
+	trap_Argv( c, s, sizeof( s ) );
+
+	for ( ; c < args; ++c )
+	{
+		trap_Argv( c, s, sizeof( s ) );
+
+		switch ( s[0] )
+		{
+		case '-':
+			updated |= Cmd_Sell_internal( ent, s + 1 );
+			break;
+		case '+':
+			updated |= Cmd_Buy_internal( ent, s + 1, true, false ); // auto-sell if needed
+			break;
+		case '?':
+			updated |= Cmd_Buy_internal( ent, s + 1, false, true ); // quiet mode
+			break;
+		default:
+			updated |= Cmd_Buy_internal( ent, s, false, false );
+			break;
+		}
+	}
+
+	//update ClientInfo
+	if ( updated )
+	{
+		ClientUserinfoChanged( ent->client->ps.clientNum, false );
+		ent->client->pers.infoChangeTime = level.time;
+	}
+}
+
+/*
+=================
+Cmd_Build_f
+=================
+*/
+void Cmd_Build_f( gentity_t *ent )
+{
+	char        s[ MAX_TOKEN_CHARS ];
+	buildable_t buildable;
+	float       dist;
+	vec3_t      origin, normal;
+	int         groundEntNum;
+
+	if ( ent->client->pers.namelog->denyBuild )
+	{
+		G_TriggerMenu( ent->client->ps.clientNum, MN_B_REVOKED );
+		return;
+	}
+
+	if ( ent->client->pers.team == level.surrenderTeam )
+	{
+		G_TriggerMenu( ent->client->ps.clientNum, MN_B_SURRENDER );
+		return;
+	}
+
+	trap_Argv( 1, s, sizeof( s ) );
+
+	buildable = BG_BuildableByName( s )->number;
+
+	if ( buildable != BA_NONE &&
+	     ( ( 1 << ent->client->ps.weapon ) & BG_Buildable( buildable )->buildWeapon ) &&
+	     !BG_BuildableDisabled( buildable ) && BG_BuildableUnlocked( buildable ) )
+	{
+		dynMenu_t err;
+		vec3_t forward, aimDir;
+		itemBuildError_t reason;
+
+		BG_GetClientNormal( &ent->client->ps, normal );
+		AngleVectors( ent->client->ps.viewangles, aimDir, nullptr, nullptr );
+		ProjectPointOnPlane( forward, aimDir, normal);
+		VectorNormalize( forward );
+
+		dist = BG_Class( ent->client->ps.stats[ STAT_CLASS ] )->buildDist * DotProduct( forward, aimDir );
+
+		reason = G_CanBuild( ent, buildable, dist, origin, normal, &groundEntNum );
+		ent->client->ps.stats[ STAT_BUILDABLE ] = BA_NONE | SB_BUILDABLE_FROM_IBE( reason );
+
+		// these are the errors displayed when the builder first selects something to use
+		switch ( reason )
+		{
+			// non-temporary issues won't spawn a blueprint buildable
+			case IBE_DISABLED:
+				err = MN_B_DISABLED;
+				break;
+
+			case IBE_ONEOVERMIND:
+				err = MN_A_ONEOVERMIND;
+				break;
+
+			case IBE_ONEREACTOR:
+				err = MN_H_ONEREACTOR;
+				break;
+
+			// otherwise we don't error for now
+			default:
+				err = MN_NONE;
+				break;
+		}
+
+		if ( err == MN_NONE || ent->client->pers.disableBlueprintErrors )
+		{
+			ent->client->ps.stats[ STAT_BUILDABLE ] |= buildable;
+		}
+		else
+		{
+			G_TriggerMenu( ent->client->ps.clientNum, err );
+		}
+	}
+	else
+	{
+		G_TriggerMenu( ent->client->ps.clientNum, MN_B_CANNOT );
+	}
+}
+#endif
+
 void Cmd_Reload_f( gentity_t *ent )
 {
 	playerState_t *ps;
@@ -2321,7 +3578,22 @@ void G_StopFollowing( gentity_t *ent )
 		ent->client->sess.spectatorState = SPECTATOR_LOCKED;
 		ent->client->ps.persistant[ PERS_SPECSTATE ] = SPECTATOR_LOCKED;
 
-		G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE, nullptr );
+#ifdef UNREALARENA
+		G_SelectSpawnPoint( TEAM_NONE, spawn_origin, spawn_angles, nullptr );
+#else
+		if ( ent->client->pers.team == TEAM_ALIENS )
+		{
+			G_SelectAlienLockSpawnPoint( spawn_origin, spawn_angles );
+		}
+		else if ( ent->client->pers.team == TEAM_HUMANS )
+		{
+			G_SelectHumanLockSpawnPoint( spawn_origin, spawn_angles );
+		}
+		else
+		{
+			G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
+		}
+#endif
 
 		G_SetOrigin( ent, spawn_origin );
 		VectorCopy( spawn_origin, ent->client->ps.origin );
@@ -2375,7 +3647,23 @@ void G_FollowLockView( gentity_t *ent )
 	ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
 	ent->client->ps.viewangles[ PITCH ] = 0.0f;
 
-	G_SelectSpawnPoint( spawn_origin, spawn_angles, TEAM_NONE, nullptr );
+#ifdef UNREALARENA
+	G_SelectSpawnPoint( TEAM_NONE, spawn_origin, spawn_angles, nullptr );
+#else
+	// Put the view at the team spectator lock position
+	if ( level.clients[ clientNum ].pers.team == TEAM_ALIENS )
+	{
+		G_SelectAlienLockSpawnPoint( spawn_origin, spawn_angles );
+	}
+	else if ( level.clients[ clientNum ].pers.team == TEAM_HUMANS )
+	{
+		G_SelectHumanLockSpawnPoint( spawn_origin, spawn_angles );
+	}
+	else
+	{
+		G_SelectSpectatorSpawnPoint( spawn_origin, spawn_angles );
+	}
+#endif
 
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, ent->client->ps.origin );
@@ -2477,7 +3765,6 @@ bool G_FollowNewClient( gentity_t *ent, int dir )
 		ent->client->sess.spectatorClient = clientnum;
 		ent->client->sess.spectatorState = SPECTATOR_FOLLOW;
 
-		// XXX
 		// if this client is in the spawn queue, we need to do something special
 		if ( level.clients[ clientnum ].sess.spectatorState != SPECTATOR_NOT )
 		{
@@ -2816,10 +4103,17 @@ typedef struct {
 
 static const mapLogResult_t maplog_table[] = {
 	{ 't', "^7tie"                                  },
-	{ 'q', "^1Q team win"                           },
-	{ 'Q', "^1Q team win ^7/ U team admitted defeat"},
-	{ 'u', "^4U team win"                           },
-	{ 'U', "^4U team win ^7/ Q team admitted defeat"},
+#ifdef UNREALARENA
+	{ 'q', "^1Q team won"                           },
+	{ 'Q', "^1Q team won ^7/ U team admitted defeat"},
+	{ 'u', "^4U team won"                           },
+	{ 'U', "^4U team won ^7/ Q team admitted defeat"},
+#else
+	{ 'a', "^1Alien win"                            },
+	{ 'A', "^1Alien win ^7/ Humans admitted defeat" },
+	{ 'h', "^5Human win"                            },
+	{ 'H', "^5Human win ^7/ Aliens admitted defeat" },
+#endif
 	{ 'd', "^2draw vote"                            },
 	{ 'm', "^2map vote"                             },
 	{ 'r', "^2restart vote"                         },
@@ -2885,6 +4179,7 @@ void G_MapLog_Result( char result )
 
 	if ( level.surrenderTeam != TEAM_NONE )
 	{
+#ifdef UNREALARENA
 		if ( result == 'q' && level.surrenderTeam == TEAM_U )
 		{
 			result = 'Q';
@@ -2893,6 +4188,16 @@ void G_MapLog_Result( char result )
 		{
 			result = 'U';
 		}
+#else
+		if ( result == 'a' && level.surrenderTeam == TEAM_HUMANS )
+		{
+			result = 'A';
+		}
+		else if ( result == 'h' && level.surrenderTeam == TEAM_ALIENS )
+		{
+			result = 'H';
+		}
+#endif
 	}
 
 	t = level.matchTime / 1000;
@@ -3154,9 +4459,19 @@ static const commands_t cmds[] =
 	{ "a",               CMD_MESSAGE | CMD_INTERMISSION,      Cmd_AdminMessage_f     },
 	{ "asay",            CMD_MESSAGE | CMD_INTERMISSION,      Cmd_Say_f              },
 	{ "beacon",          CMD_TEAM | CMD_ALIVE,                Cmd_Beacon_f           },
+#ifndef UNREALARENA
+	{ "build",           CMD_TEAM | CMD_ALIVE,                Cmd_Build_f            },
+	{ "buy",             CMD_HUMAN | CMD_ALIVE,               Cmd_Buy_f              },
+#endif
 	{ "callteamvote",    CMD_MESSAGE | CMD_TEAM,              Cmd_CallVote_f         },
 	{ "callvote",        CMD_MESSAGE,                         Cmd_CallVote_f         },
+#ifndef UNREALARENA
+	{ "class",           CMD_TEAM,                            Cmd_Class_f            },
+#endif
 	{ "damage",          CMD_CHEAT | CMD_ALIVE,               Cmd_Damage_f           },
+#ifndef UNREALARENA
+	{ "deconstruct",     CMD_TEAM | CMD_ALIVE,                Cmd_Deconstruct_f      },
+#endif
 	{ "follow",          CMD_SPEC,                            Cmd_Follow_f           },
 	{ "follownext",      CMD_SPEC,                            Cmd_FollowCycle_f      },
 	{ "followprev",      CMD_SPEC,                            Cmd_FollowCycle_f      },
@@ -3164,9 +4479,15 @@ static const commands_t cmds[] =
 	{ "god",             CMD_CHEAT,                           Cmd_God_f              },
 	{ "ignite",          CMD_CHEAT | CMD_TEAM | CMD_ALIVE,    Cmd_Ignite_f           },
 	{ "ignore",          0,                                   Cmd_Ignore_f           },
+#ifdef UNREALARENA
 	{ "itemact",         CMD_U | CMD_ALIVE,                   Cmd_ActivateItem_f     },
 	{ "itemdeact",       CMD_U | CMD_ALIVE,                   Cmd_DeActivateItem_f   },
 	{ "itemtoggle",      CMD_U | CMD_ALIVE,                   Cmd_ToggleItem_f       },
+#else
+	{ "itemact",         CMD_HUMAN | CMD_ALIVE,               Cmd_ActivateItem_f     },
+	{ "itemdeact",       CMD_HUMAN | CMD_ALIVE,               Cmd_DeActivateItem_f   },
+	{ "itemtoggle",      CMD_HUMAN | CMD_ALIVE,               Cmd_ToggleItem_f       },
+#endif
 	{ "kill",            CMD_TEAM | CMD_ALIVE,                Cmd_Kill_f             },
 	{ "listmaps",        CMD_MESSAGE | CMD_INTERMISSION,      Cmd_ListMaps_f         },
 	{ "listrotation",    CMD_MESSAGE | CMD_INTERMISSION,      G_PrintCurrentRotation },
@@ -3178,14 +4499,23 @@ static const commands_t cmds[] =
 	{ "noclip",          CMD_CHEAT_TEAM,                      Cmd_Noclip_f           },
 	{ "notarget",        CMD_CHEAT | CMD_TEAM | CMD_ALIVE,    Cmd_Notarget_f         },
 	{ "pubkey_identify", CMD_INTERMISSION,                    Cmd_Pubkey_Identify_f  },
+#ifdef UNREALARENA
 	{ "reload",          CMD_U | CMD_ALIVE,                   Cmd_Reload_f           },
+#else
+	{ "reload",          CMD_HUMAN | CMD_ALIVE,               Cmd_Reload_f           },
+#endif
 	{ "say",             CMD_MESSAGE | CMD_INTERMISSION,      Cmd_Say_f              },
 	{ "say_area",        CMD_MESSAGE | CMD_TEAM | CMD_ALIVE,  Cmd_SayArea_f          },
 	{ "say_area_team",   CMD_MESSAGE | CMD_TEAM | CMD_ALIVE,  Cmd_SayAreaTeam_f      },
 	{ "say_team",        CMD_MESSAGE | CMD_INTERMISSION,      Cmd_Say_f              },
 	{ "score",           CMD_INTERMISSION,                    ScoreboardMessage      },
+#ifndef UNREALARENA
+	{ "sell",            CMD_HUMAN | CMD_ALIVE,               Cmd_Sell_f             },
+#endif
 	{ "setviewpos",      CMD_CHEAT_TEAM,                      Cmd_SetViewpos_f       },
+#ifdef UNREALARENA
 	{ "suicide",         CMD_TEAM | CMD_ALIVE,                Cmd_Kill_f             },
+#endif
 	{ "team",            0,                                   Cmd_Team_f             },
 	{ "teamvote",        CMD_TEAM | CMD_INTERMISSION,         Cmd_Vote_f             },
 	{ "unignore",        0,                                   Cmd_Ignore_f           },
@@ -3271,6 +4601,7 @@ void ClientCommand( int clientNum )
 		return;
 	}
 
+#ifdef UNREALARENA
 	if ( (command->cmdFlags & CMD_Q) &&
 	     ent->client->pers.team != TEAM_Q )
 	{
@@ -3284,6 +4615,21 @@ void ClientCommand( int clientNum )
 		G_TriggerMenu( clientNum, MN_CMD_U );
 		return;
 	}
+#else
+	if ( (command->cmdFlags & CMD_ALIEN) &&
+	     ent->client->pers.team != TEAM_ALIENS )
+	{
+		G_TriggerMenu( clientNum, MN_CMD_ALIEN );
+		return;
+	}
+
+	if ( (command->cmdFlags & CMD_HUMAN) &&
+	     ent->client->pers.team != TEAM_HUMANS )
+	{
+		G_TriggerMenu( clientNum, MN_CMD_HUMAN );
+		return;
+	}
+#endif
 
 	if ( (command->cmdFlags & CMD_ALIVE) &&
 	     ( ent->client->ps.stats[ STAT_HEALTH ] <= 0 ||

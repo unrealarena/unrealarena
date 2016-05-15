@@ -359,6 +359,56 @@ void CG_Rocket_LoadHuds()
 			continue;
 		}
 
+#ifdef UNREALARENA
+		if ( !Q_stricmp( token, "u.hudgroup" ) )
+#else
+		if ( !Q_stricmp( token, "human.hudgroup" ) )
+#endif
+		{
+			// Clear old values
+			for ( i = WP_BLASTER; i <= WP_LUCIFER_CANNON; ++i )
+			{
+				Rocket_ClearHud( i );
+			}
+
+			Rocket_ClearHud( WP_HBUILD );
+
+			while ( 1 )
+			{
+				token = COM_Parse2( &text_p );
+
+				if ( !*token )
+				{
+#ifdef UNREALARENA
+					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off u_hud.", rocket_hudFile.string );
+#else
+					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off human_hud.", rocket_hudFile.string );
+#endif
+				}
+
+				if ( *token == '{' )
+				{
+					continue;
+				}
+
+				if ( *token == '}' )
+				{
+					break;
+				}
+
+
+				for ( i = WP_BLASTER; i <= WP_LUCIFER_CANNON; ++i )
+				{
+					Rocket_AddUnitToHud( i, token );
+				}
+
+				Rocket_AddUnitToHud( WP_HBUILD, token );
+			}
+
+
+			continue;
+		}
+
 		if ( !Q_stricmp( token, "spectator.hudgroup" ) )
 		{
 			for ( i = WP_NONE; i < WP_NUM_WEAPONS; ++i )
@@ -395,7 +445,11 @@ void CG_Rocket_LoadHuds()
 			continue;
 		}
 
+#ifdef UNREALARENA
 		if ( !Q_stricmp( token, "q.hudgroup" ) )
+#else
+		if ( !Q_stricmp( token, "alien.hudgroup" ) )
+#endif
 		{
 			for ( i = WP_ALEVEL0; i <= WP_ALEVEL4; ++i )
 			{
@@ -411,7 +465,11 @@ void CG_Rocket_LoadHuds()
 
 				if ( !*token )
 				{
+#ifdef UNREALARENA
 					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off q_hud.", rocket_hudFile.string );
+#else
+					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off alien_hud.", rocket_hudFile.string );
+#endif
 				}
 
 				if ( *token == '{' )
@@ -432,48 +490,6 @@ void CG_Rocket_LoadHuds()
 				Rocket_AddUnitToHud( WP_ABUILD, token );
 				Rocket_AddUnitToHud( WP_ABUILD2, token );
 			}
-
-			continue;
-		}
-
-		if ( !Q_stricmp( token, "u.hudgroup" ) )
-		{
-			// Clear old values
-			for ( i = WP_BLASTER; i <= WP_LUCIFER_CANNON; ++i )
-			{
-				Rocket_ClearHud( i );
-			}
-
-			Rocket_ClearHud( WP_HBUILD );
-
-			while ( 1 )
-			{
-				token = COM_Parse2( &text_p );
-
-				if ( !*token )
-				{
-					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off u_hud.", rocket_hudFile.string );
-				}
-
-				if ( *token == '{' )
-				{
-					continue;
-				}
-
-				if ( *token == '}' )
-				{
-					break;
-				}
-
-
-				for ( i = WP_BLASTER; i <= WP_LUCIFER_CANNON; ++i )
-				{
-					Rocket_AddUnitToHud( i, token );
-				}
-
-				Rocket_AddUnitToHud( WP_HBUILD, token );
-			}
-
 
 			continue;
 		}
@@ -687,6 +703,7 @@ bool CG_Rocket_IsCommandAllowed( rocketElementType_t type )
 	ps = &cg.snap->ps;
 	switch( type )
 	{
+#ifdef UNREALARENA
 		case ELEMENT_Q:
 			if ( ps->persistant[ PERS_TEAM ] == TEAM_Q && ps->stats[ STAT_HEALTH ] > 0 && ps->weapon != WP_NONE )
 			{
@@ -702,6 +719,23 @@ bool CG_Rocket_IsCommandAllowed( rocketElementType_t type )
 			}
 
 			return false;
+#else
+		case ELEMENT_ALIENS:
+			if ( ps->persistant[ PERS_TEAM ] == TEAM_ALIENS && ps->stats[ STAT_HEALTH ] > 0 && ps->weapon != WP_NONE )
+			{
+				return true;
+			}
+
+			return false;
+
+		case ELEMENT_HUMANS:
+			if ( ps->persistant[ PERS_TEAM ] == TEAM_HUMANS && ps->stats[ STAT_HEALTH ] > 0 && ps->weapon != WP_NONE )
+			{
+				return true;
+			}
+
+			return false;
+#endif
 
 		case ELEMENT_BOTH:
 			if ( ps->persistant[ PERS_TEAM ] != TEAM_NONE && ps->stats[ STAT_HEALTH ] > 0 && ps->weapon != WP_NONE )

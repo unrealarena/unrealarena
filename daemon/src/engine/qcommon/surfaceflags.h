@@ -1,7 +1,7 @@
 /*
  * Daemon GPL source code
  * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  Id Software, Inc.
+ * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,6 +52,13 @@
 #define CONTENTS_SENSOR           0x40000000
 #define CONTENTS_NODROP           0x80000000 // don't leave bodies or items (death fog, lava)
 
+#ifndef UNREALARENA
+// custominfoparms below
+#define CONTENTS_NOALIENBUILD     0x00001000 // disallow alien building
+#define CONTENTS_NOHUMANBUILD     0x00002000 // disallow human building
+#define CONTENTS_NOBUILD          0x00004000 // disallow building
+#endif
+
 #define SURF_NODAMAGE             0x00000001 // never give falling damage
 #define SURF_SLICK                0x00000002 // effects game physics
 #define SURF_SKY                  0x00000004 // lighting from environment map
@@ -86,3 +93,9 @@
 #define SURF_MONSLICK_S           0x40000000
 
 #define SURF_LANDMINE             0x80000000 // ydnar: ok to place landmines on this surface
+
+#ifndef UNREALARENA
+#define SURF_NOALIENBUILD         0x00080000 // disallow alien building
+#define SURF_NOHUMANBUILD         0x00100000 // disallow human building
+#define SURF_NOBUILD              0x00200000 // disallow building
+#endif
