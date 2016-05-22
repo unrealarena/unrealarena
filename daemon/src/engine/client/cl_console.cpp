@@ -20,7 +20,6 @@
 
 // console.c
 
-#include "revision.h"
 #include "client.h"
 #include "qcommon/q_unicode.h"
 #include "framework/LogSystem.h"

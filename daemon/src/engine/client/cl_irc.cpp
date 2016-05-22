@@ -1,6 +1,6 @@
 /*
  * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2011  Dusan Jocic <dusanjocic@msn.com>
  * Copyright (C) 2010  COR Entertainment, LLC
  * Copyright (C) 1997-2001  Id Software, Inc.
@@ -26,7 +26,6 @@
 // #include "config.h"
 #endif
 
-#include "revision.h"
 #include "client.h"
 
 #ifdef WIN32

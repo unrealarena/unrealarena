@@ -20,7 +20,6 @@
 
 // common.c -- misc functions used in client and server
 
-#include "revision.h"
 #include "qcommon/q_shared.h"
 #include "q_unicode.h"
 #include "qcommon.h"

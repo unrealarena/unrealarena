@@ -28,6 +28,8 @@
 #define _USE_MATH_DEFINES
 #endif
 
+#include "common/Revision.h"
+
 
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
@@ -53,7 +55,11 @@
 #define RSQRT_PRECISE 1
 
 #ifdef REVISION
+#ifdef UNREALARENA
+# define Q3_VERSION             PRODUCT_NAME " " PRODUCT_VERSION " " "#" REVISION
+#else
 # define Q3_VERSION             PRODUCT_NAME " " PRODUCT_VERSION " " REVISION
+#endif
 #else
 # define Q3_VERSION             PRODUCT_NAME " " PRODUCT_VERSION
 #endif
