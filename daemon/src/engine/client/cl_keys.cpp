@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -619,7 +619,11 @@ void Console_Key( int key )
 			consoleState.scrollLineIndex = consoleState.currentLine;
 		}
 
+#ifdef UNREALARENA
+		Com_Printf("> %s\n", Str::UTF32To8(g_consoleField.GetText()).c_str());
+#else
 		Com_Printf("]%s\n", Str::UTF32To8(g_consoleField.GetText()).c_str());
+#endif
 
 		// if not in the game always treat the input as a command
 		if (cls.state != CA_ACTIVE) {

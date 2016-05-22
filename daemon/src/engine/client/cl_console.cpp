@@ -480,7 +480,11 @@ void Con_Init()
 	con_autoclear = Cvar_Get( "con_autoclear", "1", 0 );
 	con_scrollLock = Cvar_Get( "con_scrollLock", "2", 0 );
 
+#ifdef UNREALARENA
+	con_prompt = Cvar_Get( "con_prompt", "> ", 0 );
+#else
 	con_prompt = Cvar_Get( "con_prompt", "^3->", 0 );
+#endif
 
 	con_height = Cvar_Get( "con_height", "55", 0 );
 	con_colorRed = Cvar_Get( "con_colorRed", "0", 0 );
@@ -760,7 +764,11 @@ void Con_DrawInput( int linePosition, float overrideAlpha )
 	qtime_t realtime;
 
 	Com_RealTime( &realtime );
+#ifdef UNREALARENA
+	Com_sprintf( prompt,  sizeof( prompt ), "%s", con_prompt->string );
+#else
 	Com_sprintf( prompt,  sizeof( prompt ), "^0[^3%02d%c%02d^0]^7 %s", realtime.tm_hour, ( realtime.tm_sec & 1 ) ? ':' : ' ', realtime.tm_min, con_prompt->string );
+#endif
 
 	color[ 0 ] = 1.0f;
 	color[ 1 ] = 1.0f;

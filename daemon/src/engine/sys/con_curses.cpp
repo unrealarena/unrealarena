@@ -1,24 +1,22 @@
 /*
-===========================================================================
-Copyright (C) 2008 Amanieu d'Antras
+ * Daemon GPL Source Code
+ * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2008  Amanieu d'Antras
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-This file is part of Daemon.
-
-Daemon is free software; you can redistribute it
-and/or modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
-
-Daemon is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Daemon; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-===========================================================================
-*/
 
 #include "qcommon/q_shared.h"
 #include "qcommon/q_unicode.h"
@@ -49,7 +47,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #else
 #define TITLE         S_COLOR_GREEN "[ " S_COLOR_YELLOW CLIENT_WINDOW_TITLE " Console " S_COLOR_GREEN "]"
 #endif
+#ifdef UNREALARENA
+#define PROMPT        S_COLOR_WHITE "> "
+#else
 #define PROMPT        S_COLOR_YELLOW "-> "
+#endif
 #define INPUT_SCROLL  15
 #define LOG_SCROLL    5
 #define MAX_LOG_LINES 1024
@@ -67,7 +69,9 @@ static Console::Field input_field(INT_MAX);
 static WINDOW   *borderwin;
 static WINDOW   *logwin;
 static WINDOW   *inputwin;
+#ifndef UNREALARENA
 static WINDOW   *clockwin;
+#endif
 
 static char     logbuf[ LOG_BUF_SIZE ];
 static char     *insert = logbuf;
@@ -147,7 +151,11 @@ static INLINE void CON_UpdateCursor()
 {
 // pdcurses uses a different mechanism to move the cursor than ncurses
 #ifdef _WIN32
+#ifdef UNREALARENA
+	move( LINES - 1, Q_PrintStrlen( PROMPT ) + input_field.GetViewCursorPos() );
+#else
 	move( LINES - 1, Q_PrintStrlen( PROMPT ) + 8 + input_field.GetViewCursorPos() );
+#endif
 	wnoutrefresh( stdscr );
 #else
 	wmove( inputwin, 0, input_field.GetViewCursorPos() );
@@ -256,6 +264,7 @@ static void CON_ColorPrint( WINDOW *win, const char *msg, bool stripcodes )
 	}
 }
 
+#ifndef UNREALARENA
 /*
 ==================
 CON_UpdateClock
@@ -271,6 +280,7 @@ static void CON_UpdateClock()
 	CON_ColorPrint( clockwin, va( "^0[^3%02d%c%02d^0]^7 ", realtime.tm_hour, ( realtime.tm_sec & 1 ) ? ':' : ' ', realtime.tm_min ), true );
 	wnoutrefresh( clockwin );
 }
+#endif
 
 /*
 ==================
@@ -323,15 +333,21 @@ static void CON_Redraw()
 	pnoutrefresh( logwin, scrollline, 0, 1, 0, LOG_LINES, COLS );
 
 	// Create the input field
+#ifdef UNREALARENA
+	inputwin = newwin( 1, COLS - Q_PrintStrlen( PROMPT ), LINES - 1, Q_PrintStrlen( PROMPT ) );
+#else
 	inputwin = newwin( 1, COLS - Q_PrintStrlen( PROMPT ) - 8, LINES - 1, Q_PrintStrlen( PROMPT ) + 8 );
+#endif
 	input_field.SetWidth(COLS - Q_PrintStrlen( PROMPT ) - 9);
 	CON_ColorPrint( inputwin, Str::UTF32To8(input_field.GetViewText()).c_str(), false );
 	CON_UpdateCursor();
 	wnoutrefresh( inputwin );
 
+#ifndef UNREALARENA
 	// Create the clock
 	clockwin = newwin( 1, 8, LINES - 1, 0 );
 	CON_UpdateClock();
+#endif
 
 	// Create the border
 	CON_SetColor( stdscr, 2 );
@@ -343,7 +359,11 @@ static void CON_Redraw()
 	// Display the title and input prompt
 	move( 0, ( COLS - Q_PrintStrlen( TITLE ) ) / 2 );
 	CON_ColorPrint( stdscr, TITLE, true );
+#ifdef UNREALARENA
+	move( LINES - 1, 0 );
+#else
 	move( LINES - 1, 8 );
+#endif
 	CON_ColorPrint( stdscr, PROMPT, true );
 
 	wnoutrefresh( stdscr );
@@ -572,12 +592,14 @@ char *CON_Input()
 	}
     */
 
+#ifndef UNREALARENA
 	if ( Com_Time( nullptr ) != lasttime )
 	{
 		lasttime = Com_Time( nullptr );
 		CON_UpdateClock();
 		num_chars++;
 	}
+#endif
 
 	while ( 1 )
 	{
