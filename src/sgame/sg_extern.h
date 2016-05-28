@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -91,7 +91,6 @@ extern  vmCvar_t g_initialBuildPoints;
 extern  vmCvar_t g_mineRateHalfLife;
 extern  vmCvar_t g_minimumMineRate;
 extern  vmCvar_t g_buildPointLossFraction;
-#endif
 
 extern  vmCvar_t g_debugMomentum;
 extern  vmCvar_t g_momentumHalfLife;
@@ -99,7 +98,6 @@ extern  vmCvar_t g_momentumRewardDoubleTime;
 extern  vmCvar_t g_unlockableMinTime;
 extern  vmCvar_t g_momentumBaseMod;
 extern  vmCvar_t g_momentumKillMod;
-#ifndef UNREALARENA
 extern  vmCvar_t g_momentumBuildMod;
 extern  vmCvar_t g_momentumDeconMod;
 extern  vmCvar_t g_momentumDestroyMod;

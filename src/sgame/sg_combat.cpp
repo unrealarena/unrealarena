@@ -129,6 +129,7 @@ void G_AddCreditsToScore( gentity_t *self, int credits )
 	AddScoreHelper( self, credits * SCORE_PER_CREDIT );
 }
 
+#ifndef UNREALARENA
 /**
  * @brief Adds score to the client, input represents a momentum value.
  * @param self
@@ -138,6 +139,7 @@ void G_AddMomentumToScore( gentity_t *self, float momentum )
 {
 	AddScoreHelper( self, momentum * SCORE_PER_MOMENTUM );
 }
+#endif
 
 void LookAtKiller( gentity_t *self, gentity_t *inflictor, gentity_t *attacker )
 {
@@ -296,9 +298,6 @@ void G_RewardAttackers( gentity_t *self )
 
 		// Add credits
 		G_AddCreditToClient( player->client, ( short )reward, true );
-
-		// Add momentum
-		G_AddMomentumForKillingStep( self, player, share );
 #else
 		if ( self->s.eType == ET_BUILDABLE )
 		{
@@ -322,8 +321,10 @@ void G_RewardAttackers( gentity_t *self )
 #endif
 	}
 
+#ifndef UNREALARENA
 	// Complete momentum modification
 	G_AddMomentumEnd();
+#endif
 }
 
 void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int meansOfDeath )

@@ -1477,7 +1477,9 @@ static const char *const eventnames[] =
 
   "EV_HIT", // notify client of a hit
 
+#ifndef UNREALARENA
   "EV_MOMENTUM" // notify client of generated momentum
+#endif
 };
 
 /*

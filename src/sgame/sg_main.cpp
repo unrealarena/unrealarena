@@ -112,7 +112,6 @@ vmCvar_t           g_initialMineRate;
 vmCvar_t           g_mineRateHalfLife;
 vmCvar_t           g_minimumMineRate;
 vmCvar_t           g_buildPointLossFraction;
-#endif
 
 vmCvar_t           g_debugMomentum;
 vmCvar_t           g_momentumHalfLife;
@@ -120,7 +119,6 @@ vmCvar_t           g_momentumRewardDoubleTime;
 vmCvar_t           g_unlockableMinTime;
 vmCvar_t           g_momentumBaseMod;
 vmCvar_t           g_momentumKillMod;
-#ifndef UNREALARENA
 vmCvar_t           g_momentumBuildMod;
 vmCvar_t           g_momentumDeconMod;
 vmCvar_t           g_momentumDestroyMod;
@@ -355,8 +353,8 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_debugKnockback,              "g_debugKnockback",              "0",                                0,                                               0, false    , nullptr       },
 #ifndef UNREALARENA
 	{ &g_debugTurrets,                "g_debugTurrets",                "0",                                0,                                               0, false    , nullptr       },
-#endif
 	{ &g_debugMomentum,               "g_debugMomentum",               "0",                                0,                                               0, false    , nullptr       },
+#endif
 	{ &g_debugMapRotation,            "g_debugMapRotation",            "0",                                0,                                               0, false    , nullptr       },
 	{ &g_debugVoices,                 "g_debugVoices",                 "0",                                0,                                               0, false    , nullptr       },
 	{ &g_debugEntities,               "g_debugEntities",               "0",                                0,                                               0, false    , nullptr       },
@@ -384,7 +382,6 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_mineRateHalfLife,            "g_mineRateHalfLife",            DEFAULT_MINE_RATE_HALF_LIFE,        0,                                               0, false    , nullptr       },
 	{ &g_minimumMineRate,             "g_minimumMineRate",             DEFAULT_MINIMUM_MINE_RATE,          0,                                               0, false    , nullptr       },
 	{ &g_buildPointLossFraction,      "g_buildPointLossFraction",      DEFAULT_BP_LOSS_FRAC,               0,                                               0, false    , nullptr       },
-#endif
 
 	// gameplay: momentum
 	{ &g_unlockableMinTime,           "g_unlockableMinTime",           DEFAULT_UNLOCKABLE_MIN_TIME,        CVAR_SERVERINFO,                                 0, false    , nullptr       },
@@ -392,7 +389,6 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_momentumRewardDoubleTime,    "g_momentumRewardDoubleTime",    DEFAULT_CONF_REWARD_DOUBLE_TIME,    0,                                               0, false    , nullptr       },
 	{ &g_momentumBaseMod,             "g_momentumBaseMod",             DEFAULT_MOMENTUM_BASE_MOD,          0,                                               0, false    , nullptr       },
 	{ &g_momentumKillMod,             "g_momentumKillMod",             DEFAULT_MOMENTUM_KILL_MOD,          0,                                               0, false    , nullptr       },
-#ifndef UNREALARENA
 	{ &g_momentumBuildMod,            "g_momentumBuildMod",            DEFAULT_MOMENTUM_BUILD_MOD,         0,                                               0, false    , nullptr       },
 	{ &g_momentumDeconMod,            "g_momentumDeconMod",            DEFAULT_MOMENTUM_DECON_MOD,         0,                                               0, false    , nullptr       },
 	{ &g_momentumDestroyMod,          "g_momentumDestroyMod",          DEFAULT_MOMENTUM_DESTROY_MOD,       0,                                               0, false    , nullptr       },
@@ -2067,8 +2063,6 @@ static void G_LogGameplayStats( int state )
 			             "# Time:    %02i:%02i:%02i\n"
 			             "# Format:  %i\n"
 			             "#\n"
-			             "# g_momentumHalfLife:        %4i\n"
-			             "#\n"
 			             "#  1  2  3    4    5    6    7    8    9   10   11   12   13   14   15   16\n"
 			             "#  T #A #H AMom HMom  LMR  AME  HME  ABP  HBP ABRV HBRV ACre HCre AVal HVal\n"
 			             "# -------------------------------------------------------------------------\n",
@@ -2076,8 +2070,7 @@ static void G_LogGameplayStats( int state )
 			             mapname,
 			             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
 			             t.tm_hour, t.tm_min, t.tm_sec,
-			             LOG_GAMEPLAY_STATS_VERSION,
-			             g_momentumHalfLife.integer );
+			             LOG_GAMEPLAY_STATS_VERSION );
 #else
 			Com_sprintf( logline, sizeof( logline ),
 			             "# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
@@ -2117,8 +2110,8 @@ static void G_LogGameplayStats( int state )
 #endif
 			int    team;
 			int    num[ NUM_TEAMS ];
-			int    Mom[ NUM_TEAMS ];
 #ifndef UNREALARENA
+			int    Mom[ NUM_TEAMS ];
 			int    ME [ NUM_TEAMS ];
 			int    BP [ NUM_TEAMS ];
 			int    BRV[ NUM_TEAMS ];
@@ -2139,8 +2132,8 @@ static void G_LogGameplayStats( int state )
 			for( team = TEAM_NONE + 1; team < NUM_TEAMS; team++ )
 			{
 				num[ team ] = level.team[ team ].numClients;
-				Mom[ team ] = ( int )level.team[ team ].momentum;
 #ifndef UNREALARENA
+				Mom[ team ] = ( int )level.team[ team ].momentum;
 				ME [ team ] = ( int )level.team[ team ].mineEfficiency;
 				BP [ team ] = G_GetBuildPointsInt( (team_t)team );
 #endif
@@ -2154,7 +2147,7 @@ static void G_LogGameplayStats( int state )
 #ifdef UNREALARENA
 			Com_sprintf( logline, sizeof( logline ),
 			             "%4i %2i %2i %4i %4i %4i %4i %4i %4i\n",
-			             time, num[ TEAM_Q ], num[ TEAM_U ], Mom[ TEAM_Q ], Mom[ TEAM_U ],
+			             time, num[ TEAM_Q ], num[ TEAM_U ],
 			             Cre[ TEAM_Q ], Cre[ TEAM_U ],
 			             Val[ TEAM_Q ], Val[ TEAM_U ] );
 #else
@@ -3189,8 +3182,8 @@ void G_RunFrame( int levelTime )
 	G_CountSpawns();
 	G_SetHumanBuildablePowerState();
 	G_MineBuildPoints();
-#endif
 	G_DecreaseMomentum();
+#endif
 	G_CalculateAvgPlayers();
 #ifdef UNREALARENA
 	G_SpawnClients( TEAM_Q );

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -379,8 +379,8 @@ extern int   REACTOR_ATTACK_DAMAGE;
 
 // score
 #define SCORE_PER_CREDIT                   0.02f // used to convert credit rewards to score points
-#define SCORE_PER_MOMENTUM                 1.0f  // used to convert momentum rewards to score points
 #ifndef UNREALARENA
+#define SCORE_PER_MOMENTUM                 1.0f  // used to convert momentum rewards to score points
 #define HUMAN_BUILDER_SCOREINC             50    // in credits/10s
 #define ALIEN_BUILDER_SCOREINC             50    // in credits/10s
 #endif
@@ -399,7 +399,6 @@ extern int   REACTOR_ATTACK_DAMAGE;
 #define DEFAULT_MINE_RATE_HALF_LIFE        "20"    // in min
 #define DEFAULT_MINIMUM_MINE_RATE          "50"
 #define DEFAULT_BP_LOSS_FRAC               "0.5"
-#endif
 
 // momentum
 #define MOMENTUM_MAX                     300.0f
@@ -409,7 +408,6 @@ extern int   REACTOR_ATTACK_DAMAGE;
 #define DEFAULT_UNLOCKABLE_MIN_TIME      "30"  // in s
 #define DEFAULT_MOMENTUM_BASE_MOD        "0.7"
 #define DEFAULT_MOMENTUM_KILL_MOD        "1.3"
-#ifndef UNREALARENA
 #define DEFAULT_MOMENTUM_BUILD_MOD       "0.6"
 #define DEFAULT_MOMENTUM_DECON_MOD       "1.0" // used on top of build mod
 #define DEFAULT_MOMENTUM_DESTROY_MOD     "0.8"

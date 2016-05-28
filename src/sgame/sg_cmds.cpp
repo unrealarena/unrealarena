@@ -549,8 +549,13 @@ void Cmd_Give_f( gentity_t *ent )
 	if ( trap_Argc() < 2 )
 	{
 		ADMP( QQ( N_( "usage: give [what]\n" ) ) );
+#ifdef UNREALARENA
+		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], funds [amount], "
+		              "bp [amount], stamina, poison, fuel, ammo\n" ) ) );
+#else
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], funds [amount], "
 		              "bp [amount], momentum [amount], stamina, poison, fuel, ammo\n" ) ) );
+#endif
 		return;
 	}
 
@@ -601,6 +606,7 @@ void Cmd_Give_f( gentity_t *ent )
 #endif
 	}
 
+#ifndef UNREALARENA
 	// give momentum
 	if ( Q_strnicmp( name, "momentum", strlen("momentum") ) == 0 )
 	{
@@ -615,6 +621,7 @@ void Cmd_Give_f( gentity_t *ent )
 
 		G_AddMomentumGeneric( (team_t) ent->client->pers.team, amount );
 	}
+#endif
 
 	if ( ent->client->ps.stats[ STAT_HEALTH ] <= 0 ||
 			ent->client->sess.spectatorState != SPECTATOR_NOT )

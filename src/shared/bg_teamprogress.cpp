@@ -195,6 +195,9 @@ static INLINE void CheckStatusKnowledge( unlockableType_t type, int itemNum )
 
 static float UnlockToLockThreshold( float unlockThreshold )
 {
+#ifdef UNREALARENA
+	return 0.0f;
+#else
 	float momentumHalfLife = 0.0f;
 	float unlockableMinTime  = 0.0f;
 #ifdef BUILD_UI
@@ -243,6 +246,7 @@ static float UnlockToLockThreshold( float unlockThreshold )
 	lastMod = exp( -0.6931472f * ( unlockableMinTime / ( momentumHalfLife * 60.0f ) ) );
 
 	return lastMod * unlockThreshold;
+#endif
 }
 
 // ----------
@@ -457,7 +461,6 @@ bool BG_ClassUnlocked( int class_ )
 
 	return Unlocked( UNLT_CLASS, class_);
 }
-#endif
 
 static int MomentumNextThreshold( int threshold )
 {
@@ -513,6 +516,7 @@ momentumThresholdIterator_t BG_IterateMomentumThresholds( momentumThresholdItera
 
 	return finished;
 }
+#endif
 
 // ------------
 // GAME methods
@@ -561,7 +565,9 @@ static void UpdateUnlockablesMask()
 void G_UpdateUnlockables()
 {
 	int              itemNum = 0, unlockableNum, unlockThreshold;
+#ifndef UNREALARENA
 	float            momentum;
+#endif
 	unlockable_t     *unlockable;
 	int              unlockableType = 0;
 	team_t           team;
@@ -611,7 +617,9 @@ void G_UpdateUnlockables()
 		}
 
 		unlockThreshold = MAX( unlockThreshold, 0 );
+#ifndef UNREALARENA
 		momentum = level.team[ team ].momentum;
+#endif
 
 		unlockable->type            = unlockableType;
 		unlockable->num             = itemNum;
@@ -621,17 +629,23 @@ void G_UpdateUnlockables()
 		unlockable->lockThreshold   = UnlockToLockThreshold( unlockThreshold );
 
 		// calculate the item's locking state
+#ifdef UNREALARENA
+		unlockable->unlocked = true;
+#else
 		unlockable->unlocked = (
 		    !unlockThreshold || momentum >= unlockThreshold ||
 		    ( unlockable->unlocked && momentum >= unlockable->lockThreshold )
 		);
+#endif
 
 		itemNum++;
 
+#ifndef UNREALARENA
 		/*Com_Printf( "G_UpdateUnlockables: Team %s, Type %s, Item %s, Momentum %d, Threshold %d, "
 		            "Unlocked %d, Synchronize %d\n",
 		            BG_TeamName( team ), UnlockableTypeName( unlockable ), UnlockableName( unlockable ),
 		            momentum, unlockThreshold, unlockable->unlocked, unlockable->synchronize );*/
+#endif
 	}
 
 	// GAME knows about all teams

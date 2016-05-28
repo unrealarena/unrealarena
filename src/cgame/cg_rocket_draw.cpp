@@ -1686,6 +1686,7 @@ private:
 	float alpha_;
 };
 
+#ifndef UNREALARENA
 class MomentumElement : public TextHudElement
 {
 public:
@@ -1732,6 +1733,7 @@ private:
 
 	float momentum_;
 };
+#endif
 
 class LevelshotElement : public HudElement
 {
@@ -2752,6 +2754,7 @@ void CG_Rocket_DrawChatType()
 	}
 }
 
+#ifndef UNREALARENA
 #define MOMENTUM_BAR_MARKWIDTH 0.5f
 #define MOMENTUM_BAR_GLOWTIME  2000
 
@@ -2893,6 +2896,7 @@ static void CG_Rocket_DrawPlayerMomentumBar()
 	trap_R_SetColor( nullptr );
 
 }
+#endif
 
 void CG_Rocket_DrawMineRate()
 {
@@ -2948,7 +2952,9 @@ static void CG_Rocket_DrawPlayerUnlockedItems()
 {
 	rectDef_t     rect;
 	vec4_t        foreColour, backColour;
+#ifndef UNREALARENA
 	momentumThresholdIterator_t unlockableIter = { -1, 1 }, previousIter;
+#endif
 
 	// data
 	team_t    team;
@@ -2985,6 +2991,7 @@ static void CG_Rocket_DrawPlayerUnlockedItems()
 
 	icons = counts = 0;
 
+#ifndef UNREALARENA
 	for ( ;; )
 	{
 		qhandle_t shader;
@@ -3015,6 +3022,7 @@ static void CG_Rocket_DrawPlayerUnlockedItems()
 			++icons;
 		}
 	}
+#endif
 
 	{
 		float gap;
@@ -3453,7 +3461,9 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "levelname", &CG_Rocket_DrawLevelName, ELEMENT_ALL },
 	{ "mine_rate", &CG_Rocket_DrawMineRate, ELEMENT_BOTH },
 	{ "minimap", &CG_Rocket_DrawMinimap, ELEMENT_ALL },
+#ifndef UNREALARENA
 	{ "momentum_bar", &CG_Rocket_DrawPlayerMomentumBar, ELEMENT_BOTH },
+#endif
 	{ "motd", &CG_Rocket_DrawMOTD, ELEMENT_ALL },
 #ifndef UNREALARENA
 	{ "numSpawns", &CG_Rocket_DrawNumSpawns, ELEMENT_DEAD },
@@ -3524,7 +3534,9 @@ void CG_Rocket_RegisterElements()
 	REGISTER_ELEMENT( "timer", TimerElement )
 	REGISTER_ELEMENT( "lagometer", LagometerElement )
 	REGISTER_ELEMENT( "crosshair_name", CrosshairNamesElement )
+#ifndef UNREALARENA
 	REGISTER_ELEMENT( "momentum", MomentumElement )
+#endif
 	REGISTER_ELEMENT( "levelshot", LevelshotElement )
 	REGISTER_ELEMENT( "levelshot_loading", LevelshotLoadingElement )
 	REGISTER_ELEMENT( "center_print", CenterPrintElement )

@@ -173,8 +173,10 @@ vmCvar_t        ui_alienTeamVoteActive;
 vmCvar_t        ui_humanTeamVoteActive;
 #endif
 vmCvar_t        ui_unlockables;
+#ifndef UNREALARENA
 vmCvar_t        ui_momentumHalfLife;
 vmCvar_t        ui_unlockablesMinTime;
+#endif
 
 vmCvar_t        cg_debugRandom;
 

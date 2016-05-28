@@ -714,6 +714,7 @@ void CG_OnMapRestart()
 	Rocket_DocumentAction( "", "blurall" );
 }
 
+#ifndef UNREALARENA
 /*
 ==============
 CG_Momentum
@@ -732,6 +733,7 @@ void CG_Momentum( entityState_t *es )
 	cg.momentumGained     = momentum;
 	cg.momentumGainedTime = cg.time;
 }
+#endif
 
 /*
 ==============
@@ -1410,9 +1412,11 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			cg.hitTime = cg.time;
 			break;
 
+#ifndef UNREALARENA
 		case EV_MOMENTUM:
 			CG_Momentum( es );
 			break;
+#endif
 
 		default:
 			CG_Error( "Unknown event: %i", event );

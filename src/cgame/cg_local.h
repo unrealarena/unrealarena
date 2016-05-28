@@ -1335,9 +1335,11 @@ typedef struct
 	cgBinaryShaderSetting_t binaryShaderSettings[ NUM_BINARY_SHADERS ];
 	sayType_t               sayType;
 
+#ifndef UNREALARENA
 	// momentum
 	float                   momentumGained;
 	int                     momentumGainedTime;
+#endif
 
 	// beacons
 	cbeacon_t               *beacons[ MAX_CBEACONS ];
@@ -1744,9 +1746,9 @@ typedef struct
 #ifndef UNREALARENA
 	int      powerReactorRange;
 	int      powerRepeaterRange;
-#endif
 	float    momentumHalfLife; // used for momentum bar (un)lock markers
 	float    unlockableMinTime;  // used for momentum bar (un)lock markers
+#endif
 
 	int      voteTime[ NUM_TEAMS ];
 	int      voteYes[ NUM_TEAMS ];

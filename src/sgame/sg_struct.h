@@ -858,8 +858,8 @@ struct level_locals_s
 		int              kills;
 		spawnQueue_t     spawnQueue;
 		bool         locked;
-		float            momentum;
 #ifndef UNREALARENA
+		float            momentum;
 		int              layoutBuildPoints;
 #endif
 	} team[ NUM_TEAMS ];

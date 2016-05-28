@@ -190,7 +190,9 @@ bool          G_RadiusDamage( vec3_t origin, gentity_t *attacker, float damage, 
 bool          G_SelectiveRadiusDamage( vec3_t origin, gentity_t *attacker, float damage, float radius, gentity_t *ignore, int mod, int ignoreTeam );
 void              G_RewardAttackers( gentity_t *self );
 void              G_AddCreditsToScore( gentity_t *self, int credits );
+#ifndef UNREALARENA
 void              G_AddMomentumToScore( gentity_t *self, float momentum );
+#endif
 void              G_LogDestruction( gentity_t *self, gentity_t *actor, int mod );
 #ifdef UNREALARENA
 float             G_GetNonLocDamageMod( team_t team );
@@ -202,20 +204,18 @@ float             G_GetPointDamageMod( gentity_t *target, class_t pcl, float ang
 void              G_InitDamageLocations();
 void              G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int mod );
 
+#ifndef UNREALARENA
 // sg_momentum.c
 void              G_DecreaseMomentum();
 float             G_AddMomentumGeneric( team_t team, float amount );
 float             G_AddMomentumGenericStep( team_t team, float amount );
-#ifndef UNREALARENA
 float             G_PredictMomentumForBuilding( gentity_t *buildable );
 float             G_AddMomentumForBuilding( gentity_t *buildable );
 float             G_RemoveMomentumForDecon( gentity_t *buildable, gentity_t *deconner );
-#endif
 float             G_AddMomentumForKillingStep( gentity_t *victim, gentity_t *attacker, float share );
-#ifndef UNREALARENA
 float             G_AddMomentumForDestroyingStep( gentity_t *buildable, gentity_t *attacker, float amount );
-#endif
 void              G_AddMomentumEnd();
+#endif
 
 // sg_main.c
 void              G_InitSpawnQueue( spawnQueue_t *sq );

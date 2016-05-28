@@ -330,8 +330,8 @@ typedef enum
 typedef enum
 {
   PERS_SCORE,          // !!! MUST NOT CHANGE, SERVER AND GAME BOTH REFERENCE !!!
-  PERS_MOMENTUM,     // the total momentum of a team
 #ifndef UNREALARENA
+  PERS_MOMENTUM,     // the total momentum of a team
   PERS_SPAWNQUEUE,     // number of spawns and position in spawn queue
 #endif
   PERS_SPECSTATE,
@@ -682,7 +682,9 @@ typedef enum
 
   EV_HIT, // notify client of a hit
 
+#ifndef UNREALARENA
   EV_MOMENTUM // notify client of generated momentum
+#endif
 } entity_event_t;
 
 typedef enum
@@ -1553,10 +1555,12 @@ typedef enum
 	UNLT_NUM_UNLOCKABLETYPES
 } unlockableType_t;
 
+#ifndef UNREALARENA
 typedef struct {
 	int num;
 	int threshold;
 } momentumThresholdIterator_t;
+#endif
 
 void     BG_InitUnlockackables();
 void     BG_ImportUnlockablesFromMask( int team, int mask );
@@ -1570,7 +1574,9 @@ bool BG_ClassUnlocked( int class_ );
 
 unlockableType_t              BG_UnlockableType( int num );
 int                           BG_UnlockableTypeIndex( int num );
+#ifndef UNREALARENA
 momentumThresholdIterator_t BG_IterateMomentumThresholds( momentumThresholdIterator_t unlockableIter, team_t team, int *threshold, bool *unlocked );
+#endif
 #ifdef BUILD_SGAME
 void     G_UpdateUnlockables();
 #endif
