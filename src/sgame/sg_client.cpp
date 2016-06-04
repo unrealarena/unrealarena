@@ -27,6 +27,7 @@
 static const vec3_t playerMins = { -15, -15, -24 };
 static const vec3_t playerMaxs = { 15, 15, 32 };
 
+#ifndef UNREALARENA
 /*
 ===============
 G_AddCreditToClient
@@ -43,12 +44,8 @@ void G_AddCreditToClient( gclient_t *client, short credit, bool cap )
 
 	if ( cap && credit > 0 )
 	{
-#ifdef UNREALARENA
-		capAmount = 2000;
-#else
 		capAmount = client->pers.team == TEAM_ALIENS ?
 		            ALIEN_MAX_CREDITS : HUMAN_MAX_CREDITS;
-#endif
 
 		if ( client->pers.credit < capAmount )
 		{
@@ -75,6 +72,7 @@ void G_AddCreditToClient( gclient_t *client, short credit, bool cap )
 
 	client->pers.infoChangeTime = level.time;
 }
+#endif
 
 /*
 ================
@@ -2043,6 +2041,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		client->ps.stats[ STAT_HEALTH ] *= ent->client->pers.evolveHealthFraction;
 	}
 
+#ifndef UNREALARENA
 	//clear the credits array
 	for ( i = 0; i < MAX_CLIENTS; i++ )
 	{
@@ -2050,6 +2049,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		ent->credits[ i ].time = 0;
 		ent->credits[ i ].team = TEAM_NONE;
 	}
+#endif
 
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, client->ps.origin );

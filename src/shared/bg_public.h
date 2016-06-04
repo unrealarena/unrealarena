@@ -339,7 +339,9 @@ typedef enum
   PERS_TEAM,           // persistant team selection
   PERS_RGS_EFFICIENCY, // summed efficiency of all friendly RGS
   PERS_STATE,
+#ifndef UNREALARENA
   PERS_CREDIT,         // human credit
+#endif
   PERS_UNLOCKABLES,    // status of unlockable items of a team
   PERS_NEWWEAPON,      // weapon to switch to
   PERS_BP,
@@ -1220,8 +1222,10 @@ typedef struct
 	int      staminaWalkRestore;
 	int      staminaStopRestore;
 
+#ifndef UNREALARENA
 	int      cost;
 	int      value;
+#endif
 } classAttributes_t;
 
 typedef struct
@@ -1315,7 +1319,9 @@ typedef struct
 {
 	weapon_t number;
 
+#ifndef UNREALARENA
 	int      price;
+#endif
 	int      unlockThreshold;
 
 	int      slots;
@@ -1341,7 +1347,9 @@ typedef struct
 	bool canZoom;
 	float    zoomFov;
 
+#ifndef UNREALARENA
 	bool purchasable;
+#endif
 	bool longRanged;
 
 	team_t   team;
@@ -1352,7 +1360,9 @@ typedef struct
 {
 	upgrade_t number;
 
+#ifndef UNREALARENA
 	int       price;
+#endif
 	int       unlockThreshold;
 
 	int       slots;
@@ -1363,7 +1373,9 @@ typedef struct
 
 	const char *icon;
 
+#ifndef UNREALARENA
 	bool  purchasable;
+#endif
 	bool  usable;
 
 	team_t    team;
@@ -1452,8 +1464,8 @@ void     BG_PositionBuildableRelativeToPlayer( playerState_t *ps, const vec3_t m
                                                void ( *trace )( trace_t *, const vec3_t, const vec3_t,
                                                const vec3_t, const vec3_t, int, int, int ),
                                                vec3_t outOrigin, vec3_t outAngles, trace_t *tr );
-#endif
 int                         BG_GetValueOfPlayer( playerState_t *ps );
+#endif
 bool                    BG_PlayerCanChangeWeapon( playerState_t *ps );
 weapon_t                    BG_GetPlayerWeapon( playerState_t *ps );
 bool                    BG_PlayerLowAmmo( const playerState_t *ps, bool *energy );

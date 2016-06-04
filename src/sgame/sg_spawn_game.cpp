@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -36,7 +36,9 @@ void game_score_act( gentity_t *self, gentity_t*, gentity_t *activator )
 		return;
 	}
 
+#ifndef UNREALARENA
 	G_AddCreditsToScore( activator, self->config.amount );
+#endif
 }
 
 void SP_game_score( gentity_t *self )
@@ -96,6 +98,7 @@ void SP_game_end( gentity_t *self )
 	self->act = game_end_act;
 }
 
+#ifndef UNREALARENA
 /*
 =================================================================================
 
@@ -124,6 +127,7 @@ void SP_game_funds( gentity_t *self )
 	self->act = game_funds_act;
 	self->reset = game_funds_reset;
 }
+#endif
 
 
 /*

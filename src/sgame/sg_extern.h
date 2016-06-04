@@ -116,7 +116,9 @@ extern  vmCvar_t g_alienOffCreepRegenHalfLife;
 #endif
 
 extern  vmCvar_t g_teamImbalanceWarnings;
+#ifndef UNREALARENA
 extern  vmCvar_t g_freeFundPeriod;
+#endif
 
 extern  vmCvar_t g_unlagged;
 
@@ -214,7 +216,9 @@ extern vmCvar_t g_bot_retreat;
 extern vmCvar_t g_bot_fov;
 extern vmCvar_t g_bot_chasetime;
 extern vmCvar_t g_bot_reactiontime;
+#ifndef UNREALARENA
 extern vmCvar_t g_bot_infinite_funds;
+#endif
 extern vmCvar_t g_bot_numInGroup;
 extern vmCvar_t g_bot_persistent;
 #ifndef UNREALARENA

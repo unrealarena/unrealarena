@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1030,7 +1030,9 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		STOPSPEED          = 1 << 12,
 		JUMPMAGNITUDE      = 1 << 13,
 		ICON               = 1 << 14,
+#ifndef UNREALARENA
 		COST               = 1 << 15,
+#endif
 		SPRINTMOD          = 1 << 16,
 		UNUSED_17          = 1 << 17,
 		MASS               = 1 << 18,
@@ -1209,12 +1211,14 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 			ca->jumpMagnitude = atof( token );
 			defined |= JUMPMAGNITUDE;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "cost" ) )
 		{
 			PARSE(text, token);
 			ca->cost = atoi( token );
 			defined |= COST;
 		}
+#endif
 		else if ( !Q_stricmp( token, "sprintMod" ) )
 		{
 			PARSE(text, token);
@@ -1290,7 +1294,9 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		else if ( !( defined & STOPSPEED ) )       { token = "stopSpeed"; }
 		else if ( !( defined & JUMPMAGNITUDE ) )   { token = "jumpMagnitude"; }
 		else if ( !( defined & ICON ) )            { token = "icon"; }
+#ifndef UNREALARENA
 		else if ( !( defined & COST ) )            { token = "cost"; }
+#endif
 		else                                       { token = nullptr; }
 
 		if ( token )
@@ -1669,7 +1675,9 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		NAME = 1 << 0,
 		INFO = 1 << 1,
 		// unused
+#ifndef UNREALARENA
 		PRICE = 1 << 3,
+#endif
 		RATE = 1 << 4,
 		AMMO = 1 << 5,
 		TEAM = 1 << 6,
@@ -1715,6 +1723,7 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		{
 			wa->slots = ParseSlotList( &text );
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "price" ) )
 		{
 			PARSE(text, token);
@@ -1723,6 +1732,7 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 
 			defined |= PRICE;
 		}
+#endif
 		else if ( !Q_stricmp( token, "infiniteAmmo" ) )
 		{
 			wa->infiniteAmmo = true;
@@ -1787,10 +1797,12 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		{
 			wa->hasThirdMode = true;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "isPurchasable" ) )
 		{
 			wa->purchasable = true;
 		}
+#endif
 		else if ( !Q_stricmp( token, "isLongRanged" ) )
 		{
 			wa->longRanged = true;
@@ -1832,7 +1844,9 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 
 	if ( !( defined & NAME ) ) { token = "humanName"; }
 	else if ( !( defined & INFO ) ) { token = "description"; }
+#ifndef UNREALARENA
 	else if ( !( defined & PRICE ) ) { token = "price"; }
+#endif
 	else if ( !( defined & RATE ) ) { token = "primaryAttackRate"; }
 	else if ( !( defined & AMMO ) ) { token = "maxAmmo or infiniteAmmo"; }
 	else if ( !( defined & TEAM ) ) { token = "team"; }
@@ -1861,7 +1875,9 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 	enum
 	{
 		NAME = 1 << 0,
+#ifndef UNREALARENA
 		PRICE = 1 << 1,
+#endif
 		INFO = 1 << 2,
 		// unused
 		ICON = 1 << 4,
@@ -1923,6 +1939,7 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 
 			defined |= ICON;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "price" ) )
 		{
 			PARSE(text, token);
@@ -1931,6 +1948,7 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 
 			defined |= PRICE;
 		}
+#endif
 		else if ( !Q_stricmp( token, "team" ) )
 		{
 			PARSE(text, token);
@@ -1939,10 +1957,12 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 
 			defined |= TEAM;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "isPurchasable" ) )
 		{
 			ua->purchasable = true;
 		}
+#endif
 		else if ( !Q_stricmp( token, "isUsable" ) )
 		{
 			ua->usable = true;
@@ -1966,7 +1986,9 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 
 	if ( !( defined & NAME ) ) { token = "humanName"; }
 	else if ( !( defined & INFO ) ) { token = "description"; }
+#ifndef UNREALARENA
 	else if ( !( defined & PRICE ) ) { token = "price"; }
+#endif
 	else if ( !( defined & ICON ) ) { token = "icon"; }
 	else if ( !( defined & TEAM ) ) { token = "team"; }
 	else { token = ""; }

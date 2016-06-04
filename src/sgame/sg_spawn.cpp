@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -333,7 +333,9 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 	 *  These are actions and effects against the whole match, a team or a player.
 	 */
 	{ S_GAME_END,                 SP_game_end,               CHAIN_PASSIV, ENT_V_UNCLEAR, nullptr },
+#ifndef UNREALARENA
 	{ S_GAME_FUNDS,               SP_game_funds,             CHAIN_PASSIV, ENT_V_UNCLEAR, nullptr },
+#endif
 	{ S_GAME_KILL,                SP_game_kill,              CHAIN_PASSIV, ENT_V_UNCLEAR, nullptr },
 	{ S_GAME_SCORE,               SP_game_score,             CHAIN_PASSIV, ENT_V_UNCLEAR, nullptr },
 

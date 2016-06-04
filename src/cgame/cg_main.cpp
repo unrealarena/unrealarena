@@ -511,7 +511,9 @@ static void CG_SetPVars()
 
 	trap_Cvar_Set( "p_weapon", va( "%d", ps->stats[ STAT_WEAPON ] ) );
 	trap_Cvar_Set( "p_weaponname", BG_Weapon( ps->stats[ STAT_WEAPON ] )->humanName );
+#ifndef UNREALARENA
 	trap_Cvar_Set( "p_credits", va( "%d", ps->persistant[ PERS_CREDIT ] ) );
+#endif
 	trap_Cvar_Set( "p_score", va( "%d", ps->persistant[ PERS_SCORE ] ) );
 
 	trap_Cvar_Set( "p_hp", va( "%d", ps->stats[ STAT_HEALTH ] ) );
@@ -557,8 +559,13 @@ static void CG_SetUIVars()
 		return;
 	}
 
+#ifdef UNREALARENA
+	trap_Cvar_Set( "ui_carriage", va( "%d %d", cg.snap->ps.stats[ STAT_WEAPON ],
+	               cg.snap->ps.stats[ STAT_ITEMS ] ) );
+#else
 	trap_Cvar_Set( "ui_carriage", va( "%d %d %d", cg.snap->ps.stats[ STAT_WEAPON ],
 	               cg.snap->ps.stats[ STAT_ITEMS ], cg.snap->ps.persistant[ PERS_CREDIT ] ) );
+#endif
 }
 
 #ifndef UNREALARENA

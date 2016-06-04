@@ -109,7 +109,9 @@ static void CG_ParseTeamInfo()
 		cgs.clientinfo[ client ].location       = atoi( CG_Argv( ++i ) );
 		cgs.clientinfo[ client ].health         = atoi( CG_Argv( ++i ) );
 		cgs.clientinfo[ client ].curWeaponClass = atoi( CG_Argv( ++i ) );
+#ifndef UNREALARENA
 		cgs.clientinfo[ client ].credit         = atoi( CG_Argv( ++i ) );
+#endif
 
 #ifdef UNREALARENA
 		if( cg.snap->ps.persistant[ PERS_TEAM ] != TEAM_Q )

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -72,7 +72,9 @@
 #define S_PLAT_SENSOR             "plat_sensor"
 
 #define S_GAME_END                "game_end"
+#ifndef UNREALARENA
 #define S_GAME_FUNDS              "game_funds"
+#endif
 #define S_GAME_KILL               "game_kill"
 #define S_GAME_SCORE              "game_score"
 

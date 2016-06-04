@@ -2134,7 +2134,6 @@ void BG_PositionBuildableRelativeToPlayer( playerState_t *ps,
 	VectorCopy( tr->endpos, outOrigin );
 	vectoangles( forward, outAngles );
 }
-#endif
 
 /**
  * @brief Calculates the "value" of a player as a base value plus a fraction of the price the
@@ -2155,11 +2154,7 @@ int BG_GetValueOfPlayer( playerState_t *ps )
 
 	switch ( ps->persistant[ PERS_TEAM ] )
 	{
-#ifdef UNREALARENA
-		case TEAM_U:
-#else
 		case TEAM_HUMANS:
-#endif
 			// Add upgrade price
 			for ( upgradeNum = UP_NONE + 1; upgradeNum < UP_NUM_UPGRADES; upgradeNum++ )
 			{
@@ -2180,15 +2175,9 @@ int BG_GetValueOfPlayer( playerState_t *ps )
 
 			break;
 
-#ifdef UNREALARENA
-		case TEAM_Q:
-			price += BG_Class( ( team_t ) ps->persistant[ PERS_TEAM ] )->cost;
-			break;
-#else
 		case TEAM_ALIENS:
 			price += BG_Class( ps->stats[ STAT_CLASS ] )->cost;
 			break;
-#endif
 
 		default:
 			return 0;
@@ -2196,6 +2185,7 @@ int BG_GetValueOfPlayer( playerState_t *ps )
 
 	return PLAYER_BASE_VALUE + ( int )( ( float )price * PLAYER_PRICE_TO_VALUE );
 }
+#endif
 
 /*
 =================

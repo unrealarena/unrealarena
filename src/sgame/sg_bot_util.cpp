@@ -315,6 +315,7 @@ float PercentAmmoRemaining( weapon_t weapon, playerState_t *ps )
 	}
 }
 
+#ifndef UNREALARENA
 int BotValueOfWeapons( gentity_t *self )
 {
 	int worth = 0;
@@ -344,7 +345,6 @@ int BotValueOfUpgrades( gentity_t *self )
 	return worth;
 }
 
-#ifndef UNREALARENA
 void BotGetDesiredBuy( gentity_t *self, weapon_t *weapon, upgrade_t *upgrades, int *numUpgrades )
 {
 	int i;

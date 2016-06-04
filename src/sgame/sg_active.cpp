@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1091,20 +1091,11 @@ void ClientTimerActions( gentity_t *ent, int msec )
 
 		client->pers.aliveSeconds++;
 
+#ifndef UNREALARENA
 		if ( g_freeFundPeriod.integer > 0 &&
 		     client->pers.aliveSeconds % g_freeFundPeriod.integer == 0 )
 		{
 			// Give clients some credit periodically
-#ifdef UNREALARENA
-			if ( client->pers.team == TEAM_Q )
-			{
-				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
-			}
-			else if ( client->pers.team == TEAM_U )
-			{
-				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
-			}
-#else
 			if ( client->pers.team == TEAM_ALIENS )
 			{
 				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
@@ -1113,8 +1104,8 @@ void ClientTimerActions( gentity_t *ent, int msec )
 			{
 				G_AddCreditToClient( client, PLAYER_BASE_VALUE, true );
 			}
-#endif
 		}
+#endif
 	}
 
 	while ( client->time10000 >= 10000 )

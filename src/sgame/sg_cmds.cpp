@@ -550,7 +550,7 @@ void Cmd_Give_f( gentity_t *ent )
 	{
 		ADMP( QQ( N_( "usage: give [what]\n" ) ) );
 #ifdef UNREALARENA
-		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], funds [amount], "
+		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], "
 		              "bp [amount], stamina, poison, fuel, ammo\n" ) ) );
 #else
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], funds [amount], "
@@ -566,6 +566,7 @@ void Cmd_Give_f( gentity_t *ent )
 		give_all = true;
 	}
 
+#ifndef UNREALARENA
 	if ( give_all || Q_strnicmp( name, "funds", strlen("funds") ) == 0 )
 	{
 		if ( give_all || trap_Argc() < 3 )
@@ -574,19 +575,15 @@ void Cmd_Give_f( gentity_t *ent )
 		}
 		else
 		{
-#ifdef UNREALARENA
-			amount = atof( name + strlen("funds") ) *
-			          ( ent->client->pers.team == TEAM_Q ? CREDITS_PER_EVO : 1.0f );
-#else
 			amount = atof( name + strlen("funds") ) *
 			          ( ent->client->pers.team == TEAM_ALIENS ? CREDITS_PER_EVO : 1.0f );
-#endif
 			// clamp credits as G_AddCreditToClient() expects a short int
 			amount = Math::Clamp(amount, -30000.0f, 30000.0f);
 		}
 
 		G_AddCreditToClient( ent->client, ( short ) amount, true );
 	}
+#endif
 
 	// give bp
 	if ( Q_strnicmp( name, "bp", strlen("bp") ) == 0 )
@@ -3614,7 +3611,9 @@ void G_StopFollowing( gentity_t *ent )
 	ent->client->ps.stats[ STAT_VIEWLOCK ] = 0;
 	ent->client->ps.eFlags &= ~( EF_WALLCLIMB | EF_WALLCLIMBCEILING );
 	ent->client->ps.clientNum = ent - g_entities;
+#ifndef UNREALARENA
 	ent->client->ps.persistant[ PERS_CREDIT ] = ent->client->pers.credit;
+#endif
 
 	if ( ent->client->pers.team == TEAM_NONE )
 	{

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1066,7 +1066,9 @@ bool G_LineOfSight( const vec3_t point1, const vec3_t point2 )
 int G_Heal( gentity_t *self, int amount )
 {
 	int   clientNum, relevantClientNum, maxHealth, healed;
+#ifndef UNREALARENA
 	float totalCredits, scaleAccounts;
+#endif
 	int   relevantClients[ MAX_CLIENTS ];
 
 	// amount must be positive
@@ -1114,6 +1116,7 @@ int G_Heal( gentity_t *self, int amount )
 		}
 	}
 
+#ifndef UNREALARENA
 	// get total damage account and assemble list of relevant clients
 	totalCredits = 0;
 	for ( clientNum = 0, relevantClientNum = 0; clientNum < MAX_CLIENTS; clientNum++ )
@@ -1141,6 +1144,7 @@ int G_Heal( gentity_t *self, int amount )
 	{
 		self->credits[ relevantClients[ clientNum ] ].value *= scaleAccounts;
 	}
+#endif
 
 	// heal
 	self->health += amount;

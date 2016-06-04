@@ -395,11 +395,13 @@ struct gentity_s
 	int         clientSpawnTime; // the time until this spawn can spawn a client
 	int         spawnBlockTime; // timer for anti spawn-block
 
+#ifndef UNREALARENA
 	struct {
 	 	float  value;
 		int    time;
 		team_t team;
 	}           credits[ MAX_CLIENTS ];
+#endif
 
 	int         killedBy; // clientNum of killer
 
@@ -497,7 +499,9 @@ struct namelog_s
 #endif
 
 	int              score;
+#ifndef UNREALARENA
 	int              credits;
+#endif
 	team_t           team;
 
 	int              id;
@@ -545,7 +549,9 @@ struct clientPersistant_s
 #else
 	int team;
 #endif
+#ifndef UNREALARENA
 	int credit;
+#endif
 
 	int voted;
 	int voteYes, voteNo;

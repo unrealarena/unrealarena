@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2010  Darklegion Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -119,7 +119,9 @@ void G_namelog_update_score( gclient_t *client )
 
 	n->team = (team_t) client->pers.team;
 	n->score = client->ps.persistant[ PERS_SCORE ];
+#ifndef UNREALARENA
 	n->credits = client->pers.credit;
+#endif
 }
 
 void G_namelog_update_name( gclient_t *client )
@@ -153,6 +155,8 @@ void G_namelog_restore( gclient_t *client )
 	G_ChangeTeam( g_entities + n->slot, n->team );
 #endif
 	client->ps.persistant[ PERS_SCORE ] = n->score;
+#ifndef UNREALARENA
 	client->ps.persistant[ PERS_CREDIT ] = 0;
 	G_AddCreditToClient( client, n->credits, false );
+#endif
 }

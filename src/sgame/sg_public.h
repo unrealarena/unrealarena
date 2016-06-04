@@ -115,7 +115,9 @@ void              G_MarkBuildPointsMined( team_t team, float amount );
 #endif
 
 // sg_client.c
+#ifndef UNREALARENA
 void              G_AddCreditToClient( gclient_t *client, short credit, bool cap );
+#endif
 void              G_SetClientViewAngle( gentity_t *ent, const vec3_t angle );
 #ifdef UNREALARENA
 gentity_t         *G_SelectSpawnPoint(team_t team, vec3_t origin, vec3_t angles, const void *data);
@@ -189,8 +191,8 @@ void              G_SelectiveDamage( gentity_t *targ, gentity_t *inflictor, gent
 bool          G_RadiusDamage( vec3_t origin, gentity_t *attacker, float damage, float radius, gentity_t *ignore, int dflags, int mod, team_t testHit = TEAM_NONE );
 bool          G_SelectiveRadiusDamage( vec3_t origin, gentity_t *attacker, float damage, float radius, gentity_t *ignore, int mod, int ignoreTeam );
 void              G_RewardAttackers( gentity_t *self );
-void              G_AddCreditsToScore( gentity_t *self, int credits );
 #ifndef UNREALARENA
+void              G_AddCreditsToScore( gentity_t *self, int credits );
 void              G_AddMomentumToScore( gentity_t *self, float momentum );
 #endif
 void              G_LogDestruction( gentity_t *self, gentity_t *actor, int mod );

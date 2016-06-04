@@ -1100,7 +1100,7 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 			for ( i = WP_BLASTER; i < WP_NUM_WEAPONS; i++ )
 			{
 #ifdef UNREALARENA
-				if ( BG_Weapon( i )->team != TEAM_U || !BG_Weapon( i )->purchasable ) { continue; }
+				if ( BG_Weapon( i )->team != TEAM_U ) { continue; }
 #else
 				if ( BG_Weapon( i )->team != TEAM_HUMANS || !BG_Weapon( i )->purchasable ) { continue; }
 #endif

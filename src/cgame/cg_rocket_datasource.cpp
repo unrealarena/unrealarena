@@ -1021,7 +1021,9 @@ void CG_Rocket_BuildPlayerList( const char* )
 		Info_SetValueForKey( buf, "weapon", va( "%d", score->weapon ), false );
 		Info_SetValueForKey( buf, "upgrade", va( "%d", score->upgrade ), false );
 		Info_SetValueForKey( buf, "time", va( "%d", score->time ), false );
+#ifndef UNREALARENA
 		Info_SetValueForKey( buf, "credits", va( "%d", ci->credit ), false );
+#endif
 		Info_SetValueForKey( buf, "location", CG_ConfigString( CS_LOCATIONS + ci->location ), false );
 
 		switch ( score->team )
@@ -1124,7 +1126,9 @@ void CG_Rocket_SortPlayerList( const char*, const char *sortBy )
 		Info_SetValueForKey( buf, "weapon", va( "%d", score->weapon ), false );
 		Info_SetValueForKey( buf, "upgrade", va( "%d", score->upgrade ), false );
 		Info_SetValueForKey( buf, "time", va( "%d", score->time ), false );
+#ifndef UNREALARENA
 		Info_SetValueForKey( buf, "credits", va( "%d", ci->credit ), false );
+#endif
 		Info_SetValueForKey( buf, "location", CG_ConfigString( CS_LOCATIONS + ci->location ), false );
 
 		Rocket_DSAddRow( "playerList", "spectators", buf );
@@ -1154,7 +1158,9 @@ void CG_Rocket_SortPlayerList( const char*, const char *sortBy )
 		Info_SetValueForKey( buf, "weapon", va( "%d", score->weapon ), false );
 		Info_SetValueForKey( buf, "upgrade", va( "%d", score->upgrade ), false );
 		Info_SetValueForKey( buf, "time", va( "%d", score->time ), false );
+#ifndef UNREALARENA
 		Info_SetValueForKey( buf, "credits", va( "%d", ci->credit ), false );
+#endif
 		Info_SetValueForKey( buf, "location", CG_ConfigString( CS_LOCATIONS + ci->location ), false );
 #ifdef UNREALARENA
 		Rocket_DSAddRow( "playerList", "u", buf );
@@ -1188,7 +1194,9 @@ void CG_Rocket_SortPlayerList( const char*, const char *sortBy )
 		Info_SetValueForKey( buf, "weapon", va( "%d", score->weapon ), false );
 		Info_SetValueForKey( buf, "upgrade", va( "%d", score->upgrade ), false );
 		Info_SetValueForKey( buf, "time", va( "%d", score->time ), false );
+#ifndef UNREALARENA
 		Info_SetValueForKey( buf, "credits", va( "%d", ci->credit ), false );
+#endif
 		Info_SetValueForKey( buf, "location", CG_ConfigString( CS_LOCATIONS + ci->location ), false );
 
 #ifdef UNREALARENA

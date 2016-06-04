@@ -848,18 +848,13 @@ private:
 
 };
 
+#ifndef UNREALARENA
 class CreditsValueElement : public TextHudElement
 {
 public:
-#ifdef UNREALARENA
-	CreditsValueElement( const Rocket::Core::String& tag ) :
-			TextHudElement( tag, ELEMENT_U ),
-			credits( -1 ) {}
-#else
 	CreditsValueElement( const Rocket::Core::String& tag ) :
 			TextHudElement( tag, ELEMENT_HUMANS ),
 			credits( -1 ) {}
-#endif
 
 	void DoOnUpdate()
 	{
@@ -879,15 +874,9 @@ private:
 class EvosValueElement : public TextHudElement
 {
 public:
-#ifdef UNREALARENA
-	EvosValueElement( const Rocket::Core::String& tag ) :
-			TextHudElement( tag, ELEMENT_Q ),
-			evos( -1 ) {}
-#else
 	EvosValueElement( const Rocket::Core::String& tag ) :
 			TextHudElement( tag, ELEMENT_ALIENS ),
 			evos( -1 ) {}
-#endif
 
 	void DoOnUpdate()
 	{
@@ -907,7 +896,6 @@ private:
 	float evos;
 };
 
-#ifndef UNREALARENA
 class StaminaValueElement : public TextHudElement
 {
 public:
@@ -3520,9 +3508,9 @@ void CG_Rocket_RegisterElements()
 	REGISTER_ELEMENT( "crosshair_indicator", CrosshairIndicatorHudElement )
 	REGISTER_ELEMENT( "crosshair", CrosshairHudElement )
 	REGISTER_ELEMENT( "speedometer", SpeedGraphElement )
+#ifndef UNREALARENA
 	REGISTER_ELEMENT( "credits", CreditsValueElement )
 	REGISTER_ELEMENT( "evos", EvosValueElement )
-#ifndef UNREALARENA
 	REGISTER_ELEMENT( "stamina", StaminaValueElement )
 #endif
 	REGISTER_ELEMENT( "weapon_icon", WeaponIconElement )

@@ -345,8 +345,10 @@ void G_ChangeTeam( gentity_t *ent, team_t newTeam )
 		ent->flags &= ~( FL_GODMODE | FL_NOTARGET );
 	}
 
+#ifndef UNREALARENA
 	// Copy credits to ps for the client
 	ent->client->ps.persistant[ PERS_CREDIT ] = ent->client->pers.credit;
+#endif
 
 	// Update PERS_UNLOCKABLES in the same frame as PERS_TEAM to prevent bad status change notifications
 	ent->client->ps.persistant[ PERS_UNLOCKABLES ] = BG_UnlockablesMask( newTeam );
@@ -522,20 +524,35 @@ void TeamplayInfoMessage( gentity_t *ent )
 		if( team == TEAM_ALIENS ) // aliens don't have upgrades
 #endif
 		{
+#ifdef UNREALARENA
+			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i", i,
+						 cl->pers.location,
+						 cl->ps.stats[ STAT_HEALTH ] < 1 ? 0 : cl->ps.stats[ STAT_HEALTH ],
+						 curWeaponClass );
+#else
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i", i,
 						 cl->pers.location,
 						 cl->ps.stats[ STAT_HEALTH ] < 1 ? 0 : cl->ps.stats[ STAT_HEALTH ],
 						 curWeaponClass,
 						 cl->pers.credit );
+#endif
 		}
 		else
 		{
+#ifdef UNREALARENA
+			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i", i,
+			             cl->pers.location,
+			             cl->ps.stats[ STAT_HEALTH ] < 1 ? 0 : cl->ps.stats[ STAT_HEALTH ],
+			             curWeaponClass,
+			             upgrade );
+#else
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i %i", i,
 			             cl->pers.location,
 			             cl->ps.stats[ STAT_HEALTH ] < 1 ? 0 : cl->ps.stats[ STAT_HEALTH ],
 			             curWeaponClass,
 			             cl->pers.credit,
 			             upgrade );
+#endif
 		}
 
 

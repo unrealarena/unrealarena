@@ -137,7 +137,9 @@ vmCvar_t           g_alienOffCreepRegenHalfLife;
 #endif
 
 vmCvar_t           g_teamImbalanceWarnings;
+#ifndef UNREALARENA
 vmCvar_t           g_freeFundPeriod;
+#endif
 
 vmCvar_t           g_unlagged;
 
@@ -240,7 +242,9 @@ vmCvar_t g_bot_retreat;
 vmCvar_t g_bot_fov;
 vmCvar_t g_bot_chasetime;
 vmCvar_t g_bot_reactiontime;
+#ifndef UNREALARENA
 vmCvar_t g_bot_infinite_funds;
+#endif
 vmCvar_t g_bot_numInGroup;
 vmCvar_t g_bot_persistent;
 vmCvar_t g_bot_debug;
@@ -416,8 +420,8 @@ static cvarTable_t gameCvarTable[] =
 	// gameplay: misc
 #ifndef UNREALARENA
 	{ &g_alienOffCreepRegenHalfLife,  "g_alienOffCreepRegenHalfLife",  "0",                                0,                                               0, false    , nullptr       },
-#endif
 	{ &g_freeFundPeriod,              "g_freeFundPeriod",              DEFAULT_FREEKILL_PERIOD,            0,                                               0, true     , nullptr       },
+#endif
 	{ &g_sayAreaRange,                "g_sayAreaRange",                "1000",                             0,                                               0, true     , nullptr       },
 	{ &g_speed,                       "g_speed",                       "320",                              0,                                               0, true     , nullptr       },
 	{ &g_gravity,                     "g_gravity",                     "800",                              0,                                               0, true, cv_gravity},
@@ -467,7 +471,9 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_bot_fov, "g_bot_fov", "125",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_chasetime, "g_bot_chasetime", "5000",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_reactiontime, "g_bot_reactiontime", "500",  CVAR_NORESTART, 0, false, nullptr },
+#ifndef UNREALARENA
 	{ &g_bot_infinite_funds, "g_bot_infinite_funds", "0",  CVAR_NORESTART, 0, false, nullptr },
+#endif
 	{ &g_bot_numInGroup, "g_bot_numInGroup", "3",  CVAR_NORESTART, 0, false, nullptr },
 	{ &g_bot_debug, "g_bot_debug", "0",  CVAR_NORESTART, 0, false, nullptr },
 #ifndef UNREALARENA
@@ -1970,6 +1976,7 @@ void QDECL PRINTF_LIKE(1) G_LogPrintf( const char *fmt, ... )
 	trap_FS_Write( decolored, strlen( decolored ), level.logFile );
 }
 
+#ifndef UNREALARENA
 /*
 =================
 GetAverageCredits
@@ -1985,11 +1992,7 @@ static void GetAverageCredits( int teamCredits[], int teamValue[] )
 	gclient_t *client;
 	int       team;
 
-#ifdef UNREALARENA
-	for ( team = TEAM_NONE + 1; team < NUM_TEAMS ; ++team)
-#else
 	for ( team = TEAM_ALIENS ; team < NUM_TEAMS ; ++team)
-#endif
 	{
 		teamCnt[ team ] = 0;
 		teamCredits[ team ] = 0;
@@ -2013,16 +2016,13 @@ static void GetAverageCredits( int teamCredits[], int teamValue[] )
 		teamCnt[ team ]++;
 	}
 
-#ifdef UNREALARENA
-	for ( team = TEAM_NONE + 1; team < NUM_TEAMS ; ++team)
-#else
 	for ( team = TEAM_ALIENS ; team < NUM_TEAMS ; ++team)
-#endif
 	{
 		teamCredits[ team ] = ( teamCnt[ team ] == 0 ) ? 0 : ( teamCredits[ team ] / teamCnt[ team ] );
 		teamValue[ team ] = ( teamCnt[ team ] == 0 ) ? 0 : ( teamValue[ team ] / teamCnt[ team ] );
 	}
 }
+#endif
 
 /*
 =================
@@ -2063,8 +2063,8 @@ static void G_LogGameplayStats( int state )
 			             "# Time:    %02i:%02i:%02i\n"
 			             "# Format:  %i\n"
 			             "#\n"
-			             "#  1  2  3    4    5    6    7    8    9   10   11   12   13   14   15   16\n"
-			             "#  T #A #H AMom HMom  LMR  AME  HME  ABP  HBP ABRV HBRV ACre HCre AVal HVal\n"
+			             "#  1  2  3\n"
+			             "#  T #Q #U\n"
 			             "# -------------------------------------------------------------------------\n",
 			             Q3_VERSION,
 			             mapname,
@@ -2115,9 +2115,9 @@ static void G_LogGameplayStats( int state )
 			int    ME [ NUM_TEAMS ];
 			int    BP [ NUM_TEAMS ];
 			int    BRV[ NUM_TEAMS ];
-#endif
 			int    Cre[ NUM_TEAMS ];
 			int    Val[ NUM_TEAMS ];
+#endif
 
 			if ( level.time < nextCalculation )
 			{
@@ -2141,15 +2141,13 @@ static void G_LogGameplayStats( int state )
 
 #ifndef UNREALARENA
 			G_GetBuildableResourceValue( BRV );
-#endif
 			GetAverageCredits( Cre, Val );
+#endif
 
 #ifdef UNREALARENA
 			Com_sprintf( logline, sizeof( logline ),
-			             "%4i %2i %2i %4i %4i %4i %4i %4i %4i\n",
-			             time, num[ TEAM_Q ], num[ TEAM_U ],
-			             Cre[ TEAM_Q ], Cre[ TEAM_U ],
-			             Val[ TEAM_Q ], Val[ TEAM_U ] );
+			             "%4i %2i %2i\n",
+			             time, num[ TEAM_Q ], num[ TEAM_U ] );
 #else
 			Com_sprintf( logline, sizeof( logline ),
 			             "%4i %2i %2i %4i %4i %4.1f %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i\n",

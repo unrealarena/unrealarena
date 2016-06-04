@@ -102,6 +102,7 @@ static const char *const modNames[] =
 #endif
 };
 
+#ifndef UNREALARENA
 /**
  * @brief Helper function for G_AddCreditsToScore and G_AddMomentumToScore.
  * @param self
@@ -129,7 +130,6 @@ void G_AddCreditsToScore( gentity_t *self, int credits )
 	AddScoreHelper( self, credits * SCORE_PER_CREDIT );
 }
 
-#ifndef UNREALARENA
 /**
  * @brief Adds score to the client, input represents a momentum value.
  * @param self
@@ -164,6 +164,10 @@ void LookAtKiller( gentity_t *self, gentity_t *inflictor, gentity_t *attacker )
  */
 static const gentity_t *G_FindKillAssist( const gentity_t *self, const gentity_t *killer, team_t *team )
 {
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+	return nullptr;
+#else
 	const gentity_t *assistant = nullptr;
 	float           damage;
 	int             when = 0;
@@ -203,6 +207,7 @@ static const gentity_t *G_FindKillAssist( const gentity_t *self, const gentity_t
 	}
 
 	return assistant;
+#endif
 }
 
 /**
@@ -211,6 +216,9 @@ static const gentity_t *G_FindKillAssist( const gentity_t *self, const gentity_t
  */
 void G_RewardAttackers( gentity_t *self )
 {
+#ifdef UNREALARENA
+	// [TOOD] UNIMPLEMENTED
+#else
 	float     value, share, reward, enemyDamage, damageShare;
 	int       playerNum, maxHealth;
 	gentity_t *player;
@@ -223,7 +231,6 @@ void G_RewardAttackers( gentity_t *self )
 		maxHealth = self->client->ps.stats[ STAT_MAX_HEALTH ];
 		value     = BG_GetValueOfPlayer( &self->client->ps );
 	}
-#ifndef UNREALARENA
 	else if ( self->s.eType == ET_BUILDABLE )
 	{
 		ownTeam   = (team_t) self->buildableTeam;
@@ -239,7 +246,6 @@ void G_RewardAttackers( gentity_t *self )
 			         ( float )BG_Buildable( self->s.modelindex )->buildTime;
 		}
 	}
-#endif
 	else
 	{
 		return;
@@ -292,13 +298,6 @@ void G_RewardAttackers( gentity_t *self )
 		share  = damageShare / ( float )maxHealth;
 		reward = value * share;
 
-#ifdef UNREALARENA
-		// Add score
-		G_AddCreditsToScore( player, ( int )reward );
-
-		// Add credits
-		G_AddCreditToClient( player->client, ( short )reward, true );
-#else
 		if ( self->s.eType == ET_BUILDABLE )
 		{
 			// Add score
@@ -318,10 +317,8 @@ void G_RewardAttackers( gentity_t *self )
 			// Add momentum
 			G_AddMomentumForKillingStep( self, player, share );
 		}
-#endif
 	}
 
-#ifndef UNREALARENA
 	// Complete momentum modification
 	G_AddMomentumEnd();
 #endif
@@ -1414,10 +1411,12 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 
 		if ( attacker->client )
 		{
+#ifndef UNREALARENA
 			// add to the attacker's account on the target
 			target->credits[ attacker->client->ps.clientNum ].value += ( float )loss;
 			target->credits[ attacker->client->ps.clientNum ].time = level.time;
 			target->credits[ attacker->client->ps.clientNum ].team = (team_t)attacker->client->pers.team;
+#endif
 
 			// notify the attacker of a hit
 			NotifyClientOfHit( attacker );
