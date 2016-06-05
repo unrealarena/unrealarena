@@ -2361,6 +2361,7 @@ static void CG_PlayerAxis( centity_t *cent, const vec3_t srcAngles,
 	AnglesToAxis( headAngles, head );
 }
 
+#ifndef UNREALARENA
 #define MODEL_WWSMOOTHTIME 200
 
 /*
@@ -2462,6 +2463,7 @@ static void CG_PlayerWWSmoothing( centity_t *cent, vec3_t in[ 3 ], vec3_t out[ 3
 	//outAxis has been copied to inAxis
 	AxisCopy( inAxis, out );
 }
+#endif
 
 /*
 ===============
@@ -2486,6 +2488,9 @@ static void CG_PlayerNonSegAxis( centity_t *cent, vec3_t srcAngles, vec3_t nonSe
 	localAngles[ ROLL ] = 0.0f;
 
 	//set surfNormal
+#ifdef UNREALARENA
+	VectorCopy( es->angles2, surfNormal );
+#else
 	if ( !( es->eFlags & EF_WALLCLIMBCEILING ) )
 	{
 		VectorCopy( es->angles2, surfNormal );
@@ -2494,6 +2499,7 @@ static void CG_PlayerNonSegAxis( centity_t *cent, vec3_t srcAngles, vec3_t nonSe
 	{
 		VectorCopy( ceilingNormal, surfNormal );
 	}
+#endif
 
 	//make sure that WW transitions don't cause the swing stuff to go nuts
 	if ( !VectorCompare( surfNormal, cent->pe.lastNormal ) )
@@ -2911,6 +2917,7 @@ static bool CG_PlayerShadow( centity_t *cent, class_t class_ )
 	mins[ 2 ] = 0.0f;
 	maxs[ 2 ] = 2.0f;
 
+#ifndef UNREALARENA
 	if ( es->eFlags & EF_WALLCLIMB )
 	{
 		if ( es->eFlags & EF_WALLCLIMBCEILING )
@@ -2922,6 +2929,7 @@ static bool CG_PlayerShadow( centity_t *cent, class_t class_ )
 			VectorCopy( es->angles2, surfNormal );
 		}
 	}
+#endif
 
 	if ( cg_shadows.integer == SHADOWING_NONE )
 	{
@@ -3217,7 +3225,9 @@ void CG_Player( centity_t *cent )
 	class_t       class_ = (class_t) ( ( es->misc >> 8 ) & 0xFF );
 #endif
 	float         scale;
+#ifndef UNREALARENA
 	vec3_t        tempAxis[ 3 ], tempAxis2[ 3 ];
+#endif
 	vec3_t        angles;
 	int           held = es->modelindex;
 	vec3_t        surfNormal = { 0.0f, 0.0f, 1.0f };
@@ -3299,9 +3309,14 @@ void CG_Player( centity_t *cent )
 	}
 
 	VectorCopy( cent->lerpAngles, angles );
+#ifndef UNREALARENA
 	AnglesToAxis( cent->lerpAngles, tempAxis );
+#endif
 
 	//rotate lerpAngles to floor
+#ifdef UNREALARENA
+	VectorCopy( cent->lerpAngles, angles );
+#else
 	if ( es->eFlags & EF_WALLCLIMB &&
 	     BG_RotateAxis( es->angles2, tempAxis, tempAxis2, true, es->eFlags & EF_WALLCLIMBCEILING ) )
 	{
@@ -3311,6 +3326,7 @@ void CG_Player( centity_t *cent )
 	{
 		VectorCopy( cent->lerpAngles, angles );
 	}
+#endif
 
 	//normalise the pitch
 	if ( angles[ PITCH ] < -180.0f )
@@ -3335,6 +3351,7 @@ void CG_Player( centity_t *cent )
 			CG_PlayerNonSegAxis( cent, angles, body.axis );
 		}
 
+#ifndef UNREALARENA
 		AxisCopy( body.axis, tempAxis );
 
 		// rotate the legs axis to back to the wall
@@ -3345,8 +3362,13 @@ void CG_Player( centity_t *cent )
 
 		// smooth out WW transitions so the model doesn't hop around
 		CG_PlayerWWSmoothing( cent, body.axis, body.axis );
+#endif
 
+#ifdef UNREALARENA
+		AxisCopy( body.axis, cent->pe.lastAxis );
+#else
 		AxisCopy( tempAxis, cent->pe.lastAxis );
+#endif
 
 		// get the animation state (after rotation, to allow feet shuffle)
 		if ( ci->gender != GENDER_NEUTER )
@@ -3404,6 +3426,13 @@ void CG_Player( centity_t *cent )
 #endif
 
 		// move the origin closer into the wall with a CapTrace
+#ifdef UNREALARENA
+		VectorCopy( cent->lerpOrigin, playerOrigin );
+		VectorCopy( playerOrigin, body.origin );
+		body.origin[ 0 ] -= ci->headOffset[ 0 ];
+		body.origin[ 1 ] -= ci->headOffset[ 1 ];
+		body.origin[ 2 ] -= 22 + ci->headOffset[ 2 ];
+#else
 		if ( es->eFlags & EF_WALLCLIMB && !( es->eFlags & EF_DEAD ) && !( cg.intermissionStarted ) )
 		{
 			vec3_t  start, end;
@@ -3451,6 +3480,7 @@ void CG_Player( centity_t *cent )
 			body.origin[ 1 ] -= ci->headOffset[ 1 ];
 			body.origin[ 2 ] -= 22 + ci->headOffset[ 2 ];
 		}
+#endif
 
 		VectorCopy( body.origin, body.lightingOrigin );
 		VectorCopy( body.origin, body.oldorigin );  // don't positionally lerp at all
@@ -3556,6 +3586,7 @@ void CG_Player( centity_t *cent )
 		CG_PlayerNonSegAxis( cent, angles, legs.axis );
 	}
 
+#ifndef UNREALARENA
 	AxisCopy( legs.axis, tempAxis );
 
 	//rotate the legs axis to back to the wall
@@ -3567,8 +3598,13 @@ void CG_Player( centity_t *cent )
 
 	//smooth out WW transitions so the model doesn't hop around
 	CG_PlayerWWSmoothing( cent, legs.axis, legs.axis );
+#endif
 
+#ifdef UNREALARENA
+	AxisCopy( legs.axis, cent->pe.lastAxis );
+#else
 	AxisCopy( tempAxis, cent->pe.lastAxis );
+#endif
 
 	// get the animation state (after rotation, to allow feet shuffle)
 	if ( !ci->nonsegmented )
@@ -3624,6 +3660,7 @@ void CG_Player( centity_t *cent )
 	legs.renderfx = renderfx;
 	VectorCopy( legs.origin, legs.oldorigin );  // don't positionally lerp at all
 
+#ifndef UNREALARENA
 	//move the origin closer into the wall with a CapTrace
 	if ( es->eFlags & EF_WALLCLIMB && !( es->eFlags & EF_DEAD ) && !( cg.intermissionStarted ) )
 	{
@@ -3639,11 +3676,7 @@ void CG_Player( centity_t *cent )
 			VectorCopy( es->angles2, surfNormal );
 		}
 
-#ifdef UNREALARENA
-		BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
-#else
 		BG_ClassBoundingBox( class_, mins, maxs, nullptr, nullptr, nullptr );
-#endif
 
 		VectorMA( legs.origin, -TRACE_DEPTH, surfNormal, end );
 		VectorMA( legs.origin, 1.0f, surfNormal, start );
@@ -3659,6 +3692,7 @@ void CG_Player( centity_t *cent )
 		VectorCopy( legs.origin, legs.lightingOrigin );
 		VectorCopy( legs.origin, legs.oldorigin );  // don't positionally lerp at all
 	}
+#endif
 
 	//rescale the model
 #ifdef UNREALARENA

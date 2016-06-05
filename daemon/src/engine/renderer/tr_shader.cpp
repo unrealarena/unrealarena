@@ -1,25 +1,24 @@
 /*
-===========================================================================
-Copyright (C) 1999-2005 Id Software, Inc.
-Copyright (C) 2006-2011 Robert Beckebans <trebor_7@users.sourceforge.net>
+ * Daemon Source Code
+ * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2006-2011 Robert Beckebans <trebor_7@users.sourceforge.net>
+ * Copyright (C) 1999-2005 Id Software, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-This file is part of Daemon source code.
 
-Daemon source code is free software; you can redistribute it
-and/or modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
-
-Daemon source code is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Daemon source code; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-===========================================================================
-*/
 // tr_shader.c -- this file deals with the parsing and definition of shaders
 #include "tr_local.h"
 #include "gl_shader.h"
@@ -2969,7 +2968,9 @@ static const infoParm_t infoParms[] =
 	{ "nomarks",            0,                         SURF_NOMARKS,           0                                      }, // don't make impact marks, but still explode
 	{ "nooverlays",         0,                         SURF_NOMARKS,           0                                      }, // don't make impact marks, but still explode
 
+#ifndef UNREALARENA
 	{ "ladder",             0,                         SURF_LADDER,            0                                      },
+#endif
 
 	{ "nodamage",           0,                         SURF_NODAMAGE,          0                                      },
 

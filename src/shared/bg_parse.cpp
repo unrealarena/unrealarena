@@ -87,7 +87,9 @@ float LEVEL2_AREAZAP_CHAIN_RANGE;
 float LEVEL2_AREAZAP_CHAIN_FALLOFF;
 float LEVEL2_AREAZAP_WIDTH;
 int   LEVEL2_AREAZAP_TIME;
+#ifndef UNREALARENA
 float LEVEL2_WALLJUMP_MAXSPEED;
+#endif
 
 int   LEVEL3_CLAW_DMG;
 float LEVEL3_CLAW_RANGE;
@@ -268,7 +270,9 @@ static configVar_t bg_configVars[] =
 	{"w_level2_clawDmg", INTEGER, false, &LEVEL2_CLAW_DMG},
 	{"w_level2_clawRange", FLOAT, false, &LEVEL2_CLAW_RANGE},
 	{"w_level2_clawWidth", FLOAT, false, &LEVEL2_CLAW_WIDTH},
+#ifndef UNREALARENA
 	{"w_level2_maxWalljumpSpeed", FLOAT, false, &LEVEL2_WALLJUMP_MAXSPEED},
+#endif
 
 	{"w_level3upg_ballDmg", INTEGER, false, &LEVEL3_BOUNCEBALL_DMG},
 	{"w_level3upg_ballRadius", INTEGER, false, &LEVEL3_BOUNCEBALL_RADIUS},
@@ -1120,10 +1124,12 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 			ca->regenRate = atof( token );
 			defined |= REGEN;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "wallClimber" ) )
 		{
 			ca->abilities |= SCA_WALLCLIMBER;
 		}
+#endif
 		else if ( !Q_stricmp( token, "takesFallDamage" ) )
 		{
 			ca->abilities |= SCA_TAKESFALLDAMAGE;
@@ -1137,7 +1143,6 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		{
 			ca->abilities |= SCA_ALIENSENSE;
 		}
-#endif
 		else if ( !Q_stricmp( token, "canUseLadders" ) )
 		{
 			ca->abilities |= SCA_CANUSELADDERS;
@@ -1146,7 +1151,6 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		{
 			ca->abilities |= SCA_WALLJUMPER;
 		}
-#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "buildDistance" ) )
 		{
 			PARSE(text, token);

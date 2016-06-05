@@ -166,12 +166,18 @@ typedef enum
 #define PMF_WEAPON_RELOAD  0x000400 // force a weapon switch
 #define PMF_FOLLOW         0x000800 // spectate following another player
 #define PMF_QUEUED         0x001000 // player is queued
+#ifndef UNREALARENA
 #define PMF_TIME_WALLJUMP  0x002000 // for limiting wall jumping
+#endif
 #define PMF_CHARGE         0x004000 // keep track of pouncing
 #define PMF_WEAPON_SWITCH  0x008000 // force a weapon switch
 #define PMF_SPRINTHELD     0x010000
 
+#ifdef UNREALARENA
+#define PMF_ALL_TIMES      ( PMF_TIME_WATERJUMP | PMF_TIME_KNOCKBACK )
+#else
 #define PMF_ALL_TIMES      ( PMF_TIME_WATERJUMP | PMF_TIME_KNOCKBACK | PMF_TIME_WALLJUMP )
+#endif
 
 typedef struct
 {
@@ -253,19 +259,21 @@ typedef enum
   STAT_TAGSCORE    // tagging progress
 } statIndex_t;
 
+#ifndef UNREALARENA
 #define SCA_WALLCLIMBER     0x00000001
+#endif
 #define SCA_TAKESFALLDAMAGE 0x00000002
 #define SCA_CANZOOM         0x00000004
 #define SCA_FOVWARPS        0x00000008
 #ifndef UNREALARENA
 #define SCA_ALIENSENSE      0x00000010
-#endif
 #define SCA_CANUSELADDERS   0x00000020
 #define SCA_WALLJUMPER      0x00000040
+#endif
 
 // STAT_STATE fields. 16 bit available
-#define SS_WALLCLIMBING     BIT(0)
 #ifndef UNREALARENA
+#define SS_WALLCLIMBING     BIT(0)
 #define SS_CREEPSLOWED      BIT(1)
 #endif
 #define SS_SPEEDBOOST       BIT(2)
@@ -350,8 +358,10 @@ typedef enum
   // netcode has space for 2 more. TODO: extend
 } persEnum_t;
 
+#ifndef UNREALARENA
 #define PS_WALLCLIMBINGFOLLOW 0x00000001
 #define PS_WALLCLIMBINGTOGGLE 0x00000002
+#endif
 #define PS_NONSEGMODEL        0x00000004
 #define PS_SPRINTTOGGLE       0x00000008
 
@@ -380,8 +390,10 @@ typedef enum
 #define EF_POWER_AVAILABLE  0x0010
 #endif
 #define EF_WARN_CHARGE      0x0020 // Lucifer Cannon is about to overcharge
+#ifndef UNREALARENA
 #define EF_WALLCLIMB        0x0040 // wall walking
 #define EF_WALLCLIMBCEILING 0x0080 // wall walking ceiling hack
+#endif
 #define EF_NODRAW           0x0100 // may have an event, but no model (unspawned items)
 #define EF_FIRING           0x0200 // for lightning gun
 #define EF_FIRING2          0x0400 // alt fire

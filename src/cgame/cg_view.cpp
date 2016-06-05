@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -375,12 +375,16 @@ void CG_OffsetThirdPersonView()
 		// Perform the rotations specified by rotationAngles.
 		AnglesToAxis( rotationAngles, axis );
 
+#ifdef UNREALARENA
+		AxisCopy( axis, rotaxis );
+#else
 		if ( !( cg.snap->ps.stats[ STAT_STATE ] & SS_WALLCLIMBING ) ||
 		     !BG_RotateAxis( cg.snap->ps.grapplePoint, axis, rotaxis, false,
 		                     cg.snap->ps.eFlags & EF_WALLCLIMBCEILING ) )
 		{
 			AxisCopy( axis, rotaxis );
 		}
+#endif
 
 		// Convert the new axis back to angles.
 		AxisToAngles( rotaxis, rotationAngles );
@@ -516,12 +520,16 @@ void CG_OffsetShoulderView()
 	// Perform the rotations.
 	AnglesToAxis( rotationAngles, axis );
 
+#ifdef UNREALARENA
+	AxisCopy( axis, rotaxis );
+#else
 	if ( !( cg.snap->ps.stats[ STAT_STATE ] & SS_WALLCLIMBING ) ||
 	     !BG_RotateAxis( cg.snap->ps.grapplePoint, axis, rotaxis, false,
 	                     cg.snap->ps.eFlags & EF_WALLCLIMBCEILING ) )
 	{
 		AxisCopy( axis, rotaxis );
 	}
+#endif
 
 	AxisToAngles( rotaxis, rotationAngles );
 
@@ -1136,6 +1144,7 @@ static void CG_DrawSurfNormal()
 	trap_R_AddPolyToScene( cgs.media.outlineShader, 4, normal );
 }
 
+#ifndef UNREALARENA
 /*
 ===============
 CG_addSmoothOp
@@ -1315,6 +1324,7 @@ static void CG_smoothWJTransitions( playerState_t *ps, const vec3_t in, vec3_t o
 		VectorCopy( in, out );
 	}
 }
+#endif
 
 /*
 ===============
