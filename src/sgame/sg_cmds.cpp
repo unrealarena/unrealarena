@@ -3609,7 +3609,9 @@ void G_StopFollowing( gentity_t *ent )
 	ent->client->ps.groundEntityNum = ENTITYNUM_NONE;
 	ent->client->ps.stats[ STAT_STATE ] = 0;
 	ent->client->ps.stats[ STAT_VIEWLOCK ] = 0;
+#ifndef UNREALARENA
 	ent->client->ps.eFlags &= ~( EF_WALLCLIMB | EF_WALLCLIMBCEILING );
+#endif
 	ent->client->ps.clientNum = ent - g_entities;
 #ifndef UNREALARENA
 	ent->client->ps.persistant[ PERS_CREDIT ] = ent->client->pers.credit;
@@ -3647,9 +3649,13 @@ void G_FollowLockView( gentity_t *ent )
 	ent->client->ps.clientNum = clientNum;
 	ent->client->ps.pm_flags &= ~PMF_FOLLOW;
 	ent->client->ps.persistant[ PERS_TEAM ] = ent->client->pers.team;
+#ifndef UNREALARENA
 	ent->client->ps.stats[ STAT_STATE ] &= ~SS_WALLCLIMBING;
+#endif
 	ent->client->ps.stats[ STAT_VIEWLOCK ] = 0;
+#ifndef UNREALARENA
 	ent->client->ps.eFlags &= ~( EF_WALLCLIMB | EF_WALLCLIMBCEILING );
+#endif
 	ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
 	ent->client->ps.viewangles[ PITCH ] = 0.0f;
 

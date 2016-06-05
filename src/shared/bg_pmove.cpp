@@ -254,6 +254,14 @@ static void PM_Friction()
 
 	vel = pm->ps->velocity;
 
+#ifdef UNREALARENA
+	VectorCopy( vel, vec );
+
+	if ( pml.walking )
+	{
+		vec[ 2 ] = 0; // ignore slope movement
+	}
+#else
 	// make sure vertical velocity is NOT set to zero when wall climbing
 	VectorCopy( vel, vec );
 
@@ -261,6 +269,7 @@ static void PM_Friction()
 	{
 		vec[ 2 ] = 0; // ignore slope movement
 	}
+#endif
 
 	speed = VectorLength( vec );
 
@@ -1062,6 +1071,7 @@ static bool PM_CheckPounce()
 	return true;
 }
 
+#ifndef UNREALARENA
 /*
 =============
 PM_CheckWallJump
@@ -1077,11 +1087,7 @@ static bool PM_CheckWallJump()
 
 	static const vec3_t  refNormal = { 0.0f, 0.0f, 1.0f };
 
-#ifdef UNREALARENA
-	if ( !( BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->abilities & SCA_WALLJUMPER ) )
-#else
 	if ( !( BG_Class( pm->ps->stats[ STAT_CLASS ] )->abilities & SCA_WALLJUMPER ) )
-#endif
 	{
 		return false;
 	}
@@ -1179,13 +1185,8 @@ static bool PM_CheckWallJump()
 	VectorMA( dir, upFraction, refNormal, dir );
 	VectorNormalize( dir );
 
-#ifdef UNREALARENA
-	VectorMA( pm->ps->velocity, BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->jumpMagnitude,
-	          dir, pm->ps->velocity );
-#else
 	VectorMA( pm->ps->velocity, BG_Class( pm->ps->stats[ STAT_CLASS ] )->jumpMagnitude,
 	          dir, pm->ps->velocity );
-#endif
 
 	//for a long run of wall jumps the velocity can get pretty large, this caps it
 	if ( VectorLength( pm->ps->velocity ) > LEVEL2_WALLJUMP_MAXSPEED )
@@ -1199,6 +1200,7 @@ static bool PM_CheckWallJump()
 
 	return true;
 }
+#endif
 
 /**
  * @brief PM_CheckJetpack
@@ -1817,7 +1819,9 @@ static void PM_AirMove()
 	float     scale;
 	usercmd_t cmd;
 
+#ifndef UNREALARENA
 	PM_CheckWallJump();
+#endif
 	PM_CheckJetpack();
 
 	PM_Friction();
@@ -1868,6 +1872,7 @@ static void PM_AirMove()
 	PM_StepSlideMove( true, false );
 }
 
+#ifndef UNREALARENA
 /*
 ===================
 PM_ClimbMove
@@ -1965,19 +1970,11 @@ static void PM_ClimbMove()
 	// full control, which allows them to be moved a bit
 	if ( ( pml.groundTrace.surfaceFlags & SURF_SLICK ) || pm->ps->pm_flags & PMF_TIME_KNOCKBACK )
 	{
-#ifdef UNREALARENA
-		accelerate = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->airAcceleration;
-#else
 		accelerate = BG_Class( pm->ps->stats[ STAT_CLASS ] )->airAcceleration;
-#endif
 	}
 	else
 	{
-#ifdef UNREALARENA
-		accelerate = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->acceleration;
-#else
 		accelerate = BG_Class( pm->ps->stats[ STAT_CLASS ] )->acceleration;
-#endif
 	}
 
 	PM_Accelerate( wishdir, wishspeed, accelerate );
@@ -2004,6 +2001,7 @@ static void PM_ClimbMove()
 
 	PM_StepSlideMove( false, false );
 }
+#endif
 
 /*
 ===================
@@ -2580,6 +2578,7 @@ static void PM_GroundTraceMissed()
 	pml.walking = false;
 }
 
+#ifndef UNREALARENA
 /*
 =============
 PM_GroundClimbTrace
@@ -2997,6 +2996,7 @@ static void PM_GroundClimbTrace()
 
 	PM_AddTouchEnt( trace.entityNum );
 }
+#endif
 
 /*
 =============
@@ -3088,10 +3088,10 @@ static void PM_GroundTrace()
 			}
 		}
 	}
-#endif
 
 	pm->ps->stats[ STAT_STATE ] &= ~SS_WALLCLIMBING;
 	pm->ps->eFlags &= ~( EF_WALLCLIMB | EF_WALLCLIMBCEILING );
+#endif
 
 	point[ 0 ] = pm->ps->origin[ 0 ];
 	point[ 1 ] = pm->ps->origin[ 1 ];
@@ -4705,12 +4705,16 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 	//convert viewangles -> axis
 	AnglesToAxis( tempang, axis );
 
+#ifdef UNREALARENA
+	AxisCopy( axis, rotaxis );
+#else
 	if ( !( ps->stats[ STAT_STATE ] & SS_WALLCLIMBING ) ||
 	     !BG_RotateAxis( ps->grapplePoint, axis, rotaxis, false,
 	                     ps->eFlags & EF_WALLCLIMBCEILING ) )
 	{
 		AxisCopy( axis, rotaxis );
 	}
+#endif
 
 	//convert the new axis back to angles
 	AxisToAngles( rotaxis, tempang );

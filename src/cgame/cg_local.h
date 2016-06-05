@@ -556,6 +556,7 @@ typedef struct trailBeam_s
 // player entities need to track more information
 // than any other type of entity.
 
+#ifndef UNREALARENA
 // smoothing of view and model for WW transitions
 #define   MAXSMOOTHS 32
 
@@ -567,6 +568,7 @@ typedef struct
 	vec3_t rotAxis;
 	float  rotAngle;
 } smooth_t;
+#endif
 
 typedef struct
 {
@@ -581,7 +583,9 @@ typedef struct
 
 	vec3_t   lastNormal;
 	vec3_t   lastAxis[ 3 ];
+#ifndef UNREALARENA
 	smooth_t sList[ MAXSMOOTHS ];
+#endif
 
 	vec3_t   lastMinimapPos;
 	float    lastMinimapAngle;
@@ -1291,7 +1295,9 @@ typedef struct
 
 	vec3_t                  lastNormal; // view smoothage
 	vec3_t                  lastVangles; // view smoothage
+#ifndef UNREALARENA
 	smooth_t                sList[ MAXSMOOTHS ]; // WW smoothing
+#endif
 
 	int                     forwardMoveTime; // for struggling
 	int                     rightMoveTime;
@@ -1957,7 +1963,9 @@ extern  vmCvar_t            cg_noTaunt;
 extern  vmCvar_t            cg_drawSurfNormal;
 extern  vmCvar_t            cg_drawBBOX;
 extern  vmCvar_t            cg_drawEntityInfo;
+#ifndef UNREALARENA
 extern  vmCvar_t            cg_wwSmoothTime;
+#endif
 extern  vmCvar_t            cg_disableBlueprintErrors;
 extern  vmCvar_t            cg_depthSortParticles;
 extern  vmCvar_t            cg_bounceParticles;
@@ -2083,7 +2091,9 @@ void       CG_RegisterGrading( int slot, const char *str );
 //
 // cg_view.c
 //
+#ifndef UNREALARENA
 void     CG_addSmoothOp( vec3_t rotAxis, float rotAngle, float timeMod );
+#endif
 void     CG_TestModel_f();
 void     CG_TestGun_f();
 void     CG_TestModelNextFrame_f();

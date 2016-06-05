@@ -112,7 +112,9 @@ vmCvar_t        cg_noTaunt;
 vmCvar_t        cg_drawSurfNormal;
 vmCvar_t        cg_drawBBOX;
 vmCvar_t        cg_drawEntityInfo;
+#ifndef UNREALARENA
 vmCvar_t        cg_wwSmoothTime;
+#endif
 vmCvar_t        cg_disableBlueprintErrors;
 vmCvar_t        cg_depthSortParticles;
 vmCvar_t        cg_bounceParticles;
@@ -295,9 +297,11 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_drawSurfNormal,              "cg_drawSurfNormal",              "0",            CVAR_CHEAT                   },
 	{ &cg_drawBBOX,                    "cg_drawBBOX",                    "0",            CVAR_CHEAT                   },
 	{ &cg_drawEntityInfo,              "cg_drawEntityInfo",              "0",            CVAR_CHEAT                   },
+#ifndef UNREALARENA
 	{ &cg_wwSmoothTime,                "cg_wwSmoothTime",                "150",          0                            },
 	{ nullptr,                            "cg_wwFollow",                    "1",            CVAR_USERINFO                },
 	{ nullptr,                            "cg_wwToggle",                    "1",            CVAR_USERINFO                },
+#endif
 	{ nullptr,                            "cg_disableBlueprintErrors",      "0",            CVAR_USERINFO                },
 	{ &cg_stickySpec,                  "cg_stickySpec",                  "1",            CVAR_USERINFO                },
 	{ &cg_sprintToggle,                "cg_sprintToggle",                "0",            CVAR_USERINFO                },

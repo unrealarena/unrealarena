@@ -979,18 +979,13 @@ private:
 	bool isNoAmmo;
 };
 
+#ifndef UNREALARENA
 class WallwalkElement : public HudElement
 {
 public:
-#ifdef UNREALARENA
-	WallwalkElement( const Rocket::Core::String& tag ) :
-			HudElement( tag, ELEMENT_Q ),
-			isActive( false ) {}
-#else
 	WallwalkElement( const Rocket::Core::String& tag ) :
 			HudElement( tag, ELEMENT_ALIENS ),
 			isActive( false ) {}
-#endif
 
 	void DoOnUpdate()
 	{
@@ -1013,7 +1008,6 @@ private:
 	bool isActive;
 };
 
-#ifndef UNREALARENA
 class UsableBuildableElement : public HudElement
 {
 public:
@@ -3514,8 +3508,8 @@ void CG_Rocket_RegisterElements()
 	REGISTER_ELEMENT( "stamina", StaminaValueElement )
 #endif
 	REGISTER_ELEMENT( "weapon_icon", WeaponIconElement )
-	REGISTER_ELEMENT( "wallwalk", WallwalkElement )
 #ifndef UNREALARENA
+	REGISTER_ELEMENT( "wallwalk", WallwalkElement )
 	REGISTER_ELEMENT( "usable_buildable", UsableBuildableElement )
 #endif
 	REGISTER_ELEMENT( "location", LocationElement )

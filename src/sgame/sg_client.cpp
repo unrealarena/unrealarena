@@ -1264,6 +1264,7 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 
 	Q_strncpyz( model, buffer, sizeof( model ) );
 
+#ifndef UNREALARENA
 	// wallwalk follow
 	s = Info_ValueForKey( userinfo, "cg_wwFollow" );
 
@@ -1287,6 +1288,7 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 	{
 		client->ps.persistant[ PERS_STATE ] &= ~PS_WALLCLIMBINGTOGGLE;
 	}
+#endif
 
 	// always sprint
 	s = Info_ValueForKey( userinfo, "cg_sprintToggle" );
