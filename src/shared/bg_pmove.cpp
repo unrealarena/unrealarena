@@ -281,7 +281,11 @@ static void PM_Friction()
 	// apply ground friction
 	if ( pm->waterlevel <= 1 )
 	{
+#ifdef UNREALARENA
+		if ( pml.walking && !( pml.groundTrace.surfaceFlags & SURF_SLICK ) )
+#else
 		if ( ( pml.walking || pml.ladder ) && !( pml.groundTrace.surfaceFlags & SURF_SLICK ) )
+#endif
 		{
 			// if getting knocked back, no friction
 			if ( !( pm->ps->pm_flags & PMF_TIME_KNOCKBACK ) )
@@ -2152,6 +2156,7 @@ static void PM_WalkMove()
 	//Com_Printf("velocity2 = %1.1f\n", VectorLength(pm->ps->velocity));
 }
 
+#ifndef UNREALARENA
 /*
 ===================
 PM_LadderMove
@@ -2216,14 +2221,12 @@ static void PM_CheckLadder()
 	vec3_t  forward, end;
 	trace_t trace;
 
-#ifndef UNREALARENA
 	//test if class can use ladders
 	if ( !BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_CANUSELADDERS ) )
 	{
 		pml.ladder = false;
 		return;
 	}
-#endif
 
 	VectorCopy( pml.forward, forward );
 	forward[ 2 ] = 0.0f;
@@ -2242,6 +2245,7 @@ static void PM_CheckLadder()
 		pml.ladder = false;
 	}
 }
+#endif
 
 /*
 ==============
@@ -4997,7 +5001,9 @@ void PmoveSingle( pmove_t *pmove )
 	// set mins, maxs, and viewheight
 	PM_CheckDuck();
 
+#ifndef UNREALARENA
 	PM_CheckLadder();
+#endif
 
 	// set groundentity
 	PM_GroundTrace();
@@ -5020,10 +5026,12 @@ void PmoveSingle( pmove_t *pmove )
 	{
 		PM_WaterMove();
 	}
+#ifndef UNREALARENA
 	else if ( pml.ladder )
 	{
 		PM_LadderMove();
 	}
+#endif
 	else if ( pml.walking )
 	{
 #ifdef UNREALARENA

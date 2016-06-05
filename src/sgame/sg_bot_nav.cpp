@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -657,6 +657,7 @@ bool BotAvoidObstacles( gentity_t *self, vec3_t dir )
 	return false;
 }
 
+#ifndef UNREALARENA
 //copy of PM_CheckLadder in bg_pmove.c
 bool BotOnLadder( gentity_t *self )
 {
@@ -664,21 +665,15 @@ bool BotOnLadder( gentity_t *self )
 	vec3_t mins, maxs;
 	trace_t trace;
 
-#ifndef UNREALARENA
 	if ( !BG_ClassHasAbility( ( class_t ) self->client->ps.stats[ STAT_CLASS ], SCA_CANUSELADDERS ) )
 	{
 		return false;
 	}
-#endif
 
 	AngleVectors( self->client->ps.viewangles, forward, nullptr, nullptr );
 
 	forward[ 2 ] = 0.0f;
-#ifdef UNREALARENA
-	BG_ClassBoundingBox( ( team_t ) self->client->ps.persistant[ PERS_TEAM ], mins, maxs, nullptr, nullptr, nullptr );
-#else
 	BG_ClassBoundingBox( ( class_t ) self->client->ps.stats[ STAT_CLASS ], mins, maxs, nullptr, nullptr, nullptr );
-#endif
 	VectorMA( self->s.origin, 1.0f, forward, end );
 
 	trap_Trace( &trace, self->s.origin, mins, maxs, end, self->s.number, MASK_PLAYERSOLID, 0 );
@@ -692,6 +687,7 @@ bool BotOnLadder( gentity_t *self )
 		return false;
 	}
 }
+#endif
 
 void BotDirectionToUsercmd( gentity_t *self, vec3_t dir, usercmd_t *cmd )
 {

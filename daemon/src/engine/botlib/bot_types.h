@@ -69,8 +69,8 @@ enum navPolyFlags
 	POLYFLAGS_POUNCE   = 1 << 2,
 #ifndef UNREALARENA
 	POLYFLAGS_WALLWALK = 1 << 3,
-#endif
 	POLYFLAGS_LADDER   = 1 << 4,
+#endif
 	POLYFLAGS_DROPDOWN = 1 << 5,
 	POLYFLAGS_DOOR     = 1 << 6,
 	POLYFLAGS_TELEPORT = 1 << 7,
@@ -82,7 +82,9 @@ enum navPolyFlags
 enum navPolyAreas
 {
 	POLYAREA_GROUND = 1 << 0,
+#ifndef UNREALARENA
 	POLYAREA_LADDER = 1 << 1,
+#endif
 	POLYAREA_WATER = 1 << 2,
 	POLYAREA_DOOR = 1 << 3,
 	POLYAREA_JUMPPAD = 1 << 4,

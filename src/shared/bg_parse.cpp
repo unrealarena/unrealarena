@@ -1143,12 +1143,10 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		{
 			ca->abilities |= SCA_ALIENSENSE;
 		}
-#endif
 		else if ( !Q_stricmp( token, "canUseLadders" ) )
 		{
 			ca->abilities |= SCA_CANUSELADDERS;
 		}
-#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "wallJumper" ) )
 		{
 			ca->abilities |= SCA_WALLJUMPER;

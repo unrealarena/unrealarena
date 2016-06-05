@@ -267,9 +267,7 @@ typedef enum
 #define SCA_FOVWARPS        0x00000008
 #ifndef UNREALARENA
 #define SCA_ALIENSENSE      0x00000010
-#endif
 #define SCA_CANUSELADDERS   0x00000020
-#ifndef UNREALARENA
 #define SCA_WALLJUMPER      0x00000040
 #endif
 

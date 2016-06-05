@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -62,7 +62,9 @@
 #define SURF_NODAMAGE             0x00000001 // never give falling damage
 #define SURF_SLICK                0x00000002 // effects game physics
 #define SURF_SKY                  0x00000004 // lighting from environment map
+#ifndef UNREALARENA
 #define SURF_LADDER               0x00000008
+#endif
 #define SURF_NOIMPACT             0x00000010 // don't make missile explosions
 #define SURF_NOMARKS              0x00000020 // don't leave missile marks
 #define SURF_SPLASH               0x00000040 // out of surfaces, so replacing unused 'SURF_FLESH' - and as SURF_CERAMIC wasn't used, it's now SURF_SPLASH
