@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2014  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -776,12 +776,14 @@ qhandle_t CG_BeaconDescriptiveIcon( const cbeacon_t *b )
 {
 	if ( b->type == BCT_TAG ) {
 #ifdef UNREALARENA
-		switch ( TargetTeam( b ) ) {
-			// case TEAM_Q:
-			case TEAM_U:
-				return cg_weapons[ b->data ].weaponIcon;
-			default:
-				return CG_BeaconIcon( b );
+		{
+			switch ( TargetTeam( b ) ) {
+				// case TEAM_Q:
+				case TEAM_U:
+					return cg_weapons[ b->data ].weaponIcon;
+				default:
+					return CG_BeaconIcon( b );
+			}
 		}
 #else
 		if( b->flags & EF_BC_TAG_PLAYER ) {
@@ -816,15 +818,17 @@ const char *CG_BeaconName( const cbeacon_t *b, char *out, size_t len )
 	{
 		case BCT_TAG:
 #ifdef UNREALARENA
-			if ( ownTeam == TEAM_NONE || ownTeam == beaconTeam ) {
-				return strncpy( out, cgs.clientinfo[ b->target ].name, len ); // Player name
-			} else if ( beaconTeam == TEAM_Q ) {
-				return strncpy( out, BG_ClassModelConfig( ( team_t ) b->data )->humanName, len ); // Team name
-			} else if ( beaconTeam == TEAM_U ) {
-				// TODO: Display "Light//Chewy/Canned Food" for different armor types.
-				return strncpy( out, "Food", len );
-			} else {
-				return strncpy( out, "???", len );
+			{
+				if ( ownTeam == TEAM_NONE || ownTeam == beaconTeam ) {
+					return strncpy( out, cgs.clientinfo[ b->target ].name, len ); // Player name
+				} else if ( beaconTeam == TEAM_Q ) {
+					return strncpy( out, BG_ClassModelConfig( ( team_t ) b->data )->humanName, len ); // Team name
+				} else if ( beaconTeam == TEAM_U ) {
+					// TODO: Display "Light//Chewy/Canned Food" for different armor types.
+					return strncpy( out, "Food", len );
+				} else {
+					return strncpy( out, "???", len );
+				}
 			}
 			break;
 #else

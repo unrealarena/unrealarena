@@ -2060,7 +2060,9 @@ Get the normal for the surface the client is walking on
 void BG_GetClientNormal( const playerState_t *ps, vec3_t normal )
 {
 #ifdef UNREALARENA
-	VectorSet( normal, 0.0f, 0.0f, 1.0f );
+	{
+		VectorSet( normal, 0.0f, 0.0f, 1.0f );
+	}
 #else
 	if ( ps->stats[ STAT_STATE ] & SS_WALLCLIMBING )
 	{

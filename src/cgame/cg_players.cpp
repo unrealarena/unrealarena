@@ -343,7 +343,9 @@ static bool CG_RegisterPlayerAnimation( clientInfo_t *ci, const char *modelName,
 	int  frameRate;
 
 #ifdef UNREALARENA
-	Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
+	{
+		Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
+	}
 #else
 	// special handling for human_(naked|light|medium)
 	if ( !Q_stricmp( modelName, "human_naked"   ) ||
@@ -414,7 +416,9 @@ static bool CG_DeriveAnimationDelta( const char *modelName, weapon_t weapon, cli
 	static refSkeleton_t base, delta;
 
 #ifdef UNREALARENA
-	Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
+	{
+		Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
+	}
 #else
 	// special handling for human_(naked|light|medium)
 	if ( !Q_stricmp( modelName, "human_naked"   ) ||
@@ -2489,7 +2493,9 @@ static void CG_PlayerNonSegAxis( centity_t *cent, vec3_t srcAngles, vec3_t nonSe
 
 	//set surfNormal
 #ifdef UNREALARENA
-	VectorCopy( es->angles2, surfNormal );
+	{
+		VectorCopy( es->angles2, surfNormal );
+	}
 #else
 	if ( !( es->eFlags & EF_WALLCLIMBCEILING ) )
 	{
@@ -3315,7 +3321,9 @@ void CG_Player( centity_t *cent )
 
 	//rotate lerpAngles to floor
 #ifdef UNREALARENA
-	VectorCopy( cent->lerpAngles, angles );
+	{
+		VectorCopy( cent->lerpAngles, angles );
+	}
 #else
 	if ( es->eFlags & EF_WALLCLIMB &&
 	     BG_RotateAxis( es->angles2, tempAxis, tempAxis2, true, es->eFlags & EF_WALLCLIMBCEILING ) )
@@ -3427,11 +3435,13 @@ void CG_Player( centity_t *cent )
 
 		// move the origin closer into the wall with a CapTrace
 #ifdef UNREALARENA
-		VectorCopy( cent->lerpOrigin, playerOrigin );
-		VectorCopy( playerOrigin, body.origin );
-		body.origin[ 0 ] -= ci->headOffset[ 0 ];
-		body.origin[ 1 ] -= ci->headOffset[ 1 ];
-		body.origin[ 2 ] -= 22 + ci->headOffset[ 2 ];
+		{
+			VectorCopy( cent->lerpOrigin, playerOrigin );
+			VectorCopy( playerOrigin, body.origin );
+			body.origin[ 0 ] -= ci->headOffset[ 0 ];
+			body.origin[ 1 ] -= ci->headOffset[ 1 ];
+			body.origin[ 2 ] -= 22 + ci->headOffset[ 2 ];
+		}
 #else
 		if ( es->eFlags & EF_WALLCLIMB && !( es->eFlags & EF_DEAD ) && !( cg.intermissionStarted ) )
 		{

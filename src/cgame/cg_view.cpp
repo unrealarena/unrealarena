@@ -376,7 +376,9 @@ void CG_OffsetThirdPersonView()
 		AnglesToAxis( rotationAngles, axis );
 
 #ifdef UNREALARENA
-		AxisCopy( axis, rotaxis );
+		{
+			AxisCopy( axis, rotaxis );
+		}
 #else
 		if ( !( cg.snap->ps.stats[ STAT_STATE ] & SS_WALLCLIMBING ) ||
 		     !BG_RotateAxis( cg.snap->ps.grapplePoint, axis, rotaxis, false,
@@ -521,7 +523,9 @@ void CG_OffsetShoulderView()
 	AnglesToAxis( rotationAngles, axis );
 
 #ifdef UNREALARENA
-	AxisCopy( axis, rotaxis );
+	{
+		AxisCopy( axis, rotaxis );
+	}
 #else
 	if ( !( cg.snap->ps.stats[ STAT_STATE ] & SS_WALLCLIMBING ) ||
 	     !BG_RotateAxis( cg.snap->ps.grapplePoint, axis, rotaxis, false,
@@ -1718,7 +1722,9 @@ static int CG_CalcViewValues()
 	VectorCopy( ps->origin, cg.refdef.vieworg );
 
 #ifdef UNREALARENA
-	VectorCopy( ps->viewangles, cg.refdefViewAngles );
+	{
+		VectorCopy( ps->viewangles, cg.refdefViewAngles );
+	}
 #else
 	if ( BG_ClassHasAbility( ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) )
 	{
@@ -1735,7 +1741,11 @@ static int CG_CalcViewValues()
 #endif
 
 #ifdef UNREALARENA
-	VectorSet( cg.lastNormal, 0.0f, 0.0f, 1.0f );
+	{
+		{
+			VectorSet( cg.lastNormal, 0.0f, 0.0f, 1.0f );
+		}
+	}
 #else
 	//clumsy logic, but it needs to be this way around because the CS propagation
 	//delay screws things up otherwise

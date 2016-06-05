@@ -534,9 +534,11 @@ static void CG_SpectatorText( char *text, playerState_t *ps )
 	if ( cgs.clientinfo[ cg.clientNum ].team != TEAM_NONE )
 	{
 #ifdef UNREALARENA
-		Q_strcat( text, MAX_TUTORIAL_TEXT,
-		          va( _( "Press %s to spawn\n" ),
-		              CG_KeyNameForCommand( "+attack" ) ) );
+		{
+			Q_strcat( text, MAX_TUTORIAL_TEXT,
+			          va( _( "Press %s to spawn\n" ),
+			              CG_KeyNameForCommand( "+attack" ) ) );
+		}
 #else
 		if ( ps->pm_flags & PMF_QUEUED )
 		{

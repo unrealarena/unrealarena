@@ -217,7 +217,7 @@ static const gentity_t *G_FindKillAssist( const gentity_t *self, const gentity_t
 void G_RewardAttackers( gentity_t *self )
 {
 #ifdef UNREALARENA
-	// [TOOD] UNIMPLEMENTED
+	// [TODO] UNIMPLEMENTED
 #else
 	float     value, share, reward, enemyDamage, damageShare;
 	int       playerNum, maxHealth;

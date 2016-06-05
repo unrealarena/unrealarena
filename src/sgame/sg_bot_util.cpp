@@ -1171,7 +1171,9 @@ bool BotTargetInAttackRange( gentity_t *self, botTarget_t target )
 				}
 
 #ifdef UNREALARENA
-				range -= 150;
+				{
+					range -= 150;
+				}
 #else
 				// the flamer uses a cosine based power falloff by default
 				// so decrease the range to give us a usable minimum damage
@@ -1744,7 +1746,9 @@ void BotFireWeaponAI( gentity_t *self )
 			break;
 		case WP_ALEVEL3:
 #ifdef UNREALARENA
-			BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
+			{
+				BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
+			}
 #else
 			if ( distance > LEVEL3_CLAW_RANGE && self->client->ps.stats[ STAT_MISC ] < LEVEL3_POUNCE_TIME )
 			{
@@ -1759,7 +1763,9 @@ void BotFireWeaponAI( gentity_t *self )
 			break;
 		case WP_ALEVEL3_UPG:
 #ifdef UNREALARENA
-			BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
+			{
+				BotFireWeapon( WPM_PRIMARY, botCmdBuffer );    //goon chomp
+			}
 #else
 			if ( self->client->ps.ammo > 0 && distance > LEVEL3_CLAW_UPG_RANGE )
 			{

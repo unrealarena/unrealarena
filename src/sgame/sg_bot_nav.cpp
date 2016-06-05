@@ -146,7 +146,9 @@ float BotGetGoalRadius( gentity_t *self )
 	{
 		botTarget_t *t = &self->botMind->goal;
 #ifdef UNREALARENA
-		return RadiusFromBounds2D( t->ent->r.mins, t->ent->r.maxs ) + RadiusFromBounds2D( self->r.mins, self->r.maxs );
+		{
+			return RadiusFromBounds2D( t->ent->r.mins, t->ent->r.maxs ) + RadiusFromBounds2D( self->r.mins, self->r.maxs );
+		}
 #else
 		if ( t->ent->s.modelindex == BA_H_MEDISTAT || t->ent->s.modelindex == BA_A_BOOSTER )
 		{

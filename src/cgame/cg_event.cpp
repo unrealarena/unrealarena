@@ -566,7 +566,9 @@ static void CG_Obituary( entityState_t *ent )
 			else if ( messageAssisted && assistantInfo )
 			{
 #ifdef UNREALARENA
-				CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, teamTag[ assistantTeam ], assistantName );
+				{
+					CG_Printf( messageAssisted, teamTag[ ci->team ], targetName, teamTag[ attackerTeam ], attackerName, teamTag[ assistantTeam ], assistantName );
+				}
 #else
 				if ( attackerClass != -1 )
 				{

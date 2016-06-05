@@ -484,7 +484,9 @@ void sensor_player_touch( gentity_t *self, gentity_t *activator, trace_t* )
 		return;
 
 #ifdef UNREALARENA
-	shouldFire = true;
+	{
+		shouldFire = true;
+	}
 #else
 	if ( ( self->conditions.upgrades[0] || self->conditions.weapons[0] ) && activator->client->pers.team == TEAM_HUMANS )
 	{

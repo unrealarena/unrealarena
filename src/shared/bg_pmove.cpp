@@ -1531,7 +1531,9 @@ static bool PM_CheckJump()
 #endif
 	{
 #ifdef UNREALARENA
-		return false;
+		{
+			return false;
+		}
 #else
 		// use jetpack instead of stamina to take off
 		if ( BG_InventoryContainsUpgrade( UP_JETPACK, pm->ps->stats ) &&
@@ -2563,9 +2565,11 @@ static void PM_GroundTraceMissed()
 	}
 
 #ifdef UNREALARENA
-	if ( pm->ps->velocity[ 2 ] < FALLING_THRESHOLD && pml.previous_velocity[ 2 ] >= FALLING_THRESHOLD )
 	{
-		PM_AddEvent( EV_FALLING );
+		if ( pm->ps->velocity[ 2 ] < FALLING_THRESHOLD && pml.previous_velocity[ 2 ] >= FALLING_THRESHOLD )
+		{
+			PM_AddEvent( EV_FALLING );
+		}
 	}
 #else
 	if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_TAKESFALLDAMAGE ) )
@@ -3234,7 +3238,9 @@ static void PM_GroundTrace()
 		PM_Land();
 
 #ifdef UNREALARENA
-		PM_CrashLand();
+		{
+			PM_CrashLand();
+		}
 #else
 		if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_TAKESFALLDAMAGE ) )
 		{
@@ -3402,8 +3408,10 @@ static void PM_Footsteps()
 	// all cyclic walking effects
 	//
 #ifdef UNREALARENA
-	pm->xyspeed = sqrt( pm->ps->velocity[ 0 ] * pm->ps->velocity[ 0 ]
-	                    + pm->ps->velocity[ 1 ] * pm->ps->velocity[ 1 ] );
+	{
+		pm->xyspeed = sqrt( pm->ps->velocity[ 0 ] * pm->ps->velocity[ 0 ]
+		                    + pm->ps->velocity[ 1 ] * pm->ps->velocity[ 1 ] );
+	}
 #else
 	if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) && ( pml.groundPlane ) )
 	{
@@ -4710,7 +4718,9 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 	AnglesToAxis( tempang, axis );
 
 #ifdef UNREALARENA
-	AxisCopy( axis, rotaxis );
+	{
+		AxisCopy( axis, rotaxis );
+	}
 #else
 	if ( !( ps->stats[ STAT_STATE ] & SS_WALLCLIMBING ) ||
 	     !BG_RotateAxis( ps->grapplePoint, axis, rotaxis, false,
@@ -5035,7 +5045,9 @@ void PmoveSingle( pmove_t *pmove )
 	else if ( pml.walking )
 	{
 #ifdef UNREALARENA
-		PM_WalkMove();
+		{
+			PM_WalkMove(); // walking on ground
+		}
 #else
 		if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) &&
 		     ( pm->ps->stats[ STAT_STATE ] & SS_WALLCLIMBING ) )
