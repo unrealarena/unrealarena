@@ -63,7 +63,11 @@ void trigger_compat_propagation_act( gentity_t *self, gentity_t*, gentity_t *act
 
 	if ( g_debugEntities.integer >= -1 ) //dont't warn about anything with -1 or lower
 	{
+#ifdef UNREALARENA
+		G_Printf( S_ERROR "It appears as if %s is targeted by %s to enforce firing, which is undefined behavior - stop doing that! This WILL break in future releases and toggle the sensor instead.\n", etos( self ), etos( activator ) );
+#else
 		G_Printf( S_ERROR "It appears as if %s is targeted by %s to enforce firing, which is undefined behavior — stop doing that! This WILL break in future releases and toggle the sensor instead.\n", etos( self ), etos( activator ) );
+#endif
 	}
 }
 

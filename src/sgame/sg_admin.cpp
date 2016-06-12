@@ -1381,10 +1381,17 @@ static int admin_find_admin( gentity_t *ent, char *name, const char *command,
 		{
 			for ( i = 0, a = g_admin_admins; a; i++, a = a->next ) {; }
 
+#ifdef UNREALARENA
+			ADMP( va( "%s %s %s %d %d %d", QQ( N_("^3$1$: ^7$2$ not in range 0-$3$ or $4$-$5$\n") ),
+			          Quote(command), Quote(name),
+			          level.maxclients - 1,
+			          MAX_CLIENTS, MAX_CLIENTS + i - 1 ) );
+#else
 			ADMP( va( "%s %s %s %d %d %d", QQ( N_("^3$1$: ^7$2$ not in range 0–$3$ or $4$–$5$\n") ),
 			          Quote(command), Quote(name),
 			          level.maxclients - 1,
 			          MAX_CLIENTS, MAX_CLIENTS + i - 1 ) );
+#endif
 			return -1;
 		}
 	}
@@ -1603,10 +1610,17 @@ bool G_admin_ban_check( gentity_t *ent, char *reason, int rlen )
 		// and don't fill the console
 		else if ( ban->warnCount < 10 )
 		{
+#ifdef UNREALARENA
+			trap_Print( va( "%s%s\n", warningMessage,
+			                ban->warnCount + 1 == 10 ?
+			                S_COLOR_WHITE " - future messages for this ban will be suppressed" :
+			                "" ) );
+#else
 			trap_Print( va( "%s%s\n", warningMessage,
 			                ban->warnCount + 1 == 10 ?
 			                S_COLOR_WHITE " — future messages for this ban will be suppressed" :
 			                "" ) );
+#endif
 		}
 
 		return true;
@@ -2688,8 +2702,13 @@ bool G_admin_ban( gentity_t *ent )
 
 		if ( ip.mask < min || ip.mask > max )
 		{
+#ifdef UNREALARENA
+			ADMP( va( "%s %d %d %d", QQ( N_("^3ban: ^7invalid netmask ($1$ is not one of $2$-$3$)\n") ),
+			          ip.mask, min, max ) );
+#else
 			ADMP( va( "%s %d %d %d", QQ( N_("^3ban: ^7invalid netmask ($1$ is not one of $2$–$3$)\n") ),
 			          ip.mask, min, max ) );
+#endif
 			return false;
 		}
 
@@ -2935,8 +2954,13 @@ bool G_admin_adjustban( gentity_t *ent )
 
 		if ( mask < min || mask > max )
 		{
+#ifdef UNREALARENA
+			ADMP( va( "%s %d %d %d", QQ( N_("^3adjustban: ^7invalid netmask ($1$ is not one of $2$-$3$)\n") ),
+			          mask, min, max ) );
+#else
 			ADMP( va( "%s %d %d %d", QQ( N_("^3adjustban: ^7invalid netmask ($1$ is not one of $2$–$3$)\n") ),
 			          mask, min, max ) );
+#endif
 			return false;
 		}
 
@@ -5765,7 +5789,7 @@ bool G_admin_bot( gentity_t *ent )
 #ifdef UNREALARENA
 	static const char bot_usage[] = QQ( N_( "^3bot: ^7usage: bot add [^5name|*^7] [^5q|u^7] (^5skill^7) (^5behavior^7)\n"
 	                                        "            bot [^5del|spec|unspec^7] [^5name|all^7]\n"
-	                                        "            bot names [^5q|u^7] [^5names…^7]\n"
+	                                        "            bot names [^5q|u^7] [^5names...^7]\n"
 	                                        "            bot names [^5clear|list^7]\n" ) );
 #else
 	static const char bot_usage[] = QQ( N_( "^3bot: ^7usage: bot add [^5name|*^7] [^5aliens|humans^7] (^5skill^7) (^5behavior^7)\n"
@@ -5987,7 +6011,11 @@ bool G_admin_bot( gentity_t *ent )
 		{
 			if ( !G_BotClearNames() )
 			{
+#ifdef UNREALARENA
+				ADMP( QQ( N_( "some automatic bot names are in use - not clearing lists\n" ) ) );
+#else
 				ADMP( QQ( N_( "some automatic bot names are in use – not clearing lists\n" ) ) );
+#endif
 				return false;
 			}
 		}

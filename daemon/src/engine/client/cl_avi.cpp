@@ -1,24 +1,22 @@
 /*
-===========================================================================
-Copyright (C) 2005-2006 Tim Angus
+ * Daemon GPL Source Code
+ * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2005-2006  Tim Angus
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-This file is part of Daemon source code.
-
-Daemon source code is free software; you can redistribute it
-and/or modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
-
-Daemon source code is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Daemon source code; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-===========================================================================
-*/
 
 #include "client.h"
 
@@ -337,7 +335,11 @@ bool CL_OpenAVIForWriting( const char *fileName )
 	// Don't start if a framerate has not been chosen
 	if ( cl_aviFrameRate->integer <= 0 )
 	{
+#ifdef UNREALARENA
+		Com_Printf( S_COLOR_RED "cl_aviFrameRate must be >= 1\n" );
+#else
 		Com_Printf( S_COLOR_RED "cl_aviFrameRate must be ≥ 1\n" );
+#endif
 		return false;
 	}
 
@@ -546,7 +548,11 @@ void CL_WriteAVIAudioFrame( const byte *pcmBuffer, int size )
 
 	if ( bytesInBuffer + size > PCM_BUFFER_SIZE )
 	{
+#ifdef UNREALARENA
+		Com_Printf( S_WARNING "Audio capture buffer overflow - truncating\n" );
+#else
 		Com_Printf( S_WARNING "Audio capture buffer overflow — truncating\n" );
+#endif
 		size = PCM_BUFFER_SIZE - bytesInBuffer;
 	}
 

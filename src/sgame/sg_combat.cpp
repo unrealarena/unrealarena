@@ -1376,8 +1376,13 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 
 	if ( g_debugDamage.integer > 0 )
 	{
+#ifdef UNREALARENA
+		G_Printf( "G_Damage: %3i (%3i -> %3i)\n",
+		          take, target->health, target->health - take );
+#else
 		G_Printf( "G_Damage: %3i (%3i → %3i)\n",
 		          take, target->health, target->health - take );
+#endif
 	}
 
 	// do the damage

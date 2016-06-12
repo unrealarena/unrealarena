@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -196,7 +196,11 @@ static bool CG_ParseMinimap( minimap_t* m, const char* filename )
 
             if( !CG_ParseMinimapZone( &m->zones[m->nZones - 1], &text ) )
             {
+#ifdef UNREALARENA
+                CG_Printf( S_ERROR "error while reading zone number %i in %s\n", m->nZones, filename );
+#else
                 CG_Printf( S_ERROR "error while reading zone n°%i in %s\n", m->nZones, filename );
+#endif
                 return false;
             }
         }

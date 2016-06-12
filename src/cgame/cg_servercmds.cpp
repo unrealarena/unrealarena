@@ -958,9 +958,15 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 
 		case SAY_PRIVMSG:
 		case SAY_TPRIVMSG:
+#ifdef UNREALARENA
+			CG_Printf( "%s%s[%s^7 -> %s^7]: ^%c%s\n",
+			           ignore, prefix, name, cgs.clientinfo[ cg.clientNum ].name,
+			           color, text );
+#else
 			CG_Printf( "%s%s[%s^7 → %s^7]: ^%c%s\n",
 			           ignore, prefix, name, cgs.clientinfo[ cg.clientNum ].name,
 			           color, text );
+#endif
 
 			if ( !ignore[ 0 ] )
 			{

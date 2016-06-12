@@ -2887,8 +2887,13 @@ int BG_LoadEmoticons( emoticon_t *emoticons, int num )
 
 		if ( fileLen - 8 >= MAX_EMOTICON_NAME_LEN )
 		{
+#ifdef UNREALARENA
+			Com_Printf( S_COLOR_YELLOW "emoticon file name \"%s\" too long (>= %d)\n",
+			            filePtr, MAX_EMOTICON_NAME_LEN + 8 );
+#else
 			Com_Printf( S_COLOR_YELLOW "emoticon file name \"%s\" too long (≥ %d)\n",
 			            filePtr, MAX_EMOTICON_NAME_LEN + 8 );
+#endif
 			continue;
 		}
 

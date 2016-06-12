@@ -488,7 +488,11 @@ bool G_HandleEntityVersions( entityClassDescriptor_t *spawnDescription, gentity_
 		if( spawnDescription->versionState < ENT_V_TMPORARY
 		|| ( g_debugEntities.integer >= 1 && spawnDescription->versionState >= ENT_V_TMPORARY) )
 		{
+#ifdef UNREALARENA
+			G_Printf( S_WARNING "Entity %s uses a deprecated classtype - use the class " S_COLOR_CYAN "%s" S_COLOR_WHITE " instead\n", etos( entity ), spawnDescription->replacement );
+#else
 			G_Printf( S_WARNING "Entity %s uses a deprecated classtype — use the class " S_COLOR_CYAN "%s" S_COLOR_WHITE " instead\n", etos( entity ), spawnDescription->replacement );
+#endif
 		}
 	}
 	entity->classname = spawnDescription->replacement;
@@ -502,7 +506,11 @@ bool G_ValidateEntity( entityClassDescriptor_t *entityClass, gentity_t *entity )
 			if(!entity->callTargetCount) //check target usage for backward compatibility
 			{
 				if( g_debugEntities.integer > -2 )
+#ifdef UNREALARENA
+					G_Printf( S_WARNING "Entity %s needs to call or target to something - Removing it.\n", etos( entity ) );
+#else
 					G_Printf( S_WARNING "Entity %s needs to call or target to something — Removing it.\n", etos( entity ) );
+#endif
 				return false;
 			}
 			break;
@@ -511,7 +519,11 @@ bool G_ValidateEntity( entityClassDescriptor_t *entityClass, gentity_t *entity )
 			if(!entity->names[0])
 			{
 				if( g_debugEntities.integer > -2 )
+#ifdef UNREALARENA
+					G_Printf( S_WARNING "Entity %s needs a name, so other entities can target it - Removing it.\n", etos( entity ) );
+#else
 					G_Printf( S_WARNING "Entity %s needs a name, so other entities can target it — Removing it.\n", etos( entity ) );
+#endif
 				return false;
 			}
 			break;
@@ -520,7 +532,11 @@ bool G_ValidateEntity( entityClassDescriptor_t *entityClass, gentity_t *entity )
 					|| !entity->names[0])
 			{
 				if( g_debugEntities.integer > -2 )
+#ifdef UNREALARENA
+					G_Printf( S_WARNING "Entity %s needs a name as well as a target to conditionally relay the firing - Removing it.\n", etos( entity ) );
+#else
 					G_Printf( S_WARNING "Entity %s needs a name as well as a target to conditionally relay the firing — Removing it.\n", etos( entity ) );
+#endif
 				return false;
 			}
 			break;
@@ -552,7 +568,11 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 	{
 		//don't even warn about spawning-errors with -2 (maps might still work at least partly if we ignore these willingly)
 		if ( g_debugEntities.integer > -2 )
+#ifdef UNREALARENA
+			G_Printf( S_ERROR "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " is missing classname - we are unable to spawn it.\n", spawnedEntity->s.number );
+#else
 			G_Printf( S_ERROR "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " is missing classname – we are unable to spawn it.\n", spawnedEntity->s.number );
+#endif
 		return false;
 	}
 
@@ -621,7 +641,11 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 	{
 		if (!Q_stricmp(S_WORLDSPAWN, spawnedEntity->classname))
 		{
+#ifdef UNREALARENA
+			G_Printf( S_ERROR "a " S_COLOR_CYAN S_WORLDSPAWN S_COLOR_WHITE " class was misplaced into position " S_COLOR_CYAN "#%i" S_COLOR_WHITE " of the spawn string - Ignoring\n", spawnedEntity->s.number );
+#else
 			G_Printf( S_ERROR "a " S_COLOR_CYAN S_WORLDSPAWN S_COLOR_WHITE " class was misplaced into position " S_COLOR_CYAN "#%i" S_COLOR_WHITE " of the spawn string – Ignoring\n", spawnedEntity->s.number );
+#endif
 		}
 		else
 		{
@@ -926,7 +950,11 @@ bool G_WarnAboutDeprecatedEntityField( gentity_t *entity, const char *expectedFi
 		if( typeOfDeprecation < ENT_V_TMPORARY
 		|| ( g_debugEntities.integer >= 1 && typeOfDeprecation >= ENT_V_TMPORARY) )
 		{
+#ifdef UNREALARENA
+			G_Printf( S_WARNING "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " contains deprecated field " S_COLOR_CYAN "%s" S_COLOR_WHITE " - use " S_COLOR_CYAN "%s" S_COLOR_WHITE " instead\n", entity->s.number, actualFieldname, expectedFieldname );
+#else
 			G_Printf( S_WARNING "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " contains deprecated field " S_COLOR_CYAN "%s" S_COLOR_WHITE " — use " S_COLOR_CYAN "%s" S_COLOR_WHITE " instead\n", entity->s.number, actualFieldname, expectedFieldname );
+#endif
 		}
 	}
 
