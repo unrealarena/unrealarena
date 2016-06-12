@@ -1657,7 +1657,11 @@ void Key_ModCase_f()
 
 	if ( argc < 3 )
 	{
+#ifdef UNREALARENA
+		Cmd_PrintUsage( "<modifiers> <command> [<modifiers> <command>] ... [<command>]", nullptr );
+#else
 		Cmd_PrintUsage( "<modifiers> <command> [<modifiers> <command>] … [<command>]", nullptr );
+#endif
 		return;
 	}
 

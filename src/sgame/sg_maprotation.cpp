@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -663,7 +663,11 @@ static bool G_ParseMapRotationFile( const char *fileName )
 #define MAP_CURRENT        "^2"
 #define MAP_CONTROL        "^5"
 #define MAP_DEFAULT        "^7"
+#ifdef UNREALARENA
+#define MAP_CURRENT_MARKER ">"
+#else
 #define MAP_CURRENT_MARKER "‣"
+#endif
 
 /*
 ===============

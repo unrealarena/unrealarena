@@ -122,8 +122,13 @@ int G_MatchOnePlayer( const int *plist, int found, char *err, int len )
 
 			if ( cl->pers.connected == CON_CONNECTED )
 			{
+#ifdef UNREALARENA
+				Com_sprintf( line, sizeof( line ), "%2i - %s^7\n",
+				             plist[p], cl->pers.netname );
+#else
 				Com_sprintf( line, sizeof( line ), "%2i — %s^7\n",
 				             plist[p], cl->pers.netname );
+#endif
 
 				if ( strlen( err ) + strlen( line ) > (unsigned) len )
 				{
@@ -239,7 +244,11 @@ int G_ClientNumberFromString( const char *s, char *err, int len )
 		{
 			if ( p )
 			{
+#ifdef UNREALARENA
+				l = Q_snprintf( p, l2, "%-2d - %s^7\n", i, cl->pers.netname );
+#else
 				l = Q_snprintf( p, l2, "%-2d — %s^7\n", i, cl->pers.netname );
+#endif
 				p += l;
 				l2 -= l;
 			}

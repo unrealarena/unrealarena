@@ -278,7 +278,11 @@ void Con_Search_f()
 
 	if ( c < 2 )
 	{
+#ifdef UNREALARENA
+		Cmd_PrintUsage("<string>...", nullptr);
+#else
 		Cmd_PrintUsage("<string>…", nullptr);
+#endif
 		return;
 	}
 

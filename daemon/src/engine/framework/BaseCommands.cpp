@@ -1,32 +1,31 @@
 /*
-===========================================================================
-Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
-All rights reserved.
+ * Copyright (c) 2016, Unreal Arena
+ * Copyright (c) 2013-2014, Daemon Developers
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the <organization> nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of the Daemon developers nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL DAEMON DEVELOPERS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-===========================================================================
-*/
 
 #include "qcommon/q_shared.h"
 #include "BaseCommands.h"
@@ -80,9 +79,17 @@ namespace Cmd {
                 //Check the syntax
                 if (args.Argc() < 2) {
                     if (readHomepath) {
+#ifdef UNREALARENA
+                        PrintUsage(args, "[-q|-f|-s] <filename> [<arguments>...]", "execute a user script file from config/.");
+#else
                         PrintUsage(args, "[-q|-f|-s] <filename> [<arguments>…]", "execute a user script file from config/.");
+#endif
                     } else {
+#ifdef UNREALARENA
+                        PrintUsage(args, "[-q|-f|-s] <filename> [<arguments>...]", "execute a script file from a pak.");
+#else
                         PrintUsage(args, "[-q|-f|-s] <filename> [<arguments>…]", "execute a script file from a pak.");
+#endif
                     }
                     return;
                 }
@@ -221,7 +228,11 @@ namespace Cmd {
 
             void Run(const Cmd::Args& args) const OVERRIDE {
                 if (args.Argc() < 3) {
+#ifdef UNREALARENA
+                    PrintUsage(args, "<variableToSet> <variable1> ... <variableN>", "concatenates variable1 to variableN and sets the result to variableToSet");
+#else
                     PrintUsage(args, "<variableToSet> <variable1> … <variableN>", "concatenates variable1 to variableN and sets the result to variableToSet");
+#endif
                     return;
                 }
 
@@ -283,7 +294,11 @@ namespace Cmd {
                         newValue = currentValue - operand;
                     } else if (op == "*") {
                         newValue = currentValue * operand;
+#ifdef UNREALARENA
+                    } else if (op == "/") {
+#else
                     } else if (op == "/" or op == "÷") {
+#endif
                         if (operand == 0.0f) {
                             Print("Error: Cannot divide by 0!");
                             return;
@@ -306,7 +321,11 @@ namespace Cmd {
                         newValue = operand1 - operand2;
                     } else if (op == "*") {
                         newValue = operand1 * operand2;
+#ifdef UNREALARENA
+                    } else if (op == "/") {
+#else
                     } else if (op == "/" or op == "÷") {
+#endif
                         if (operand2 == 0.0f) {
                             Print("Error: Cannot divide by 0!");
                             return;
@@ -329,7 +348,11 @@ namespace Cmd {
                 PrintUsage(args, "<variableToSet> = <number> <operator> <number>", "");
                 PrintUsage(args, "<variableToSet> <operator> <number>", "");
                 PrintUsage(args, "<variableToSet> (++|--)", "");
+#ifdef UNREALARENA
+                Print("valid operators: + - * /");
+#else
                 Print("valid operators: + - × * ÷ /");
+#endif
             }
 
             Cmd::CompletionResult Complete(int argNum, const Args& args, Str::StringRef prefix) const OVERRIDE {
@@ -383,23 +406,39 @@ namespace Cmd {
                 } else if (relation == "=" or relation == "==") {
                     result = intValue1 == intValue2;
 
+#ifdef UNREALARENA
+                } else if (relation == "!=") {
+#else
                 } else if (relation == "!=" or relation == "≠") {
+#endif
                     result = intValue1 != intValue2;
 
                 } else if (relation == "<") {
                     result = intValue1 < intValue2;
 
+#ifdef UNREALARENA
+                } else if (relation == "<=") {
+#else
                 } else if (relation == "<=" or relation == "≤" ) {
+#endif
                     result = intValue1 <= intValue2;
 
                 } else if (relation == ">") {
                     result = intValue1 > intValue2;
 
+#ifdef UNREALARENA
+                } else if (relation == ">=") {
+#else
                 } else if (relation == ">=" or relation == "≥") {
+#endif
                     result = intValue1 >= intValue2;
 
                 } else {
+#ifdef UNREALARENA
+                    Print( "invalid relation operator in if command. valid relation operators are = != < > >= <= eq ne in !in" );
+#else
                     Print( "invalid relation operator in if command. valid relation operators are = != ≠ < > ≥ >= ≤ <= eq ne in !in" );
+#endif
                     Usage(args);
                     return;
                 }
@@ -504,7 +543,11 @@ namespace Cmd {
             }
 
             void Usage(const Cmd::Args& args) const{
+#ifdef UNREALARENA
+                PrintUsage(args, "[+|-] <variable> [<value>...]", "");
+#else
                 PrintUsage(args, "[+|-] <variable> [<value>…]", "");
+#endif
             }
     };
     static ToggleCmd ToggleCmdRegistration;
@@ -807,7 +850,11 @@ namespace Cmd {
                 if (args.Argc() == 2) {
                     auto iter = aliases.find(name);
                     if (iter != aliases.end()) {
+#ifdef UNREALARENA
+                        Print("%s => %s", name.c_str(), iter->second.command.c_str());
+#else
                         Print("%s ⇒ %s", name.c_str(), iter->second.command.c_str());
+#endif
                     } else {
                         Print("Alias %s does not exist", name.c_str());
                     }
@@ -928,7 +975,11 @@ namespace Cmd {
                 //Print the matches, keeping the description aligned
                 for (unsigned i = 0; i < matches.size(); i++) {
                     int toFill = maxNameLength - matchesNames[i]->size();
+#ifdef UNREALARENA
+                    Print("  %s%s => %s", matchesNames[i]->c_str(), std::string(toFill, ' ').c_str(), matches[i]->command.c_str());
+#else
                     Print("  %s%s ⇒ %s", matchesNames[i]->c_str(), std::string(toFill, ' ').c_str(), matches[i]->command.c_str());
+#endif
                 }
 
                 Print("%zu aliases", matches.size());

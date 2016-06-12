@@ -2599,7 +2599,11 @@ void CG_Rocket_DrawConnectText()
 
 	if ( !Q_stricmp( rocketInfo.cstate.servername, "localhost" ) )
 	{
+#ifdef UNREALARENA
+		Q_strncpyz( rml, "Starting up...", sizeof( rml ) );
+#else
 		Q_strncpyz( rml, "Starting up…", sizeof( rml ) );
+#endif
 	}
 
 	else
@@ -2616,15 +2620,27 @@ void CG_Rocket_DrawConnectText()
 	switch ( rocketInfo.cstate.connState )
 	{
 		case CA_CONNECTING:
+#ifdef UNREALARENA
+			s = va( _( "Awaiting connection...%i" ), rocketInfo.cstate.connectPacketCount );
+#else
 			s = va( _( "Awaiting connection…%i" ), rocketInfo.cstate.connectPacketCount );
+#endif
 			break;
 
 		case CA_CHALLENGING:
+#ifdef UNREALARENA
+			s = va( _( "Awaiting challenge...%i" ), rocketInfo.cstate.connectPacketCount );
+#else
 			s = va( _( "Awaiting challenge…%i" ), rocketInfo.cstate.connectPacketCount );
+#endif
 			break;
 
 		case CA_CONNECTED:
+#ifdef UNREALARENA
+			s = _( "Awaiting gamestate..." );
+#else
 			s = _( "Awaiting gamestate…" );
+#endif
 		break;
 
 		case CA_LOADING:
@@ -2902,7 +2918,11 @@ void CG_Rocket_DrawMineRate()
 	efficiency = cg.predictedPlayerState.persistant[ PERS_RGS_EFFICIENCY ];
 	rate       = ( ( efficiency / 100.0f ) * levelRate );
 
+#ifdef UNREALARENA
+	Rocket_SetInnerRML( va( _( "%.1f BP/min (%d%% * %.1f)" ), rate, efficiency, levelRate ), 0 );
+#else
 	Rocket_SetInnerRML( va( _( "%.1f BP/min (%d%% × %.1f)" ), rate, efficiency, levelRate ), 0 );
+#endif
 }
 
 static INLINE qhandle_t CG_GetUnlockableIcon( int num )

@@ -2001,7 +2001,11 @@ void Com_Frame()
 			}
 			else if ( Sys_Milliseconds() - watchdogTime > watchdogThreshold.Get() * 1000 )
 			{
+#ifdef UNREALARENA
+				Com_Printf( "Idle server with no map - triggering watchdog\n" );
+#else
 				Com_Printf( "Idle server with no map — triggering watchdog\n" );
+#endif
 				watchdogTime = 0;
 				watchWarn = false;
 

@@ -77,9 +77,15 @@ void Svcmd_EntityFire_f()
 
 static inline void PrintEntityOverviewLine( gentity_t *entity )
 {
+#ifdef UNREALARENA
+	G_Printf( "%3i: %15s/" S_COLOR_CYAN "%-24s" S_COLOR_WHITE "%s%s\n",
+			entity->s.number, Com_EntityTypeName( entity->s.eType ), entity->classname,
+			entity->names[0] ? entity->names[0] : "", entity->names[1] ? " ..." : "");
+#else
 	G_Printf( "%3i: %15s/" S_COLOR_CYAN "%-24s" S_COLOR_WHITE "%s%s\n",
 			entity->s.number, Com_EntityTypeName( entity->s.eType ), entity->classname,
 			entity->names[0] ? entity->names[0] : "", entity->names[1] ? " …" : "");
+#endif
 }
 
 /*
@@ -119,13 +125,21 @@ void Svcmd_EntityShow_f()
 		return;
 	}
 
+#ifdef UNREALARENA
+	G_Printf( "--------------------------------------------------\n" );
+#else
 	G_Printf( "⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼\n" );
+#endif
 	G_Printf( S_COLOR_CYAN "#%3i" S_COLOR_WHITE ": %16s", entityNum, Com_EntityTypeName( selection->s.eType ) );
 	if (IS_NON_NULL_VEC3(selection->s.origin))
 	{
 		G_Printf("%26s", vtos( selection->s.origin ) );
 	}
+#ifdef UNREALARENA
+	G_Printf( "\n--------------------------------------------------\n" );
+#else
 	G_Printf( "\n⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼\n" );
+#endif
 	G_Printf( "Classname: " S_COLOR_CYAN "%s" S_COLOR_WHITE "\n", selection->classname );
 	G_Printf( "Capabilities:%s%s%s%s%s%s%s\n\n",
 			selection->act ? " acts" : "",
@@ -158,7 +172,11 @@ void Svcmd_EntityShow_f()
 
 		while ((possibleTarget = G_IterateTargets(possibleTarget, &targetIndex, selection)) != nullptr )
 		{
+#ifdef UNREALARENA
+			G_Printf(" * %s %s\n", etos( possibleTarget ), vtos( possibleTarget->s.origin));
+#else
 			G_Printf(" • %s %s\n", etos( possibleTarget ), vtos( possibleTarget->s.origin));
+#endif
 		}
 		G_Printf( "\n");
 	}
@@ -178,10 +196,18 @@ void Svcmd_EntityShow_f()
 				lastTargetIndex = targetIndex;
 			}
 
+#ifdef UNREALARENA
+			G_Printf(" * %s", etos(possibleTarget));
+#else
 			G_Printf(" • %s", etos(possibleTarget));
+#endif
 			if(possibleTarget->names[1])
 			{
+#ifdef UNREALARENA
+				G_Printf(" using \"%s\" element ", selection->calltargets[ targetIndex ].name);
+#else
 				G_Printf(" using \"%s\" ∈ ", selection->calltargets[ targetIndex ].name);
+#endif
 				G_PrintEntityNameList( possibleTarget );
 			}
 			G_Printf("\n");

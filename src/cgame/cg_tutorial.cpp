@@ -129,7 +129,11 @@ static const char *CG_KeyNameForCommand( const char *command )
 		}
 	}
 
+#ifdef UNREALARENA
+	return "(BUG?!)"; // shouldn't happen: if it does, BUG
+#else
 	return "(⚠ BUG)"; // shouldn't happen: if it does, BUG
+#endif
 }
 
 #define MAX_TUTORIAL_TEXT 4096

@@ -28,7 +28,11 @@
 CG_Obituary
 =============
 */
+#ifdef UNREALARENA
+static const char teamTag[][8] = { "^2*^7", "^1*^7", "^4*^7" };
+#else
 static const char teamTag[][8] = { "^2●^7", "^1●^7", "^4●^7" };
+#endif
 
 #define LONGFORM ">"
 static const struct {
@@ -39,7 +43,7 @@ static const struct {
 } meansOfDeath[] = {
 	// Icon            Envkill Assist? (Team)
 #ifdef UNREALARENA
-	{ "☠",             false, false, TEAM_U      },
+	{ "[unknown]",     false, false, TEAM_U      },
 	{ "[shotgun]",     false, true,  TEAM_U      },
 	{ "[blaster]",     false, true,  TEAM_U      },
 	{ "[painsaw]",     false, true,  TEAM_U      },
@@ -80,7 +84,11 @@ static const struct {
 	{ LONGFORM,        true,  false, TEAM_NONE   }, // crush
 	{ "[telenode]",    false, false, TEAM_NONE   }, // telefrag
 	{ LONGFORM,        true,  false, TEAM_NONE   }, // falling
+#ifdef UNREALARENA
+	{ "[suicide]",     false, false, TEAM_NONE   }, // suicide
+#else
 	{ "☠",             false, false, TEAM_NONE   }, // suicide
+#endif
 	{ LONGFORM,        true,  false, TEAM_NONE   }, // target laser - shouldn't happen
 	{ LONGFORM,        true,  false, TEAM_NONE   }, // trigger hurt
 

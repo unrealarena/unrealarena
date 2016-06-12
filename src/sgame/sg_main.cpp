@@ -2855,13 +2855,23 @@ void G_CheckVote( team_t team )
 	}
 	else if ( pass )
 	{
+#ifdef UNREALARENA
+		cmd = va( "print_tr %s %d %d", ( team == TEAM_NONE ) ? QQ( N_("Vote passed ($1$ - $2$)\n") ) : QQ( N_("Team vote passed ($1$ - $2$)\n") ),
+		            level.team[ team ].voteYes, level.team[ team ].voteNo );
+#else
 		cmd = va( "print_tr %s %d %d", ( team == TEAM_NONE ) ? QQ( N_("Vote passed ($1$ — $2$)\n") ) : QQ( N_("Team vote passed ($1$ — $2$)\n") ),
 		            level.team[ team ].voteYes, level.team[ team ].voteNo );
+#endif
 	}
 	else
 	{
+#ifdef UNREALARENA
+		cmd = va( "print_tr %s %d %d %.0f", ( team == TEAM_NONE ) ? QQ( N_("Vote failed ($1$ - $2$; $3$% needed)\n") ) : QQ( N_("Team vote failed ($1$ - $2$; $3$% needed)\n") ),
+		            level.team[ team ].voteYes, level.team[ team ].voteNo, votePassThreshold * 100 );
+#else
 		cmd = va( "print_tr %s %d %d %.0f", ( team == TEAM_NONE ) ? QQ( N_("Vote failed ($1$ — $2$; $3$% needed)\n") ) : QQ( N_("Team vote failed ($1$ — $2$; $3$% needed)\n") ),
 		            level.team[ team ].voteYes, level.team[ team ].voteNo, votePassThreshold * 100 );
+#endif
 	}
 
 	if ( team == TEAM_NONE )

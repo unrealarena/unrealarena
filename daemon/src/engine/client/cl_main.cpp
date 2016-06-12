@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -3804,7 +3804,11 @@ bool CL_InitRef( )
 
 	ri.Bot_DrawDebugMesh = BotDebugDrawMesh;
 
+#ifdef UNREALARENA
+	Com_Printf("%s", "Calling GetRefAPI...\n" );
+#else
 	Com_Printf("%s", "Calling GetRefAPI…\n" );
+#endif
 	ret = GetRefAPI( REF_API_VERSION, &ri );
 
 	if ( !ret )
@@ -4591,7 +4595,11 @@ void CL_LocalServers_f()
 	int      i, j;
 	netadr_t to;
 
+#ifdef UNREALARENA
+	Com_DPrintf( "Scanning for servers on the local network...\n" );
+#else
 	Com_DPrintf( "Scanning for servers on the local network…\n" );
+#endif
 
 	// reset the list, waiting for response
 	cls.numlocalservers = 0;
@@ -4672,7 +4680,11 @@ void CL_GlobalServers_f()
 		to.port = BigShort( PORT_MASTER );
 	}
 
+#ifdef UNREALARENA
+	Com_DPrintf( "Requesting servers from master %s...\n", masteraddress );
+#else
 	Com_DPrintf( "Requesting servers from master %s…\n", masteraddress );
+#endif
 
 	cls.numglobalservers = -1;
 	cls.numserverLinks = 0;

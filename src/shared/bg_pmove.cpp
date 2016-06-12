@@ -900,12 +900,21 @@ static bool PM_CheckPounce()
 
 						if ( pm->debugLevel > 0 )
 						{
+#ifdef UNREALARENA
+							Com_Printf( "[PM_CheckPounce] Found trajectory angles: "
+							            "%.1f ( %.2f, %.2f, %.2f ), %.1f ( %.2f, %.2f, %.2f )\n",
+							            180.0f / M_PI * trajAngles[ 0 ],
+							            trajDir1[ 0 ], trajDir1[ 1 ], trajDir1[ 2 ],
+							            180.0f / M_PI * trajAngles[ 1 ],
+							            trajDir2[ 0 ], trajDir2[ 1 ], trajDir2[ 2 ] );
+#else
 							Com_Printf( "[PM_CheckPounce] Found trajectory angles: "
 							            "%.1f° ( %.2f, %.2f, %.2f ), %.1f° ( %.2f, %.2f, %.2f )\n",
 							            180.0f / M_PI * trajAngles[ 0 ],
 							            trajDir1[ 0 ], trajDir1[ 1 ], trajDir1[ 2 ],
 							            180.0f / M_PI * trajAngles[ 1 ],
 							            trajDir2[ 0 ], trajDir2[ 1 ], trajDir2[ 2 ] );
+#endif
 						}
 
 						if ( trajDir1[ 2 ] < trajDir2[ 2 ] )

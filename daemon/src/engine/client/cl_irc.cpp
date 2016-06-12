@@ -1094,7 +1094,11 @@ static int PRINTF_LIKE(1) IRC_Send( const char *format, ... )
 	if ( len >= IRC_SEND_BUF_SIZE - 1 )
 	{
 		// This is a bug, return w/ a fatal error
+#ifdef UNREALARENA
+		Com_Printf( "...IRC: send buffer overflow (%d characters)\n", len );
+#else
 		Com_Printf( "…IRC: send buffer overflow (%d characters)\n", len );
+#endif
 		return IRC_CMD_FATAL;
 	}
 
@@ -1587,7 +1591,11 @@ static int IRCH_NickError()
 	}
 	else
 	{
+#ifdef UNREALARENA
+		Com_Printf("...IRC: %s\n", "got spurious nickname error" );
+#else
 		Com_Printf("…IRC: %s\n", "got spurious nickname error" );
+#endif
 	}
 
 	return IRC_CMD_SUCCESS;
@@ -1906,7 +1914,11 @@ static int CTCP_Version( bool is_channel, const char * )
 		return IRC_CMD_SUCCESS;
 	}
 
+#ifdef UNREALARENA
+	return IRC_Send( "NOTICE %s :\001VERSION Daemon IRC client - v\n" Q3_VERSION "\001", IRC_String( pfx_nickOrServer ) );
+#else
 	return IRC_Send( "NOTICE %s :\001VERSION Daemon IRC client — v\n" Q3_VERSION "\001", IRC_String( pfx_nickOrServer ) );
+#endif
 }
 
 /*--------------------------------------------------------------------------*/
@@ -2215,21 +2227,33 @@ static int IRC_AttemptConnection()
 	int                port;
 
 	CHECK_SHUTDOWN;
+#ifdef UNREALARENA
+	Com_Printf("...IRC: %s\n", "connecting to server" );
+#else
 	Com_Printf("…IRC: %s\n", "connecting to server" );
+#endif
 
 	// Force players to use a non-default name
 	Q_strncpyz( name, Cvar_VariableString( "name" ), sizeof( name ) );
 
 	if ( !Q_strnicmp( name, "player", 7 ) )
 	{
+#ifdef UNREALARENA
+		Com_Printf("...IRC: %s\n", "rejected due to unset player name" );
+#else
 		Com_Printf("…IRC: %s\n", "rejected due to unset player name" );
+#endif
 		return IRC_CMD_FATAL;
 	}
 
 	// Prepare USER record
 	if ( !IRC_InitialiseUser( name ) )
 	{
+#ifdef UNREALARENA
+		Com_Printf("...IRC: %s\n", "rejected due to mostly unusable player name" );
+#else
 		Com_Printf("…IRC: %s\n", "rejected due to mostly unusable player name" );
+#endif
 		return IRC_CMD_FATAL;
 	}
 
@@ -2238,7 +2262,11 @@ static int IRC_AttemptConnection()
 
 	if ( ( host = gethostbyname( host_name ) ) == nullptr )
 	{
+#ifdef UNREALARENA
+		Com_Printf("...IRC: %s\n", "unknown server" );
+#else
 		Com_Printf("…IRC: %s\n", "unknown server" );
+#endif
 		return IRC_CMD_FATAL;
 	}
 
@@ -2269,7 +2297,11 @@ static int IRC_AttemptConnection()
 	if ( ( connect( IRC_Socket, ( struct sockaddr * ) &address, sizeof( address ) ) ) != 0 )
 	{
 		closesocket( IRC_Socket );
+#ifdef UNREALARENA
+		Com_Printf("...IRC: %s\n", "connection refused" );
+#else
 		Com_Printf("…IRC: %s\n", "connection refused" );
+#endif
 		return IRC_CMD_RETRY;
 	}
 
@@ -2293,7 +2325,11 @@ static int IRC_AttemptConnection()
 	IRC_ThreadStatus = IRC_THREAD_SETNICK;
 
 	CHECK_SHUTDOWN_CLOSE;
+#ifdef UNREALARENA
+	Com_Printf( "...Connected to IRC server\n" );
+#else
 	Com_Printf( "…Connected to IRC server\n" );
+#endif
 	return IRC_CMD_SUCCESS;
 }
 
@@ -2494,7 +2530,11 @@ static void IRC_Thread()
 	IRC_MainLoop();
 
 	// Clean up
+#ifdef UNREALARENA
+	Com_Printf("...IRC: %s\n", "disconnected from server" );
+#else
 	Com_Printf("…IRC: %s\n", "disconnected from server" );
+#endif
 	IRC_FlushDEQueue();
 	IRC_SetThreadDead();
 }
@@ -2657,7 +2697,11 @@ void CL_InitIRC()
 {
 	if ( IRC_ThreadStatus != IRC_THREAD_DEAD )
 	{
+#ifdef UNREALARENA
+		Com_Printf("...IRC: %s\n", "thread is already running" );
+#else
 		Com_Printf("…IRC: %s\n", "thread is already running" );
+#endif
 		return;
 	}
 
