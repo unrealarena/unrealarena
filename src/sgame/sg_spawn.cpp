@@ -412,7 +412,9 @@ static const entityClassDescriptor_t entityClassDescriptions[] =
 #endif
 	{ S_SENSOR_STAGE,             SP_sensor_stage,           CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
 	{ S_SENSOR_START,             SP_sensor_start,           CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
+#ifndef UNREALARENA
 	{ S_SENSOR_SUPPORT,           SP_sensor_support,         CHAIN_ACTIVE, ENT_V_UNCLEAR, nullptr },
+#endif
 	{ S_SENSOR_TIMER,             SP_sensor_timer,           CHAIN_ACTIVE,     ENT_V_UNCLEAR, nullptr },
 
    /**
