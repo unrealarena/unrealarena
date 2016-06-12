@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
@@ -532,6 +532,7 @@ void SP_sensor_player( gentity_t *self )
 	InitBrushSensor( self );
 }
 
+#ifndef UNREALARENA
 /*
 =================================================================================
 
@@ -542,7 +543,6 @@ sensor_support
 
 void sensor_support_think( gentity_t *self )
 {
-#ifndef UNREALARENA
 	if(!self->enabled)
 	{
 		self->nextthink = level.time + SENSOR_POLL_PERIOD * 5;
@@ -568,17 +568,14 @@ void sensor_support_think( gentity_t *self )
 
 	if(self->powered)
 		G_FireEntity( self, self->powerSource );
-#endif
 
 	self->nextthink = level.time + SENSOR_POLL_PERIOD;
 }
 
 void sensor_support_reset( gentity_t *self )
 {
-#ifndef UNREALARENA
 	self->enabled = !(self->spawnflags & SPF_SPAWN_DISABLED);
 	//if(self->enabled)
-#endif
 	self->nextthink = level.time + SENSOR_POLL_PERIOD;
 }
 
@@ -588,7 +585,6 @@ void SP_sensor_support( gentity_t *self )
 	self->reset = sensor_support_reset;
 }
 
-#ifndef UNREALARENA
 /*
 =================================================================================
 

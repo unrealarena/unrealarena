@@ -101,8 +101,8 @@
 #define S_SENSOR_PLAYER           "sensor_player"
 #ifndef UNREALARENA
 #define S_SENSOR_POWER            "sensor_power"
-#endif
 #define S_SENSOR_SUPPORT          "sensor_support"
+#endif
 #define S_SENSOR_START            "sensor_start"
 #define S_SENSOR_STAGE            "sensor_stage"
 
