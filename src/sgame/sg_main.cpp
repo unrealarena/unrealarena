@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -912,8 +912,10 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	// the map might disable some things
 	BG_InitAllowedGameElements();
 
+#ifndef UNREALARENA
 	// Initialize item locking state
 	BG_InitUnlockackables();
+#endif
 
 	G_FindEntityGroups();
 	G_InitSetEntities();

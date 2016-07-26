@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -349,8 +349,8 @@ typedef enum
   PERS_STATE,
 #ifndef UNREALARENA
   PERS_CREDIT,         // human credit
-#endif
   PERS_UNLOCKABLES,    // status of unlockable items of a team
+#endif
   PERS_NEWWEAPON,      // weapon to switch to
   PERS_BP,
   PERS_MARKEDBP,
@@ -1199,7 +1199,9 @@ typedef struct
 
 	team_t   team;
 
+#ifndef UNREALARENA
 	int      unlockThreshold;
+#endif
 
 	int      health;
 	float    fallDamage;
@@ -1333,8 +1335,8 @@ typedef struct
 
 #ifndef UNREALARENA
 	int      price;
-#endif
 	int      unlockThreshold;
+#endif
 
 	int      slots;
 
@@ -1374,8 +1376,8 @@ typedef struct
 
 #ifndef UNREALARENA
 	int       price;
-#endif
 	int       unlockThreshold;
+#endif
 
 	int       slots;
 
@@ -1561,46 +1563,35 @@ void                      BG_ParseMissileAttributeFile( const char *filename, mi
 void                      BG_ParseMissileDisplayFile( const char *filename, missileAttributes_t *ma );
 void                      BG_ParseBeaconAttributeFile( const char *filename, beaconAttributes_t *ba );
 
+#ifndef UNREALARENA
 // bg_teamprogress.c
-#ifdef UNREALARENA
-#define NUM_UNLOCKABLES WP_NUM_WEAPONS + UP_NUM_UPGRADES
-#else
 #define NUM_UNLOCKABLES WP_NUM_WEAPONS + UP_NUM_UPGRADES + BA_NUM_BUILDABLES + PCL_NUM_CLASSES
-#endif
 
 typedef enum
 {
 	UNLT_WEAPON,
 	UNLT_UPGRADE,
-#ifndef UNREALARENA
 	UNLT_BUILDABLE,
 	UNLT_CLASS,
-#endif
 	UNLT_NUM_UNLOCKABLETYPES
 } unlockableType_t;
 
-#ifndef UNREALARENA
 typedef struct {
 	int num;
 	int threshold;
 } momentumThresholdIterator_t;
-#endif
 
 void     BG_InitUnlockackables();
 void     BG_ImportUnlockablesFromMask( int team, int mask );
 int      BG_UnlockablesMask( int team );
 bool BG_WeaponUnlocked( int weapon );
 bool BG_UpgradeUnlocked( int upgrade );
-#ifndef UNREALARENA
 bool BG_BuildableUnlocked( int buildable );
 bool BG_ClassUnlocked( int class_ );
-#endif
 
 unlockableType_t              BG_UnlockableType( int num );
 int                           BG_UnlockableTypeIndex( int num );
-#ifndef UNREALARENA
 momentumThresholdIterator_t BG_IterateMomentumThresholds( momentumThresholdIterator_t unlockableIter, team_t team, int *threshold, bool *unlocked );
-#endif
 #ifdef BUILD_SGAME
 void     G_UpdateUnlockables();
 #endif
@@ -1609,6 +1600,7 @@ void     CG_UpdateUnlockables( playerState_t *ps );
 #endif
 #ifdef BUILD_UI
 void     UI_UpdateUnlockables();
+#endif
 #endif
 
 // content masks

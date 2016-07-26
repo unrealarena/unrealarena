@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -87,8 +87,10 @@ void CG_Rocket_Init( glconfig_t gl )
 
 	Rocket_RegisterProperty( "cell-color", "white", false, false, "color" );
 	Rocket_RegisterProperty( "border-width", "0.5", false, false, "number" );
+#ifndef UNREALARENA
 	Rocket_RegisterProperty( "unlocked-marker-color", "green", false, false, "color" );
 	Rocket_RegisterProperty( "locked-marker-color", "red", false, false, "color" );
+#endif
 
 	// Load custom rocket pak if necessary
 	if ( *rocket_pak.string )

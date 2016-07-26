@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
@@ -2925,6 +2925,7 @@ void CG_Rocket_DrawMineRate()
 #endif
 }
 
+#ifndef UNREALARENA
 static INLINE qhandle_t CG_GetUnlockableIcon( int num )
 {
 	int index = BG_UnlockableTypeIndex( num );
@@ -2937,13 +2938,11 @@ static INLINE qhandle_t CG_GetUnlockableIcon( int num )
 		case UNLT_UPGRADE:
 			return cg_upgrades[ index ].upgradeIcon;
 
-#ifndef UNREALARENA
 		case UNLT_BUILDABLE:
 			return cg_buildables[ index ].buildableIcon;
 
 		case UNLT_CLASS:
 			return cg_classes[ index ].classIcon;
-#endif
 
         default:
             return 0;
@@ -2954,9 +2953,7 @@ static void CG_Rocket_DrawPlayerUnlockedItems()
 {
 	rectDef_t     rect;
 	vec4_t        foreColour, backColour;
-#ifndef UNREALARENA
 	momentumThresholdIterator_t unlockableIter = { -1, 1 }, previousIter;
-#endif
 
 	// data
 	team_t    team;
@@ -2993,7 +2990,6 @@ static void CG_Rocket_DrawPlayerUnlockedItems()
 
 	icons = counts = 0;
 
-#ifndef UNREALARENA
 	for ( ;; )
 	{
 		qhandle_t shader;
@@ -3024,7 +3020,6 @@ static void CG_Rocket_DrawPlayerUnlockedItems()
 			++icons;
 		}
 	}
-#endif
 
 	{
 		float gap;
@@ -3099,6 +3094,7 @@ static void CG_Rocket_DrawPlayerUnlockedItems()
 
 	trap_R_SetColor( nullptr );
 }
+#endif
 
 static void CG_Rocket_DrawVote_internal( team_t team )
 {
@@ -3477,7 +3473,9 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "stamina_bolt", &CG_Rocket_DrawStaminaBolt, ELEMENT_HUMANS },
 #endif
 	{ "tutorial", &CG_Rocket_DrawTutorial, ELEMENT_GAME },
+#ifndef UNREALARENA
 	{ "unlocked_items", &CG_Rocket_DrawPlayerUnlockedItems, ELEMENT_BOTH },
+#endif
 	{ "votes", &CG_Rocket_DrawVote, ELEMENT_GAME },
 	{ "votes_team", &CG_Rocket_DrawTeamVote, ELEMENT_BOTH },
 	{ "warmup_time", &CG_Rocket_DrawWarmup, ELEMENT_GAME },

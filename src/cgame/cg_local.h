@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -2025,7 +2025,9 @@ extern  vmCvar_t            ui_uTeamVoteActive;
 extern  vmCvar_t            ui_alienTeamVoteActive;
 extern  vmCvar_t            ui_humanTeamVoteActive;
 #endif
+#ifndef UNREALARENA
 extern  vmCvar_t            ui_unlockables;
+#endif
 
 extern vmCvar_t             cg_debugRandom;
 

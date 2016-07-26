@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -174,8 +174,8 @@ vmCvar_t        ui_uTeamVoteActive;
 vmCvar_t        ui_alienTeamVoteActive;
 vmCvar_t        ui_humanTeamVoteActive;
 #endif
-vmCvar_t        ui_unlockables;
 #ifndef UNREALARENA
+vmCvar_t        ui_unlockables;
 vmCvar_t        ui_momentumHalfLife;
 vmCvar_t        ui_unlockablesMinTime;
 #endif
@@ -1787,8 +1787,10 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 
 	BG_InitAllowedGameElements();
 
+#ifndef UNREALARENA
 	// Initialize item locking state
 	BG_InitUnlockackables();
+#endif
 
 	CG_RegisterCvars();
 
