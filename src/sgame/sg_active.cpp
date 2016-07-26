@@ -2252,8 +2252,10 @@ void ClientThink_real( gentity_t *self )
 		self->eventTime = level.time;
 	}
 
+#ifndef UNREALARENA
 	// inform client about the state of unlockable items
 	client->ps.persistant[ PERS_UNLOCKABLES ] = BG_UnlockablesMask( client->pers.team );
+#endif
 
 	// Don't think anymore if dead
 	if ( client->ps.stats[ STAT_HEALTH ] <= 0 )

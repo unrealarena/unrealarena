@@ -1040,7 +1040,9 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		SPRINTMOD          = 1 << 16,
 		UNUSED_17          = 1 << 17,
 		MASS               = 1 << 18,
+#ifndef UNREALARENA
 		UNLOCKTHRESHOLD    = 1 << 19,
+#endif
 		STAMINAJUMPCOST    = 1 << 20,
 		STAMINASPRINTCOST  = 1 << 21,
 		STAMINAJOGRESTORE  = 1 << 22,
@@ -1229,12 +1231,14 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 			ca->sprintMod = atof( token );
 			defined |= SPRINTMOD;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "unlockThreshold" ) )
 		{
 			PARSE(text, token);
 			ca->unlockThreshold = atoi(token);
 			defined |= UNLOCKTHRESHOLD;
 		}
+#endif
 		else if( (var = BG_FindConfigVar( va( "c_%s_%s", ca->name, token ) ) ) != nullptr )
 		{
 			BG_ParseConfigVar( var, &text, filename );
@@ -1685,7 +1689,9 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		RATE = 1 << 4,
 		AMMO = 1 << 5,
 		TEAM = 1 << 6,
+#ifndef UNREALARENA
 		UNLOCKTHRESHOLD = 1 << 7
+#endif
 	};
 
 	if( !BG_ReadWholeFile( filename, text_buffer, sizeof(text_buffer) ) )
@@ -1829,6 +1835,7 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 
 			defined |= TEAM;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "unlockThreshold" ) )
 		{
 			PARSE(text, token);
@@ -1836,6 +1843,7 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 			wa->unlockThreshold = atoi(token);
 			defined |= UNLOCKTHRESHOLD;
 		}
+#endif
 		else if( (var = BG_FindConfigVar( va( "w_%s_%s", wa->name, token ) ) ) != nullptr )
 		{
 			BG_ParseConfigVar( var, &text, filename );
@@ -1886,7 +1894,9 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 		// unused
 		ICON = 1 << 4,
 		TEAM = 1 << 5,
+#ifndef UNREALARENA
 		UNLOCKTHRESHOLD = 1 << 6
+#endif
 	};
 
 	if( !BG_ReadWholeFile( filename, text_buffer, sizeof(text_buffer) ) )
@@ -1971,6 +1981,7 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 		{
 			ua->usable = true;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "unlockThreshold" ) )
 		{
 			PARSE(text, token);
@@ -1978,6 +1989,7 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 			ua->unlockThreshold = atoi(token);
 			defined |= UNLOCKTHRESHOLD;
 		}
+#endif
 		else if( (var = BG_FindConfigVar( va( "u_%s_%s", ua->name, token ) ) ) != nullptr )
 		{
 			BG_ParseConfigVar( var, &text, filename );

@@ -1958,8 +1958,10 @@ void CG_DrawActiveFrame( int serverTime, bool demoPlayback )
 	// update cg.predictedPlayerState
 	CG_PredictPlayerState();
 
+#ifndef UNREALARENA
 	// update unlockables data (needs valid predictedPlayerState)
 	CG_UpdateUnlockables( &cg.predictedPlayerState );
+#endif
 
 	// update cvars (needs valid unlockables data)
 	CG_UpdateCvars();
