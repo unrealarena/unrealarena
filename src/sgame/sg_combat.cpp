@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -1325,14 +1325,14 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 			client->damage_fromWorld = true;
 		}
 
-		// drain jetpack fuel
 #ifndef UNREALARENA
+		// drain jetpack fuel
 		client->ps.stats[ STAT_FUEL ] -= damage * JETPACK_FUEL_PER_DMG;
-#endif
 		if ( client->ps.stats[ STAT_FUEL ] < 0 )
 		{
 			client->ps.stats[ STAT_FUEL ] = 0;
 		}
+#endif
 
 		// apply damage modifier
 #ifdef UNREALARENA

@@ -487,11 +487,11 @@ void TeamplayInfoMessage( gentity_t *ent )
 			{
 				upgrade = UP_BATTLESUIT;
 			}
+#ifndef UNREALARENA
 			else if ( BG_InventoryContainsUpgrade( UP_JETPACK, cl->ps.stats ) )
 			{
 				upgrade = UP_JETPACK;
 			}
-#ifndef UNREALARENA
 			else if ( BG_InventoryContainsUpgrade( UP_RADAR, cl->ps.stats ) )
 			{
 				upgrade = UP_RADAR;

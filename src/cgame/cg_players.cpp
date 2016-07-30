@@ -31,7 +31,9 @@ float debug_anim_blend;
 static refSkeleton_t legsSkeleton;
 static refSkeleton_t torsoSkeleton;
 static refSkeleton_t oldSkeleton;
+#ifndef UNREALARENA
 static refSkeleton_t jetpackSkeleton;
+#endif
 
 typedef struct {
 	vec3_t delta;
@@ -2588,6 +2590,7 @@ static void CG_PlayerNonSegAxis( centity_t *cent, vec3_t srcAngles, vec3_t nonSe
 	AnglesToAxis( localAngles, nonSegAxis );
 }
 
+#ifndef UNREALARENA
 /*
 ===============
 CG_JetpackAnimation
@@ -2672,10 +2675,8 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 	static refEntity_t jetpack; // static for proper alignment in QVMs
 	static refEntity_t flash; // static for proper alignment in QVMs
 
-#ifndef UNREALARENA
 	// jetpack and battpack are never both in use together
 #	define radar jetpack
-#endif
 
 	int           held, publicFlags;
 	entityState_t *es = &cent->currentState;
@@ -2799,7 +2800,6 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 		}
 	}
 
-#ifndef UNREALARENA
 	// battery pack
 	if ( held & ( 1 << UP_RADAR ) )
 	{
@@ -2817,9 +2817,7 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 
 		trap_R_AddRefEntityToScene( &radar );
 	}
-#endif
 
-#ifndef UNREALARENA
 	// creep below bloblocked players
 	if ( es->eFlags & EF_BLOBLOCKED )
 	{
@@ -2841,10 +2839,10 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 			               0.0f, 1.0f, 1.0f, 1.0f, 1.0f, false, size, true );
 		}
 	}
-#endif
 
 #	undef battpack
 }
+#endif
 
 /*
 ===============
@@ -3580,7 +3578,9 @@ void CG_Player( centity_t *cent )
 			CG_AddPlayerWeapon( &body, nullptr, cent );
 		}
 
+#ifndef UNREALARENA
 		CG_PlayerUpgrades( cent, &body );
+#endif
 
 		// add body to renderer
 		body.altShaderIndex = altShaderIndex;
@@ -3811,7 +3811,9 @@ void CG_Player( centity_t *cent )
 		}
 	}
 
+#ifndef UNREALARENA
 	CG_PlayerUpgrades( cent, &torso );
+#endif
 
 finish_up:
 	//sanity check that particle systems are stopped when dead
@@ -3822,6 +3824,7 @@ finish_up:
 			CG_DestroyParticleSystem( &cent->muzzlePS );
 		}
 
+#ifndef UNREALARENA
 		if ( CG_IsParticleSystemValid( &cent->jetPackPS[ 0 ] ) )
 		{
 			CG_DestroyParticleSystem( &cent->jetPackPS[ 0 ] );
@@ -3831,6 +3834,7 @@ finish_up:
 		{
 			CG_DestroyParticleSystem( &cent->jetPackPS[ 1 ] );
 		}
+#endif
 	}
 
 	VectorCopy( surfNormal, cent->pe.lastNormal );

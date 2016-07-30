@@ -1276,8 +1276,8 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( UP_BATTLESUIT );
 #ifndef UNREALARENA
 	D( UP_RADAR );
-#endif
 	D( UP_JETPACK );
+#endif
 	D( UP_GRENADE );
 	D( UP_MEDKIT );
 

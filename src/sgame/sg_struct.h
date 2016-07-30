@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
@@ -653,7 +653,9 @@ struct gclient_s
 #endif
 	int        lastCombatTime; // time of last damage received/dealt from/to clients
 	int        lastAmmoRefillTime;
+#ifndef UNREALARENA
 	int        lastFuelRefillTime;
+#endif
 
 	unlagged_t unlaggedHist[ MAX_UNLAGGED_MARKERS ];
 	unlagged_t unlaggedBackup;

@@ -1076,10 +1076,10 @@ static void CG_CEntityPVSEnter( centity_t *cent )
 	//clear any particle systems from previous uses of this centity_t
 	cent->muzzlePS = nullptr;
 	cent->muzzlePsTrigger = false;
+#ifndef UNREALARENA
 	cent->jetPackPS[ 0 ] = nullptr;
 	cent->jetPackPS[ 1 ] = nullptr;
 	cent->jetPackState = JPS_INACTIVE;
-#ifndef UNREALARENA
 	cent->buildablePS = nullptr;
 	cent->buildableStatusPS = nullptr;
 #endif
@@ -1149,6 +1149,7 @@ static void CG_CEntityPVSLeave( centity_t *cent )
 		CG_DestroyParticleSystem( &cent->muzzlePS );
 	}
 
+#ifndef UNREALARENA
 	// destroy the jetpack PS
 	if ( CG_IsParticleSystemValid( &cent->jetPackPS[ 0 ] ) )
 	{
@@ -1159,6 +1160,7 @@ static void CG_CEntityPVSLeave( centity_t *cent )
 	{
 		CG_DestroyParticleSystem( &cent->jetPackPS[ 1 ] );
 	}
+#endif
 
 	// Destroy missile PS.
 	if ( CG_IsParticleSystemValid( &cent->missilePS ) )

@@ -255,7 +255,9 @@ typedef enum
   STAT_FALLDIST,   // distance the player fell
   STAT_VIEWLOCK,   // direction to lock the view in
   STAT_PREDICTION, // predictions for current player action
+#ifndef UNREALARENA
   STAT_FUEL,       // humans: jetpack fuel
+#endif
   STAT_TAGSCORE    // tagging progress
 } statIndex_t;
 
@@ -294,9 +296,11 @@ typedef enum
 #define SS_HEALING_8X       BIT(13)
 
 // STAT_STATE2 fields. 16 bit available
+#ifndef UNREALARENA
 #define SS2_JETPACK_ENABLED BIT(0)  // whether jets/wings are extended
 #define SS2_JETPACK_WARM    BIT(1)  // whether we can start a thrust
 #define SS2_JETPACK_ACTIVE  BIT(2)  // whether we are thrusting
+#endif
 #define SS2_LEVEL1SLOW      BIT(3)  // hit and slowed by a Mantis attack
 
 #ifndef UNREALARENA
@@ -406,8 +410,10 @@ typedef enum
 #endif
 
 // entityState_t->modelIndex2 "public flags" when used for client entities
+#ifndef UNREALARENA
 #define PF_JETPACK_ENABLED  BIT(0)
 #define PF_JETPACK_ACTIVE   BIT(1)
+#endif
 
 // for beacons:
 #define EF_BC_DYING         BIT(3) // beacon is fading out
@@ -479,8 +485,8 @@ typedef enum
 
 #ifndef UNREALARENA
   UP_RADAR,
-#endif
   UP_JETPACK,
+#endif
 
   UP_GRENADE,
   UP_FIREBOMB,
@@ -609,11 +615,13 @@ typedef enum
   EV_WATER_UNDER, // head touches
   EV_WATER_CLEAR, // head leaves
 
+#ifndef UNREALARENA
   EV_JETPACK_ENABLE,  // enable jets
   EV_JETPACK_DISABLE, // disable jets
   EV_JETPACK_IGNITE,  // ignite engine
   EV_JETPACK_START,   // start thrusting
   EV_JETPACK_STOP,    // stop thrusting
+#endif
 
   EV_NOAMMO,
   EV_CHANGE_WEAPON,
@@ -694,7 +702,9 @@ typedef enum
 
   EV_AMMO_REFILL,     // ammo for clipless weapon has been refilled
   EV_CLIPS_REFILL,    // weapon clips have been refilled
+#ifndef UNREALARENA
   EV_FUEL_REFILL,     // jetpack fuel has been refilled
+#endif
 
   EV_HIT, // notify client of a hit
 
