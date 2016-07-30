@@ -1191,7 +1191,9 @@ static void CG_RegisterSounds()
 		cgs.gameSounds[ i ] = trap_S_RegisterSound( soundName, false );
 	}
 
+#ifndef UNREALARENA
 	cgs.media.jetpackThrustLoopSound = trap_S_RegisterSound( "sound/upgrades/jetpack/hi.wav", false );
+#endif
 
 	cgs.media.medkitUseSound = trap_S_RegisterSound( "sound/upgrades/medkit/medkit.wav", false );
 
@@ -1422,11 +1424,9 @@ static void CG_RegisterGraphics()
 	cgs.media.alienEvolvePS = CG_RegisterParticleSystem( "alienEvolvePS" );
 	cgs.media.alienAcidTubePS = CG_RegisterParticleSystem( "alienAcidTubePS" );
 	cgs.media.alienBoosterPS = CG_RegisterParticleSystem( "alienBoosterPS" );
-#endif
 
 	cgs.media.jetPackThrustPS = CG_RegisterParticleSystem( "jetPackAscendPS" );
 
-#ifndef UNREALARENA
 	cgs.media.humanBuildableDamagedPS = CG_RegisterParticleSystem( "humanBuildableDamagedPS" );
 	cgs.media.alienBuildableDamagedPS = CG_RegisterParticleSystem( "alienBuildableDamagedPS" );
 	cgs.media.humanBuildableDestroyedPS = CG_RegisterParticleSystem( "humanBuildableDestroyedPS" );
@@ -1643,11 +1643,11 @@ static void CG_RegisterClients()
 		cgs.media.larmourTorsoSkin = trap_R_RegisterSkin( "models/players/human_base/body_helmetlarmour.skin" );
 	}
 
+#ifndef UNREALARENA
 	cgs.media.jetpackModel = trap_R_RegisterModel( "models/players/human_base/jetpack.iqm" );
 	cgs.media.jetpackFlashModel = trap_R_RegisterModel( "models/players/human_base/jetpack_flash.md3" );
 	cgs.media.radarModel = trap_R_RegisterModel( "models/players/human_base/battpack.md3" ); // HACK: Use old battpack
 
-#ifndef UNREALARENA
 	CG_RegisterWeaponAnimation(
 	    &cgs.media.jetpackAnims[ JANIM_NONE ],
 	    "models/players/human_base/jetpack.iqm:idle",

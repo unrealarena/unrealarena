@@ -79,6 +79,7 @@ typedef enum
   IMPACTSOUND_FLESH
 } impactSound_t;
 
+#ifndef UNREALARENA
 typedef enum
 {
   JPS_INACTIVE,
@@ -94,6 +95,7 @@ typedef enum
 
   MAX_JETPACK_ANIMATIONS
 } jetpackAnimNumber_t;
+#endif
 
 //======================================================================
 
@@ -572,7 +574,11 @@ typedef struct
 
 typedef struct
 {
+#ifdef UNREALARENA
+	lerpFrame_t legs, torso, nonseg, weapon;
+#else
 	lerpFrame_t legs, torso, nonseg, weapon, jetpack;
+#endif
 	int         painTime;
 	int         painDirection; // flip from 0 to 1
 
@@ -789,10 +795,12 @@ typedef struct centity_s
 	particleSystem_t      *muzzlePS;
 	bool              muzzlePsTrigger;
 
+#ifndef UNREALARENA
 	particleSystem_t      *jetPackPS[ 2 ];
 	jetPackState_t        jetPackState;
 	lerpFrame_t           jetpackLerpFrame;
 	jetpackAnimNumber_t   jetpackAnim;
+#endif
 
 	particleSystem_t      *entityPS;
 	bool              entityPSMissing;
@@ -806,7 +814,9 @@ typedef struct centity_s
 	particleSystem_t      *missilePS;
 	trailSystem_t         *missileTS;
 
+#ifndef UNREALARENA
 	float                 radarVisibility;
+#endif
 
 	bool              valid;
 	bool              oldValid;
@@ -1605,9 +1615,11 @@ typedef struct
 	sfxHandle_t watrOutSound;
 	sfxHandle_t watrUnSound;
 
+#ifndef UNREALARENA
 	sfxHandle_t jetpackThrustLoopSound;
 
 	qhandle_t   jetPackThrustPS;
+#endif
 
 	sfxHandle_t medkitUseSound;
 
@@ -1639,11 +1651,11 @@ typedef struct
 	qhandle_t   larmourLegsSkin;
 	qhandle_t   larmourTorsoSkin;
 
+#ifndef UNREALARENA
 	qhandle_t   jetpackModel;
 	qhandle_t   jetpackFlashModel;
 	qhandle_t   radarModel;
 
-#ifndef UNREALARENA
 	sfxHandle_t repeaterUseSound;
 
 	sfxHandle_t buildableRepairSound;
@@ -1698,7 +1710,9 @@ typedef struct
 
 	qhandle_t   scopeShader;
 
+#ifndef UNREALARENA
 	animation_t jetpackAnims[ MAX_JETPACK_ANIMATIONS ];
+#endif
 
 	qhandle_t   beaconIconArrow;
 	qhandle_t   beaconNoTarget;

@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -761,8 +761,10 @@ static const upgradeData_t bg_upgradesData[] =
 	{ UP_MEDIUMARMOUR,"marmour"  },
 	{ UP_BATTLESUIT,  "bsuit"    },
 
+#ifndef UNREALARENA
 	{ UP_RADAR,       "radar"    },
 	{ UP_JETPACK,     "jetpack"  },
+#endif
 
 	{ UP_GRENADE,     "gren"     },
 	{ UP_FIREBOMB,    "firebomb" },
@@ -1388,11 +1390,13 @@ static const char *const eventnames[] =
   "EV_WATER_UNDER", // head touches
   "EV_WATER_CLEAR", // head leaves
 
+#ifndef UNREALARENA
   "EV_JETPACK_ENABLE",  // enable jets
   "EV_JETPACK_DISABLE", // disable jets
   "EV_JETPACK_IGNITE",  // ignite engine
   "EV_JETPACK_START",   // start thrusting
   "EV_JETPACK_STOP",    // stop thrusting
+#endif
 
   "EV_NOAMMO",
   "EV_CHANGE_WEAPON",
@@ -1473,7 +1477,9 @@ static const char *const eventnames[] =
 
   "EV_AMMO_REFILL",     // ammo for clipless weapon has been refilled
   "EV_CLIPS_REFILL",    // weapon clips have been refilled
+#ifndef UNREALARENA
   "EV_FUEL_REFILL",     // jetpack fuel has been refilled
+#endif
 
   "EV_HIT", // notify client of a hit
 
@@ -1644,6 +1650,7 @@ void BG_PlayerStateToEntityState( playerState_t *ps, entityState_t *s, bool snap
 	// set "public state" flags
 	s->modelindex2 = 0;
 
+#ifndef UNREALARENA
 	// copy jetpack state
 	if ( ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ENABLED )
 	{
@@ -1662,6 +1669,7 @@ void BG_PlayerStateToEntityState( playerState_t *ps, entityState_t *s, bool snap
 	{
 		s->modelindex2 &= ~PF_JETPACK_ACTIVE;
 	}
+#endif
 
 	// use misc field to store team/class info:
 #ifdef UNREALARENA
@@ -1799,6 +1807,7 @@ void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s
 	// set "public state" flags
 	s->modelindex2 = 0;
 
+#ifndef UNREALARENA
 	// copy jetpack state
 	if ( ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ENABLED )
 	{
@@ -1817,6 +1826,7 @@ void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s
 	{
 		s->modelindex2 &= ~PF_JETPACK_ACTIVE;
 	}
+#endif
 
 	// use misc field to store team/class info:
 #ifdef UNREALARENA

@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
@@ -352,9 +352,13 @@ bool              G_Alive( gentity_t *ent );
 void              G_ForceWeaponChange( gentity_t *ent, weapon_t weapon );
 void              G_GiveMaxAmmo( gentity_t *self );
 bool          G_RefillAmmo( gentity_t *self, bool triggerEvent );
+#ifndef UNREALARENA
 bool          G_RefillFuel( gentity_t *self, bool triggerEvent );
+#endif
 bool          G_FindAmmo( gentity_t *self );
+#ifndef UNREALARENA
 bool          G_FindFuel( gentity_t *self );
+#endif
 void              G_CalcMuzzlePoint( gentity_t *self, vec3_t forward, vec3_t right, vec3_t up, vec3_t muzzlePoint );
 void              G_SnapVectorTowards( vec3_t v, vec3_t to );
 bool          G_CheckVenomAttack( gentity_t *self );

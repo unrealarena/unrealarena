@@ -3405,12 +3405,14 @@ static void CG_Rocket_DrawDownloadSpeed()
 	}
 }
 
+#ifndef UNREALARENA
 static void CG_Rocket_HaveJetpck()
 {
 	bool jetpackInInventory = BG_InventoryContainsUpgrade( UP_JETPACK, cg.snap->ps.stats );
 	Rocket_SetClass( "active", jetpackInInventory );
 	Rocket_SetClass( "inactive", !jetpackInInventory );
 }
+#endif
 
 typedef struct
 {
@@ -3450,10 +3452,11 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 #ifdef UNREALARENA
 	{ "inventory", &CG_DrawUInventory, ELEMENT_U },
 	{ "itemselect_text", &CG_DrawItemSelectText, ELEMENT_U },
-	{ "jetpack", &CG_Rocket_HaveJetpck, ELEMENT_U },
 #else
 	{ "inventory", &CG_DrawHumanInventory, ELEMENT_HUMANS },
 	{ "itemselect_text", &CG_DrawItemSelectText, ELEMENT_HUMANS },
+#endif
+#ifndef UNREALARENA
 	{ "jetpack", &CG_Rocket_HaveJetpck, ELEMENT_HUMANS },
 #endif
 	{ "levelname", &CG_Rocket_DrawLevelName, ELEMENT_ALL },

@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -1046,6 +1046,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, CG_CustomSound( es->number, "*gasp.wav" ) );
 			break;
 
+#ifndef UNREALARENA
 		case EV_JETPACK_ENABLE:
       cent->jetpackAnim = JANIM_SLIDEOUT;
 			break;
@@ -1065,6 +1066,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 		case EV_JETPACK_STOP:
 			// TODO: Stop jetpack thrust gfx/sfx
 			break;
+#endif
 
 		case EV_NOAMMO:
 			trap_S_StartSound( nullptr, es->number, CHAN_WEAPON, cgs.media.weaponEmptyClick );
@@ -1111,8 +1113,8 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 		case EV_AMMO_REFILL:
 		case EV_CLIPS_REFILL:
-		case EV_FUEL_REFILL:
 #ifndef UNREALARENA
+		case EV_FUEL_REFILL:
 			// TODO: Add different sounds for EV_AMMO_REFILL, EV_CLIPS_REFILL, EV_FUEL_REFILL
 			trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.repeaterUseSound );
 #endif

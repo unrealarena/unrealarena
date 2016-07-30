@@ -299,7 +299,7 @@ static void CG_CompleteGive()
 	static const char give[][ 12 ] =
 	{
 #ifdef UNREALARENA
-		"all", "health", "stamina", "poison", "fuel", "ammo", "bp"
+		"all", "health", "stamina", "poison", "ammo"
 #else
 		"all", "health", "funds", "stamina", "poison", "fuel", "ammo", "momentum", "bp"
 #endif

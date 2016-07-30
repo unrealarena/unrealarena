@@ -659,7 +659,9 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 
 		client->ps.speed = client->pers.flySpeed;
 		client->ps.stats[ STAT_STAMINA ] = 0;
+#ifndef UNREALARENA
 		client->ps.stats[ STAT_FUEL ] = 0;
+#endif
 		client->ps.stats[ STAT_MISC ] = 0;
 #ifndef UNREALARENA
 		client->ps.stats[ STAT_BUILDABLE ] = BA_NONE;
@@ -851,12 +853,7 @@ static void BeaconAutoTag( gentity_t *self, int timePassed )
 		// Tag entity directly hit and entities in human radar range, make sure the latter are also
 		// in vis and, for buildables, are in a line of sight.
 #ifdef UNREALARENA
-		if( ( target == traceEnt ) ||
-		    ( team == TEAM_U &&
-		      BG_InventoryContainsUpgrade( UP_RADAR, client->ps.stats ) &&
-		      Distance( self->s.origin, target->s.origin ) < RADAR_RANGE &&
-		      Beacon::EntityTaggable( target->s.number, team, false ) &&
-		      trap_InPVSIgnorePortals( self->s.origin, target->s.origin ) ) )
+		if( ( target == traceEnt ) )
 #else
 		if( ( target == traceEnt ) ||
 		    ( team == TEAM_HUMANS &&

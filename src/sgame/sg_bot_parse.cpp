@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1274,8 +1274,10 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( UP_LIGHTARMOUR );
 	D( UP_MEDIUMARMOUR );
 	D( UP_BATTLESUIT );
+#ifndef UNREALARENA
 	D( UP_RADAR );
 	D( UP_JETPACK );
+#endif
 	D( UP_GRENADE );
 	D( UP_MEDKIT );
 

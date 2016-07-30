@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1076,10 +1076,10 @@ static void CG_CEntityPVSEnter( centity_t *cent )
 	//clear any particle systems from previous uses of this centity_t
 	cent->muzzlePS = nullptr;
 	cent->muzzlePsTrigger = false;
+#ifndef UNREALARENA
 	cent->jetPackPS[ 0 ] = nullptr;
 	cent->jetPackPS[ 1 ] = nullptr;
 	cent->jetPackState = JPS_INACTIVE;
-#ifndef UNREALARENA
 	cent->buildablePS = nullptr;
 	cent->buildableStatusPS = nullptr;
 #endif
@@ -1094,8 +1094,8 @@ static void CG_CEntityPVSEnter( centity_t *cent )
 	cent->buildableAnim = BANIM_NONE;
 	cent->lerpFrame.animationNumber = BANIM_NONE;
 	cent->oldBuildableAnim = (buildableAnimNumber_t) es->legsAnim;
-#endif
 	cent->radarVisibility = 0.0f;
+#endif
 
 	cent->pvsEnterTime = cg.time;
 }
@@ -1149,6 +1149,7 @@ static void CG_CEntityPVSLeave( centity_t *cent )
 		CG_DestroyParticleSystem( &cent->muzzlePS );
 	}
 
+#ifndef UNREALARENA
 	// destroy the jetpack PS
 	if ( CG_IsParticleSystemValid( &cent->jetPackPS[ 0 ] ) )
 	{
@@ -1159,6 +1160,7 @@ static void CG_CEntityPVSLeave( centity_t *cent )
 	{
 		CG_DestroyParticleSystem( &cent->jetPackPS[ 1 ] );
 	}
+#endif
 
 	// Destroy missile PS.
 	if ( CG_IsParticleSystemValid( &cent->missilePS ) )

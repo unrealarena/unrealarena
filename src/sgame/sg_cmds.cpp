@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -396,6 +396,7 @@ void ScoreboardMessage( gentity_t *ent )
 			{
 				upgrade = UP_BATTLESUIT;
 			}
+#ifndef UNREALARENA
 			else if ( BG_InventoryContainsUpgrade( UP_JETPACK, cl->ps.stats ) )
 			{
 				upgrade = UP_JETPACK;
@@ -404,6 +405,7 @@ void ScoreboardMessage( gentity_t *ent )
 			{
 				upgrade = UP_RADAR;
 			}
+#endif
 			else if ( BG_InventoryContainsUpgrade( UP_MEDIUMARMOUR, cl->ps.stats ) )
 			{
 				upgrade = UP_MEDIUMARMOUR;
@@ -560,7 +562,7 @@ void Cmd_Give_f( gentity_t *ent )
 		ADMP( QQ( N_( "usage: give [what]\n" ) ) );
 #ifdef UNREALARENA
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], "
-		              "bp [amount], stamina, poison, fuel, ammo\n" ) ) );
+		              "stamina, poison, ammo\n" ) ) );
 #else
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], funds [amount], "
 		              "bp [amount], momentum [amount], stamina, poison, fuel, ammo\n" ) ) );
@@ -592,7 +594,6 @@ void Cmd_Give_f( gentity_t *ent )
 
 		G_AddCreditToClient( ent->client, ( short ) amount, true );
 	}
-#endif
 
 	// give bp
 	if ( Q_strnicmp( name, "bp", strlen("bp") ) == 0 )
@@ -606,13 +607,10 @@ void Cmd_Give_f( gentity_t *ent )
 			amount = atof( name + strlen("bp") );
 		}
 
-#ifndef UNREALARENA
 		G_ModifyBuildPoints( (team_t)ent->client->pers.team, amount );
 		G_MarkBuildPointsMined( (team_t)ent->client->pers.team, amount );
-#endif
 	}
 
-#ifndef UNREALARENA
 	// give momentum
 	if ( Q_strnicmp( name, "momentum", strlen("momentum") ) == 0 )
 	{
@@ -654,12 +652,12 @@ void Cmd_Give_f( gentity_t *ent )
 	{
 		ent->client->ps.stats[ STAT_STAMINA ] = STAMINA_MAX;
 	}
-#endif
 
 	if ( give_all || Q_stricmp( name, "fuel" ) == 0 )
 	{
 		G_RefillFuel(ent, false);
 	}
+#endif
 
 	if ( Q_stricmp( name, "poison" ) == 0 )
 	{

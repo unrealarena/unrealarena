@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -169,6 +169,7 @@ bool G_RefillAmmo( gentity_t *self, bool triggerEvent )
 	return true;
 }
 
+#ifndef UNREALARENA
 /**
  * @brief Refills jetpack fuel.
  * @param self
@@ -177,9 +178,6 @@ bool G_RefillAmmo( gentity_t *self, bool triggerEvent )
  */
 bool G_RefillFuel( gentity_t *self, bool triggerEvent )
 {
-#ifdef UNREALARENA
-	return false;
-#else
 	if ( !self || !self->client )
 	{
 		return false;
@@ -209,8 +207,8 @@ bool G_RefillFuel( gentity_t *self, bool triggerEvent )
 	{
 		return false;
 	}
-#endif
 }
+#endif
 
 /**
  * @brief Attempts to refill ammo from a close source.
@@ -269,15 +267,14 @@ bool G_FindAmmo( gentity_t *self )
 #endif
 }
 
+#ifndef UNREALARENA
 /**
  * @brief Attempts to refill jetpack fuel from a close source.
  * @return true if fuel was refilled.
  */
 bool G_FindFuel( gentity_t *self )
 {
-#ifndef UNREALARENA
 	gentity_t *neighbor = nullptr;
-#endif
 	bool  foundSource = false;
 
 	if ( !self || !self->client )
@@ -285,7 +282,6 @@ bool G_FindFuel( gentity_t *self )
 		return false;
 	}
 
-#ifndef UNREALARENA
 	// search for fuel source
 	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, ENTITY_BUY_RANGE ) ) )
 	{
@@ -306,7 +302,6 @@ bool G_FindFuel( gentity_t *self )
 				break;
 		}
 	}
-#endif
 
 	if ( foundSource )
 	{
@@ -315,6 +310,7 @@ bool G_FindFuel( gentity_t *self )
 
 	return false;
 }
+#endif
 
 /*
 ================

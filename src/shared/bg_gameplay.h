@@ -267,7 +267,9 @@ extern int   LCANNON_CHARGE_AMMO;
  * HUMAN upgrades
  */
 
+#ifndef UNREALARENA
 #define RADAR_RANGE           1000.0f
+#endif
 
 extern int   MEDKIT_POISON_IMMUNITY_TIME;
 extern int   MEDKIT_STARTUP_TIME;

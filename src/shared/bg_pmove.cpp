@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -1213,7 +1213,6 @@ static bool PM_CheckWallJump()
 
 	return true;
 }
-#endif
 
 /**
  * @brief PM_CheckJetpack
@@ -1221,7 +1220,6 @@ static bool PM_CheckWallJump()
  */
 static bool PM_CheckJetpack()
 {
-#ifndef UNREALARENA
 	static const vec3_t thrustDir = { 0.0f, 0.0f, 1.0f };
 	int                 sideVelocity;
 
@@ -1363,7 +1361,6 @@ static bool PM_CheckJetpack()
 	// remove fuel
 	pm->ps->stats[ STAT_FUEL ] -= pml.msec * JETPACK_FUEL_USAGE;
 	if ( pm->ps->stats[ STAT_FUEL ] < 0 ) pm->ps->stats[ STAT_FUEL ] = 0;
-#endif
 
 	return true;
 }
@@ -1374,7 +1371,6 @@ static bool PM_CheckJetpack()
  */
 static bool PM_CheckJetpackRestoreFuel()
 {
-#ifndef UNREALARENA
 	// don't restore fuel when full or jetpack active
 	if ( pm->ps->stats[ STAT_FUEL ] == JETPACK_FUEL_MAX ||
 	     pm->ps->stats[ STAT_STATE2 ] & SS2_JETPACK_ACTIVE )
@@ -1388,7 +1384,6 @@ static bool PM_CheckJetpackRestoreFuel()
 	{
 		pm->ps->stats[ STAT_FUEL ] = JETPACK_FUEL_MAX;
 	}
-#endif
 
 	return true;
 }
@@ -1398,7 +1393,6 @@ static bool PM_CheckJetpackRestoreFuel()
  */
 static void PM_LandJetpack( bool force )
 {
-#ifndef UNREALARENA
 	float angle, sideVelocity;
 
 	// when low on fuel, always force a landing
@@ -1455,15 +1449,17 @@ static void PM_LandJetpack( bool force )
 
 		PM_AddEvent( EV_JETPACK_DISABLE );
 	}
-#endif
 }
+#endif
 
 static bool PM_CheckJump()
 {
 	vec3_t   normal;
 	int      staminaJumpCost;
 	float    magnitude;
+#ifndef UNREALARENA
 	bool jetpackJump;
+#endif
 
 	// can't jump while in air
 	if ( pm->ps->groundEntityNum == ENTITYNUM_NONE )
@@ -1528,7 +1524,9 @@ static bool PM_CheckJump()
 #else
 	staminaJumpCost = BG_Class( pm->ps->stats[ STAT_CLASS ] )->staminaJumpCost;
 #endif
+#ifndef UNREALARENA
 	jetpackJump     = false;
+#endif
 
 	// humans need stamina or jetpack to jump
 #ifdef UNREALARENA
@@ -1559,7 +1557,7 @@ static bool PM_CheckJump()
 
 	// take some stamina off
 #ifdef UNREALARENA
-	if ( !jetpackJump && pm->ps->persistant[ PERS_TEAM ] == TEAM_U )
+	if ( pm->ps->persistant[ PERS_TEAM ] == TEAM_U )
 #else
 	if ( !jetpackJump && pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS )
 #endif
@@ -1836,8 +1834,8 @@ static void PM_AirMove()
 
 #ifndef UNREALARENA
 	PM_CheckWallJump();
-#endif
 	PM_CheckJetpack();
+#endif
 
 	PM_Friction();
 
@@ -2056,9 +2054,11 @@ static void PM_WalkMove()
 		return;
 	}
 
+#ifndef UNREALARENA
 	// if PM_Land didn't stop the jetpack (e.g. to allow for a jump) but we didn't get away
 	// from the ground, stop it now
 	PM_LandJetpack( true );
+#endif
 
 	PM_CheckCharge();
 
@@ -2328,7 +2328,9 @@ Play landing animation
 */
 static void PM_Land()
 {
+#ifndef UNREALARENA
 	PM_LandJetpack( false ); // don't force a stop, sometimes we can push off with a jump
+#endif
 
 	// decide which landing animation to use
 	if ( pm->ps->pm_flags & PMF_BACKWARDS_JUMP )
@@ -5074,10 +5076,10 @@ void PmoveSingle( pmove_t *pmove )
 		PM_AirMove();
 	}
 
+#ifndef UNREALARENA
 	// restore jetpack fuel if possible
 	PM_CheckJetpackRestoreFuel();
 
-#ifndef UNREALARENA
 	// restore or remove stamina
 	PM_HumanStaminaEffects();
 #endif
