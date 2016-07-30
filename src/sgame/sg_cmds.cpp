@@ -562,7 +562,7 @@ void Cmd_Give_f( gentity_t *ent )
 		ADMP( QQ( N_( "usage: give [what]\n" ) ) );
 #ifdef UNREALARENA
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], "
-		              "bp [amount], stamina, poison, ammo\n" ) ) );
+		              "stamina, poison, ammo\n" ) ) );
 #else
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], funds [amount], "
 		              "bp [amount], momentum [amount], stamina, poison, fuel, ammo\n" ) ) );
