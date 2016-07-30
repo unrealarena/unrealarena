@@ -477,7 +477,9 @@ typedef enum
   UP_MEDIUMARMOUR,
   UP_BATTLESUIT,
 
+#ifndef UNREALARENA
   UP_RADAR,
+#endif
   UP_JETPACK,
 
   UP_GRENADE,

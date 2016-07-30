@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1094,8 +1094,8 @@ static void CG_CEntityPVSEnter( centity_t *cent )
 	cent->buildableAnim = BANIM_NONE;
 	cent->lerpFrame.animationNumber = BANIM_NONE;
 	cent->oldBuildableAnim = (buildableAnimNumber_t) es->legsAnim;
-#endif
 	cent->radarVisibility = 0.0f;
+#endif
 
 	cent->pvsEnterTime = cg.time;
 }

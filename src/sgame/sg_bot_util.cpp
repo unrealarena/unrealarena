@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -618,15 +618,16 @@ bool BotEntityIsVisible( gentity_t *self, gentity_t *target, int mask )
 gentity_t* BotFindBestEnemy( gentity_t *self )
 {
 	float bestVisibleEnemyScore = 0;
+#ifndef UNREALARENA
 	float bestInvisibleEnemyScore = 0;
+#endif
 	gentity_t *bestVisibleEnemy = nullptr;
+#ifndef UNREALARENA
 	gentity_t *bestInvisibleEnemy = nullptr;
+#endif
 	gentity_t *target;
 	team_t    team = BotGetEntityTeam( self );
-#ifdef UNREALARENA
-	bool  hasRadar = ( team == TEAM_Q ) ||
-	                     ( team == TEAM_U && BG_InventoryContainsUpgrade( UP_RADAR, self->client->ps.stats ) );
-#else
+#ifndef UNREALARENA
 	bool  hasRadar = ( team == TEAM_ALIENS ) ||
 	                     ( team == TEAM_HUMANS && BG_InventoryContainsUpgrade( UP_RADAR, self->client->ps.stats ) );
 #endif
@@ -671,12 +672,19 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 			bestVisibleEnemyScore = newScore;
 			bestVisibleEnemy = target;
 		}
+#ifndef UNREALARENA
 		else if ( newScore > bestInvisibleEnemyScore && hasRadar )
 		{
 			bestInvisibleEnemyScore = newScore;
 			bestInvisibleEnemy = target;
 		}
+#endif
 	}
+#ifdef UNREALARENA
+	{
+		return bestVisibleEnemy;
+	}
+#else
 	if ( bestVisibleEnemy || !hasRadar )
 	{
 		return bestVisibleEnemy;
@@ -685,6 +693,7 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 	{
 		return bestInvisibleEnemy;
 	}
+#endif
 }
 
 gentity_t* BotFindClosestEnemy( gentity_t *self )

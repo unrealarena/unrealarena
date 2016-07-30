@@ -1645,9 +1645,9 @@ static void CG_RegisterClients()
 
 	cgs.media.jetpackModel = trap_R_RegisterModel( "models/players/human_base/jetpack.iqm" );
 	cgs.media.jetpackFlashModel = trap_R_RegisterModel( "models/players/human_base/jetpack_flash.md3" );
+#ifndef UNREALARENA
 	cgs.media.radarModel = trap_R_RegisterModel( "models/players/human_base/battpack.md3" ); // HACK: Use old battpack
 
-#ifndef UNREALARENA
 	CG_RegisterWeaponAnimation(
 	    &cgs.media.jetpackAnims[ JANIM_NONE ],
 	    "models/players/human_base/jetpack.iqm:idle",

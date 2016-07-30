@@ -851,12 +851,7 @@ static void BeaconAutoTag( gentity_t *self, int timePassed )
 		// Tag entity directly hit and entities in human radar range, make sure the latter are also
 		// in vis and, for buildables, are in a line of sight.
 #ifdef UNREALARENA
-		if( ( target == traceEnt ) ||
-		    ( team == TEAM_U &&
-		      BG_InventoryContainsUpgrade( UP_RADAR, client->ps.stats ) &&
-		      Distance( self->s.origin, target->s.origin ) < RADAR_RANGE &&
-		      Beacon::EntityTaggable( target->s.number, team, false ) &&
-		      trap_InPVSIgnorePortals( self->s.origin, target->s.origin ) ) )
+		if( ( target == traceEnt ) )
 #else
 		if( ( target == traceEnt ) ||
 		    ( team == TEAM_HUMANS &&

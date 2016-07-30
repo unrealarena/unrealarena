@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -400,10 +400,12 @@ void ScoreboardMessage( gentity_t *ent )
 			{
 				upgrade = UP_JETPACK;
 			}
+#ifndef UNREALARENA
 			else if ( BG_InventoryContainsUpgrade( UP_RADAR, cl->ps.stats ) )
 			{
 				upgrade = UP_RADAR;
 			}
+#endif
 			else if ( BG_InventoryContainsUpgrade( UP_MEDIUMARMOUR, cl->ps.stats ) )
 			{
 				upgrade = UP_MEDIUMARMOUR;

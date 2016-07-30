@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -2672,8 +2672,10 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 	static refEntity_t jetpack; // static for proper alignment in QVMs
 	static refEntity_t flash; // static for proper alignment in QVMs
 
+#ifndef UNREALARENA
 	// jetpack and battpack are never both in use together
 #	define radar jetpack
+#endif
 
 	int           held, publicFlags;
 	entityState_t *es = &cent->currentState;
@@ -2797,6 +2799,7 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 		}
 	}
 
+#ifndef UNREALARENA
 	// battery pack
 	if ( held & ( 1 << UP_RADAR ) )
 	{
@@ -2814,6 +2817,7 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 
 		trap_R_AddRefEntityToScene( &radar );
 	}
+#endif
 
 #ifndef UNREALARENA
 	// creep below bloblocked players

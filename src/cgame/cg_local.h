@@ -806,7 +806,9 @@ typedef struct centity_s
 	particleSystem_t      *missilePS;
 	trailSystem_t         *missileTS;
 
+#ifndef UNREALARENA
 	float                 radarVisibility;
+#endif
 
 	bool              valid;
 	bool              oldValid;
@@ -1641,9 +1643,9 @@ typedef struct
 
 	qhandle_t   jetpackModel;
 	qhandle_t   jetpackFlashModel;
+#ifndef UNREALARENA
 	qhandle_t   radarModel;
 
-#ifndef UNREALARENA
 	sfxHandle_t repeaterUseSound;
 
 	sfxHandle_t buildableRepairSound;
