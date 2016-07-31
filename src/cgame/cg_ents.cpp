@@ -647,6 +647,7 @@ static void CG_Portal( centity_t *cent )
 
 //============================================================================
 
+#ifndef UNREALARENA
 /*
 ===============
 CG_Fire
@@ -670,6 +671,7 @@ void CG_Fire( centity_t *cent )
 		}
 	}
 }
+#endif
 
 #define SETBOUNDS(v1,v2,r) (( v1 )[ 0 ] = ( -r / 2 ),( v1 )[ 1 ] = ( -r / 2 ),( v1 )[ 2 ] = ( -r / 2 ), \
                             ( v2 )[ 0 ] = ( r / 2 ),( v2 )[ 1 ] = ( r / 2 ),( v2 )[ 2 ] = ( r / 2 ))
@@ -1132,12 +1134,14 @@ static void CG_CEntityPVSLeave( centity_t *cent )
 			cent->lfs.hTest = 0;
 			break;
 
+#ifndef UNREALARENA
 		case ET_FIRE:
 			if ( CG_IsParticleSystemValid( &cent->entityPS ) )
 			{
 				CG_DestroyParticleSystem( &cent->entityPS );
 			}
 			break;
+#endif
 
 		default:
 			break;
@@ -1248,9 +1252,11 @@ static void CG_AddCEntity( centity_t *cent )
 			CG_Speaker( cent );
 			break;
 
+#ifndef UNREALARENA
 		case ET_FIRE:
 			CG_Fire( cent );
 			break;
+#endif
 
 		case ET_PARTICLE_SYSTEM:
 			CG_ParticleSystemEntity( cent );

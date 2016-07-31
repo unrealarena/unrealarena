@@ -1685,9 +1685,9 @@ typedef struct
 	qhandle_t   alienBuildableBleedPS;
 	qhandle_t   humanBuildableBleedPS;
 	qhandle_t   alienBuildableBurnPS;
-#endif
 
 	qhandle_t   floorFirePS;
+#endif
 
 	qhandle_t   teslaZapTS;
 

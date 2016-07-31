@@ -354,10 +354,10 @@ extern int   REACTOR_ATTACK_DAMAGE;
 #define ENTITY_USE_RANGE                   64.0f
 #ifndef UNREALARENA
 #define ENTITY_BUY_RANGE                   128.0f
-#endif
 
 // fire
 #define FIRE_MIN_DISTANCE                  20.0f
+#endif
 
 // fall distance
 #define MIN_FALL_DISTANCE                  30.0f  // the fall distance at which fall damage kicks in

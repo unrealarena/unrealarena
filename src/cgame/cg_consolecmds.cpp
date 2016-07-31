@@ -492,7 +492,9 @@ static const struct
 	{ "followprev",       0,                       0                },
 	{ "give",             0,                       CG_CompleteGive  },
 	{ "god",              0,                       0                },
+#ifndef UNREALARENA
 	{ "ignite",           0,                       0                },
+#endif
 	{ "ignore",           0,                       CG_CompleteName  },
 	{ "itemact",          0,                       CG_CompleteItem  },
 	{ "itemdeact",        0,                       CG_CompleteItem  },

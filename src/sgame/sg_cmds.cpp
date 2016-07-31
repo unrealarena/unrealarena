@@ -2728,7 +2728,6 @@ void Cmd_Deconstruct_f( gentity_t *ent )
 		buildable->deconstructTime = level.time;
 	}
 }
-#endif
 
 /*
 =================
@@ -2747,15 +2746,14 @@ void Cmd_Ignite_f( gentity_t *player )
 	trap_Trace( &trace, viewOrigin, nullptr, nullptr, end, player->s.number, MASK_PLAYERSOLID, 0 );
 	target = &g_entities[ trace.entityNum ];
 
-#ifndef UNREALARENA
 	if ( !target || target->s.eType != ET_BUILDABLE || target->buildableTeam != TEAM_ALIENS )
 	{
 		return;
 	}
 
 	G_IgniteBuildable( target, player );
-#endif
 }
+#endif
 
 /*
 =================
@@ -4487,7 +4485,9 @@ static const commands_t cmds[] =
 	{ "followprev",      CMD_SPEC,                            Cmd_FollowCycle_f      },
 	{ "give",            CMD_CHEAT | CMD_TEAM,                Cmd_Give_f             },
 	{ "god",             CMD_CHEAT,                           Cmd_God_f              },
+#ifndef UNREALARENA
 	{ "ignite",          CMD_CHEAT | CMD_TEAM | CMD_ALIVE,    Cmd_Ignite_f           },
+#endif
 	{ "ignore",          0,                                   Cmd_Ignore_f           },
 #ifdef UNREALARENA
 	{ "itemact",         CMD_U | CMD_ALIVE,                   Cmd_ActivateItem_f     },
