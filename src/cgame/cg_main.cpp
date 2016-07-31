@@ -1388,8 +1388,10 @@ static void CG_RegisterGraphics()
 							(RegisterShaderFlags_t) RSF_DEFAULT);
 	cgs.media.healthCrossMedkit = trap_R_RegisterShader("ui/assets/neutral/cross_medkit",
 							    (RegisterShaderFlags_t) RSF_DEFAULT);
+#ifndef UNREALARENA
 	cgs.media.healthCrossPoisoned = trap_R_RegisterShader("ui/assets/neutral/cross_poison",
 							      (RegisterShaderFlags_t) RSF_DEFAULT);
+#endif
 
 	cgs.media.desaturatedCgrade = trap_R_RegisterShader("gfx/cgrading/desaturated",
 								 (RegisterShaderFlags_t) ( RSF_NOMIP | RSF_NOLIGHTSCALE ) );

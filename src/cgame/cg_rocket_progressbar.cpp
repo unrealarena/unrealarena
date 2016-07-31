@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
@@ -78,13 +78,9 @@ static float CG_Rocket_GetStaminaProgress()
 
 	return ( stamina / ( float ) STAMINA_MAX );
 }
-#endif
 
 static float CG_Rocket_GetPoisonProgress()
 {
-#ifdef UNREALARENA
-	return 0;
-#else
 	static int time = -1;
 
 	if ( cg.snap->ps.stats[ STAT_STATE ] & SS_BOOSTED )
@@ -103,8 +99,8 @@ static float CG_Rocket_GetPoisonProgress()
 		return 0;
 	}
 
-#endif
 }
+#endif
 
 static float CG_Rocket_GetPlayerHealthProgress()
 {
@@ -195,12 +191,8 @@ static const progressBarCmd_t progressBarCmdList[] =
 	{ "health", &CG_Rocket_GetPlayerHealthProgress, ELEMENT_BOTH },
 	{ "media", &CG_Rocket_GetMediaLoadProgress, ELEMENT_LOADING },
 	{ "overall", &CG_Rocket_GetOverallLoadProgress, ELEMENT_LOADING },
-#ifdef UNREALARENA
-	{ "poison", &CG_Rocket_GetPoisonProgress, ELEMENT_Q },
-#else
-	{ "poison", &CG_Rocket_GetPoisonProgress, ELEMENT_ALIENS },
-#endif
 #ifndef UNREALARENA
+	{ "poison", &CG_Rocket_GetPoisonProgress, ELEMENT_ALIENS },
 	{ "stamina", &CG_Rocket_GetStaminaProgress, ELEMENT_HUMANS },
 #endif
 };

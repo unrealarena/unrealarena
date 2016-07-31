@@ -640,9 +640,11 @@ struct gclient_s
 	int        time1000; // timer for one second interval events
 	int        time10000; // timer for ten second interval events
 
+#ifndef UNREALARENA
 	int        lastPoisonTime;
 	int        poisonImmunityTime;
 	gentity_t  *lastPoisonClient;
+#endif
 	int        lastLockTime;
 	int        lastSlowTime;
 	int        lastMedKitTime;

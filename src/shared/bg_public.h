@@ -282,9 +282,7 @@ typedef enum
 #define SS_UNUSED_1         BIT(3)
 #ifndef UNREALARENA
 #define SS_BLOBLOCKED       BIT(4)
-#endif
 #define SS_POISONED         BIT(5)
-#ifndef UNREALARENA
 #define SS_BOOSTED          BIT(6)
 #define SS_BOOSTEDNEW       BIT(7) // booster recharged // TODO: Unnecessary, remove
 #define SS_BOOSTEDWARNING   BIT(8) // booster poison is running out // TODO: Unnecessary, remove

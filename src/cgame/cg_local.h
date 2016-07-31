@@ -1301,7 +1301,9 @@ typedef struct
 	bool                weapon2Firing;
 	bool                weapon3Firing;
 
+#ifndef UNREALARENA
 	int                     poisonedTime;
+#endif
 
 	vec3_t                  lastNormal; // view smoothage
 	vec3_t                  lastVangles; // view smoothage
@@ -1701,7 +1703,9 @@ typedef struct
 	qhandle_t   healthCross2X;
 	qhandle_t   healthCross3X;
 	qhandle_t   healthCrossMedkit;
+#ifndef UNREALARENA
 	qhandle_t   healthCrossPoisoned;
+#endif
 
 	qhandle_t   neutralCgrade;
 	qhandle_t   redCgrade;
