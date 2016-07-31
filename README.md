@@ -26,23 +26,27 @@ theirs subsidiaries.*
 ### Linux
 
 ```bash
-$ cmake -H. -Bbuild
-$ cmake --build build -- -j$(nproc)
+$ mkdir build
+$ cd build
+$ cmake ..
+$ cmake --build . -- -j$(nproc)
 ```
 
 
 ### OS X
 
 ```bash
-$ cmake -H. -Bbuild -G "Unix Makefiles"
-$ cmake --build build -- -j$(sysctl -n hw.ncpu)
+$ mkdir build
+$ cd build
+$ cmake -G "Unix Makefiles" ..
+$ cmake --build . -- -j$(sysctl -n hw.ncpu)
 ```
 
 
 ### Windows
 
 ```bat
-> md build
+> mkdir build
 > cd build
 > cmake -G "NMake Makefiles" ..
 > cmake --build .
