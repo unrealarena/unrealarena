@@ -562,7 +562,7 @@ void Cmd_Give_f( gentity_t *ent )
 		ADMP( QQ( N_( "usage: give [what]\n" ) ) );
 #ifdef UNREALARENA
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], "
-		              "stamina, poison, ammo\n" ) ) );
+		              "stamina, ammo\n" ) ) );
 #else
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], funds [amount], "
 		              "bp [amount], momentum [amount], stamina, poison, fuel, ammo\n" ) ) );
@@ -657,18 +657,9 @@ void Cmd_Give_f( gentity_t *ent )
 	{
 		G_RefillFuel(ent, false);
 	}
-#endif
 
 	if ( Q_stricmp( name, "poison" ) == 0 )
 	{
-#ifdef UNREALARENA
-		if ( ent->client->pers.team == TEAM_U )
-		{
-			ent->client->ps.stats[ STAT_STATE ] |= SS_POISONED;
-			ent->client->lastPoisonTime = level.time;
-			ent->client->lastPoisonClient = ent;
-		}
-#else
 		if ( ent->client->pers.team == TEAM_HUMANS )
 		{
 			ent->client->ps.stats[ STAT_STATE ] |= SS_POISONED;
@@ -680,8 +671,8 @@ void Cmd_Give_f( gentity_t *ent )
 			ent->client->ps.stats[ STAT_STATE ] |= SS_BOOSTED;
 			ent->client->boostedTime = level.time;
 		}
-#endif
 	}
+#endif
 
 	if ( give_all || Q_stricmp( name, "ammo" ) == 0 )
 	{

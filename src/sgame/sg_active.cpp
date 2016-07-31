@@ -2022,9 +2022,14 @@ void ClientThink_real( gentity_t *self )
 	     BG_UpgradeIsActive( UP_MEDKIT, client->ps.stats ) )
 	{
 		//if currently using a medkit or have no need for a medkit now
+#ifdef UNREALARENA
+		if ( (client->ps.stats[ STAT_STATE ] & SS_HEALING_4X) ||
+		     ( client->ps.stats[ STAT_HEALTH ] == client->ps.stats[ STAT_MAX_HEALTH ] ) )
+#else
 		if ( (client->ps.stats[ STAT_STATE ] & SS_HEALING_4X) ||
 		     ( client->ps.stats[ STAT_HEALTH ] == client->ps.stats[ STAT_MAX_HEALTH ] &&
 		       !( client->ps.stats[ STAT_STATE ] & SS_POISONED ) ) )
+#endif
 		{
 			BG_DeactivateUpgrade( UP_MEDKIT, client->ps.stats );
 		}
@@ -2034,8 +2039,10 @@ void ClientThink_real( gentity_t *self )
 			BG_DeactivateUpgrade( UP_MEDKIT, client->ps.stats );
 			BG_RemoveUpgradeFromInventory( UP_MEDKIT, client->ps.stats );
 
+#ifndef UNREALARENA
 			client->ps.stats[ STAT_STATE ] &= ~SS_POISONED;
 			client->poisonImmunityTime = level.time + MEDKIT_POISON_IMMUNITY_TIME;
+#endif
 
 			client->ps.stats[ STAT_STATE ] |= SS_HEALING_4X;
 			client->lastMedKitTime = level.time;

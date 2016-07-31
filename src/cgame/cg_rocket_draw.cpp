@@ -2121,10 +2121,12 @@ void CG_Rocket_DrawPlayerHealthCross()
 		}
 	}
 
+#ifndef UNREALARENA
 	else if ( cg.snap->ps.stats[ STAT_STATE ] & SS_POISONED )
 	{
 		shader = cgs.media.healthCrossPoisoned;
 	}
+#endif
 
 	// Pick the alpha value
 	Vector4Copy( ref_color, color );

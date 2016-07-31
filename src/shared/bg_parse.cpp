@@ -124,7 +124,9 @@ int   LEVEL4_TRAMPLE_DURATION;
 int   LEVEL4_TRAMPLE_STOP_PENALTY;
 int   LEVEL4_TRAMPLE_REPEAT;
 
+#ifndef UNREALARENA
 int   MEDKIT_POISON_IMMUNITY_TIME;
+#endif
 int   MEDKIT_STARTUP_TIME;
 int   MEDKIT_STARTUP_SPEED;
 
@@ -204,9 +206,9 @@ static configVar_t bg_configVars[] =
 	{"b_reactor_zapAttackRepeat", INTEGER, false, &REACTOR_ATTACK_REPEAT},
 
 	{"b_repeater_powerRadius", FLOAT, false, &REPEATER_BASESIZE},
-#endif
 
 	{"u_medkit_poisonImmunityTime", INTEGER, false, &MEDKIT_POISON_IMMUNITY_TIME},
+#endif
 	{"u_medkit_startupSpeed", INTEGER, false, &MEDKIT_STARTUP_SPEED},
 	{"u_medkit_startupTime", INTEGER, false, &MEDKIT_STARTUP_TIME},
 
