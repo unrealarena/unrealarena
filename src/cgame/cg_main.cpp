@@ -1438,9 +1438,9 @@ static void CG_RegisterGraphics()
 	cgs.media.humanBuildableBleedPS = CG_RegisterParticleSystem( "humanBuildableBleedPS" );
 	cgs.media.alienBuildableBleedPS = CG_RegisterParticleSystem( "alienBuildableBleedPS" );
 	cgs.media.alienBuildableBurnPS  = CG_RegisterParticleSystem( "alienBuildableBurnPS" );
-#endif
 
 	cgs.media.floorFirePS = CG_RegisterParticleSystem( "floorFirePS" );
+#endif
 
 #ifdef UNREALARENA
 	cgs.media.qBleedPS = CG_RegisterParticleSystem( "qBleedPS" );
