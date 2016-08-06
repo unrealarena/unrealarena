@@ -48,7 +48,7 @@ before_build:
 
 # Build configuration
 build_script:
-  - md build
+  - mkdir build
   - cd build
   - cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SERVER=0 -DBUILD_GAME_NATIVE_EXE=0 -DBUILD_GAME_NATIVE_DLL=0 -DBUILD_GAME_NACL=0 -DBUILD_TTY_CLIENT=0 ..
   - cmake --build .
