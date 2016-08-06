@@ -61,10 +61,12 @@ linux-before_script() {
 
 # script
 linux-script() {
-	cmake -H. -Bbuild -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release\
-	                                      -DBUILD_GAME_NATIVE_EXE=0\
-	                                      -DBUILD_GAME_NATIVE_DLL=0
-	cmake --build build -- -j8 || cmake --build build -- VERBOSE=1
+	mkdir build
+	cd build
+	cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release\
+	                          -DBUILD_GAME_NATIVE_EXE=0\
+	                          -DBUILD_GAME_NATIVE_DLL=0
+	cmake --build . -- -j8 || cmake --build . -- VERBOSE=1
 }
 
 # before_deploy
@@ -73,21 +75,22 @@ linux-before_deploy() {
 		gunzip > build/GeoIP.dat
 	curl -Ls "http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz" |
 		gunzip > build/GeoIPv6.dat
-	cd build && zip -r9 --symlinks "../unrealarena-${TRAVIS_OS_NAME}.pre.zip" daemon\
-	                                                                          daemonded\
-	                                                                          daemon-tty\
-	                                                                          irt_core-x86_64.nexe\
-	                                                                          libGLEW.so.1.12\
-	                                                                          libopenal.so.1\
-	                                                                          libSDL2-2.0.so.0\
-	                                                                          nacl_helper_bootstrap\
-	                                                                          nacl_loader\
-	                                                                          cgame-x86-stripped.nexe\
-	                                                                          sgame-x86-stripped.nexe\
-	                                                                          cgame-x86_64-stripped.nexe\
-	                                                                          sgame-x86_64-stripped.nexe\
-	                                                                          GeoIP.dat\
-	                                                                          GeoIPv6.dat
+	cd build
+	zip -r9 --symlinks "../unrealarena-${TRAVIS_OS_NAME}.pre.zip" daemon\
+	                                                              daemonded\
+	                                                              daemon-tty\
+	                                                              irt_core-x86_64.nexe\
+	                                                              libGLEW.so.1.12\
+	                                                              libopenal.so.1\
+	                                                              libSDL2-2.0.so.0\
+	                                                              nacl_helper_bootstrap\
+	                                                              nacl_loader\
+	                                                              cgame-x86-stripped.nexe\
+	                                                              sgame-x86-stripped.nexe\
+	                                                              cgame-x86_64-stripped.nexe\
+	                                                              sgame-x86_64-stripped.nexe\
+	                                                              GeoIP.dat\
+	                                                              GeoIPv6.dat
 }
 
 
@@ -112,25 +115,28 @@ osx-before_script() {
 
 # script
 osx-script() {
-	cmake -H. -Bbuild -G "Unix Makefiles" -DCMAKE_OSX_ARCHITECTURES=x86_64\
-	                                      -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9\
-	                                      -DCMAKE_BUILD_TYPE=Release\
-	                                      -DBUILD_SERVER=0\
-	                                      -DBUILD_GAME_NATIVE_EXE=0\
-	                                      -DBUILD_GAME_NATIVE_DLL=0\
-	                                      -DBUILD_GAME_NACL=0\
-	                                      -DBUILD_TTY_CLIENT=0
-	cmake --build build -- -j8 || cmake --build build -- VERBOSE=1
+	mkdir build
+	cd build
+	cmake -G "Unix Makefiles" -DCMAKE_OSX_ARCHITECTURES=x86_64\
+	                          -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9\
+	                          -DCMAKE_BUILD_TYPE=Release\
+	                          -DBUILD_SERVER=0\
+	                          -DBUILD_GAME_NATIVE_EXE=0\
+	                          -DBUILD_GAME_NATIVE_DLL=0\
+	                          -DBUILD_GAME_NACL=0\
+	                          -DBUILD_TTY_CLIENT=0
+	cmake --build . -- -j8 || cmake --build . -- VERBOSE=1
 }
 
 # before_deploy
 osx-before_deploy() {
-	cd build && zip -r9 --symlinks "../unrealarena-${TRAVIS_OS_NAME}.pre.zip" daemon\
-	                                                                          irt_core-x86_64.nexe\
-	                                                                          nacl_loader\
-	                                                                          libGLEW.1.12.0.dylib\
-	                                                                          libopenal.1.16.0.dylib\
-	                                                                          SDL2.framework
+	cd build
+	zip -r9 --symlinks "../unrealarena-${TRAVIS_OS_NAME}.pre.zip" daemon\
+	                                                              irt_core-x86_64.nexe\
+	                                                              nacl_loader\
+	                                                              libGLEW.1.12.0.dylib\
+	                                                              libopenal.1.16.0.dylib\
+	                                                              SDL2.framework
 }
 
 
