@@ -65,7 +65,8 @@ linux-script() {
 	cd build
 	cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release\
 	                          -DBUILD_GAME_NATIVE_EXE=0\
-	                          -DBUILD_GAME_NATIVE_DLL=0
+	                          -DBUILD_GAME_NATIVE_DLL=0\
+	                          ..
 	cmake --build . -- -j8 || cmake --build . -- VERBOSE=1
 }
 
@@ -124,7 +125,8 @@ osx-script() {
 	                          -DBUILD_GAME_NATIVE_EXE=0\
 	                          -DBUILD_GAME_NATIVE_DLL=0\
 	                          -DBUILD_GAME_NACL=0\
-	                          -DBUILD_TTY_CLIENT=0
+	                          -DBUILD_TTY_CLIENT=0\
+	                          ..
 	cmake --build . -- -j8 || cmake --build . -- VERBOSE=1
 }
 
