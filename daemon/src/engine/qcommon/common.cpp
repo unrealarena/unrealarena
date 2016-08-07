@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
@@ -20,6 +20,9 @@
 
 // common.c -- misc functions used in client and server
 
+#ifndef UNREALARENA
+#include "revision.h"
+#endif
 #include "qcommon/q_shared.h"
 #include "q_unicode.h"
 #include "qcommon.h"
