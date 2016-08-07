@@ -23,6 +23,7 @@
 // perform the server side effects of a weapon firing
 
 #include "sg_local.h"
+#include "CBSE.h"
 
 static vec3_t forward, right, up;
 static vec3_t muzzle;
@@ -233,11 +234,8 @@ bool G_FindAmmo( gentity_t *self )
 	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, ENTITY_BUY_RANGE ) ) )
 	{
 		// only friendly, living and powered buildables provide ammo
-		if ( neighbor->s.eType != ET_BUILDABLE ||
-		     !G_OnSameTeam( self, neighbor ) ||
-		     !neighbor->spawned ||
-		     !neighbor->powered ||
-		     neighbor->health <= 0 )
+		if ( neighbor->s.eType != ET_BUILDABLE || !G_OnSameTeam( self, neighbor ) ||
+		     !neighbor->spawned || !neighbor->powered || G_Dead( neighbor ) )
 		{
 			continue;
 		}
@@ -286,11 +284,8 @@ bool G_FindFuel( gentity_t *self )
 	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, ENTITY_BUY_RANGE ) ) )
 	{
 		// only friendly, living and powered buildables provide fuel
-		if ( neighbor->s.eType != ET_BUILDABLE ||
-		     !G_OnSameTeam( self, neighbor ) ||
-		     !neighbor->spawned ||
-		     !neighbor->powered ||
-		     neighbor->health <= 0 )
+		if ( neighbor->s.eType != ET_BUILDABLE || !G_OnSameTeam( self, neighbor ) ||
+		     !neighbor->spawned || !neighbor->powered || G_Dead( neighbor ) )
 		{
 			continue;
 		}
@@ -422,11 +417,7 @@ static void SendRangedHitEvent( gentity_t *attacker, gentity_t *target, trace_t 
 	// snap the endpos to integers, but nudged towards the line
 	G_SnapVectorTowards( tr->endpos, muzzle );
 
-#ifdef UNREALARENA
-	if ( target->takedamage && target->s.eType == ET_PLAYER )
-#else
-	if ( target->takedamage && ( target->s.eType == ET_BUILDABLE || target->s.eType == ET_PLAYER ) )
-#endif
+	if ( HasComponents<HealthComponent>(*target->entity) )
 	{
 		event = G_NewTempEntity( tr->endpos, EV_WEAPON_HIT_ENTITY );
 	}
@@ -458,11 +449,6 @@ static void SendMeleeHitEvent( gentity_t *attacker, gentity_t *target, trace_t *
 	float     mag, radius;
 
 	if ( !attacker->client )
-	{
-		return;
-	}
-
-	if ( target->health <= 0 )
 	{
 		return;
 	}
@@ -527,12 +513,15 @@ static gentity_t *FireMelee( gentity_t *self, float range, float width, float he
 
 	G_WideTrace( &tr, self, range, width, height, &traceEnt );
 
-	if ( traceEnt != nullptr && traceEnt->takedamage )
+	if ( !G_Alive( traceEnt ) )
 	{
-		SendMeleeHitEvent( self, traceEnt, &tr );
-
-		G_Damage( traceEnt, self, self, forward, tr.endpos, damage, 0, mod );
+		return nullptr;
 	}
+
+	traceEnt->entity->Damage((float)damage, self, Vec3::Load(tr.endpos),
+		                     Vec3::Load(forward), 0, (meansOfDeath_t)mod);
+
+	SendMeleeHitEvent( self, traceEnt, &tr );
 
 	return traceEnt;
 }
@@ -549,7 +538,7 @@ static void FireLevel1Melee( gentity_t *self )
 	                    LEVEL1_CLAW_DMG, MOD_LEVEL1_CLAW );
 #endif
 
-	if ( target && target->client && target->takedamage )
+	if ( target && target->client )
 	{
 		target->client->ps.stats[ STAT_STATE2 ] |= SS2_LEVEL1SLOW;
 		target->client->lastLevel1SlowTime = level.time;
@@ -601,10 +590,8 @@ static void FireBullet( gentity_t *self, float spread, int damage, int mod )
 
 	SendRangedHitEvent( self, target, &tr );
 
-	if ( target->takedamage )
-	{
-		G_Damage( target, self, self, forward, tr.endpos, damage, 0, mod );
-	}
+	target->entity->Damage((float)damage, self, Vec3::Load(tr.endpos), Vec3::Load(forward), 0,
+	                       (meansOfDeath_t)mod);
 }
 
 /*
@@ -651,14 +638,8 @@ static void ShotgunPattern( vec3_t origin, vec3_t origin2, int seed, gentity_t *
 		trap_Trace( &tr, origin, nullptr, nullptr, end, self->s.number, MASK_SHOT, 0 );
 		traceEnt = &g_entities[ tr.entityNum ];
 
-		// do the damage
-		if ( !( tr.surfaceFlags & SURF_NOIMPACT ) )
-		{
-			if ( traceEnt->takedamage )
-			{
-				G_Damage( traceEnt, self, self, forward, tr.endpos, SHOTGUN_DMG, 0, MOD_SHOTGUN );
-			}
-		}
+		traceEnt->entity->Damage((float)SHOTGUN_DMG, self, Vec3::Load(tr.endpos),
+		                         Vec3::Load(forward), 0, (meansOfDeath_t)MOD_SHOTGUN);
 	}
 }
 
@@ -713,11 +694,8 @@ static void FireMassdriver( gentity_t *self )
 
 	SendRangedHitEvent( self, target, &tr );
 
-	if ( target->takedamage )
-	{
-		G_Damage( target, self, self, forward, tr.endpos, MDRIVER_DMG, DAMAGE_KNOCKBACK,
-		          MOD_MDRIVER );
-	}
+	target->entity->Damage((float)MDRIVER_DMG, self, Vec3::Load(tr.endpos), Vec3::Load(forward),
+	                       DAMAGE_KNOCKBACK, (meansOfDeath_t)MOD_MDRIVER);
 }
 
 #ifndef UNREALARENA
@@ -774,14 +752,10 @@ static void HiveMissileThink( gentity_t *self )
 	{
 		ent = &g_entities[ i ];
 
-		if ( ent->flags & FL_NOTARGET )
-		{
-			continue;
-		}
+		if ( !ent->inuse ) continue;
+		if ( ent->flags & FL_NOTARGET ) continue;
 
-		if ( ent->client &&
-		     ent->health > 0 &&
-		     ent->client->pers.team == TEAM_HUMANS &&
+		if ( ent->client && G_Alive( ent ) && ent->client->pers.team == TEAM_HUMANS &&
 		     nearest > ( d = DistanceSquared( ent->r.currentOrigin, self->r.currentOrigin ) ) )
 		{
 			trap_Trace( &tr, self->r.currentOrigin, self->r.mins, self->r.maxs,
@@ -987,7 +961,7 @@ static void FirebombMissileThink( gentity_t *self )
 		if ( neighbor->s.eType == ET_BUILDABLE && neighbor->buildableTeam == TEAM_ALIENS &&
 		     G_LineOfSight( self, neighbor ) )
 		{
-				G_IgniteBuildable( neighbor, self->parent );
+			neighbor->entity->Ignite( self->parent );
 		}
 	}
 
@@ -1054,10 +1028,8 @@ static void FireLasgun( gentity_t *self )
 
 	SendRangedHitEvent( self, target, &tr );
 
-	if ( target->takedamage )
-	{
-		G_Damage( target, self, self, forward, tr.endpos, LASGUN_DAMAGE, 0, MOD_LASGUN );
-	}
+	target->entity->Damage((float)LASGUN_DAMAGE, self, Vec3::Load(tr.endpos),
+	                       Vec3::Load(forward), 0, (meansOfDeath_t)MOD_LASGUN);
 }
 
 /*
@@ -1075,7 +1047,7 @@ static void FirePainsaw( gentity_t *self )
 
 	G_WideTrace( &tr, self, PAINSAW_RANGE, PAINSAW_WIDTH, PAINSAW_HEIGHT, &target );
 
-	if ( !target || !target->takedamage )
+	if ( !G_Alive( target ) )
 	{
 		return;
 	}
@@ -1083,7 +1055,8 @@ static void FirePainsaw( gentity_t *self )
 	// not really a "ranged" weapon, but this is still the right call
 	SendRangedHitEvent( self, target, &tr );
 
-	G_Damage( target, self, self, forward, tr.endpos, PAINSAW_DAMAGE, 0, MOD_PAINSAW );
+	target->entity->Damage((float)PAINSAW_DAMAGE, self, Vec3::Load(tr.endpos),
+	                       Vec3::Load(forward), 0, (meansOfDeath_t)MOD_PAINSAW);
 }
 
 /*
@@ -1187,22 +1160,18 @@ void G_CheckCkitRepair( gentity_t *self )
 	trap_Trace( &tr, viewOrigin, nullptr, nullptr, end, self->s.number, MASK_PLAYERSOLID, 0 );
 	traceEnt = &g_entities[ tr.entityNum ];
 
-	if ( tr.fraction < 1.0f && traceEnt->spawned && traceEnt->health > 0 &&
-	     traceEnt->s.eType == ET_BUILDABLE && traceEnt->buildableTeam == TEAM_HUMANS )
+	if ( tr.fraction < 1.0f && traceEnt->spawned && traceEnt->s.eType == ET_BUILDABLE &&
+	     traceEnt->buildableTeam == TEAM_HUMANS )
 	{
-		const buildableAttributes_t *buildable;
+		HealthComponent *healthComponent = traceEnt->entity->Get<HealthComponent>();
 
-		buildable = BG_Buildable( traceEnt->s.modelindex );
+		if (healthComponent && healthComponent->Alive() && !healthComponent->FullHealth()) {
+			traceEnt->entity->Heal(HBUILD_HEALRATE, nullptr);
 
-		if ( traceEnt->health < buildable->health )
-		{
-			if ( G_Heal( traceEnt, HBUILD_HEALRATE ) )
-			{
-				G_AddEvent( self, EV_BUILD_REPAIR, 0 );
-			}
-			else
-			{
-				G_AddEvent( self, EV_BUILD_REPAIRED, 0 );
+			if (healthComponent->FullHealth()) {
+				G_AddEvent(self, EV_BUILD_REPAIRED, 0);
+			} else {
+				G_AddEvent(self, EV_BUILD_REPAIR, 0);
 			}
 
 			self->client->ps.weaponTime += BG_Weapon( self->client->ps.weapon )->repeatRate1;
@@ -1299,7 +1268,6 @@ bool G_CheckVenomAttack( gentity_t *self )
 {
 	trace_t   tr;
 	gentity_t *traceEnt;
-	int       damage = LEVEL0_BITE_DMG;
 
 	if ( self->client->ps.weaponTime )
 	{
@@ -1312,8 +1280,7 @@ bool G_CheckVenomAttack( gentity_t *self )
 
 	G_WideTrace( &tr, self, LEVEL0_BITE_RANGE, LEVEL0_BITE_WIDTH, LEVEL0_BITE_WIDTH, &traceEnt );
 
-	if ( !traceEnt || !traceEnt->takedamage || traceEnt->health <= 0 ||
-	     G_OnSameTeam( self, traceEnt ) )
+	if ( !G_Alive( traceEnt ) || G_OnSameTeam( self, traceEnt ) )
 	{
 		return false;
 	}
@@ -1326,13 +1293,15 @@ bool G_CheckVenomAttack( gentity_t *self )
 	}
 #endif
 
-	SendMeleeHitEvent( self, traceEnt, &tr );
-
 #ifdef UNREALARENA
-	G_Damage( traceEnt, self, self, forward, tr.endpos, damage, 0, MOD_UNKNOWN );
+	traceEnt->entity->Damage((float)LEVEL0_BITE_DMG, self, Vec3::Load(tr.endpos),
+	                         Vec3::Load(forward), 0, (meansOfDeath_t)MOD_UNKNOWN);
 #else
-	G_Damage( traceEnt, self, self, forward, tr.endpos, damage, 0, MOD_LEVEL0_BITE );
+	traceEnt->entity->Damage((float)LEVEL0_BITE_DMG, self, Vec3::Load(tr.endpos),
+	                         Vec3::Load(forward), 0, (meansOfDeath_t)MOD_LEVEL0_BITE);
 #endif
+
+	SendMeleeHitEvent( self, traceEnt, &tr );
 
 	self->client->ps.weaponTime += LEVEL0_BITE_REPEAT;
 
@@ -1383,14 +1352,14 @@ static void FindZapChainTargets( zap_t *zap )
 #ifdef UNREALARENA
 		if ( enemy->client &&
 		     enemy->client->pers.team == TEAM_U &&
-		     enemy->health > 0 && // only chain to living targets
+		     G_Alive( enemy ) &&
 		     distance <= LEVEL2_AREAZAP_CHAIN_RANGE )
 #else
 		if ( ( ( enemy->client &&
 		         enemy->client->pers.team == TEAM_HUMANS ) ||
 		       ( enemy->s.eType == ET_BUILDABLE &&
 		         BG_Buildable( enemy->s.modelindex )->team == TEAM_HUMANS ) ) &&
-		     enemy->health > 0 && // only chain to living targets
+		     G_Alive( enemy ) &&
 		     distance <= LEVEL2_AREAZAP_CHAIN_RANGE )
 #endif
 		{
@@ -1455,31 +1424,27 @@ static void CreateNewZap( gentity_t *creator, gentity_t *target )
 		zap->targets[ 0 ] = target;
 		zap->numTargets = 1;
 
-		// the zap chains only through living entities
-		if ( target->health > 0 )
-		{
+		// Zap chains only originate from alive entities.
 #ifdef UNREALARENA
-			G_Damage( target, creator, creator, forward, target->s.origin, LEVEL2_AREAZAP_DMG,
-			          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
+		if (target->entity->Damage((float)LEVEL2_AREAZAP_DMG, creator, Vec3::Load(target->s.origin),
+		                           Vec3::Load(forward), DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN)) {
 #else
-			G_Damage( target, creator, creator, forward, target->s.origin, LEVEL2_AREAZAP_DMG,
-			          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL2_ZAP );
+		if (target->entity->Damage((float)LEVEL2_AREAZAP_DMG, creator, Vec3::Load(target->s.origin),
+		                           Vec3::Load(forward), DAMAGE_NO_LOCDAMAGE, MOD_LEVEL2_ZAP)) {
 #endif
-
 			FindZapChainTargets( zap );
 
 			for ( i = 1; i < zap->numTargets; i++ )
 			{
+				float damage = LEVEL2_AREAZAP_DMG * ( 1 - powf( ( zap->distances[ i ] /
+				               LEVEL2_AREAZAP_CHAIN_RANGE ), LEVEL2_AREAZAP_CHAIN_FALLOFF ) ) + 1;
+
 #ifdef UNREALARENA
-				G_Damage( zap->targets[ i ], target, zap->creator, forward, target->s.origin,
-				          LEVEL2_AREAZAP_DMG * ( 1 - powf( ( zap->distances[ i ] /
-				                                 LEVEL2_AREAZAP_CHAIN_RANGE ), LEVEL2_AREAZAP_CHAIN_FALLOFF ) ) + 1,
-				          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
+				target->entity->Damage(damage, zap->creator, Vec3::Load(target->s.origin),
+				                       Vec3::Load(forward), DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN);
 #else
-				G_Damage( zap->targets[ i ], target, zap->creator, forward, target->s.origin,
-				          LEVEL2_AREAZAP_DMG * ( 1 - powf( ( zap->distances[ i ] /
-				                                 LEVEL2_AREAZAP_CHAIN_RANGE ), LEVEL2_AREAZAP_CHAIN_FALLOFF ) ) + 1,
-				          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL2_ZAP );
+				target->entity->Damage(damage, zap->creator, Vec3::Load(target->s.origin),
+				                       Vec3::Load(forward), DAMAGE_NO_LOCDAMAGE, MOD_LEVEL2_ZAP);
 #endif
 			}
 		}
@@ -1637,34 +1602,25 @@ bool G_CheckPounceAttack( gentity_t *self )
 	G_WideTrace( &tr, self, pounceRange, LEVEL3_POUNCE_WIDTH,
 	             LEVEL3_POUNCE_WIDTH, &traceEnt );
 
-	if ( traceEnt == nullptr )
+	if ( !G_Alive( traceEnt ) )
 	{
 		return false;
 	}
 
-	// Send blood impact
-	if ( traceEnt->takedamage )
-	{
-		SendMeleeHitEvent( self, traceEnt, &tr );
-	}
+	timeMax = self->client->ps.weapon == WP_ALEVEL3 ? LEVEL3_POUNCE_TIME : LEVEL3_POUNCE_TIME_UPG;
+	damage  = payload * LEVEL3_POUNCE_DMG / timeMax;
 
-	if ( !traceEnt->takedamage )
-	{
-		return false;
-	}
-
-	// Deal damage
-	timeMax = self->client->ps.weapon == WP_ALEVEL3 ? LEVEL3_POUNCE_TIME :
-	          LEVEL3_POUNCE_TIME_UPG;
-	damage = payload * LEVEL3_POUNCE_DMG / timeMax;
 	self->client->pmext.pouncePayload = 0;
+
 #ifdef UNREALARENA
-	G_Damage( traceEnt, self, self, forward, tr.endpos, damage,
-	          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
+	traceEnt->entity->Damage((float)damage, self, Vec3::Load(tr.endpos), Vec3::Load(forward),
+	                         DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN);
 #else
-	G_Damage( traceEnt, self, self, forward, tr.endpos, damage,
-	          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL3_POUNCE );
+	traceEnt->entity->Damage((float)damage, self, Vec3::Load(tr.endpos), Vec3::Load(forward),
+	                         DAMAGE_NO_LOCDAMAGE, MOD_LEVEL3_POUNCE);
 #endif
+
+	SendMeleeHitEvent( self, traceEnt, &tr );
 
 	return true;
 }
@@ -1697,13 +1653,13 @@ void G_ChargeAttack( gentity_t *self, gentity_t *victim )
 		return;
 	}
 
-	VectorSubtract( victim->s.origin, self->s.origin, forward );
-	VectorNormalize( forward );
-
-	if ( !victim->takedamage )
+	if ( !G_Alive( victim ) )
 	{
 		return;
 	}
+
+	VectorSubtract( victim->s.origin, self->s.origin, forward );
+	VectorNormalize( forward );
 
 #ifndef UNREALARENA
 	// For buildables, track the last MAX_TRAMPLE_BUILDABLES_TRACKED buildables
@@ -1725,18 +1681,17 @@ void G_ChargeAttack( gentity_t *self, gentity_t *victim )
 	}
 #endif
 
-	SendMeleeHitEvent( self, victim, nullptr );
-
-	damage = LEVEL4_TRAMPLE_DMG * self->client->ps.stats[ STAT_MISC ] /
-	         LEVEL4_TRAMPLE_DURATION;
+	damage = LEVEL4_TRAMPLE_DMG * self->client->ps.stats[ STAT_MISC ] / LEVEL4_TRAMPLE_DURATION;
 
 #ifdef UNREALARENA
-	G_Damage( victim, self, self, forward, victim->s.origin, damage,
-	          DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN );
+	victim->entity->Damage((float)damage, self, Vec3::Load(victim->s.origin), Vec3::Load(forward),
+	                       DAMAGE_NO_LOCDAMAGE, MOD_UNKNOWN);
 #else
-	G_Damage( victim, self, self, forward, victim->s.origin, damage,
-	          DAMAGE_NO_LOCDAMAGE, MOD_LEVEL4_TRAMPLE );
+	victim->entity->Damage((float)damage, self, Vec3::Load(victim->s.origin), Vec3::Load(forward),
+	                       DAMAGE_NO_LOCDAMAGE, MOD_LEVEL4_TRAMPLE);
 #endif
+
+	SendMeleeHitEvent( self, victim, nullptr );
 
 	self->client->ps.weaponTime += LEVEL4_TRAMPLE_REPEAT;
 }
@@ -1761,18 +1716,12 @@ static INLINE meansOfDeath_t ModWeight( const gentity_t *self )
 #ifndef UNREALARENA
 void G_ImpactAttack( gentity_t *self, gentity_t *victim )
 {
-	float  impactVelocity, impactEnergy;
+	float  impactVelocity, impactEnergy, impactDamage;
 	vec3_t knockbackDir;
-	int    attackerMass, impactDamage;
+	int    attackerMass;
 
 	// self must be a client
 	if ( !self->client )
-	{
-		return;
-	}
-
-	// ignore invincible targets
-	if ( !victim->takedamage )
 	{
 		return;
 	}
@@ -1799,28 +1748,27 @@ void G_ImpactAttack( gentity_t *self, gentity_t *victim )
 	}
 
 	// calculate impact damage
-	attackerMass = BG_Class( self->client->pers.classSelection )->mass;
 	impactVelocity = fabs( self->client->pmext.fallImpactVelocity[ 2 ] ) * QU_TO_METER; // in m/s
+
+	if (!impactVelocity) return;
+
+	attackerMass = BG_Class( self->client->pers.classSelection )->mass;
 	impactEnergy = attackerMass * impactVelocity * impactVelocity; // in J
-	impactDamage = ( int )( impactEnergy * IMPACTDMG_JOULE_TO_DAMAGE );
+	impactDamage = impactEnergy * IMPACTDMG_JOULE_TO_DAMAGE;
 
-	// deal impact damage to both clients and structures, use a threshold for friendly fire
-	if ( impactDamage > 0 )
-	{
-		// calculate knockback direction
-		VectorSubtract( victim->s.origin, self->client->ps.origin, knockbackDir );
-		VectorNormalize( knockbackDir );
+	// calculate knockback direction
+	VectorSubtract( victim->s.origin, self->client->ps.origin, knockbackDir );
+	VectorNormalize( knockbackDir );
 
-		G_Damage( victim, self, self, knockbackDir, victim->s.origin, impactDamage,
-		          DAMAGE_NO_LOCDAMAGE, ModWeight( self ) );
-	}
+	victim->entity->Damage((float)impactDamage, self, Vec3::Load(victim->s.origin),
+						   Vec3::Load(knockbackDir), DAMAGE_NO_LOCDAMAGE, ModWeight(self));
 }
 #endif
 
 void G_WeightAttack( gentity_t *self, gentity_t *victim )
 {
-	float  weightDPS;
-	int    attackerMass, victimMass, weightDamage;
+	float  weightDPS, weightDamage;
+	int    attackerMass, victimMass;
 
 	// weigth damage is only dealt between clients
 	if ( !self->client || !victim->client )
@@ -1830,12 +1778,6 @@ void G_WeightAttack( gentity_t *self, gentity_t *victim )
 
 	// don't do friendly fire
 	if ( G_OnSameTeam( self, victim ) )
-	{
-		return;
-	}
-
-	// ignore invincible targets
-	if ( !victim->takedamage )
 	{
 		return;
 	}
@@ -1870,13 +1812,10 @@ void G_WeightAttack( gentity_t *self, gentity_t *victim )
 
 	if ( weightDPS > WEIGHTDMG_DPS_THRESHOLD )
 	{
-		weightDamage = ( int )( weightDPS * ( WEIGHTDMG_REPEAT / 1000.0f ) );
+		weightDamage = weightDPS * ( WEIGHTDMG_REPEAT / 1000.0f );
 
-		if ( weightDamage > 0 )
-		{
-			G_Damage( victim, self, self, nullptr, victim->s.origin, weightDamage,
-					  DAMAGE_NO_LOCDAMAGE, ModWeight( self ) );
-		}
+		victim->entity->Damage(weightDamage, self, Vec3::Load(victim->s.origin), Util::nullopt,
+		                       DAMAGE_NO_LOCDAMAGE, ModWeight(self));
 	}
 
 	victim->client->nextCrushTime = level.time + WEIGHTDMG_REPEAT;

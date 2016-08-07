@@ -88,6 +88,8 @@ struct entityClass_s
 	gentityConfig_t config;
 };
 
+class Entity;
+
 struct gentity_s
 {
 	entityState_t  s; // communicated by server to clients
@@ -97,6 +99,9 @@ struct gentity_s
 	// EXPECTS THE FIELDS IN THAT ORDER!
 	//================================
 
+	// New style entity
+	Entity* entity;
+	
 	struct gclient_s *client; // nullptr if not a client
 
 	bool     inuse;
@@ -188,23 +193,6 @@ struct gentity_s
 	 * The amount of momentum this building generated on construction
 	 */
 	float        momentumEarned;
-
-	/**
-	 * Mining structures
-	 */
-	float        mineRate;
-	float        mineEfficiency;
-	float        acquiredBuildPoints;
-
-	/**
-	 * Alien buildables can burn, which is a lot of fun if they are close.
-	 */
-	bool     onFire;
-	int          fireImmunityUntil;
-	int          nextBurnDamage;
-	int          nextBurnSplashDamage;
-	int          nextBurnAction;
-	gentity_t    *fireStarter;
 #endif
 
 	/*
@@ -277,7 +265,7 @@ struct gentity_s
 	char         *shaderKey;
 	char         *shaderReplacement;
 
-	int          lastHealth;
+	float        lastHealthFrac;
 	int          health;
 #ifndef UNREALARENA
 	float        deconHealthFrac;
@@ -343,15 +331,6 @@ struct gentity_s
 	int       watertype;
 	int       waterlevel;
 
-#ifndef UNREALARENA
-	/*
-	 * Buildable statistics
-	 */
-	int       buildableStatsCount;  // players spawned/healed/killed, posion given
-	int       buildableStatsTotal;  // total damage/healing done
-	float     buildableStatsTotalF; // total resources mined
-#endif
-
 	/*
 	 * variables that got randomly semantically abused by everyone
 	 * so now we rather name them to indicate the fact, that we cannot imply any meaning by the name
@@ -381,8 +360,7 @@ struct gentity_s
 	int         time1000; // timer evaluated every second
 
 #ifndef UNREALARENA
-	bool    deconstruct; // deconstruct if no BP left
-	int         deconstructTime; // time at which structure marked
+	bool        deconMarkHack; // TODO: Remove.
 #endif
 	int         attackTimer, attackLastEvent; // self being attacked
 #ifndef UNREALARENA
@@ -620,7 +598,6 @@ struct gclient_s
 
 	// sum up damage over an entire frame, so shotgun blasts give a single big kick
 	int      damage_received;  // damage received this frame
-	int      damage_knockback; // total knockback this frame
 	vec3_t   damage_from;      // last damage direction
 	bool damage_fromWorld; // if true, don't use the damage_from vector
 
@@ -709,8 +686,7 @@ struct buildLog_s
 	team_t      buildableTeam;
 	buildable_t modelindex;
 	float       momentumEarned;
-	bool    deconstruct;
-	int         deconstructTime;
+	bool        markedForDeconstruction;
 	vec3_t      origin;
 	vec3_t      angles;
 	vec3_t      origin2;

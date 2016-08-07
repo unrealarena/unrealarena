@@ -1,5 +1,5 @@
 /*
- * Daemon Source Code
+ * Daemon GPL Source Code
  * Copyright (C) 2016  Unreal Arena
  * Copyright (C) 2006-2011 Robert Beckebans <trebor_7@users.sourceforge.net>
  * Copyright (C) 1999-2005 Id Software, Inc.

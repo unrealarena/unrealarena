@@ -20,6 +20,7 @@
 
 
 #include "sg_local.h"
+#include "CBSE.h"
 
 #define INTERMISSION_DELAY_TIME 1000
 
@@ -857,6 +858,10 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	memset( g_entities, 0, MAX_GENTITIES * sizeof( g_entities[ 0 ] ) );
 	level.gentities = g_entities;
 
+	// initilize special entities so they don't need to be special cased in the CBSE code later on
+	G_InitGentityMinimal( g_entities + ENTITYNUM_NONE );
+	G_InitGentityMinimal( g_entities + ENTITYNUM_WORLD );
+
 	// initialize all clients for this game
 	level.maxclients = g_maxclients.integer;
 	memset( g_clients, 0, MAX_CLIENTS * sizeof( g_clients[ 0 ] ) );
@@ -944,15 +949,10 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 
 #ifndef UNREALARENA
 	// Give both teams some build points to start out with.
-	for ( int team = TEAM_NONE + 1; team < NUM_TEAMS; team++ )
-	{
-		int startBP = std::max( 0, g_initialBuildPoints.integer -
-		                        level.team[ (team_t)team ].layoutBuildPoints );
+	for (team_t team = TEAM_NONE; (team = G_IterateTeams(team)); ) {
+		float startBP = (float)std::max(0, g_initialBuildPoints.integer - level.team[team].layoutBuildPoints);
 
-		G_ModifyBuildPoints( (team_t)team, (float)startBP );
-		G_MarkBuildPointsMined( (team_t)team, (float)startBP );
-
-		level.team[ (team_t)team ].mainStructAcquiredBP = std::max( (float)startBP, FLT_EPSILON );
+		G_ModifyBuildPoints(team, startBP);
 	}
 #endif
 
@@ -1496,7 +1496,7 @@ void G_CountSpawns()
 
 	for ( i = MAX_CLIENTS, ent = g_entities + i; i < level.num_entities; i++, ent++ )
 	{
-		if ( !ent->inuse || ent->s.eType != ET_BUILDABLE || ent->health <= 0 )
+		if ( !ent->inuse || ent->s.eType != ET_BUILDABLE || G_Dead( ent ) )
 		{
 			continue;
 			// is it really useful? Seriously?
@@ -1821,7 +1821,7 @@ void BeginIntermission()
 		}
 
 		// respawn if dead
-		if ( client->health <= 0 )
+		if ( G_Dead( client ) )
 		{
 			respawn( client );
 		}
@@ -2919,32 +2919,42 @@ void CheckCvars()
 G_RunThink
 
 Runs thinking code for this frame if necessary
+// TODO: Convert entirely to CBSE style thinking.
+// TODO: Make sure this is run for all entities.
 =============
 */
 void G_RunThink( gentity_t *ent )
 {
-	float thinktime;
-
-	thinktime = ent->nextthink;
-
-	if ( thinktime <= 0 )
-	{
-		return;
+	// Free entities with FREE_BEFORE_THINKING set.
+	DeferredFreeingComponent *deferredFreeing;
+	if ((deferredFreeing = ent->entity->Get<DeferredFreeingComponent>())) {
+		if (deferredFreeing->GetFreeTime() == DeferredFreeingComponent::FREE_BEFORE_THINKING) {
+			G_FreeEntity(ent);
+			return;
+		}
 	}
 
-	if ( thinktime > level.time )
-	{
-		return;
+	// Do CBSE style thinking.
+	ForEntities<ThinkingComponent>([] (Entity &entity, ThinkingComponent &thinkingComponent) {
+		thinkingComponent.Think();
+	});
+
+	// Do legacy thinking.
+	// TODO: Replace this kind of thinking entirely with CBSE.
+	if (ent->think) {
+		float thinktime = ent->nextthink;
+		if (thinktime <= 0 || thinktime > level.time) return;
+		ent->nextthink = 0;
+		ent->think(ent);
 	}
 
-	ent->nextthink = 0;
-
-	if ( !ent->think )
-	{
-		G_Error( "NULL ent->think" );
+	// Free entities with FREE_AFTER_THINKING set.
+	if ((deferredFreeing = ent->entity->Get<DeferredFreeingComponent>())) {
+		if (deferredFreeing->GetFreeTime() == DeferredFreeingComponent::FREE_AFTER_THINKING) {
+			G_FreeEntity(ent);
+			return;
+		}
 	}
-
-	ent->think( ent );
 }
 
 /*
@@ -3070,26 +3080,20 @@ void G_RunFrame( int levelTime )
 	// generate public-key messages
 	G_admin_pubkey();
 
-
 	// get any cvar changes
 	G_UpdateCvars();
 	CheckCvars();
+
 	// now we are done spawning
 	level.spawning = false;
 
 	G_CheckPmoveParamChanges();
 
-	//
 	// go through all allocated objects
-	//
 	ent = &g_entities[ 0 ];
-
 	for ( i = 0; i < level.num_entities; i++, ent++ )
 	{
-		if ( !ent->inuse )
-		{
-			continue;
-		}
+		if ( !ent->inuse ) continue;
 
 		// clear events that are too old
 		if ( level.time - ent->eventTime > EVENT_VALID_MSEC )
@@ -3121,57 +3125,60 @@ void G_RunFrame( int levelTime )
 		}
 
 		// temporary entities don't think
-		if ( ent->freeAfterEvent )
-		{
-			continue;
-		}
+		if ( ent->freeAfterEvent ) continue;
 
 		// calculate the acceleration of this entity
-		if ( ent->evaluateAcceleration )
-		{
-			G_EvaluateAcceleration( ent, msec );
-		}
+		if ( ent->evaluateAcceleration ) G_EvaluateAcceleration( ent, msec );
 
-		if ( !ent->r.linked && ent->neverFree )
-		{
-			continue;
-		}
+		if ( !ent->r.linked && ent->neverFree ) continue;
 
-		if ( ent->s.eType == ET_MISSILE )
+		// think/run entitiy by type
+		switch ( ent->s.eType )
 		{
-			G_RunMissile( ent );
-			continue;
-		}
+			case ET_MISSILE:
+				G_RunMissile( ent );
+				continue;
 
 #ifndef UNREALARENA
-		if ( ent->s.eType == ET_BUILDABLE )
-		{
-			G_BuildableThink( ent, msec );
-			continue;
-		}
+			case ET_BUILDABLE:
+				// TODO: Do buildables make any use of G_Physics' functionality apart from the call
+				//       to G_RunThink?
+				G_Physics( ent, msec );
+				continue;
 #endif
 
-		if ( ent->s.eType == ET_CORPSE || ent->physicsObject )
-		{
-			G_Physics( ent, msec );
-			continue;
-		}
+			case ET_CORPSE:
+				G_Physics( ent, msec );
+				continue;
 
-		if ( ent->s.eType == ET_MOVER )
-		{
-			G_RunMover( ent );
-			continue;
-		}
+			case ET_MOVER:
+				G_RunMover( ent );
+				continue;
 
-		if ( i < MAX_CLIENTS )
-		{
-			G_RunClient( ent );
-			continue;
-		}
+			default:
+				if ( ent->physicsObject )
+				{
+					G_Physics( ent, msec );
+					continue;
+				}
+				else if ( i < MAX_CLIENTS )
+				{
+					G_RunClient( ent );
+					continue;
+				}
+				else
+				{
+					G_RunThink( ent );
 
-		G_RunThink( ent );
-		/* think() before you act() */
-		G_RunAct( ent );
+					// allow entities to free themselves before acting
+					if ( ent->inuse )
+					{
+						// TODO: Is this even used/necessary?
+						//       Why do only randomly chose entities do this?
+						G_RunAct( ent );
+					}
+				}
+		}
 	}
 
 	// perform final fixups on the players
@@ -3205,6 +3212,8 @@ void G_RunFrame( int levelTime )
 	G_UpdateZaps( msec );
 	Beacon::Frame( );
 
+	G_PrepareEntityNetCode();
+
 	// log gameplay statistics
 	G_LogGameplayStats( LOG_GAMEPLAY_STATS_BODY );
 
@@ -3222,4 +3231,14 @@ void G_RunFrame( int levelTime )
 
 	trap_BotUpdateObstacles();
 	level.frameMsec = trap_Milliseconds();
+}
+
+void G_PrepareEntityNetCode() {
+	// TODO: Allow ForEntities with empty template arguments.
+	gentity_t *oldEnt = &g_entities[0];
+	for (int i = 0; i < level.num_entities; i++, oldEnt++) {
+		if (oldEnt->entity) {
+			oldEnt->entity->PrepareNetCode();
+		}
+	}
 }

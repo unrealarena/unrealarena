@@ -139,6 +139,7 @@ set(SGAMELIST
     ${GAMELOGIC_DIR}/sgame/sg_typedef.h
     ${GAMELOGIC_DIR}/sgame/sg_utils.cpp
     ${GAMELOGIC_DIR}/sgame/sg_weapon.cpp
+    ${GAMELOGIC_DIR}/sgame/Utility.cpp
 
     ${ENGINE_DIR}/server/sg_api.h
     ${ENGINE_DIR}/server/sg_msgdef.h

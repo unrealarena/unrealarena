@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 
 
 #include "sg_local.h"
+#include "CBSE.h"
 
 // -----------
 // definitions
@@ -166,13 +167,13 @@ static int ImpactFlamer( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
 #ifndef UNREALARENA
 	gentity_t *neighbor = nullptr;
 
-	// ignite alien buildables on direct hit
+	// ignite on direct hit
 	if ( random() < FLAMER_IGNITE_CHANCE )
 	{
-		G_IgniteBuildable( hitEnt, ent->parent );
+		hitEnt->entity->Ignite( ent->parent );
 	}
 
-	// ignite alien buildables in radius
+	// ignite in radius
 	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, trace->endpos, FLAMER_IGNITE_RADIUS ) ) )
 	{
 		// we already handled other, since it might not always be in FLAMER_IGNITE_RADIUS due to BBOX sizes
@@ -183,7 +184,7 @@ static int ImpactFlamer( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
 
 		if ( random() < FLAMER_IGNITE_SPLCHANCE )
 		{
-			G_IgniteBuildable( neighbor, ent->parent );
+			neighbor->entity->Ignite( ent->parent );
 		}
 	}
 
@@ -203,8 +204,8 @@ static int ImpactFlamer( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
 static int ImpactFirebombSub( gentity_t *ent, trace_t *trace, gentity_t *hitEnt )
 {
 #ifndef UNREALARENA
-	// ignite alien buildables on direct hit
-	G_IgniteBuildable( hitEnt, ent->parent );
+	// ignite on direct hit
+	hitEnt->entity->Ignite( ent->parent );
 
 	// set the environment on fire
 	if ( hitEnt->s.number == ENTITYNUM_WORLD )
@@ -237,6 +238,21 @@ static int ImpactSlowblob( gentity_t*, trace_t *trace, gentity_t *hitEnt )
 	gentity_t *neighbor;
 	int       impactFlags = MIB_IMPACT;
 
+	// put out fires on direct hit
+	hitEnt->entity->Extinguish( ABUILDER_BLOB_FIRE_IMMUNITY );
+
+	// put out fires in range
+	// TODO: Iterate over all ignitable entities only
+	neighbor = nullptr;
+	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, trace->endpos,
+							    ABUILDER_BLOB_FIRE_STOP_RANGE ) ) )
+	{
+		if ( neighbor != hitEnt )
+		{
+			neighbor->entity->Extinguish( ABUILDER_BLOB_FIRE_IMMUNITY );
+		}
+	}
+
 	if ( hitEnt->client && hitEnt->client->pers.team == TEAM_HUMANS )
 	{
 		hitEnt->client->ps.stats[ STAT_STATE ] |= SS_SLOWLOCKED;
@@ -244,23 +260,7 @@ static int ImpactSlowblob( gentity_t*, trace_t *trace, gentity_t *hitEnt )
 	}
 	else if ( hitEnt->s.eType == ET_BUILDABLE && hitEnt->buildableTeam == TEAM_ALIENS )
 	{
-		hitEnt->onFire = false;
-		hitEnt->fireImmunityUntil = level.time + ABUILDER_BLOB_FIRE_IMMUNITY;
-
 		impactFlags &= ~MIF_NO_DAMAGE;
-	}
-	else if ( hitEnt->s.number == ENTITYNUM_WORLD )
-	{
-		// put out floor fires in range
-		neighbor = nullptr;
-		while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, trace->endpos,
-		                                                    ABUILDER_BLOB_FIRE_STOP_RANGE ) ) )
-		{
-			if ( neighbor->s.eType == ET_FIRE )
-			{
-				G_FreeEntity( neighbor );
-			}
-		}
 	}
 
 	return impactFlags;
@@ -318,7 +318,8 @@ static void MissileImpact( gentity_t *ent, trace_t *trace )
 	std::function<int(gentity_t*, trace_t*, gentity_t*)> impactFunc;
 
 	// Check for bounce.
-	if ( !hitEnt->takedamage && ( ent->s.eFlags & ( EF_BOUNCE | EF_BOUNCE_HALF ) ) )
+	if ( ent->s.eFlags & ( EF_BOUNCE | EF_BOUNCE_HALF ) &&
+	     !HasComponents<HealthComponent>(*hitEnt->entity) )
 	{
 		BounceMissile( ent, trace );
 
@@ -350,7 +351,7 @@ static void MissileImpact( gentity_t *ent, trace_t *trace )
 	// Deal impact damage.
 	if ( !( impactFlags & MIF_NO_DAMAGE ) )
 	{
-		if ( ent->damage && hitEnt->takedamage )
+		if ( ent->damage && G_Alive( hitEnt ) )
 		{
 			vec3_t dir;
 
@@ -365,8 +366,9 @@ static void MissileImpact( gentity_t *ent, trace_t *trace )
 			if ( !ma->doLocationalDamage ) dflags |= DAMAGE_NO_LOCDAMAGE;
 			if ( ma->doKnockback )         dflags |= DAMAGE_KNOCKBACK;
 
-			G_Damage( hitEnt, ent, attacker, dir, trace->endpos,
-					  roundf( ent->damage * MissileTimeDmgMod( ent ) ), dflags, ent->methodOfDeath );
+			hitEnt->entity->Damage(ent->damage * MissileTimeDmgMod(ent), attacker,
+			                       Vec3::Load(trace->endpos), Vec3::Load(dir), dflags,
+			                       (meansOfDeath_t)ent->methodOfDeath);
 		}
 
 		// splash damage (doesn't apply to person directly hit)
@@ -396,11 +398,7 @@ static void MissileImpact( gentity_t *ent, trace_t *trace )
 		}
 
 		// Add hit event.
-#ifdef UNREALARENA
-		if ( hitEnt->takedamage && hitEnt->s.eType == ET_PLAYER )
-#else
-		if ( hitEnt->takedamage && ( hitEnt->s.eType == ET_PLAYER || hitEnt->s.eType == ET_BUILDABLE ) )
-#endif
+		if ( HasComponents<HealthComponent>(*hitEnt->entity) )
 		{
 			G_AddEvent( ent, EV_MISSILE_HIT_ENTITY, dirAsByte );
 

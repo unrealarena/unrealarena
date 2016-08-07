@@ -20,6 +20,7 @@
 
 #include "sg_local.h"
 #include "sg_spawn.h"
+#include "CBSE.h"
 
 void InitEnvAFXEntity( gentity_t *self, bool link )
 {
@@ -184,11 +185,6 @@ void env_afx_hurt_touch( gentity_t *self, gentity_t *other, trace_t* )
 {
 	int dflags;
 
-	if ( !other->takedamage )
-	{
-		return;
-	}
-
 	if ( self->timestamp > level.time )
 	{
 		return;
@@ -218,7 +214,8 @@ void env_afx_hurt_touch( gentity_t *self, gentity_t *other, trace_t* )
 		dflags = 0;
 	}
 
-	G_Damage( other, self, self, nullptr, nullptr, self->damage, dflags, MOD_TRIGGER_HURT );
+	other->entity->Damage((float)self->damage, self, Util::nullopt, Util::nullopt, dflags,
+	                      MOD_TRIGGER_HURT);
 }
 
 void SP_env_afx_hurt( gentity_t *self )
@@ -304,7 +301,7 @@ void env_afx_heal_touch( gentity_t *self, gentity_t *other, trace_t* )
 		self->timestamp = level.time + FRAMETIME;
 	}
 
-	G_Heal( other, self->damage );
+	other->entity->Heal((float)self->damage, nullptr);
 }
 
 /*

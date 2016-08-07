@@ -33,6 +33,18 @@ extern gentity_t *g_entities;
 extern gclient_t *g_clients;
 #endif
 
+// ---------
+// temporary, compatibility layer between legacy code and CBSE logic
+// ---------
+
+#ifdef UNREALARENA
+extern damageRegion_t g_damageRegions[ NUM_TEAMS ][ MAX_DAMAGE_REGIONS ];
+extern int            g_numDamageRegions[ NUM_TEAMS ];
+#else
+extern damageRegion_t g_damageRegions[ PCL_NUM_CLASSES ][ MAX_DAMAGE_REGIONS ];
+extern int            g_numDamageRegions[ PCL_NUM_CLASSES ];
+#endif
+
 // -----
 // cvars
 // -----
