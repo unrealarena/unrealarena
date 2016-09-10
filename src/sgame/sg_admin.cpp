@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  *
@@ -3873,7 +3873,7 @@ bool G_admin_listplayers( gentity_t *ent )
 		}
 
 #ifdef UNREALARENA
-		ADMBP( va( "%2i ^%c%c^7 %-2i^2%c^7 %*s^7 ^5%c^1%c%c%s^7 %s^7 %s%s%s %s\n",
+		ADMBP( va( "%2i ^%c%c^7 %-2i^2%c^7 %*s^7 ^5%c^1%c%s^7 %s^7 %s%s%s %s\n",
 		           i,
 		           c,
 		           t,
