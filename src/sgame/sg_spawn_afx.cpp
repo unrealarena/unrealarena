@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -301,7 +301,11 @@ void env_afx_heal_touch( gentity_t *self, gentity_t *other, trace_t* )
 		self->timestamp = level.time + FRAMETIME;
 	}
 
+#ifdef UNREALARENA
+	other->entity->Heal(self->damage, nullptr);
+#else
 	other->entity->Heal((float)self->damage, nullptr);
+#endif
 }
 
 /*

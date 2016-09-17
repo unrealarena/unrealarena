@@ -636,13 +636,22 @@ void Cmd_Give_f( gentity_t *ent )
 	{
 		if ( give_all || trap_Argc() < 3 )
 		{
+#ifdef UNREALARENA
+			ent->entity->Heal(999, nullptr);
+#else
 			ent->entity->Heal(1000.0f, nullptr);
+#endif
 			BG_AddUpgradeToInventory( UP_MEDKIT, ent->client->ps.stats );
 		}
 		else
 		{
+#ifdef UNREALARENA
+			int amount = atoi( name + strlen("health") );
+			ent->entity->Heal(amount, nullptr);
+#else
 			float amount = atof( name + strlen("health") );
 			ent->entity->Heal(amount, nullptr);
+#endif
 		}
 	}
 
@@ -4315,8 +4324,13 @@ void Cmd_Damage_f( gentity_t *ent )
 	point[ 1 ] += dy;
 	point[ 2 ] += dz;
 
+#ifdef UNREALARENA
+	ent->entity->Damage(damage, nullptr, Vec3::Load(point), Util::nullopt,
+	                    nonloc ? DAMAGE_NO_LOCDAMAGE : 0, MOD_TARGET_LASER);
+#else
 	ent->entity->Damage((float)damage, nullptr, Vec3::Load(point), Util::nullopt,
 	                    nonloc ? DAMAGE_NO_LOCDAMAGE : 0, MOD_TARGET_LASER);
+#endif
 }
 
 /*

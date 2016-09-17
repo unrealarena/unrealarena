@@ -30,7 +30,13 @@
 // You can also define helper macros for use in all components here.
 // ----------------
 
+#include "sg_local.h"
 
+#ifndef UNREALARENA
+/** A helper to register component thinkers. */
+#define REGISTER_THINKER(METHOD, SCHEDULER, PERIOD) \
+	GetThinkingComponent().RegisterThinker([this](int i){this->METHOD(i);}, SCHEDULER, PERIOD)
+#endif
 
 // ----------------
 

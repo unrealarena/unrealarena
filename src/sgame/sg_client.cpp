@@ -1767,20 +1767,50 @@ void ClientBegin( int clientNum )
 /**
  * @brief Handles re-spawning of clients and creation of appropriate entities.
  */
-static void ClientSpawnCBSE(gentity_t *ent, bool evolving) {
 #ifdef UNREALARENA
-	// [TODO] UNIMPLEMENTED
+static void ClientSpawnCBSE(gentity_t *ent) {
 #else
+static void ClientSpawnCBSE(gentity_t *ent, bool evolving) {
+#endif
 	Entity *oldEntity = ent->entity;
 	gclient_t *client = oldEntity->Get<ClientComponent>()->GetClientData();
+#ifdef UNREALARENA
+	team_t team = client->pers.team;
+#else
 	class_t pcl = client->pers.classSelection;
+#endif
 
+#ifdef UNREALARENA
+	switch (team) {
+#else
 	switch (pcl) {
 		// Each entry does the following:
 		//   - Fill an appropriate parameter struct for the new entity.
 		//   - Create a new entity, passing the parameter struct.
 		//   - Call assignment operators on the new components to transfer state from old entity.
+#endif
 
+#ifdef UNREALARENA
+		case TEAM_NONE:
+			// TODO: Add SpectatorEntity.
+			return;
+
+		case TEAM_Q: {
+			QPlayerEntity::Params params;
+			params.oldEnt = ent;
+			params.Client_clientData = client;
+			ent->entity = new QPlayerEntity(params);
+			break;
+		}
+
+		case TEAM_U: {
+			UPlayerEntity::Params params;
+			params.oldEnt = ent;
+			params.Client_clientData = client;
+			ent->entity = new UPlayerEntity(params);
+			break;
+		}
+#else
 		case PCL_NONE:
 			// TODO: Add SpectatorEntity.
 			return;
@@ -1849,13 +1879,13 @@ static void ClientSpawnCBSE(gentity_t *ent, bool evolving) {
 			CLIENT_ENTITY_CREATE(HeavyHumanEntity);
 			break;
 		}
+#endif
 
 		default:
 			assert(false);
 	}
 
 	delete oldEntity;
-#endif
 }
 
 /*
@@ -1889,7 +1919,11 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	int                maxAmmo, maxClips;
 	weapon_t           weapon;
 
+#ifdef UNREALARENA
+	ClientSpawnCBSE(ent);
+#else
 	ClientSpawnCBSE(ent, ent == spawn);
+#endif
 
 	index = ent - g_entities;
 	client = ent->client;

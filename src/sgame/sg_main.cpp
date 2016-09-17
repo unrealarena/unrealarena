@@ -2925,6 +2925,7 @@ Runs thinking code for this frame if necessary
 */
 void G_RunThink( gentity_t *ent )
 {
+#ifndef UNREALARENA
 	// Free entities with FREE_BEFORE_THINKING set.
 	DeferredFreeingComponent *deferredFreeing;
 	if ((deferredFreeing = ent->entity->Get<DeferredFreeingComponent>())) {
@@ -2938,6 +2939,7 @@ void G_RunThink( gentity_t *ent )
 	ForEntities<ThinkingComponent>([] (Entity &entity, ThinkingComponent &thinkingComponent) {
 		thinkingComponent.Think();
 	});
+#endif
 
 	// Do legacy thinking.
 	// TODO: Replace this kind of thinking entirely with CBSE.
@@ -2948,6 +2950,7 @@ void G_RunThink( gentity_t *ent )
 		ent->think(ent);
 	}
 
+#ifndef UNREALARENA
 	// Free entities with FREE_AFTER_THINKING set.
 	if ((deferredFreeing = ent->entity->Get<DeferredFreeingComponent>())) {
 		if (deferredFreeing->GetFreeTime() == DeferredFreeingComponent::FREE_AFTER_THINKING) {
@@ -2955,6 +2958,7 @@ void G_RunThink( gentity_t *ent )
 			return;
 		}
 	}
+#endif
 }
 
 /*
