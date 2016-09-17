@@ -1920,7 +1920,10 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	weapon_t           weapon;
 
 #ifdef UNREALARENA
-	ClientSpawnCBSE(ent);
+	if ( spawn != nullptr )
+	{
+		ClientSpawnCBSE(ent);
+	}
 #else
 	ClientSpawnCBSE(ent, ent == spawn);
 #endif
