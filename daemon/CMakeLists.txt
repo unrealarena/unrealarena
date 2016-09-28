@@ -243,8 +243,8 @@ endif()
 
 # MSVC requires that an extra file be added to a project
 if (USE_PRECOMPILED_HEADER AND MSVC)
-    file(WRITE ${OBJ_DIR}/PrecompiledHeader.cpp "")
-    set(PCH_FILE ${OBJ_DIR}/PrecompiledHeader.cpp)
+    file(WRITE ${OBJ_DIR}/stdafx.cpp "")
+    set(PCH_FILE ${OBJ_DIR}/stdafx.cpp)
     set(PCH_FILE ${PCH_FILE} PARENT_SCOPE)
 endif()
 
@@ -316,7 +316,7 @@ function(ADD_PRECOMPILED_HEADER Target)
         endif()
     elseif (MSVC)
         set_source_files_properties(${PCH_FILE} PROPERTIES COMPILE_FLAGS "/Yc${Header}")
-        set_property(TARGET ${Target} APPEND PROPERTY COMPILE_FLAGS "/Yu${Header} /Fp${OBJ_DIR}/${Target}.pch /FI${Header}")
+        set_property(TARGET ${Target} APPEND PROPERTY COMPILE_FLAGS "/Yu${Header} /Fp${OBJ_DIR}/stdafx.pch /FI${Header}")
     endif()
 endfunction()
 
