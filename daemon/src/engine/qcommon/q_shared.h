@@ -1,5 +1,5 @@
 /*
- * Daemon GPL source code
+ * Daemon GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
@@ -28,7 +28,9 @@
 #define _USE_MATH_DEFINES
 #endif
 
+#ifdef UNREALARENA
 #include "common/Revision.h"
+#endif
 
 
 // q_shared.h -- included first by ALL program modules.
@@ -41,12 +43,12 @@
 #define PRODUCT_VERSION         "0.1-3"
 
 #define ENGINE_NAME             "Daemon Engine"
-#define ENGINE_VERSION          "0.43.1"
+#define ENGINE_VERSION          "0.44.0"
 #else
 #define PRODUCT_NAME            "Unvanquished"
 #define PRODUCT_NAME_UPPER      "UNVANQUISHED" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unvanquished" // No case, No spaces
-#define PRODUCT_VERSION         "0.43"
+#define PRODUCT_VERSION         "0.44"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          PRODUCT_VERSION

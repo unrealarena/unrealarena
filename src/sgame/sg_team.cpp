@@ -20,6 +20,7 @@
 
 
 #include "sg_local.h"
+#include "CBSE.h"
 
 /*
 ================
@@ -531,12 +532,12 @@ void TeamplayInfoMessage( gentity_t *ent )
 #ifdef UNREALARENA
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i", i,
 						 cl->pers.location,
-						 cl->ps.stats[ STAT_HEALTH ] < 1 ? 0 : cl->ps.stats[ STAT_HEALTH ],
+			             std::max((int)std::ceil(player->entity->Get<HealthComponent>()->Health()), 0),
 						 curWeaponClass );
 #else
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i", i,
 						 cl->pers.location,
-						 cl->ps.stats[ STAT_HEALTH ] < 1 ? 0 : cl->ps.stats[ STAT_HEALTH ],
+			             std::max((int)std::ceil(player->entity->Get<HealthComponent>()->Health()), 0),
 						 curWeaponClass,
 						 cl->pers.credit );
 #endif
@@ -546,13 +547,13 @@ void TeamplayInfoMessage( gentity_t *ent )
 #ifdef UNREALARENA
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i", i,
 			             cl->pers.location,
-			             cl->ps.stats[ STAT_HEALTH ] < 1 ? 0 : cl->ps.stats[ STAT_HEALTH ],
+			             std::max((int)std::ceil(player->entity->Get<HealthComponent>()->Health()), 0),
 			             curWeaponClass,
 			             upgrade );
 #else
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i %i", i,
 			             cl->pers.location,
-			             cl->ps.stats[ STAT_HEALTH ] < 1 ? 0 : cl->ps.stats[ STAT_HEALTH ],
+			             std::max((int)std::ceil(player->entity->Get<HealthComponent>()->Health()), 0),
 			             curWeaponClass,
 			             cl->pers.credit,
 			             upgrade );

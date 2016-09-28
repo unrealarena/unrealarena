@@ -20,6 +20,7 @@
 
 #include "sg_bot_parse.h"
 #include "sg_bot_util.h"
+#include "CBSE.h"
 
 static bool expectToken( const char *s, pc_token_list **list, bool next )
 {
@@ -94,6 +95,7 @@ static AIValue_t goalType( gentity_t *self, const AIValue_t* )
 	return AIBoxInt( BotGetTargetType( self->botMind->goal ) );
 }
 
+// TODO: Check if we can just check for HealthComponent.
 static AIValue_t goalDead( gentity_t *self, const AIValue_t* )
 {
 	bool dead = false;
@@ -107,7 +109,7 @@ static AIValue_t goalDead( gentity_t *self, const AIValue_t* )
 	{
 		dead = true;
 	}
-	else if ( goal->ent->health <= 0 )
+	else if ( !G_Alive( self->botMind->goal.ent ) )
 	{
 		dead = true;
 	}
@@ -307,31 +309,16 @@ static AIValue_t percentHealth( gentity_t *self, const AIValue_t *params )
 {
 	AIEntity_t e = ( AIEntity_t ) AIUnBoxInt( params[ 0 ] );
 	botEntityAndDistance_t et = AIEntityToGentity( self, e );
-	float maxHealth = INT_MAX;
-	float health = 0;
+	float healthFraction;
+	HealthComponent *healthComponent;
 
-	if ( et.ent )
-	{
-		health = et.ent->health;
-
-#ifndef UNREALARENA
-		if ( et.ent->s.eType == ET_BUILDABLE )
-		{
-			maxHealth = BG_Buildable( ( buildable_t ) et.ent->s.modelindex )->health;
-		}
-#endif
-
-		if ( et.ent->s.eType == ET_PLAYER )
-		{
-#ifdef UNREALARENA
-			maxHealth = BG_Class( ( team_t ) et.ent->client->ps.persistant[ PERS_TEAM ] )->health;
-#else
-			maxHealth = BG_Class( ( class_t ) et.ent->client->ps.stats[ STAT_CLASS ] )->health;
-#endif
-		}
+	if (et.ent && (healthComponent = et.ent->entity->Get<HealthComponent>())) {
+		healthFraction = healthComponent->HealthFraction();
+	} else {
+		healthFraction = 0.0f;
 	}
 
-	return AIBoxFloat( health / maxHealth );
+	return AIBoxFloat( healthFraction );
 }
 
 // functions accessible to the behavior tree for use in condition nodes

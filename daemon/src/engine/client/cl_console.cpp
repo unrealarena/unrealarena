@@ -20,6 +20,9 @@
 
 // console.c
 
+#ifndef UNREALARENA
+#include "revision.h"
+#endif
 #include "client.h"
 #include "qcommon/q_unicode.h"
 #include "framework/LogSystem.h"

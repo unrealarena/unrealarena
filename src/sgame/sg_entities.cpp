@@ -20,6 +20,9 @@
 
 #include "sg_local.h"
 #include "sg_entities.h"
+#include "CBSE.h"
+
+static EmptyEntity emptyEntity(EmptyEntity::Params{nullptr});
 
 /*
 =================================================================================
@@ -29,8 +32,17 @@ basic gentity lifecycle handling
 =================================================================================
 */
 
+/**
+ * @brief Every entity slot is initialized like this, including the world and none
+ */
+void G_InitGentityMinimal( gentity_t *entity )
+{
+	entity->entity = &emptyEntity;
+}
+
 void G_InitGentity( gentity_t *entity )
 {
+	G_InitGentityMinimal( entity );
 	entity->inuse = true;
 #ifndef UNREALARENA
 	entity->enabled = true;
@@ -153,7 +165,13 @@ void G_FreeEntity( gentity_t *entity )
 		BaseClustering::Remove(entity);
 	}
 
+	if (entity->entity != &emptyEntity)
+	{
+		delete entity->entity;
+	}
+
 	memset( entity, 0, sizeof( *entity ) );
+	entity->entity = &emptyEntity;
 	entity->classname = "freent";
 	entity->freetime = level.time;
 	entity->inuse = false;

@@ -20,6 +20,7 @@
 
 #include "sg_bot_ai.h"
 #include "sg_bot_util.h"
+#include "CBSE.h"
 
 void BotDPrintf( const char* fmt, ... )
 {
@@ -111,11 +112,6 @@ float BotGetHealScore( gentity_t *self )
 {
 	float distToHealer = 0;
 	float percentHealth = 0;
-#ifdef UNREALARENA
-	float maxHealth = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->health;
-#else
-	float maxHealth = BG_Class( ( class_t ) self->client->ps.stats[ STAT_CLASS ] )->health;
-#endif
 
 #ifndef UNREALARENA
 	if ( self->client->pers.team == TEAM_ALIENS )
@@ -139,7 +135,7 @@ float BotGetHealScore( gentity_t *self )
 	}
 #endif
 
-	percentHealth = ( ( float ) self->client->ps.stats[STAT_HEALTH] ) / maxHealth;
+	percentHealth = self->entity->Get<HealthComponent>()->HealthFraction();
 
 	distToHealer = MAX( MIN( MAX_HEAL_DIST, distToHealer ), MAX_HEAL_DIST * ( 3.0f / 4.0f ) );
 
@@ -485,7 +481,9 @@ gentity_t* BotFindBuilding( gentity_t *self, int buildingType, int range )
 		{
 			continue;
 		}
-		if ( target->s.eType == ET_BUILDABLE && target->s.modelindex == buildingType && ( target->buildableTeam == TEAM_ALIENS || ( target->powered && target->spawned ) ) && target->health > 0 )
+		if ( target->s.eType == ET_BUILDABLE && target->s.modelindex == buildingType &&
+		     ( target->buildableTeam == TEAM_ALIENS || ( target->powered && target->spawned ) ) &&
+		     G_Alive( target ) )
 		{
 			newDistance = DistanceSquared( self->s.origin, target->s.origin );
 			if ( range && newDistance > rangeSquared )
@@ -523,14 +521,14 @@ void BotFindClosestBuildings( gentity_t *self )
 			continue;
 		}
 
-		//ignore dead targets
-		if ( testEnt->health <= 0 )
+		//skip non buildings
+		if ( testEnt->s.eType != ET_BUILDABLE )
 		{
 			continue;
 		}
 
-		//skip non buildings
-		if ( testEnt->s.eType != ET_BUILDABLE )
+		//ignore dead targets
+		if ( G_Dead( testEnt ) )
 		{
 			continue;
 		}
@@ -582,12 +580,12 @@ void BotFindDamagedFriendlyStructure( gentity_t *self )
 			continue;
 		}
 
-		if ( target->health >= BG_Buildable( ( buildable_t )target->s.modelindex )->health )
+		if ( target->entity->Get<HealthComponent>()->FullHealth() )
 		{
 			continue;
 		}
 
-		if ( target->health <= 0 )
+		if ( G_Dead( target ) )
 		{
 			continue;
 		}
@@ -716,8 +714,8 @@ gentity_t* BotFindClosestEnemy( gentity_t *self )
 			continue;
 		}
 
-		//ignore dead targets
-		if ( target->health <= 0 )
+		// Only consider living targets.
+		if ( !G_Alive( target ) )
 		{
 			continue;
 		}
@@ -1827,7 +1825,7 @@ bool BotEvolveToClass( gentity_t *ent, class_t newClass )
 	int num;
 	gentity_t *other;
 
-	if ( ent->client->ps.stats[ STAT_HEALTH ] <= 0 )
+	if ( G_Dead( ent ) )
 	{
 		return false;
 	}
@@ -1870,8 +1868,7 @@ bool BotEvolveToClass( gentity_t *ent, class_t newClass )
 			//...check we can evolve to that class
 			if ( numLevels >= 0 && BG_ClassUnlocked( newClass ) && !BG_ClassDisabled( newClass ) )
 			{
-				ent->client->pers.evolveHealthFraction = ( float )ent->client->ps.stats[ STAT_HEALTH ] /
-				( float )BG_Class( currentClass )->health;
+				ent->client->pers.evolveHealthFraction = ent->entity->Get<HealthComponent>()->HealthFraction();
 
 				if ( ent->client->pers.evolveHealthFraction < 0.0f )
 				{
@@ -2218,7 +2215,8 @@ bool BotEnemyIsValid( gentity_t *self, gentity_t *enemy )
 		return false;
 	}
 
-	if ( enemy->health <= 0 )
+	// Only living targets are valid.
+	if ( !G_Alive( enemy ) )
 	{
 		return false;
 	}

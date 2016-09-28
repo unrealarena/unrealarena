@@ -1879,7 +1879,7 @@ bool BG_InventoryContainsWeapon( int weapon, const int stats[] )
 	// HACK: Determine team by checking for STAT_CLASS since we merged STAT_TEAM into PERS_TEAM
 	//       This hack will vanish as soon as the blast isn't the only possible sidearm weapon anymore
 #ifdef UNREALARENA
-	if ( stats[ STAT_MAX_HEALTH ] == 100 && weapon == WP_BLASTER )
+	if ( weapon == WP_BLASTER )
 #else
 	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_HUMANS && weapon == WP_BLASTER )
 #endif
@@ -1906,7 +1906,7 @@ int BG_SlotsForInventory( int stats[] )
 	// HACK: Determine team by checking for STAT_CLASS since we merged STAT_TEAM into PERS_TEAM
 	//       This hack will vanish as soon as the blast isn't the only possible sidearm weapon anymore
 #ifdef UNREALARENA
-	if ( stats[ STAT_MAX_HEALTH ] == 100 )
+	if ( true )
 #else
 	if ( BG_ClassTeam( stats[ STAT_CLASS ] ) == TEAM_HUMANS )
 #endif

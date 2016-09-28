@@ -1,0 +1,62 @@
+general:
+    common_entity_attributes:
+        - name: oldEnt
+          type: gentity_t*
+
+messages:
+    PrepareNetCode:
+
+    Heal:
+        - name: amount
+          type: int
+        - name: source
+          type: gentity_t*
+
+    Damage:
+        - name: amount
+          type: int
+        - name: source
+          type: gentity_t*
+        - name: location
+          type: Util::optional<Vec3>
+        - name: direction
+          type: Util::optional<Vec3>
+        - name: flags
+          type: int
+        - name: meansOfDeath
+          type: meansOfDeath_t
+
+components:
+    Client:
+        parameters:
+            clientData: gclient_t*
+
+    Health:
+        messages:
+            - PrepareNetCode
+            - Heal
+            - Damage
+
+    Knockback:
+        messages:
+            - Damage
+
+entities:
+    Empty:
+        components:
+
+    Client:
+        components:
+            Client:
+
+    QPlayer:
+        components:
+            Client:
+            Health:
+            Knockback:
+
+    UPlayer:
+        components:
+            Client:
+            Health:
+            Knockback:
