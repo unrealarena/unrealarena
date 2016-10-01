@@ -1704,16 +1704,12 @@ GENERIC
 ======================================================================
 */
 
+#ifndef UNREALARENA
 static INLINE meansOfDeath_t ModWeight( const gentity_t *self )
 {
-#ifdef UNREALARENA
-	return MOD_WEIGHT;
-#else
 	return self->client->pers.team == TEAM_HUMANS ? MOD_WEIGHT_H : MOD_WEIGHT_A;
-#endif
 }
 
-#ifndef UNREALARENA
 void G_ImpactAttack( gentity_t *self, gentity_t *victim )
 {
 	float  impactVelocity, impactEnergy, impactDamage;
@@ -1814,8 +1810,13 @@ void G_WeightAttack( gentity_t *self, gentity_t *victim )
 	{
 		weightDamage = weightDPS * ( WEIGHTDMG_REPEAT / 1000.0f );
 
+#ifdef UNREALARENA
+		victim->entity->Damage(weightDamage, self, Vec3::Load(victim->s.origin), Util::nullopt,
+		                       DAMAGE_NO_LOCDAMAGE, MOD_WEIGHT);
+#else
 		victim->entity->Damage(weightDamage, self, Vec3::Load(victim->s.origin), Util::nullopt,
 		                       DAMAGE_NO_LOCDAMAGE, ModWeight(self));
+#endif
 	}
 
 	victim->client->nextCrushTime = level.time + WEIGHTDMG_REPEAT;
