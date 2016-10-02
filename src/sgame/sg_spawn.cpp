@@ -491,9 +491,9 @@ bool G_HandleEntityVersions( entityClassDescriptor_t *spawnDescription, gentity_
 		|| ( g_debugEntities.integer >= 1 && spawnDescription->versionState >= ENT_V_TMPORARY) )
 		{
 #ifdef UNREALARENA
-			G_Printf( S_WARNING "Entity %s uses a deprecated classtype - use the class " S_COLOR_CYAN "%s" S_COLOR_WHITE " instead\n", etos( entity ), spawnDescription->replacement );
+			G_Printf( S_WARNING "Entity %s uses a deprecated classtype - use the class ^5%s^* instead\n", etos( entity ), spawnDescription->replacement );
 #else
-			G_Printf( S_WARNING "Entity %s uses a deprecated classtype — use the class " S_COLOR_CYAN "%s" S_COLOR_WHITE " instead\n", etos( entity ), spawnDescription->replacement );
+			G_Printf( S_WARNING "Entity %s uses a deprecated classtype — use the class ^5%s^* instead\n", etos( entity ), spawnDescription->replacement );
 #endif
 		}
 	}
@@ -571,9 +571,9 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 		//don't even warn about spawning-errors with -2 (maps might still work at least partly if we ignore these willingly)
 		if ( g_debugEntities.integer > -2 )
 #ifdef UNREALARENA
-			G_Printf( S_ERROR "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " is missing classname - we are unable to spawn it.\n", spawnedEntity->s.number );
+			G_Printf( S_ERROR "Entity ^5#%i^* is missing classname - we are unable to spawn it.\n", spawnedEntity->s.number );
 #else
-			G_Printf( S_ERROR "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " is missing classname – we are unable to spawn it.\n", spawnedEntity->s.number );
+			G_Printf( S_ERROR "Entity ^5#%i^* is missing classname – we are unable to spawn it.\n", spawnedEntity->s.number );
 #endif
 		return false;
 	}
@@ -624,7 +624,7 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 #endif
 
 		if ( g_debugEntities.integer > 2 )
-			G_Printf( S_DEBUG "Successfully spawned entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " as " S_COLOR_YELLOW "%i" S_COLOR_WHITE "th instance of " S_COLOR_CYAN "%s\n",
+			G_Printf( S_DEBUG "Successfully spawned entity ^5#%i^* as ^3#%i^*th instance of ^5%s\n",
 					spawnedEntity->s.number, spawnedEntity->eclass->instanceCounter, spawnedClass->name);
 
 		/*
@@ -644,14 +644,14 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 		if (!Q_stricmp(S_WORLDSPAWN, spawnedEntity->classname))
 		{
 #ifdef UNREALARENA
-			G_Printf( S_ERROR "a " S_COLOR_CYAN S_WORLDSPAWN S_COLOR_WHITE " class was misplaced into position " S_COLOR_CYAN "#%i" S_COLOR_WHITE " of the spawn string - Ignoring\n", spawnedEntity->s.number );
+			G_Printf( S_ERROR "a ^5" S_WORLDSPAWN "^7 class was misplaced into position ^5#%i^* of the spawn string - Ignoring\n", spawnedEntity->s.number );
 #else
-			G_Printf( S_ERROR "a " S_COLOR_CYAN S_WORLDSPAWN S_COLOR_WHITE " class was misplaced into position " S_COLOR_CYAN "#%i" S_COLOR_WHITE " of the spawn string – Ignoring\n", spawnedEntity->s.number );
+			G_Printf( S_ERROR "a ^5" S_WORLDSPAWN "^7 class was misplaced into position ^5#%i^* of the spawn string – Ignoring\n", spawnedEntity->s.number );
 #endif
 		}
 		else
 		{
-			G_Printf( S_ERROR "Unknown entity class \"" S_COLOR_CYAN "%s" S_COLOR_WHITE "\".\n", spawnedEntity->classname );
+			G_Printf( S_ERROR "Unknown entity class \"^5%s^*\".\n", spawnedEntity->classname );
 		}
 	}
 
@@ -953,9 +953,9 @@ bool G_WarnAboutDeprecatedEntityField( gentity_t *entity, const char *expectedFi
 		|| ( g_debugEntities.integer >= 1 && typeOfDeprecation >= ENT_V_TMPORARY) )
 		{
 #ifdef UNREALARENA
-			G_Printf( S_WARNING "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " contains deprecated field " S_COLOR_CYAN "%s" S_COLOR_WHITE " - use " S_COLOR_CYAN "%s" S_COLOR_WHITE " instead\n", entity->s.number, actualFieldname, expectedFieldname );
+			G_Printf( S_WARNING "Entity ^5#%i^* contains deprecated field ^5%s^* - use ^5%s^* instead\n", entity->s.number, actualFieldname, expectedFieldname );
 #else
-			G_Printf( S_WARNING "Entity " S_COLOR_CYAN "#%i" S_COLOR_WHITE " contains deprecated field " S_COLOR_CYAN "%s" S_COLOR_WHITE " — use " S_COLOR_CYAN "%s" S_COLOR_WHITE " instead\n", entity->s.number, actualFieldname, expectedFieldname );
+			G_Printf( S_WARNING "Entity ^5#%i^* contains deprecated field ^5%s^* — use ^5%s^* instead\n", entity->s.number, actualFieldname, expectedFieldname );
 #endif
 		}
 	}

@@ -934,7 +934,7 @@ AINodeStatus_t BotActionMoveTo( gentity_t *self, AIGenericNode_t *node )
 	
 	if ( moveTo->nparams > 1 )
 	{
-		radius = MAX( AIUnBoxFloat( moveTo->params[ 1 ] ), 0.0f );
+		radius = std::max( AIUnBoxFloat( moveTo->params[ 1 ] ), 0.0f );
 	}
 
 	if ( node != self->botMind->currentNode )
@@ -1296,7 +1296,7 @@ AINodeStatus_t BotActionBuy( gentity_t *self, AIGenericNode_t *node )
 
 		if ( weapon < WP_NONE || weapon >= WP_NUM_WEAPONS )
 		{
-			BotDPrintf( S_COLOR_YELLOW "WARNING: parameter 1 to action buy out of range\n" );
+			BotDPrintf( "^3WARNING: parameter 1 to action buy out of range\n" );
 			weapon = WP_NONE;
 		}
 
@@ -1309,7 +1309,7 @@ AINodeStatus_t BotActionBuy( gentity_t *self, AIGenericNode_t *node )
 
 			if ( upgrades[ numUpgrades ] <= UP_NONE || upgrades[ numUpgrades ] >= UP_NUM_UPGRADES )
 			{
-				BotDPrintf( S_COLOR_YELLOW "WARNING: parameter %d to action buy out of range\n", i + 1 );
+				BotDPrintf( "^3WARNING: parameter %d to action buy out of range\n", i + 1 );
 				continue;
 			}
 
