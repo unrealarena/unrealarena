@@ -44,14 +44,14 @@ linux-before_install() {
 linux-install() {
 	sudo apt-get -qq install cmake\
 	                         cmake-data\
-	                         gcc-4.7\
-	                         g++-4.7\
+	                         gcc-4.8\
+	                         g++-4.8\
 	                         libgl1-mesa-dev\
 	                         libx11-dev\
 	                         libxext-dev\
 	                         zip
-	sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.7 100\
-	                         --slave   /usr/bin/g++ g++ /usr/bin/g++-4.7
+	sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 100\
+	                         --slave   /usr/bin/g++ g++ /usr/bin/g++-4.8
 }
 
 # before_script
