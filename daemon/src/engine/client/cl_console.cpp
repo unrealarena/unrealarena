@@ -511,10 +511,17 @@ bool CL_InternalConsolePrint( const char *text )
 				}
 				else if ( wordtoken.Type() == Color::Token::CHARACTER )
 				{
+#ifdef UNREALARENA
+					if ( isspace( *wordtoken.Begin() ) )
+					{
+						break;
+					}
+#else
 					if ( std::isspace( *wordtoken.Begin() ) )
 					{
 						break;
 					}
+#endif
 					wordLen++;
 				}
 			}
