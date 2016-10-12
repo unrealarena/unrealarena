@@ -494,7 +494,7 @@ void CL_CaptureVoip()
 	{
 		if ( ( cl_voip->integer ) && ( Cvar_VariableIntegerValue( "rate" ) < 25000 ) )
 		{
-			Com_Printf( S_COLOR_YELLOW"%s",
+			Com_Printf( "%s%s", Color::CString( Color::Yellow )
 				       "Your network rate is too slow for VoIP.\n"
 				       "Set 'Data Rate' to 'LAN/Cable/xDSL' in 'Setup/System/Network' and restart.\n"
 				       "Until then, VoIP is disabled.\n" );
@@ -1370,7 +1370,6 @@ void CL_ShutdownAll()
 	cls.uiStarted = false;
 	cls.cgameStarted = false;
 	cls.rendererStarted = false;
-	cls.cgameCVarsRegistered = false;
 	cls.soundRegistered = false;
 
 	// Gordon: stop recording on map change etc, demos aren't valid over map changes anyway
@@ -2110,7 +2109,6 @@ void CL_Vid_Restart_f()
 	cls.rendererStarted = false;
 	cls.uiStarted = false;
 	cls.cgameStarted = false;
-	cls.cgameCVarsRegistered = false;
 	cls.soundRegistered = false;
 
 	// unpause so the cgame definitely gets a snapshot and renders a frame
@@ -2139,7 +2137,6 @@ void CL_Vid_Restart_f()
 	if ( cls.state > CA_CONNECTED && cls.state != CA_CINEMATIC )
 	{
 		cls.cgameStarted = true;
-		cls.cgameCVarsRegistered = true;
 		CL_InitCGame();
 	}
 }
@@ -2389,7 +2386,6 @@ void CL_DownloadsComplete()
 
 	// initialize the CGame
 	cls.cgameStarted = true;
-	cls.cgameCVarsRegistered = true;
 	CL_InitCGame();
 
 	CL_WritePacket();
@@ -3595,11 +3591,11 @@ void QDECL PRINTF_LIKE(2) CL_RefPrintf( int print_level, const char *fmt, ... )
 	}
 	else if ( print_level == PRINT_WARNING )
 	{
-		Com_Printf( S_COLOR_YELLOW "%s", msg );  // yellow
+		Com_Printf( "%s%s", Color::CString( Color::Yellow ), msg );  // yellow
 	}
 	else if ( print_level == PRINT_DEVELOPER )
 	{
-		Com_DPrintf( S_COLOR_RED "%s", msg );  // red
+		Com_DPrintf( "%s%s", Color::CString( Color::Red ), msg );  // red
 	}
 }
 
@@ -3688,12 +3684,6 @@ void CL_StartHunkUsers()
 		cls.soundRegistered = true;
 		//TODO
 		//S_BeginRegistration();
-	}
-
-	if ( !cls.cgameStarted && !cls.cgameCVarsRegistered )
-	{
-		cls.cgameCVarsRegistered = true;
-		CL_InitCGameCVars();
 	}
 
 	if ( !cls.uiStarted )
@@ -4752,27 +4742,6 @@ void CL_GetPing( int n, char *buf, int buflen, int *pingtime )
 	CL_SetServerInfoByAddress( cl_pinglist[ n ].adr, cl_pinglist[ n ].info, cl_pinglist[ n ].time );
 
 	*pingtime = time;
-}
-
-/*
-==================
-CL_GetPingInfo
-==================
-*/
-void CL_GetPingInfo( int n, char *buf, int buflen )
-{
-	if ( n < 0 || n >= MAX_PINGREQUESTS || !cl_pinglist[ n ].adr.port )
-	{
-		// invalid or empty slot
-		if ( buflen )
-		{
-			buf[ 0 ] = '\0';
-		}
-
-		return;
-	}
-
-	Q_strncpyz( buf, cl_pinglist[ n ].info, buflen );
 }
 
 /*

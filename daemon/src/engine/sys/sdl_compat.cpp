@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
+Copyright (c) 2013-2015, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,28 +27,21 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ===========================================================================
 */
+#if _MSC_VER >= 1900
+/* In versions of Visual Studio before VS2015, the streams in stdio.h were defined like
 
-#include "ConsoleHistory.h"
+    _CRTIMP FILE * __cdecl __iob_func(void);
+    #define stdin  (&__iob_func()[0])
+    #define stdout (&__iob_func()[1])
+    #define stderr (&__iob_func()[2])
 
-#ifndef FRAMEWORK_CONSOLE_FIELD_H_
-#define FRAMEWORK_CONSOLE_FIELD_H_
-
-namespace Console {
-
-    class Field : public Util::LineEditData {
-        public:
-            Field(int size);
-
-            void HistoryPrev();
-            void HistoryNext();
-
-            void RunCommand(Str::StringRef defaultCommand = "");
-            void AutoComplete();
-
-        private:
-            History hist;
-    };
-
+   In VS2015 __iob_func is no longer defined. It is referenced since SDL2 prints a message to 
+   stderr in an extremely unlikely situation. Mostly, we just want the link error to go 
+   away by defining something named __iob_func.
+*/
+extern "C" {
+    FILE* __iob_func(void) {
+        return stderr - 2;
+    }
 }
-
-#endif // FRAMEWORK_CONSOLE_FIELD_H_
+#endif  // _MSC_VER >= 1900

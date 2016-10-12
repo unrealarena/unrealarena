@@ -33,7 +33,7 @@ Keybinding command
 */
 static void CG_SizeUp_f()
 {
-	trap_Cvar_Set( "cg_viewsize", va( "%i", MIN( cg_viewsize.integer + 10, 100 ) ) );
+	trap_Cvar_Set( "cg_viewsize", va( "%i", std::min( cg_viewsize.integer + 10, 100 ) ) );
 }
 
 /*
@@ -45,7 +45,7 @@ Keybinding command
 */
 static void CG_SizeDown_f()
 {
-	trap_Cvar_Set( "cg_viewsize", va( "%i", MAX( cg_viewsize.integer - 10, 30 ) ) );
+	trap_Cvar_Set( "cg_viewsize", va( "%i", std::max( cg_viewsize.integer - 10, 30 ) ) );
 }
 
 /*
@@ -101,22 +101,26 @@ void CG_ClientList_f()
 		{
 #ifdef UNREALARENA
 			case TEAM_Q:
-				Com_Printf( "%2d " S_COLOR_RED "Q   " S_COLOR_WHITE "%s\n", i,
+				Com_Printf( "%2d %sQ   ^*%s\n", i,
+				            Color::CString( Color::Red ),
 				            ci->name );
 				break;
 
 			case TEAM_U:
-				Com_Printf( "%2d " S_COLOR_BLUE "U   " S_COLOR_WHITE "%s\n", i,
+				Com_Printf( "%2d %sU   ^*%s\n", i,
+				            Color::CString( Color::Blue ),
 				            ci->name );
 				break;
 #else
 			case TEAM_ALIENS:
-				Com_Printf( "%2d " S_COLOR_RED "A   " S_COLOR_WHITE "%s\n", i,
+				Com_Printf( "%2d %sA   ^*%s\n", i,
+				            Color::CString( Color::Red ),
 				            ci->name );
 				break;
 
 			case TEAM_HUMANS:
-				Com_Printf( "%2d " S_COLOR_CYAN "H   " S_COLOR_WHITE "%s\n", i,
+				Com_Printf( "%2d %sH   ^*%s\n", i,
+				            Color::CString( Color::Cyan ),
 				            ci->name );
 				break;
 #endif
@@ -277,7 +281,7 @@ static void CG_CompleteName()
 			continue;
 		}
 
-		trap_CompleteCallback( Q_CleanStr( name ) );
+		trap_CompleteCallback( Color::StripColors( name ) );
 	}
 }
 

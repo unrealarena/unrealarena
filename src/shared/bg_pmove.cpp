@@ -991,7 +991,7 @@ static bool PM_CheckPounce()
 				pitchToRef = M_PI_2 - acos( DotProduct( up, jumpDirection ) );
 
 				// use the advantageous pitch; allows using an upwards gradiant as a ramp
-				pitch = MIN( pitchToGround, pitchToRef );
+				pitch = std::min( pitchToGround, pitchToRef );
 
 				// pitches above 45° or below LEVEL1_POUNCE_MINPITCH will result in less than the maximum jump length
 				if ( pitch > M_PI_4 )
@@ -1240,7 +1240,7 @@ static bool PM_CheckJetpack()
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_CheckJetpack] " S_COLOR_CYAN "Jetpack enabled\n" );
+			Com_Printf( "[PM_CheckJetpack] %sJetpack enabled\n", Color::CString( Color::Cyan ) );
 		}
 
 		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ENABLED;
@@ -1256,7 +1256,7 @@ static bool PM_CheckJetpack()
 		{
 			if ( pm->debugLevel > 0 && pm->cmd.upmove < 10 )
 			{
-				Com_Printf( "[PM_CheckJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (jump key released)\n" );
+				Com_Printf( "[PM_CheckJetpack] %sJetpack thrust stopped (jump key released)\n", Color::CString( Color::LtOrange ) );
 			}
 
 			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
@@ -1271,7 +1271,7 @@ static bool PM_CheckJetpack()
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_CheckJetpack] " S_COLOR_RED "Can't start jetpack thrust (jetpack not enabled)\n" );
+			Com_Printf( "[PM_CheckJetpack] %sCan't start jetpack thrust (jetpack not enabled)\n", Color::CString( Color::Red ) );
 		}
 
 		return false;
@@ -1324,7 +1324,7 @@ static bool PM_CheckJetpack()
 		{
 			if ( pm->debugLevel > 0 )
 			{
-				Com_Printf( "[PM_CheckJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (out of fuel)\n" );
+				Com_Printf( "[PM_CheckJetpack] %sJetpack thrust stopped (out of fuel)\n", Color::CString( Color::LtOrange ) );
 			}
 
 			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
@@ -1345,7 +1345,7 @@ static bool PM_CheckJetpack()
 
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_CheckJetpack] " S_COLOR_GREEN "Jetpack thrust started\n" );
+			Com_Printf( "[PM_CheckJetpack] %sJetpack thrust started\n", Color::CString( Color::Green ) );
 		}
 
 		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ACTIVE;
@@ -1424,8 +1424,10 @@ static void PM_LandJetpack( bool force )
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_LandJetpack] " S_COLOR_LTORANGE "Jetpack thrust stopped (hit surface at %.0f°)%s\n", RAD2DEG( angle ),
-			            force ? S_COLOR_RED " (FORCED)" : "" );
+			Com_Printf( "[PM_LandJetpack] %sJetpack thrust stopped (hit surface at %.0f°)%s\n",
+			            Color::CString( Color::LtOrange ),
+			            RAD2DEG( angle ),
+			            force ? " ^1(FORCED)" : "" );
 		}
 
 		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
@@ -1440,8 +1442,10 @@ static void PM_LandJetpack( bool force )
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_LandJetpack] " S_COLOR_YELLOW "Jetpack disabled (hit surface at %.0f°)%s\n", RAD2DEG( angle ),
-			            force ? S_COLOR_RED " (FORCED)" : "" );
+			Com_Printf( "[PM_LandJetpack] %sJetpack disabled (hit surface at %.0f°)%s\n",
+			            Color::CString( Color::Yellow ),
+			            RAD2DEG( angle ),
+			            force ? " ^1(FORCED)" : "" );
 		}
 
 		pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_WARM;

@@ -182,7 +182,7 @@ static const gentity_t *G_FindKillAssist( const gentity_t *self, const gentity_t
 	damage = self->entity->Get<HealthComponent>()->MaxHealth() / 4.0f;
 	if ( killer )
 	{
-		damage = MIN( damage, self->credits[ killer - g_entities ].value );
+		damage = std::min( damage, self->credits[ killer - g_entities ].value );
 	}
 
 	for ( playerNum = 0; playerNum < level.maxclients; ++playerNum )
@@ -393,7 +393,7 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 
 	if ( assistant != ENTITYNUM_NONE )
 	{
-		G_LogPrintf( "Die: %d %d %s %d %d: %s" S_COLOR_WHITE " killed %s" S_COLOR_WHITE "; %s" S_COLOR_WHITE " assisted\n",
+		G_LogPrintf( "Die: %d %d %s %d %d: %s^* killed %s^*; %s^* assisted\n",
 		             killer,
 		             ( int )( self - g_entities ),
 		             obit,
@@ -405,7 +405,7 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 	}
 	else
 	{
-		G_LogPrintf( "Die: %d %d %s: %s" S_COLOR_WHITE " killed %s\n",
+		G_LogPrintf( "Die: %d %d %s: %s^* killed %s\n",
 		             killer,
 		             ( int )( self - g_entities ),
 		             obit,
@@ -784,13 +784,13 @@ void G_InitDamageLocations()
 
 		if ( !fileHandle )
 		{
-			G_Printf( S_COLOR_RED "file not found: %s\n", filename );
+			G_Printf( "^1file not found: %s\n", filename );
 			continue;
 		}
 
 		if ( len >= MAX_DAMAGE_REGION_TEXT )
 		{
-			G_Printf( S_COLOR_RED "file too large: %s is %i, max allowed is %i\n",
+			G_Printf( "^1file too large: %s is %i, max allowed is %i\n",
 			          filename, len, MAX_DAMAGE_REGION_TEXT );
 			trap_FS_FCloseFile( fileHandle );
 			continue;
@@ -1101,7 +1101,7 @@ void G_LogDestruction( gentity_t *self, gentity_t *actor, int mod )
 		return;
 	}
 
-	G_LogPrintf( S_COLOR_YELLOW "Deconstruct: %d %d %s %s: %s %s by %s\n",
+	G_LogPrintf( "^3Deconstruct: %d %d %s %s: %s %s by %s\n",
 	             ( int )( actor - g_entities ),
 	             ( int )( self - g_entities ),
 	             BG_Buildable( self->s.modelindex )->name,

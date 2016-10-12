@@ -42,7 +42,7 @@ void CG_LoadBeaconsConfig()
 
 	vw = cgs.glconfig.vidWidth;
 	vh = cgs.glconfig.vidHeight;
-	base = MIN( vw, vh );
+	base = std::min( vw, vh );
 
 	memset( bc, 0, sizeof( beaconsConfig_t ) );
 
@@ -559,41 +559,41 @@ static void DrawBeacon( cbeacon_t *b )
 #ifdef UNREALARENA
 			case TEAM_Q:
 				if ( b->flags & EF_BC_ENEMY )
-					Vector4Copy( cgs.bc.colorU, b->color );
+					b->color = cgs.bc.colorU;
 				else
-					Vector4Copy( cgs.bc.colorQ, b->color );
+					b->color = cgs.bc.colorQ;
 				break;
 			case TEAM_U:
 				if ( b->flags & EF_BC_ENEMY )
-					Vector4Copy( cgs.bc.colorQ, b->color );
+					b->color = cgs.bc.colorQ;
 				else
-					Vector4Copy( cgs.bc.colorU, b->color );
+					b->color = cgs.bc.colorU;
 				break;
 #else
 			case TEAM_ALIENS:
 				if ( b->flags & EF_BC_ENEMY )
-					Vector4Copy( cgs.bc.colorHuman, b->color );
+					b->color = cgs.bc.colorHuman;
 				else
-					Vector4Copy( cgs.bc.colorAlien, b->color );
+					b->color = cgs.bc.colorAlien;
 				break;
 			case TEAM_HUMANS:
 				if ( b->flags & EF_BC_ENEMY )
-					Vector4Copy( cgs.bc.colorAlien, b->color );
+					b->color = cgs.bc.colorAlien;
 				else
-					Vector4Copy( cgs.bc.colorHuman, b->color );
+					b->color = cgs.bc.colorHuman;
 				break;
 #endif
 			default:
-				Vector4Copy( cgs.bc.colorNeutral, b->color );
+				b->color = cgs.bc.colorNeutral;
 				break;
 		}
 	}
 	else
-		Vector4Copy( cgs.bc.colorNeutral, b->color );
-	b->color[ 3 ] *= alpha;
+		b->color = cgs.bc.colorNeutral;
+	b->color.SetAlpha( b->color.Alpha() * alpha );
 
-	if( b->color[ 3 ] > 1.0f )
-		b->color[ 3 ] = 1.0f;
+	if( b->color.Alpha() > 1.0f )
+		b->color.SetAlpha( 1.0f );
 
 	// calculate HUD size
 	b->size = cgs.bc.hudSize / sqrt( b->dist );

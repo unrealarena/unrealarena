@@ -378,7 +378,6 @@ void     Cmd_AddCommand( const char *cmd_name, xcommand_t function );
 // as a clc_clientCommand instead of executed locally
 
 void Cmd_RemoveCommand( const char *cmd_name );
-void Cmd_RemoveCommandsByFunc( xcommand_t function );
 
 void Cmd_CommandCompletion( void ( *callback )( const char *s ) );
 
@@ -398,11 +397,8 @@ void Cmd_CompleteCfgName( char *args, int argNum );
 void Cmd_PrintUsage( const char *syntax, const char *description );
 int  Cmd_Argc();
 const char *Cmd_Argv( int arg );
-void Cmd_ArgvBuffer( int arg, char *buffer, int bufferLength );
 char *Cmd_Args();
 char *Cmd_ArgsFrom( int arg );
-void Cmd_EscapedArgsBuffer( char* buffer, int bufferLength ); // from index 0
-void Cmd_LiteralArgsBuffer( char* buffer, int bufferLength );
 const char *Cmd_Cmd();
 const char *Cmd_Cmd_FromNth( int );
 
@@ -417,7 +413,6 @@ void Cmd_QuoteStringBuffer( const char *in, char *buffer, int size );
 // if arg >= argc, so string operations are always safe.
 
 void Cmd_TokenizeString( const char *text );
-void Cmd_LiteralArgsBuffer( char *buffer, int bufferLength );
 void Cmd_SaveCmdContext();
 void Cmd_RestoreCmdContext();
 
@@ -551,6 +546,8 @@ void IN_Restart();
 void IN_Shutdown();
 bool IN_IsNumLockDown();
 void IN_DropInputsForFrame();
+void IN_CenterMouse();
+void IN_SetCursorActive( bool active );
 
 /*
 ==============================================================
@@ -635,7 +632,6 @@ unsigned   Com_BlockChecksum( const void *buffer, int length );
 char       *Com_MD5File( const char *filename, int length );
 void       Com_MD5Buffer( const char *pubkey, int size, char *buffer, int bufsize );
 int        Com_FilterPath( const char *filter, char *name, int casesensitive );
-bool   Com_SafeMode();
 
 bool   Com_IsVoipTarget( uint8_t *voipTargets, int voipTargetsSize, int clientNum );
 
@@ -745,7 +741,6 @@ bool Hunk_CheckMark();
 void   Hunk_ClearTempMemory();
 void   *Hunk_AllocateTempMemory( int size );
 void   Hunk_FreeTempMemory( void *buf );
-int    Hunk_MemoryRemaining();
 void   Hunk_SmallLog();
 void   Hunk_Log();
 
@@ -783,6 +778,7 @@ void     CL_CharEvent( int c );
 // char events are for field typing, not game control
 
 void CL_MouseEvent( int dx, int dy, int time );
+void CL_MousePosEvent( int dx, int dy);
 
 void CL_JoystickEvent( int axis, int value, int time );
 
@@ -863,6 +859,7 @@ typedef enum
   SE_KEY, // evValue is a key code, evValue2 is the down flag
   SE_CHAR, // evValue is an ascii char
   SE_MOUSE, // evValue and evValue2 are relative, signed x / y moves
+  SE_MOUSE_POS, // evValue and evValue2 are (x, y) coordinates
   SE_JOYSTICK_AXIS, // evValue is an axis number and evValue2 is the current state (-127 to 127)
   SE_CONSOLE, // evPtr is a char*
   SE_PACKET // evPtr is a netadr_t followed by data bytes to evPtrLength
@@ -897,12 +894,9 @@ void         CON_Init_TTY();
 char         *CON_Input();
 void         CON_Print( const char *message );
 
-void         CON_LogDump();
-
 // Console - other
 unsigned int CON_LogSize();
 unsigned int CON_LogWrite( const char *in );
-unsigned int CON_LogRead( char *out, unsigned int outSize );
 
 /* This is based on the Adaptive Huffman algorithm described in Sayood's Data
  * Compression book.  The ranks are not actually stored, but implicitly defined

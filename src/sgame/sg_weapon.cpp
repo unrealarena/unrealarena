@@ -1804,7 +1804,7 @@ void G_WeightAttack( gentity_t *self, gentity_t *victim )
 	attackerMass = BG_Class( self->client->pers.classSelection )->mass;
 	victimMass = BG_Class( victim->client->pers.classSelection )->mass;
 #endif
-	weightDPS = WEIGHTDMG_DMG_MODIFIER * MAX( attackerMass - victimMass, 0 );
+	weightDPS = WEIGHTDMG_DMG_MODIFIER * std::max( attackerMass - victimMass, 0 );
 
 	if ( weightDPS > WEIGHTDMG_DPS_THRESHOLD )
 	{

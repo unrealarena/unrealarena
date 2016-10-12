@@ -163,7 +163,7 @@ static bool CG_ParseMinimap( minimap_t* m, const char* filename )
     m->nZones = 0;
     m->lastZone = -1;
     m->scale = 1.0f;
-    m->bgColor[3] = 0.333f; // black, approx. 1/3 opacity
+    m->bgColor.SetAlpha( 0.333f ); // black, approx. 1/3 opacity
 
     if( !BG_ReadWholeFile( filename, text_buffer, sizeof(text_buffer) ) )
     {
@@ -206,7 +206,7 @@ static bool CG_ParseMinimap( minimap_t* m, const char* filename )
         }
         else if( !Q_stricmp( token, "backgroundColor") )
         {
-            if( !ParseFloats( m->bgColor, 4, &text) )
+            if( !ParseFloats( m->bgColor.ToArray(), 4, &text) )
             {
                 CG_Printf( S_ERROR "error while parsing 'backgroundColor' in %s\n", filename );
                 return false;
@@ -248,7 +248,7 @@ CG_IsInMinimapZone
 */
 static bool CG_IsInMinimapZone(const minimapZone_t* z)
 {
-    return PointInBounds(cg.refdef.vieworg, z->boundsMin, z->boundsMax);
+    return BoundsIntersectPoint(cg.refdef.vieworg, z->boundsMin, z->boundsMax);
 }
 
 //The parameters for the current frame's minimap transform
@@ -341,10 +341,10 @@ static float CG_WorldToMinimapScale( const float scale )
 CG_SetMinimapColor
 ================
 */
-static vec4_t currentMinimapColor;
-static void CG_SetMinimapColor( const vec4_t color)
+static Color::Color currentMinimapColor;
+static void CG_SetMinimapColor( const Color::Color& color)
 {
-    VectorCopy( color, currentMinimapColor );
+    currentMinimapColor = color;
 }
 
 /*
@@ -366,7 +366,7 @@ static void CG_DrawMinimapObject( const qhandle_t image, const vec3_t pos3d, con
     wh = texSize * realScale;
 
     //Handle teamcolor + transparency
-    currentMinimapColor[3] = alpha;
+    currentMinimapColor.SetAlpha( alpha );
     trap_R_SetColor( currentMinimapColor );
 
     trap_R_DrawRotatedPic( x, y, wh, wh, 0.0, 0.0, 1.0, 1.0, image, realAngle );
@@ -475,7 +475,7 @@ static void CG_MinimapUpdateTeammateFadingAndPos( centity_t* mate )
     {
         if( state->minimapFading != 0.0f )
         {
-            state->minimapFading = MAX( 0.0f, state->minimapFading - cg.frametime * MINIMAP_FADE_TIME );
+            state->minimapFading = std::max( 0.0f, state->minimapFading - cg.frametime * MINIMAP_FADE_TIME );
         }
 
         if( state->minimapFading == 0.0f )
@@ -496,7 +496,7 @@ static void CG_MinimapUpdateTeammateFadingAndPos( centity_t* mate )
         {
             if( state->minimapFading != 1.0f )
             {
-                state->minimapFading = MIN( 1.0f, state->minimapFading + cg.frametime * MINIMAP_FADE_TIME );
+                state->minimapFading = std::min( 1.0f, state->minimapFading + cg.frametime * MINIMAP_FADE_TIME );
             }
 
             //Copy the current state so that we can use it once the player is out of the PVS
@@ -525,11 +525,7 @@ static void CG_MinimapDrawTeammates( const minimap_t* m )
 
         int clientNum = mate->currentState.clientNum;
 
-#ifdef UNREALARENA
-        bool isTeammate = mate->currentState.eType == ET_PLAYER && clientNum >= 0 && clientNum < MAX_CLIENTS && (mate->currentState.misc) == ownTeam;
-#else
         bool isTeammate = mate->currentState.eType == ET_PLAYER && clientNum >= 0 && clientNum < MAX_CLIENTS && (mate->currentState.misc & 0x00FF) == ownTeam;
-#endif
 
         if ( !isTeammate )
         {
@@ -557,7 +553,6 @@ static void CG_MinimapDrawBeacon( const cbeacon_t *b, float size, const vec2_t c
 {
 	vec2_t offset, pos2d, dir;
 	bool clamped;
-	vec4_t color;
 
 	size *= b->scale;
 
@@ -581,8 +576,8 @@ static void CG_MinimapDrawBeacon( const cbeacon_t *b, float size, const vec2_t c
 	else
 		clamped = false;
 
-	Vector4Copy( b->color, color );
-	color[ 3 ] *= cgs.bc.minimapAlpha;
+	Color::Color color = b->color;
+	color.SetAlpha( cgs.bc.minimapAlpha );
 	trap_R_SetColor( color );
 
 	trap_R_DrawRotatedPic( pos2d[ 0 ], pos2d[ 1 ], size, size, 0.0, 0.0, 1.0, 1.0, CG_BeaconIcon( b ), 0.0 );
@@ -664,7 +659,7 @@ void CG_InitMinimap()
 CG_DrawMinimap
 ================
 */
-void CG_DrawMinimap( const rectDef_t* rect640, const vec4_t teamColor )
+void CG_DrawMinimap( const rectDef_t* rect640, const Color::Color& teamColor )
 {
     minimap_t* m = &cg.minimap;
     minimapZone_t *z = nullptr;
@@ -702,5 +697,5 @@ void CG_DrawMinimap( const rectDef_t* rect640, const vec4_t teamColor )
     CG_MinimapDrawBeacons( &rect );
 
     //Reset the color for other hud elements
-    trap_R_SetColor( nullptr );
+    trap_R_ClearColor();
 }

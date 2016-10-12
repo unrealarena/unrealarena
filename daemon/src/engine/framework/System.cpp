@@ -386,16 +386,7 @@ static void StartSignalThread()
 // Command line arguments
 struct cmdlineArgs_t {
 	cmdlineArgs_t()
-		: homePath(FS::DefaultHomePath()), libPath(FS::DefaultBasePath()), reset_config(false), use_curses(false)
-	{
-#if defined(_WIN32)
-		// The windows dedicated server and tty client must enable the curses
-		// interface because they have no other usable interface.
-		use_curses = true;
-#else
-        use_curses = Application::GetTraits().useCurses;
-#endif
-	}
+		: homePath(FS::DefaultHomePath()), libPath(FS::DefaultBasePath()), reset_config(false), use_curses(Application::GetTraits().useCurses) {}
 
 	std::string homePath;
 	std::string libPath;
@@ -637,7 +628,7 @@ static void Init(int argc, char** argv)
 		Cvar::SetValue(cvar.first, cvar.second);
 
 	// Load the console history
-	Console::LoadHistory();
+	Console::History::Load();
 
 	// Legacy initialization code, needs to be replaced
 	// TODO: eventually move all of Com_Init into here

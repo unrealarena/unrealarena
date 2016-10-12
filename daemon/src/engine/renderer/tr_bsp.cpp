@@ -903,12 +903,10 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, bspSurface_t *surf, in
 		cv->verts[ i ].lightmap[ 0 ] = FatPackU( LittleFloat( verts[ i ].lightmap[ 0 ] ), realLightmapNum );
 		cv->verts[ i ].lightmap[ 1 ] = FatPackV( LittleFloat( verts[ i ].lightmap[ 1 ] ), realLightmapNum );
 
-		for ( j = 0; j < 4; j++ )
-		{
-			cv->verts[ i ].lightColor[ j ] = verts[ i ].color[ j ];
-		}
+		cv->verts[ i ].lightColor = Color::Adapt( verts[ i ].color );
 
-		R_ColorShiftLightingBytes( cv->verts[ i ].lightColor, cv->verts[ i ].lightColor );
+
+		R_ColorShiftLightingBytes( cv->verts[ i ].lightColor.ToArray(), cv->verts[ i ].lightColor.ToArray() );
 	}
 
 	// copy triangles
@@ -932,7 +930,7 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, bspSurface_t *surf, in
 		updated = false;
 
 		for( i = 0, tri = cv->triangles; i < numTriangles; i++, tri++ ) {
-			int minVertex = MIN( MIN( components[ tri->indexes[ 0 ] ].minVertex,
+			int minVertex = std::min( std::min( components[ tri->indexes[ 0 ] ].minVertex,
 						  components[ tri->indexes[ 1 ] ].minVertex ),
 					     components[ tri->indexes[ 2 ] ].minVertex );
 			for( j = 0; j < 3; j++ ) {
@@ -940,13 +938,13 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, bspSurface_t *surf, in
 				if( components[ vertex ].minVertex != minVertex ) {
 					updated = true;
 					components[ vertex ].minVertex = minVertex;
-					components[ minVertex ].stBounds[ 0 ][ 0 ] = MIN( components[ minVertex ].stBounds[ 0 ][ 0 ],
+					components[ minVertex ].stBounds[ 0 ][ 0 ] = std::min( components[ minVertex ].stBounds[ 0 ][ 0 ],
 											  components[ vertex ].stBounds[ 0 ][ 0 ] );
-					components[ minVertex ].stBounds[ 0 ][ 1 ] = MIN( components[ minVertex ].stBounds[ 0 ][ 1 ],
+					components[ minVertex ].stBounds[ 0 ][ 1 ] = std::min( components[ minVertex ].stBounds[ 0 ][ 1 ],
 											  components[ vertex ].stBounds[ 0 ][ 1 ] );
-					components[ minVertex ].stBounds[ 1 ][ 0 ] = MAX( components[ minVertex ].stBounds[ 1 ][ 0 ],
+					components[ minVertex ].stBounds[ 1 ][ 0 ] = std::max( components[ minVertex ].stBounds[ 1 ][ 0 ],
 											  components[ vertex ].stBounds[ 1 ][ 0 ] );
-					components[ minVertex ].stBounds[ 1 ][ 1 ] = MAX( components[ minVertex ].stBounds[ 1 ][ 1 ],
+					components[ minVertex ].stBounds[ 1 ][ 1 ] = std::max( components[ minVertex ].stBounds[ 1 ][ 1 ],
 											  components[ vertex ].stBounds[ 1 ][ 1 ] );
 				}
 			}
@@ -1090,19 +1088,16 @@ static void ParseMesh( dsurface_t *ds, drawVert_t *verts, bspSurface_t *surf )
 			points[ i ].st[ j ] = LittleFloat( verts[ i ].st[ j ] );
 			points[ i ].lightmap[ j ] = LittleFloat( verts[ i ].lightmap[ j ] );
 
-			stBounds[ 0 ][ j ] = MIN( stBounds[ 0 ][ j ], points[ i ].st[ j ] );
-			stBounds[ 1 ][ j ] = MAX( stBounds[ 1 ][ j ], points[ i ].st[ j ] );
+			stBounds[ 0 ][ j ] = std::min( stBounds[ 0 ][ j ], points[ i ].st[ j ] );
+			stBounds[ 1 ][ j ] = std::max( stBounds[ 1 ][ j ], points[ i ].st[ j ] );
 		}
 
 		points[ i ].lightmap[ 0 ] = FatPackU( LittleFloat( verts[ i ].lightmap[ 0 ] ), realLightmapNum );
 		points[ i ].lightmap[ 1 ] = FatPackV( LittleFloat( verts[ i ].lightmap[ 1 ] ), realLightmapNum );
 
-		for ( j = 0; j < 4; j++ )
-		{
-			points[ i ].lightColor[ j ] = verts[ i ].color[ j ];
-		}
+		points[ i ].lightColor = Color::Adapt( verts[ i ].color );
 
-		R_ColorShiftLightingBytes( points[ i ].lightColor, points[ i ].lightColor );
+		R_ColorShiftLightingBytes( points[ i ].lightColor.ToArray(), points[ i ].lightColor.ToArray() );
 	}
 
 	// center texture coords
@@ -1224,12 +1219,9 @@ static void ParseTriSurf( dsurface_t *ds, drawVert_t *verts, bspSurface_t *surf,
 			components[ i ].stBounds[ 1 ][ j ] = cv->verts[ i ].st[ j ];
 		}
 
-		for ( j = 0; j < 4; j++ )
-		{
-			cv->verts[ i ].lightColor[ j ] = verts[ i ].color[ j ];
-		}
+			cv->verts[ i ].lightColor = Color::Adapt( verts[ i ].color );
 
-		R_ColorShiftLightingBytes( cv->verts[ i ].lightColor, cv->verts[ i ].lightColor );
+		R_ColorShiftLightingBytes( cv->verts[ i ].lightColor.ToArray(), cv->verts[ i ].lightColor.ToArray() );
 	}
 
 	// copy triangles
@@ -1253,7 +1245,7 @@ static void ParseTriSurf( dsurface_t *ds, drawVert_t *verts, bspSurface_t *surf,
 		updated = false;
 
 		for( i = 0, tri = cv->triangles; i < numTriangles; i++, tri++ ) {
-			int minVertex = MIN( MIN( components[ tri->indexes[ 0 ] ].minVertex,
+			int minVertex = std::min( std::min( components[ tri->indexes[ 0 ] ].minVertex,
 						  components[ tri->indexes[ 1 ] ].minVertex ),
 					     components[ tri->indexes[ 2 ] ].minVertex );
 			for( j = 0; j < 3; j++ ) {
@@ -1261,13 +1253,13 @@ static void ParseTriSurf( dsurface_t *ds, drawVert_t *verts, bspSurface_t *surf,
 				if( components[ vertex ].minVertex != minVertex ) {
 					updated = true;
 					components[ vertex ].minVertex = minVertex;
-					components[ minVertex ].stBounds[ 0 ][ 0 ] = MIN( components[ minVertex ].stBounds[ 0 ][ 0 ],
+					components[ minVertex ].stBounds[ 0 ][ 0 ] = std::min( components[ minVertex ].stBounds[ 0 ][ 0 ],
 											  components[ vertex ].stBounds[ 0 ][ 0 ] );
-					components[ minVertex ].stBounds[ 0 ][ 1 ] = MIN( components[ minVertex ].stBounds[ 0 ][ 1 ],
+					components[ minVertex ].stBounds[ 0 ][ 1 ] = std::min( components[ minVertex ].stBounds[ 0 ][ 1 ],
 											  components[ vertex ].stBounds[ 0 ][ 1 ] );
-					components[ minVertex ].stBounds[ 1 ][ 0 ] = MAX( components[ minVertex ].stBounds[ 1 ][ 0 ],
+					components[ minVertex ].stBounds[ 1 ][ 0 ] = std::max( components[ minVertex ].stBounds[ 1 ][ 0 ],
 											  components[ vertex ].stBounds[ 1 ][ 0 ] );
-					components[ minVertex ].stBounds[ 1 ][ 1 ] = MAX( components[ minVertex ].stBounds[ 1 ][ 1 ],
+					components[ minVertex ].stBounds[ 1 ][ 1 ] = std::max( components[ minVertex ].stBounds[ 1 ][ 1 ],
 											  components[ vertex ].stBounds[ 1 ][ 1 ] );
 				}
 			}
@@ -2689,9 +2681,10 @@ static void CopyVert( const srfVert_t *in, srfVert_t *out )
 		out->lightmap[ j ] = in->lightmap[ j ];
 	}
 
+	out->lightColor = in->lightColor;
+
 	for ( j = 0; j < 4; j++ )
 	{
-		out->lightColor[ j ] = in->lightColor[ j ];
 		out->qtangent[ j ] = in->qtangent[ j ];
 	}
 }
@@ -3814,10 +3807,9 @@ static void R_LoadFogs( lump_t *l, lump_t *brushesLump, lump_t *sidesLump )
 
 		out->fogParms = shader->fogParms;
 
-		out->color[ 0 ] = shader->fogParms.color[ 0 ] * tr.identityLight;
-		out->color[ 1 ] = shader->fogParms.color[ 1 ] * tr.identityLight;
-		out->color[ 2 ] = shader->fogParms.color[ 2 ] * tr.identityLight;
-		out->color[ 3 ] = 1;
+		out->color = Color::Adapt( shader->fogParms.color );
+		out->color *= tr.identityLight;
+		out->color.SetAlpha( 1 );
 
 		d = shader->fogParms.depthForOpaque < 1 ? 1 : shader->fogParms.depthForOpaque;
 		out->tcScale = 1.0f / ( d * 8 );

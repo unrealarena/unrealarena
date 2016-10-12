@@ -1928,7 +1928,7 @@ void G_AdminMessage( gentity_t *ent, const char *msg )
 	}
 
 	// Send to the logfile and server console
-	G_LogPrintf( "%s: %d \"%s" S_COLOR_WHITE "\": " S_COLOR_MAGENTA "%s\n",
+	G_LogPrintf( "%s: %d \"%s^*\": ^6%s\n",
 	             G_admin_permission( ent, ADMF_ADMINCHAT ) ? "AdminMsg" : "AdminMsgPublic",
 	             ent ? ( int )( ent - g_entities ) : -1, ent ? ent->client->pers.netname : "console",
 	             msg );
@@ -1974,7 +1974,7 @@ void QDECL PRINTF_LIKE(1) G_LogPrintf( const char *fmt, ... )
 		return;
 	}
 
-	G_DecolorString( string, decolored, sizeof( decolored ) );
+	Color::StripColors( string, decolored, sizeof( decolored ) );
 	trap_FS_Write( decolored, strlen( decolored ), level.logFile );
 }
 
@@ -2235,7 +2235,7 @@ static void G_LogGameplayStats( int state )
 
 	if ( state == LOG_GAMEPLAY_STATS_BODY )
 	{
-		nextCalculation = level.time + MAX( 1, g_logGameplayStatsFrequency.integer ) * 1000;
+		nextCalculation = level.time + std::max( 1, g_logGameplayStatsFrequency.integer ) * 1000;
 	}
 	else
 	{
