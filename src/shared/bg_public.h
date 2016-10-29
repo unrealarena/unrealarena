@@ -1538,6 +1538,8 @@ bool                    BG_ClassHasAbility( int pClass, int ability );
 
 int                         BG_ClassCanEvolveFromTo(int from, int to, int credits);
 bool                    BG_AlienCanEvolve(int from, int credits);
+
+int                       BG_GetBarbRegenerationInterval(const playerState_t& ps);
 #endif
 
 weapon_t                  BG_WeaponNumberByName( const char *name );
