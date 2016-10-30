@@ -207,8 +207,7 @@ namespace Cvar {
             }
 
             //The user creates a new cvar through a command.
-            cvarRecord_t cvar{value, value, flags | CVAR_USER_CREATED, "user created", nullptr, {}};
-            cvars[cvarName] = new cvarRecord_t(std::move(cvar));
+            cvars[cvarName] = new cvarRecord_t{value, value, flags | CVAR_USER_CREATED, "user created", nullptr, {}};
             Cmd::AddCommand(cvarName, cvarCommand, "cvar - user created");
             GetCCvar(cvarName, *cvars[cvarName]);
 
@@ -231,8 +230,7 @@ namespace Cvar {
                 }
             }
 
-            std::string oldValue = std::move(cvar->value);
-            cvar->value = std::move(value);
+            std::swap(cvar->value, value);
             cvar->flags |= flags;
 
             // mark for archival if flagged as archive-on-change
@@ -250,7 +248,7 @@ namespace Cvar {
                     //The proxy could not parse the value, rollback
                     Log::Notice("Value '%s' is not valid for cvar %s: %s\n",
                             cvar->value.c_str(), cvarName.c_str(), result.description.c_str());
-                    cvar->value = std::move(oldValue);
+                    cvar->value = value;
                 }
             }
             SetCCvar(*cvar);
@@ -259,12 +257,12 @@ namespace Cvar {
     }
 
     // Simple proxies for SetValueInternal
-    void SetValue(const std::string& cvarName, std::string value) {
-        InternalSetValue(cvarName, std::move(value), 0, false, true);
+    void SetValue(const std::string& cvarName, const std::string& value) {
+        InternalSetValue(cvarName, value, 0, false, true);
     }
 
-    void SetValueForce(const std::string& cvarName, std::string value) {
-        InternalSetValue(cvarName, std::move(value), 0, true, true);
+    void SetValueForce(const std::string& cvarName, const std::string& value) {
+        InternalSetValue(cvarName, value, 0, true, true);
     }
 
     std::string GetValue(const std::string& cvarName) {
@@ -291,8 +289,7 @@ namespace Cvar {
             }
 
             //Create the cvar and parse its default value
-            cvarRecord_t temp{defaultValue, defaultValue, flags, "", proxy, {}};
-            cvar = new cvarRecord_t(std::move(temp));
+            cvar = new cvarRecord_t{defaultValue, defaultValue, flags, description, proxy, {}};
             cvars[name] = cvar;
 
             Cmd::AddCommand(name, cvarCommand, "cvar - \"" + defaultValue + "\" - " + description);
@@ -309,7 +306,7 @@ namespace Cvar {
             cvar->flags |= flags;
             cvar->proxy = proxy;
 
-            cvar->resetValue = std::move(defaultValue);
+            cvar->resetValue = defaultValue;
             cvar->description = "";
 
             /*
@@ -484,8 +481,8 @@ namespace Cvar {
         return info;
     }
 
-    void SetValueCProxy(const std::string& cvarName, std::string value) {
-        InternalSetValue(cvarName, std::move(value), 0, true, false);
+    void SetValueCProxy(const std::string& cvarName, const std::string& value) {
+        InternalSetValue(cvarName, value, 0, true, false);
     }
 
     /*

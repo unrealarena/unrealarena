@@ -43,12 +43,12 @@
 #define PRODUCT_VERSION         "0.1-3"
 
 #define ENGINE_NAME             "Daemon Engine"
-#define ENGINE_VERSION          "0.45.0"
+#define ENGINE_VERSION          "0.46.0"
 #else
 #define PRODUCT_NAME            "Unvanquished"
 #define PRODUCT_NAME_UPPER      "UNVANQUISHED" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unvanquished" // No case, No spaces
-#define PRODUCT_VERSION         "0.45"
+#define PRODUCT_VERSION         "0.46"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          PRODUCT_VERSION
@@ -1713,22 +1713,6 @@ void         ByteToDir( int b, vec3_t dir );
 		int          integer;
 		char         string[ MAX_CVAR_VALUE_STRING ];
 	} vmCvar_t;
-
-	/*
-	==============================================================
-
-	VoIP
-
-	==============================================================
-	*/
-
-// if you change the count of flags be sure to also change VOIP_FLAGNUM
-#define VOIP_SPATIAL 0x01 // spatialized voip message
-#define VOIP_DIRECT  0x02 // non-spatialized voip message
-
-// number of flags voip knows. You will have to bump protocol version number if you
-// change this.
-#define VOIP_FLAGCNT 2
 
 	/*
 	==============================================================
