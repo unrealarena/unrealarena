@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2015-2016  Unreal Arena
+# Copyright (C) 2015-2017  Unreal Arena
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,23 +35,14 @@ fi
 
 # before_install
 linux-before_install() {
-	sudo add-apt-repository -y ppa:nschloe/cmake-backports
-	sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 	sudo apt-get -qq update
 }
 
 # install
 linux-install() {
-	sudo apt-get -qq install cmake\
-	                         cmake-data\
-	                         gcc-4.8\
-	                         g++-4.8\
-	                         libgl1-mesa-dev\
+	sudo apt-get -qq install libgl1-mesa-dev\
 	                         libx11-dev\
-	                         libxext-dev\
-	                         zip
-	sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 100\
-	                         --slave   /usr/bin/g++ g++ /usr/bin/g++-4.8
+	                         libxext-dev
 }
 
 # before_script
@@ -67,15 +58,14 @@ linux-script() {
 	                          -DBUILD_GAME_NATIVE_EXE=0\
 	                          -DBUILD_GAME_NATIVE_DLL=0\
 	                          ..
-	cmake --build . -- -j8 || cmake --build . -- VERBOSE=1
+	cmake --build . -- -j8 ||
+	cmake --build . -- VERBOSE=1
 }
 
 # before_deploy
 linux-before_deploy() {
-	curl -Ls "http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz" |
-		gunzip > build/GeoIP.dat
-	curl -Ls "http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz" |
-		gunzip > build/GeoIPv6.dat
+	curl -Ls "http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz" | gunzip > build/GeoIP.dat
+	curl -Ls "http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz"              | gunzip > build/GeoIPv6.dat
 	cd build
 	zip -r9 --symlinks "../unrealarena-${TRAVIS_OS_NAME}.pre.zip" daemon\
 	                                                              daemonded\
@@ -127,7 +117,8 @@ osx-script() {
 	                          -DBUILD_GAME_NACL=0\
 	                          -DBUILD_TTY_CLIENT=0\
 	                          ..
-	cmake --build . -- -j8 || cmake --build . -- VERBOSE=1
+	cmake --build . -- -j8 ||
+	cmake --build . -- VERBOSE=1
 }
 
 # before_deploy

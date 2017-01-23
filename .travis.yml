@@ -1,8 +1,11 @@
 language: cpp
 
-compiler: gcc
-
-sudo: required
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
+    - os: osx
 
 notifications:
   irc:
@@ -13,24 +16,20 @@ notifications:
       - "%{build_url}"
       - "%{compare_url}"
 
-os:
-  - linux
-  - osx
-
 before_install:
-  - ./.travis.sh "before_install"
+  - ./.travis.sh before_install
 
 install:
-  - ./.travis.sh "install"
+  - ./.travis.sh install
 
 before_script:
-  - ./.travis.sh "before_script"
+  - ./.travis.sh before_script
 
 script:
-  - ./.travis.sh "script"
+  - ./.travis.sh script
 
 before_deploy:
-  - ./.travis.sh "before_deploy"
+  - ./.travis.sh before_deploy
 
 deploy:
   provider: releases
