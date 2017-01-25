@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2017  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -40,7 +40,7 @@
 #define PRODUCT_NAME            "Unreal Arena"
 #define PRODUCT_NAME_UPPER      "UNREALARENA" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unrealarena" // No case, No spaces
-#define PRODUCT_VERSION         "0.1-3"
+#define PRODUCT_VERSION         "0.1-4"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          "0.46.0"
