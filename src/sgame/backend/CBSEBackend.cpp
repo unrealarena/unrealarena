@@ -53,6 +53,7 @@ bool Entity::Damage(int amount, gentity_t* source, Util::optional<Vec3> location
 }
 
 std::set<ClientComponent*> ClientComponentBase::allSet;
+std::set<SpectatorComponent*> SpectatorComponentBase::allSet;
 std::set<HealthComponent*> HealthComponentBase::allSet;
 std::set<KnockbackComponent*> KnockbackComponentBase::allSet;
 
@@ -65,6 +66,7 @@ std::set<KnockbackComponent*> KnockbackComponentBase::allSet;
 
 // EmptyEntity's component offset vtable.
 const int EmptyEntity::componentOffsets[] = {
+	0,
 	0,
 	0,
 	0,
@@ -94,6 +96,7 @@ const int ClientEntity::componentOffsets[] = {
 	myoffsetof(ClientEntity, c_ClientComponent),
 	0,
 	0,
+	0,
 };
 
 // ClientEntity's message dispatcher vtable.
@@ -113,20 +116,58 @@ ClientEntity::ClientEntity(Params params)
 ClientEntity::~ClientEntity()
 {}
 
+// SpectatorEntity
+// ---------
+
+// SpectatorEntity's component offset vtable.
+const int SpectatorEntity::componentOffsets[] = {
+	myoffsetof(SpectatorEntity, c_ClientComponent),
+	myoffsetof(SpectatorEntity, c_SpectatorComponent),
+	0,
+	0,
+};
+
+// SpectatorEntity's PrepareNetCode message dispatcher.
+void h_Spectator_PrepareNetCode(Entity* _entity, const void* ) {
+	SpectatorEntity* entity = (SpectatorEntity*) _entity;
+	entity->c_SpectatorComponent.HandlePrepareNetCode();
+}
+
+// SpectatorEntity's message dispatcher vtable.
+const MessageHandler SpectatorEntity::messageHandlers[] = {
+	h_Spectator_PrepareNetCode,
+	nullptr,
+	nullptr,
+};
+
+// SpectatorEntity's constructor.
+SpectatorEntity::SpectatorEntity(Params params)
+	: Entity(messageHandlers, componentOffsets, params.oldEnt)
+	, c_ClientComponent(*this, params.Client_clientData)
+	, c_SpectatorComponent(*this, c_ClientComponent)
+{}
+
+// SpectatorEntity's deconstructor.
+SpectatorEntity::~SpectatorEntity()
+{}
+
 // QPlayerEntity
 // ---------
 
 // QPlayerEntity's component offset vtable.
 const int QPlayerEntity::componentOffsets[] = {
 	myoffsetof(QPlayerEntity, c_ClientComponent),
+	0,
 	myoffsetof(QPlayerEntity, c_HealthComponent),
 	myoffsetof(QPlayerEntity, c_KnockbackComponent),
 };
 
-// QPlayerEntity's PrepareNetCode message dispatcher.
-void h_QPlayer_PrepareNetCode(Entity* _entity, const void* ) {
+// QPlayerEntity's Damage message dispatcher.
+void h_QPlayer_Damage(Entity* _entity, const void*  _data) {
 	QPlayerEntity* entity = (QPlayerEntity*) _entity;
-	entity->c_HealthComponent.HandlePrepareNetCode();
+	const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>* data = (const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>*) _data;
+	entity->c_HealthComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
+	entity->c_KnockbackComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
 }
 
 // QPlayerEntity's Heal message dispatcher.
@@ -136,12 +177,10 @@ void h_QPlayer_Heal(Entity* _entity, const void*  _data) {
 	entity->c_HealthComponent.HandleHeal(std::get<0>(*data), std::get<1>(*data));
 }
 
-// QPlayerEntity's Damage message dispatcher.
-void h_QPlayer_Damage(Entity* _entity, const void*  _data) {
+// QPlayerEntity's PrepareNetCode message dispatcher.
+void h_QPlayer_PrepareNetCode(Entity* _entity, const void* ) {
 	QPlayerEntity* entity = (QPlayerEntity*) _entity;
-	const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>* data = (const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>*) _data;
-	entity->c_HealthComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
-	entity->c_KnockbackComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
+	entity->c_HealthComponent.HandlePrepareNetCode();
 }
 
 // QPlayerEntity's message dispatcher vtable.
@@ -169,14 +208,17 @@ QPlayerEntity::~QPlayerEntity()
 // UPlayerEntity's component offset vtable.
 const int UPlayerEntity::componentOffsets[] = {
 	myoffsetof(UPlayerEntity, c_ClientComponent),
+	0,
 	myoffsetof(UPlayerEntity, c_HealthComponent),
 	myoffsetof(UPlayerEntity, c_KnockbackComponent),
 };
 
-// UPlayerEntity's PrepareNetCode message dispatcher.
-void h_UPlayer_PrepareNetCode(Entity* _entity, const void* ) {
+// UPlayerEntity's Damage message dispatcher.
+void h_UPlayer_Damage(Entity* _entity, const void*  _data) {
 	UPlayerEntity* entity = (UPlayerEntity*) _entity;
-	entity->c_HealthComponent.HandlePrepareNetCode();
+	const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>* data = (const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>*) _data;
+	entity->c_HealthComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
+	entity->c_KnockbackComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
 }
 
 // UPlayerEntity's Heal message dispatcher.
@@ -186,12 +228,10 @@ void h_UPlayer_Heal(Entity* _entity, const void*  _data) {
 	entity->c_HealthComponent.HandleHeal(std::get<0>(*data), std::get<1>(*data));
 }
 
-// UPlayerEntity's Damage message dispatcher.
-void h_UPlayer_Damage(Entity* _entity, const void*  _data) {
+// UPlayerEntity's PrepareNetCode message dispatcher.
+void h_UPlayer_PrepareNetCode(Entity* _entity, const void* ) {
 	UPlayerEntity* entity = (UPlayerEntity*) _entity;
-	const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>* data = (const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>*) _data;
-	entity->c_HealthComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
-	entity->c_KnockbackComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
+	entity->c_HealthComponent.HandlePrepareNetCode();
 }
 
 // UPlayerEntity's message dispatcher vtable.

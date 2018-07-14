@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -31,7 +31,7 @@ Return the team referenced by a string
 */
 team_t G_TeamFromString( const char *str )
 {
-	switch ( tolower( *str ) )
+	switch ( Str::ctolower( *str ) )
 	{
 		case '0':
 		case 's':
@@ -426,6 +426,7 @@ void TeamplayInfoMessage( gentity_t *ent )
 	gclient_t *cl;
 	upgrade_t upgrade = UP_NONE;
 	int       curWeaponClass = WP_NONE; // sends weapon for humans, class for aliens
+	int       health = 0;
 
 	if ( !g_allowTeamOverlay.integer )
 	{
@@ -508,20 +509,22 @@ void TeamplayInfoMessage( gentity_t *ent )
 			{
 				upgrade = UP_NONE;
 			}
+			health = static_cast<int>( std::ceil( player->entity->Get<HealthComponent>()->Health() ) );
 		}
 #ifdef UNREALARENA
 		else if ( cl->pers.team == TEAM_Q )
-		{
-			curWeaponClass = cl->ps.persistant[ PERS_TEAM ];
-			upgrade = UP_NONE;
-		}
 #else
 		else if ( cl->pers.team == TEAM_ALIENS )
-		{
-			curWeaponClass = cl->ps.stats[ STAT_CLASS ];
-			upgrade = UP_NONE;
-		}
 #endif
+		{
+#ifdef UNREALARENA
+			curWeaponClass = cl->ps.persistant[ PERS_TEAM ];
+#else
+			curWeaponClass = cl->ps.stats[ STAT_CLASS ];
+#endif
+			upgrade = UP_NONE;
+			health = static_cast<int>( std::ceil( player->entity->Get<HealthComponent>()->Health() ) );
+		}
 
 #ifdef UNREALARENA
 		if( team == TEAM_Q )
@@ -532,12 +535,12 @@ void TeamplayInfoMessage( gentity_t *ent )
 #ifdef UNREALARENA
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i", i,
 						 cl->pers.location,
-			             std::max((int)std::ceil(player->entity->Get<HealthComponent>()->Health()), 0),
+			             health,
 						 curWeaponClass );
 #else
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i", i,
 						 cl->pers.location,
-			             std::max((int)std::ceil(player->entity->Get<HealthComponent>()->Health()), 0),
+			             health,
 						 curWeaponClass,
 						 cl->pers.credit );
 #endif
@@ -547,13 +550,13 @@ void TeamplayInfoMessage( gentity_t *ent )
 #ifdef UNREALARENA
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i", i,
 			             cl->pers.location,
-			             std::max((int)std::ceil(player->entity->Get<HealthComponent>()->Health()), 0),
+			             health,
 			             curWeaponClass,
 			             upgrade );
 #else
 			Com_sprintf( entry, sizeof( entry ), " %i %i %i %i %i %i", i,
 			             cl->pers.location,
-			             std::max((int)std::ceil(player->entity->Get<HealthComponent>()->Health()), 0),
+			             health,
 			             curWeaponClass,
 			             cl->pers.credit,
 			             upgrade );

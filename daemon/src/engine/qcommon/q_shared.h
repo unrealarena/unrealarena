@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2015-2017  Unreal Arena
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -43,12 +43,12 @@
 #define PRODUCT_VERSION         "0.1-4"
 
 #define ENGINE_NAME             "Daemon Engine"
-#define ENGINE_VERSION          "0.46.0"
+#define ENGINE_VERSION          "0.47.0"
 #else
 #define PRODUCT_NAME            "Unvanquished"
 #define PRODUCT_NAME_UPPER      "UNVANQUISHED" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unvanquished" // No case, No spaces
-#define PRODUCT_VERSION         "0.46"
+#define PRODUCT_VERSION         "0.47"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          PRODUCT_VERSION
@@ -92,7 +92,6 @@ void ignore_result(T) {}
 
 // C standard library headers
 #include <assert.h>
-#include <ctype.h>
 #include <errno.h>
 //#include <fenv.h>
 #include <float.h>
@@ -376,6 +375,10 @@ void  Com_Free_Aligned( void *ptr );
 
 #ifndef M_ROOT3
 #define M_ROOT3 1.732050808f
+#endif
+
+#ifndef LINE_DISTANCE_EPSILON
+#define LINE_DISTANCE_EPSILON 1e-05f
 #endif
 
 #define ARRAY_LEN(x) ( sizeof( x ) / sizeof( *( x ) ) )
