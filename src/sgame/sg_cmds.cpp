@@ -163,7 +163,7 @@ int G_ClientNumberFromString( const char *s, char *err, int len )
 	}
 
 	// numeric values are just slot numbers
-	for ( i = 0; s[ i ] && isdigit( s[ i ] ); i++ ) {; }
+	for ( i = 0; s[ i ] && Str::cisdigit( s[ i ] ); i++ ) {; }
 
 	if ( !s[ i ] )
 	{
@@ -3985,7 +3985,7 @@ void Cmd_ListMaps_f( gentity_t *ent )
 	{
 		trap_Argv( 1, search, sizeof( search ) );
 
-		for ( p = search; ( *p ) && isdigit( *p ); p++ ) {; }
+		for ( p = search; ( *p ) && Str::cisdigit( *p ); p++ ) {; }
 
 		if ( !( *p ) )
 		{

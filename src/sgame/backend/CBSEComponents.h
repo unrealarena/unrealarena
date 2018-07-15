@@ -4,6 +4,7 @@
 #define CBSE_COMPONENTS_H_
 
 #include "../components/ClientComponent.h"
+#include "../components/SpectatorComponent.h"
 #include "../components/HealthComponent.h"
 #include "../components/KnockbackComponent.h"
 

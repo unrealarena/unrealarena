@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1806,7 +1806,7 @@ typedef struct
 
 	// corpse info
 	clientInfo_t corpseinfo[ MAX_CLIENTS ];
-    
+
 	void         *capturedItem;
 	qhandle_t    activeCursor;
 
@@ -1876,7 +1876,11 @@ typedef enum
 #ifndef UNREALARENA
   CG_ALTSHADER_UNPOWERED,
 #endif
-  CG_ALTSHADER_DEAD
+  CG_ALTSHADER_DEAD,
+#ifndef UNREALARENA
+  CG_ALTSHADER_IDLE,
+  CG_ALTSHADER_IDLE2
+#endif
 } altShader_t;
 
 //==============================================================================

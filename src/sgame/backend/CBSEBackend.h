@@ -33,6 +33,7 @@ enum {
 class Entity;
 
 class ClientComponent;
+class SpectatorComponent;
 class HealthComponent;
 class KnockbackComponent;
 
@@ -50,12 +51,16 @@ namespace detail {
 		static const int value = 0;
 	};
 
-	template<> struct ComponentPriority<HealthComponent> {
+	template<> struct ComponentPriority<SpectatorComponent> {
 		static const int value = 1;
 	};
 
-	template<> struct ComponentPriority<KnockbackComponent> {
+	template<> struct ComponentPriority<HealthComponent> {
 		static const int value = 2;
+	};
+
+	template<> struct ComponentPriority<KnockbackComponent> {
+		static const int value = 3;
 	};
 };
 
@@ -173,6 +178,45 @@ class ClientComponentBase {
 	private:
 
 		static std::set<ClientComponent*> allSet;
+};
+
+/** Base class of SpectatorComponent. */
+class SpectatorComponentBase {
+	public:
+		/**
+		 * @brief SpectatorComponentBase constructor.
+		 * @param entity The entity that owns this component.
+		 * @param r_ClientComponent A ClientComponent instance that this component depends on.
+		 */
+		SpectatorComponentBase(Entity& entity, ClientComponent& r_ClientComponent)
+			: entity(entity), r_ClientComponent(r_ClientComponent){
+			allSet.insert((SpectatorComponent*)((char*) this - (char*) (SpectatorComponentBase*) (SpectatorComponent*) nullptr));
+		}
+
+		~SpectatorComponentBase() {
+			allSet.erase((SpectatorComponent*)((char*) this - (char*) (SpectatorComponentBase*) (SpectatorComponent*) nullptr));
+		}
+
+		/**
+		 * @return A reference to the ClientComponent of the owning entity.
+		 */
+		ClientComponent& GetClientComponent() {
+			return r_ClientComponent;
+		}
+
+		/** A reference to the entity that owns the component instance. Allows sending back messages. */
+		Entity& entity;
+
+		static AllComponents<SpectatorComponent> GetAll() {
+			return {allSet};
+		}
+
+	protected:
+
+	private:
+		ClientComponent& r_ClientComponent; /**< A component of the owning entity that this component depends on. */
+
+		static std::set<SpectatorComponent*> allSet;
 };
 
 /** Base class of HealthComponent. */

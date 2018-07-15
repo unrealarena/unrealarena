@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -21,6 +21,7 @@
 
 #include "sg_local.h"
 #include "CBSE.h"
+#include "backend/CBSEBackend.h"
 
 #define INTERMISSION_DELAY_TIME 1000
 
@@ -205,6 +206,7 @@ vmCvar_t           g_debugEntities;
 vmCvar_t           g_instantBuilding;
 #endif
 
+vmCvar_t           g_emptyTeamsSkipMapTime;
 
 // <bot stuff>
 
@@ -436,6 +438,8 @@ static cvarTable_t gameCvarTable[] =
 #ifndef UNREALARENA
 	{ &g_instantBuilding,             "g_instantBuilding",             "0",                                0,                                               0, true     , nullptr       },
 #endif
+
+	{ &g_emptyTeamsSkipMapTime,       "g_emptyTeamsSkipMapTime",       "0",                                0,                                               0, true     , nullptr       },
 
 	// bots: buying
 #ifndef UNREALARENA
@@ -2645,6 +2649,18 @@ void CheckExitRules()
 		LogExit( "Q team won." );
 		G_MapLog_Result( 'q' );
 	}
+	else if ( g_emptyTeamsSkipMapTime.integer &&
+		( level.time - level.startTime ) / 60000 >=
+		g_emptyTeamsSkipMapTime.integer &&
+		level.team[ TEAM_Q ].numPlayers == 0 && level.team[ TEAM_U ].numPlayers == 0 )
+	{
+		// nobody wins because the teams are empty after x amount of game time
+		level.lastWin = TEAM_NONE;
+		trap_SendServerCommand( -1, "print \"Empty teams skip map time exceeded.\n\"" );
+		trap_SetConfigstring( CS_WINNER, "Stalemate" );
+		LogExit( "Timelimit hit." );
+		G_MapLog_Result( 't' );
+	}
 #else
 	if ( level.unconditionalWin == TEAM_HUMANS ||
 	     ( level.unconditionalWin != TEAM_ALIENS &&
@@ -2673,6 +2689,18 @@ void CheckExitRules()
 		G_notify_sensor_end( TEAM_ALIENS );
 		LogExit( "Aliens win." );
 		G_MapLog_Result( 'a' );
+	}
+	else if ( g_emptyTeamsSkipMapTime.integer &&
+		( level.time - level.startTime ) / 60000 >=
+		g_emptyTeamsSkipMapTime.integer &&
+		level.team[ TEAM_ALIENS ].numPlayers == 0 && level.team[ TEAM_HUMANS ].numPlayers == 0 )
+	{
+		// nobody wins because the teams are empty after x amount of game time
+		level.lastWin = TEAM_NONE;
+		trap_SendServerCommand( -1, "print \"Empty teams skip map time exceeded.\n\"" );
+		trap_SetConfigstring( CS_WINNER, "Stalemate" );
+		LogExit( "Timelimit hit." );
+		G_MapLog_Result( 't' );
 	}
 #endif
 }
@@ -3240,9 +3268,18 @@ void G_RunFrame( int levelTime )
 void G_PrepareEntityNetCode() {
 	// TODO: Allow ForEntities with empty template arguments.
 	gentity_t *oldEnt = &g_entities[0];
+	// Prepare netcode for all non-specs first.
 	for (int i = 0; i < level.num_entities; i++, oldEnt++) {
 		if (oldEnt->entity) {
+			if (oldEnt->entity->Get<SpectatorComponent>()) {
+				continue;
+			}
 			oldEnt->entity->PrepareNetCode();
 		}
 	}
+
+	// Prepare netcode for specs
+	ForEntities<SpectatorComponent>([&](Entity& entity, SpectatorComponent& spectatorComponent){
+		entity.PrepareNetCode();
+	});
 }

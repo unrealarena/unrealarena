@@ -689,7 +689,7 @@ bool G_admin_name_check( gentity_t *ent, const char *name, char *err, int len )
 
 	Color::StripColors( name, testName, sizeof( testName ) );
 
-	if ( isdigit( testName[ 0 ] ) )
+	if ( Str::cisdigit( testName[ 0 ] ) )
 	{
 		if ( err && len > 0 )
 		{
@@ -1317,7 +1317,7 @@ static int admin_find_admin( gentity_t *ent, char *name, const char *command,
 
 	for ( p = name; ( *p ); p++ )
 	{
-		if ( !isdigit( *p ) )
+		if ( !Str::cisdigit( *p ) )
 		{
 			numeric = false;
 			break;
@@ -2205,7 +2205,7 @@ bool G_admin_time( gentity_t *ent )
 
 		trap_Argv( 1, tstr, sizeof( tstr ) );
 
-		if ( isdigit( tstr[0] ) )
+		if ( Str::cisdigit( tstr[0] ) )
 		{
 			timelimit = atoi( tstr );
 
@@ -2487,12 +2487,12 @@ int G_admin_parse_time( const char *time )
 
 	while ( *time )
 	{
-		if ( !isdigit( *time ) )
+		if ( !Str::cisdigit( *time ) )
 		{
 			return -1;
 		}
 
-		while ( isdigit( *time ) )
+		while ( Str::cisdigit( *time ) )
 		{
 			num = num * 10 + *time++ - '0';
 		}
@@ -3545,7 +3545,7 @@ bool G_admin_listadmins( gentity_t *ent )
 		{
 			i = s[ 0 ] == '-';
 
-			for ( ; isdigit( s[ i ] ); i++ ) {; }
+			for ( ; Str::cisdigit( s[ i ] ); i++ ) { }
 		}
 
 		if ( i && !s[ i ] )
@@ -3776,7 +3776,7 @@ bool G_admin_listplayers( gentity_t *ent )
 		}
 		else
 		{
-			t = toupper( * ( BG_TeamName( p->pers.team ) ) );
+			t = Str::ctoupper( * ( BG_TeamName( p->pers.team ) ) );
 
 #ifdef UNREALARENA
 			if ( p->pers.team == TEAM_U )
@@ -3987,7 +3987,7 @@ bool G_admin_showbans( gentity_t *ent )
 
 		if ( trap_Argc() == 2 )
 		{
-			for ( i = filter[ 0 ] == '-'; isdigit( filter[ i ] ); i++ ) {; }
+			for ( i = filter[ 0 ] == '-'; Str::cisdigit( filter[ i ] ); i++ ) {; }
 		}
 
 		if ( !filter[ i ] )
@@ -4604,7 +4604,7 @@ bool G_admin_namelog( gentity_t *ent )
 
 		if ( trap_Argc() == 2 )
 		{
-			for ( i = search[ 0 ] == '-'; isdigit( search[ i ] ); i++ ) {; }
+			for ( i = search[ 0 ] == '-'; Str::cisdigit( search[ i ] ); i++ ) {; }
 		}
 
 		if ( !search[ i ] )
@@ -4645,7 +4645,7 @@ namelog_t *G_NamelogFromString( gentity_t *ent, char *s )
 	}
 
 	// if a number is provided, it is a clientnum or namelog id
-	for ( i = 0; s[ i ] && isdigit( s[ i ] ); i++ ) {; }
+	for ( i = 0; s[ i ] && Str::cisdigit( s[ i ] ); i++ ) {; }
 
 	if ( !s[ i ] )
 	{
@@ -5045,7 +5045,7 @@ bool G_admin_flag( gentity_t *ent )
 	// flag name must be alphanumeric
 	for ( i = 0; flag[ i ]; ++i )
 	{
-		if ( !isalnum( flag[ i ] ) )
+		if ( !Str::cisalnum( flag[ i ] ) )
 		{
 			break;
 		}
@@ -5308,7 +5308,7 @@ bool G_admin_buildlog( gentity_t *ent )
 	{
 		trap_Argv( 1, search, sizeof( search ) );
 
-		for ( i = search[ 0 ] == '-'; isdigit( search[ i ] ); i++ ) {; }
+		for ( i = search[ 0 ] == '-'; Str::cisdigit( search[ i ] ); i++ ) {; }
 
 		if ( i && !search[ i ] )
 		{

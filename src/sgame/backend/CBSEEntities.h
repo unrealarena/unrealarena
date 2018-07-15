@@ -63,6 +63,32 @@ class ClientEntity: public Entity {
 };
 
 /** A specific entity. */
+class SpectatorEntity: public Entity {
+	public:
+		/** Initialization parameters for SpectatorEntity. */
+		struct Params {
+			gentity_t* oldEnt;
+			gclient_t* Client_clientData;
+		};
+
+		/** Default constructor of SpectatorEntity. */
+		SpectatorEntity(Params params);
+
+		/** Default destructor of SpectatorEntity. */
+		virtual ~SpectatorEntity();
+
+		ClientComponent c_ClientComponent; /**< SpectatorEntity's ClientComponent instance. */
+		SpectatorComponent c_SpectatorComponent; /**< SpectatorEntity's SpectatorComponent instance. */
+
+	private:
+		/** SpectatorEntity's message handler vtable. */
+		static const MessageHandler messageHandlers[];
+
+		/** SpectatorEntity's component offset table. */
+		static const int componentOffsets[];
+};
+
+/** A specific entity. */
 class QPlayerEntity: public Entity {
 	public:
 		/** Initialization parameters for QPlayerEntity. */

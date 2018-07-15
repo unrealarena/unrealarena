@@ -1780,7 +1780,7 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 
 	// load a few needed things before we do any screen updates
 #ifndef UNREALARENA
-	trap_R_SetAltShaderTokens( "unpowered,destroyed" );
+	trap_R_SetAltShaderTokens( "unpowered,destroyed,idle,idle2" );
 #endif
 	cgs.media.whiteShader = trap_R_RegisterShader("white", (RegisterShaderFlags_t) RSF_DEFAULT);
 	cgs.media.charsetShader = trap_R_RegisterShader("gfx/2d/bigchars",

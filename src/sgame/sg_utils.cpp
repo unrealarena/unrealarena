@@ -523,7 +523,7 @@ static const char *addr4parse( const char *str, addr_t *addr )
 
 	for ( i = 0; octet < 4; i++ )
 	{
-		if ( isdigit( str[ i ] ) )
+		if ( Str::cisdigit( str[ i ] ) )
 		{
 			num = num * 10 + str[ i ] - '0';
 		}
@@ -564,7 +564,7 @@ static const char *addr6parse( const char *str, addr_t *addr )
 	for ( i = 0; before + after <= 8; i++ )
 	{
 		//num = num << 4 | str[ i ] - '0';
-		if ( isdigit( str[ i ] ) )
+		if ( Str::cisdigit( str[ i ] ) )
 		{
 			num = num * 16 + str[ i ] - '0';
 		}

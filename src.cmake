@@ -146,6 +146,7 @@ set(SGAMELIST
     ${GAMELOGIC_DIR}/sgame/components/ClientComponent.cpp
     ${GAMELOGIC_DIR}/sgame/components/HealthComponent.cpp
     ${GAMELOGIC_DIR}/sgame/components/KnockbackComponent.cpp
+    ${GAMELOGIC_DIR}/sgame/components/SpectatorComponent.cpp
 
     ${ENGINE_DIR}/server/sg_api.h
     ${ENGINE_DIR}/server/sg_msgdef.h

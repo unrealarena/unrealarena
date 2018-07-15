@@ -1221,7 +1221,7 @@ int Com_HexStrToInt( const char *str )
 
 			n *= 16;
 
-			digit = tolower( str[ i ] );
+			digit = Str::ctolower( str[ i ] );
 
 			if ( digit >= '0' && digit <= '9' )
 			{
@@ -1612,7 +1612,7 @@ const char *Com_StringContains( const char *str1, const char *str2, int casesens
 			}
 			else
 			{
-				if ( toupper( str1[ j ] ) != toupper( str2[ j ] ) )
+				if ( Str::ctoupper( str1[ j ] ) != Str::ctoupper( str2[ j ] ) )
 				{
 					break;
 				}
@@ -1703,7 +1703,7 @@ int Com_Filter( const char *filter, const char *name, int casesensitive )
 					}
 					else
 					{
-						if ( toupper( *name ) >= toupper( *filter ) && toupper( *name ) <= toupper( * ( filter + 2 ) ) )
+						if ( Str::ctoupper( *name ) >= Str::ctoupper( *filter ) && Str::ctoupper( *name ) <= Str::ctoupper( * ( filter + 2 ) ) )
 						{
 							found = true;
 						}
@@ -1722,7 +1722,7 @@ int Com_Filter( const char *filter, const char *name, int casesensitive )
 					}
 					else
 					{
-						if ( toupper( *filter ) == toupper( *name ) )
+						if ( Str::ctoupper( *filter ) == Str::ctoupper( *name ) )
 						{
 							found = true;
 						}
@@ -1761,7 +1761,7 @@ int Com_Filter( const char *filter, const char *name, int casesensitive )
 			}
 			else
 			{
-				if ( toupper( *filter ) != toupper( *name ) )
+				if ( Str::ctoupper( *filter ) != Str::ctoupper( *name ) )
 				{
 					return false;
 				}
