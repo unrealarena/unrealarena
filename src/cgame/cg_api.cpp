@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -129,6 +129,13 @@ void VM::VMHandleSyscall(uint32_t id, Util::Reader reader) {
 			case CG_CONSOLE_LINE:
 				IPC::HandleMsg<CGameConsoleLineMsg>(VM::rootChannel, std::move(reader), [](std::string str) {
 					Rocket_AddConsoleText( str );
+					cmdBuffer.TryFlush();
+				});
+				break;
+
+			case CG_FOCUS_EVENT:
+				IPC::HandleMsg<CGameFocusEventMsg>(VM::rootChannel, std::move(reader), [] (bool focus) {
+					CG_FocusEvent(focus);
 					cmdBuffer.TryFlush();
 				});
 				break;
@@ -269,11 +276,6 @@ bool trap_GetNews( bool force )
 	bool res;
 	VM::SendMsg<GetNewsMsg>(force, res);
 	return res;
-}
-
-void trap_CrashDump(const uint8_t* data, size_t size)
-{
-	VM::SendMsg<CrashDumpMsg>(std::vector<uint8_t>{data, data + size});
 }
 
 // All Sounds

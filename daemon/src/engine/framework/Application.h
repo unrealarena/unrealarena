@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2015, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef FRAMEWORK_APPLICATION_H_
 #define FRAMEWORK_APPLICATION_H_
+
+#include <string>
+#include <common/String.h>
+#include <common/Command.h>
 
 namespace Application {
 

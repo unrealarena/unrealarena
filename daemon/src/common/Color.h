@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2015, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef COMMON_COLOR_H_
 #define COMMON_COLOR_H_
+
+#include <limits>
+#include <type_traits>
+
+#include "Compiler.h"
+#include "Math.h"
 
 namespace Color {
 

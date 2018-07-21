@@ -450,7 +450,7 @@ gentity_t *G_SelectUnvanquishedSpawnPoint( team_t team, vec3_t preference, vec3_
 	gentity_t *spot = nullptr;
 
 	/* team must exist, or there will be a sigsegv */
-	assert(team == TEAM_HUMANS || team == TEAM_ALIENS);
+	ASSERT(team == TEAM_HUMANS || team == TEAM_ALIENS);
 	if( level.team[ team ].numSpawns <= 0 )
 	{
 		return nullptr;
@@ -1850,7 +1850,7 @@ static void ClientSpawnCBSE(gentity_t *ent, bool evolving) {
 #endif
 
 		default:
-			assert(false);
+			ASSERT(false);
 	}
 
 	delete oldEntity;

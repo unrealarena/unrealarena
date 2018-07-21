@@ -26,7 +26,7 @@
 #include "engine/renderer/tr_types.h"
 #include "common/cm/cm_public.h"
 
-#define CGAME_API_VERSION 2
+#define CGAME_API_VERSION 3
 
 #define CMD_BACKUP               64
 #define CMD_MASK                 ( CMD_BACKUP - 1 )
@@ -115,8 +115,9 @@ typedef enum
 
 enum class MouseMode
 {
-    Deltas,
-    Absolute,
+	Deltas,       // The input is sent as movement deltas, the cursor is hidden
+	CustomCursor, // The input is sent as positions, the cursor should be rendered by the game
+	SystemCursor, // The input is sent as positions, the cursor should be rendered by the system
 };
 
 void            trap_Print( const char *string );
@@ -220,11 +221,6 @@ void            trap_Key_ClearStates( void );
 std::vector<int> trap_Key_KeysDown( const std::vector<int>& keys );
 void            trap_SetMouseMode( MouseMode mode );
 void            trap_S_StopBackgroundTrack();
-int             trap_CIN_PlayCinematic( const char *arg0, int xpos, int ypos, int width, int height, int bits );
-e_status        trap_CIN_StopCinematic( int handle );
-e_status        trap_CIN_RunCinematic( int handle );
-void            trap_CIN_DrawCinematic( int handle );
-void            trap_CIN_SetExtents( int handle, int x, int y, int w, int h );
 void            trap_R_RemapShader( const char *oldShader, const char *newShader, const char *timeOffset );
 bool        trap_GetEntityToken( char *buffer, int bufferSize );
 void            trap_UI_Popup( int arg0 );
@@ -286,5 +282,4 @@ void            trap_S_UpdateEntityVelocity( int entityNum, const vec3_t velocit
 void            trap_S_SetReverb( int slotNum, const char* presetName, float ratio );
 void            trap_S_BeginRegistration();
 void            trap_S_EndRegistration();
-void            trap_CrashDump(const uint8_t* data, size_t size);
 #endif

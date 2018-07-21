@@ -1,5 +1,5 @@
 # Daemon BSD Source Code
-# Copyright (c) 2013-2014, Daemon Developers
+# Copyright (c) 2013-2016, Daemon Developers
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -76,7 +76,7 @@ function(GAMEMODULE)
                 CMAKE_ARGS
                     -DFORK=2
                     -DCMAKE_TOOLCHAIN_FILE=${Daemon_SOURCE_DIR}/cmake/toolchain-pnacl.cmake
-                    -DCMAKE_BUILD_TYPE=$<CONFIGURATION>
+                    -DCMAKE_BUILD_TYPE=$<CONFIG>
                     -DDEPS_DIR=${DEPS_DIR}
                     -DBUILD_CGAME=${BUILD_CGAME}
                     -DBUILD_SGAME=${BUILD_SGAME}

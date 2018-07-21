@@ -1022,7 +1022,7 @@ Clear download information that we keep in cls (disconnected download support)
 void CL_ClearStaticDownload()
 {
     downloadLogger.Debug("Clearing the download info");
-	assert( !cls.bWWWDlDisconnected );  // reset before calling
+	ASSERT(!cls.bWWWDlDisconnected);  // reset before calling
 	cls.downloadRestart = false;
 	cls.downloadTempName[ 0 ] = '\0';
 	cls.downloadName[ 0 ] = '\0';
@@ -3246,11 +3246,7 @@ bool CL_InitRef( )
 	ri.Free = Z_Free;
 	ri.Tag_Free = CL_RefTagFree;
 	ri.Hunk_Clear = Hunk_ClearToMark;
-#ifdef HUNK_DEBUG
-	ri.Hunk_AllocDebug = Hunk_AllocDebug;
-#else
 	ri.Hunk_Alloc = Hunk_Alloc;
-#endif
 	ri.Hunk_AllocateTempMemory = Hunk_AllocateTempMemory;
 	ri.Hunk_FreeTempMemory = Hunk_FreeTempMemory;
 

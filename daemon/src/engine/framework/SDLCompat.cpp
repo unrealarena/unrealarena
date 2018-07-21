@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2015, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ===========================================================================
 */
 #if _MSC_VER >= 1900
+#include <stdio.h>
 /* In versions of Visual Studio before VS2015, the streams in stdio.h were defined like
 
     _CRTIMP FILE * __cdecl __iob_func(void);

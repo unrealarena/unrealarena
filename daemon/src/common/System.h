@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -172,6 +172,8 @@ bool IsProcessTerminating();
 // Generate cryptographically-secure random bytes. Don't use std::random_device
 // because it is not implemented correctly on some platforms.
 void GenRandomBytes(void* dest, size_t size);
+
+bool IsDebuggerAttached();
 
 } // namespace Sys
 

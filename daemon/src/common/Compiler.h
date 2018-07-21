@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -67,6 +67,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #else
 #define DLLEXPORT __attribute__((__visibility__("default")))
 #define DLLIMPORT __attribute__((__visibility__("default")))
+#endif
+
+// Raise an exception and break in the debugger
+#if defined(__i386__) || defined(__x86_64__)
+#define BREAKPOINT() __asm__ __volatile__("int $3\n\t")
+#elif defined(__pnacl__)
+// TODO find how to implement breakpoint on PNaCl
+#define BREAKPOINT()
+#else
+#error "Implement BREAKPOINT on your platform"
 #endif
 
 // override and final keywords
@@ -166,6 +176,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ALIGNED(a,x) __declspec(align(a)) x
 #define DLLEXPORT __declspec(dllexport)
 #define DLLIMPORT __declspec(dllimport)
+#define BREAKPOINT() __debugbreak()
 #define OVERRIDE override
 #define FINAL final
 // VS2015 supports this
@@ -198,6 +209,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ALIGNED(a,x) x
 #define DLLEXPORT
 #define DLLIMPORT
+#define BREAKPOINT()
 #endif
 
 // Compat macros

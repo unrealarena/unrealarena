@@ -32,7 +32,6 @@
 #include "common/Revision.h"
 #endif
 
-
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
 
@@ -43,18 +42,16 @@
 #define PRODUCT_VERSION         "0.1-4"
 
 #define ENGINE_NAME             "Daemon Engine"
-#define ENGINE_VERSION          "0.47.0"
+#define ENGINE_VERSION          "0.48.0"
 #else
 #define PRODUCT_NAME            "Unvanquished"
 #define PRODUCT_NAME_UPPER      "UNVANQUISHED" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unvanquished" // No case, No spaces
-#define PRODUCT_VERSION         "0.47"
+#define PRODUCT_VERSION         "0.48"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          PRODUCT_VERSION
 #endif
-
-#define RSQRT_PRECISE 1
 
 #ifdef REVISION
 #ifdef UNREALARENA
@@ -91,7 +88,6 @@ void ignore_result(T) {}
 #define EXTERN_C extern "C"
 
 // C standard library headers
-#include <assert.h>
 #include <errno.h>
 //#include <fenv.h>
 #include <float.h>
@@ -183,8 +179,8 @@ void ignore_result(T) {}
 
 //=============================================================
 
-#include "common/Compiler.h"
 #include "common/Platform.h"
+#include "common/Compiler.h"
 #include "common/Endian.h"
 
 typedef int qhandle_t;
@@ -195,10 +191,6 @@ typedef int clipHandle_t;
 #define PAD(x,y)                ((( x ) + ( y ) - 1 ) & ~(( y ) - 1 ))
 #define PADLEN(base, alignment) ( PAD(( base ), ( alignment )) - ( base ))
 #define PADP(base, alignment)   ((void *) PAD((intptr_t) ( base ), ( alignment )))
-
-#ifndef NULL
-#define NULL ( (void *)0 )
-#endif
 
 #define STRING(s)  #s
 // expand constants before stringifying them
@@ -248,28 +240,10 @@ typedef int clipHandle_t;
 	  MESSAGE_WAITING_OVERFLOW, // packet too large with message
 	} messageStatus_t;
 
-// paramters for command buffer stuffing
-	typedef enum
-	{
-	  EXEC_NOW, // don't return until completed, a VM should NEVER use this,
-	  // because some commands might cause the VM to be unloaded...
-	  EXEC_INSERT, // insert at current position, but don't run yet
-	  EXEC_APPEND // add to end of the command buffer
-	} cbufExec_t;
-
 //
 // these aren't needed by any of the VMs.  put in another header?
 //
 #define MAX_MAP_AREA_BYTES 32 // bit vector of area visibility
-
-// font rendering values used by ui and cgame
-
-#define BLINK_DIVISOR         200
-#define PULSE_DIVISOR         75
-
-#if !defined( NDEBUG )
-#define HUNK_DEBUG
-#endif
 
 	typedef enum
 	{
@@ -278,14 +252,7 @@ typedef int clipHandle_t;
 	  h_dontcare
 	} ha_pref;
 
-#ifdef HUNK_DEBUG
-#define Hunk_Alloc( size, preference ) Hunk_AllocDebug( size, preference, # size, __FILE__, __LINE__ )
-	void *Hunk_AllocDebug( int size, ha_pref preference, const char *label, const char *file, int line );
-
-#else
 	void *Hunk_Alloc( int size, ha_pref preference );
-
-#endif
 
 #define Com_Memset   memset
 #define Com_Memcpy   memcpy
@@ -315,8 +282,6 @@ void  Com_Free_Aligned( void *ptr );
 
 	typedef vec_t  vec3_t[ 3 ];
 	typedef vec_t  vec4_t[ 4 ];
-
-	typedef vec_t  vec5_t[ 5 ];
 
 	typedef vec3_t axis_t[ 3 ];
 	typedef vec_t  matrix3x3_t[ 9 ];
@@ -444,29 +409,6 @@ extern quat_t   quatIdentity;
 
 #define Q_ftol(x) ((long)(x))
 
-	/*
-	// if your system does not have lrintf() and round() you can try this block. Please also open a bug report at bugzilla.icculus.org
-	// or write a mail to the ioq3 mailing list.
-#else
-#	define Q_ftol(v) ((long) (v))
-#	define Q_round(v) do { if((v) < 0) (v) -= 0.5f; else (v) += 0.5f; (v) = Q_ftol((v)); } while(0)
-#	define Q_SnapVector(vec) \
-	        do\
-	        {\
-	                vec3_t *temp = (vec);\
-	                \
-	                Q_round((*temp)[0]);\
-	                Q_round((*temp)[1]);\
-	                Q_round((*temp)[2]);\
-	        } while(0)
-#endif
-	*/
-
-	inline long XreaL_Q_ftol( float f )
-	{
-		return ( long ) f;
-	}
-
 	inline unsigned int Q_floatBitsToUint( float number )
 	{
 		floatint_t t;
@@ -504,9 +446,7 @@ extern quat_t   quatIdentity;
 		y = Q_uintBitsToFloat( 0x5f3759df - (Q_floatBitsToUint( number ) >> 1) );
 		y *= ( 1.5f - ( x * y * y ) ); // initial iteration
 #endif
-#ifdef RSQRT_PRECISE
 		y *= ( 1.5f - ( x * y * y ) ); // second iteration for higher precision
-#endif
 		return y;
 	}
 
@@ -515,16 +455,12 @@ inline float Q_fabs( float x )
 	return fabsf( x );
 }
 
-#define Q_recip(x) ( 1.0f / (x) )
-
 byte         ClampByte( int i );
 signed char  ClampChar( int i );
 
 // this isn't a real cheap function to call!
 int          DirToByte( vec3_t dir );
 void         ByteToDir( int b, vec3_t dir );
-
-#if 1
 
 #define DotProduct( x,y )            ( ( x )[ 0 ] * ( y )[ 0 ] + ( x )[ 1 ] * ( y )[ 1 ] + ( x )[ 2 ] * ( y )[ 2 ] )
 #define VectorSubtract( a,b,c )      ( ( c )[ 0 ] = ( a )[ 0 ] - ( b )[ 0 ],( c )[ 1 ] = ( a )[ 1 ] - ( b )[ 1 ],( c )[ 2 ] = ( a )[ 2 ] - ( b )[ 2 ] )
@@ -535,17 +471,6 @@ void         ByteToDir( int b, vec3_t dir );
 #define VectorLerpTrem( f, s, e, r ) (( r )[ 0 ] = ( s )[ 0 ] + ( f ) * (( e )[ 0 ] - ( s )[ 0 ] ), \
                                       ( r )[ 1 ] = ( s )[ 1 ] + ( f ) * (( e )[ 1 ] - ( s )[ 1 ] ), \
                                       ( r )[ 2 ] = ( s )[ 2 ] + ( f ) * (( e )[ 2 ] - ( s )[ 2 ] ))
-
-#else
-
-#define DotProduct( x,y )       _DotProduct( x,y )
-#define VectorSubtract( a,b,c ) _VectorSubtract( a,b,c )
-#define VectorAdd( a,b,c )      _VectorAdd( a,b,c )
-#define VectorCopy( a,b )       _VectorCopy( a,b )
-#define VectorScale( v, s, o )  _VectorScale( v,s,o )
-#define VectorMA( v, s, b, o )  _VectorMA( v,s,b,o )
-
-#endif
 
 #define VectorClear( a )             ( ( a )[ 0 ] = ( a )[ 1 ] = ( a )[ 2 ] = 0 )
 #define VectorNegate( a,b )          ( ( b )[ 0 ] = -( a )[ 0 ],( b )[ 1 ] = -( a )[ 1 ],( b )[ 2 ] = -( a )[ 2 ] )
@@ -563,16 +488,6 @@ void         ByteToDir( int b, vec3_t dir );
 #define DotProduct4(x, y)            (( x )[ 0 ] * ( y )[ 0 ] + ( x )[ 1 ] * ( y )[ 1 ] + ( x )[ 2 ] * ( y )[ 2 ] + ( x )[ 3 ] * ( y )[ 3 ] )
 
 #define SnapVector( v )              do { ( v )[ 0 ] = ( floor( ( v )[ 0 ] + 0.5f ) ); ( v )[ 1 ] = ( floor( ( v )[ 1 ] + 0.5f ) ); ( v )[ 2 ] = ( floor( ( v )[ 2 ] + 0.5f ) ); } while ( 0 )
-
-// just in case you don't want to use the macros
-// Maybe these _Functions should be inlined and replace te macros defined above
-// Note that their current _Names are invalid in standard C++ (reserved for internal use to be exact)
-	vec_t    _DotProduct( const vec3_t v1, const vec3_t v2 );
-	void     _VectorSubtract( const vec3_t veca, const vec3_t vecb, vec3_t out );
-	void     _VectorAdd( const vec3_t veca, const vec3_t vecb, vec3_t out );
-	void     _VectorCopy( const vec3_t in, vec3_t out );
-	void     _VectorScale( const vec3_t in, float scale, vec3_t out );
-	void     _VectorMA( const vec3_t veca, float scale, const vec3_t vecb, vec3_t vecc );
 
 	float    RadiusFromBounds( const vec3_t mins, const vec3_t maxs );
 	void     ZeroBounds( vec3_t mins, vec3_t maxs );
@@ -835,20 +750,8 @@ void         ByteToDir( int b, vec3_t dir );
 		o[ 3 ] = p[ 3 ] + f * q[ 3 ];
 	}
 
-	/*
-	inline int QuatCompare(const quat_t a, const quat_t b)
-	{
-	        if(a[0] != b[0] || a[1] != b[1] || a[2] != b[2] || a[3] != b[3])
-	        {
-	                return 0;
-	        }
-	        return 1;
-	}
-	*/
-
 	inline void QuatCalcW( quat_t q )
 	{
-#if 1
 		vec_t term = 1.0f - ( q[ 0 ] * q[ 0 ] + q[ 1 ] * q[ 1 ] + q[ 2 ] * q[ 2 ] );
 
 		if ( term < 0.0 )
@@ -859,10 +762,6 @@ void         ByteToDir( int b, vec3_t dir );
 		{
 			q[ 3 ] = -sqrt( term );
 		}
-
-#else
-		q[ 3 ] = sqrt( fabs( 1.0f - ( q[ 0 ] * q[ 0 ] + q[ 1 ] * q[ 1 ] + q[ 2 ] * q[ 2 ] ) ) );
-#endif
 	}
 
 	inline void QuatInverse( quat_t q )
@@ -1252,12 +1151,10 @@ void         ByteToDir( int b, vec3_t dir );
 		p = _mm_add_ps( sseSwizzle( p, XXXX ),
 				sseSwizzle( p, ZZZZ ) );
 		t = _mm_rsqrt_ps( p );
-#ifdef RSQRT_PRECISE
 		h = _mm_mul_ps( _mm_set1_ps( 0.5f ), t );
 		t = _mm_mul_ps( _mm_mul_ps( t, t ), p );
 		t = _mm_sub_ps( _mm_set1_ps( 3.0f ), t );
 		t = _mm_mul_ps( h, t );
-#endif
 		return _mm_mul_ps( q, t );
 	}
 	inline __m128 sseQuatTransform( __m128 q, __m128 vec ) {
@@ -1610,15 +1507,8 @@ void         ByteToDir( int b, vec3_t dir );
 	const char *Q_stristr( const char *s, const char *find );
 
 // buffer size safe library replacements
-// NOTE : had problem with loading QVM modules
-#ifdef NDEBUG
 	void Q_strncpyz( char *dest, const char *src, int destsize );
 
-#else
-#define         Q_strncpyz(string1,string2,length) Q_strncpyzDebug( string1, string2, length, __FILE__, __LINE__ )
-	void     Q_strncpyzDebug( char *dest, const char *src, int destsize, const char *file, int line );
-
-#endif
 	void     Q_strcat( char *dest, int destsize, const char *src );
 
 	int      Com_Filter( const char *filter, const char *name, int casesensitive );
@@ -1741,27 +1631,9 @@ void         ByteToDir( int b, vec3_t dir );
 	=================
 	*/
 
-//#define PlaneTypeForNormal(x) (x[0] == 1.0 ? PLANE_X : (x[1] == 1.0 ? PLANE_Y : (x[2] == 1.0 ? PLANE_Z : PLANE_NON_AXIAL) ) )
 #define PlaneTypeForNormal( x ) ( x[ 0 ] == 1.0 ? PLANE_X : ( x[ 1 ] == 1.0 ? PLANE_Y : ( x[ 2 ] == 1.0 ? PLANE_Z : ( x[ 0 ] == 0.f && x[ 1 ] == 0.f && x[ 2 ] == 0.f ? PLANE_NON_PLANAR : PLANE_NON_AXIAL ) ) ) )
 
-	/*
-	inline int PlaneTypeForNormal(vec3_t normal)
-	{
-	        if(normal[0] == 1.0)
-	                return PLANE_X;
-
-	        if(normal[1] == 1.0)
-	                return PLANE_Y;
-
-	        if(normal[2] == 1.0)
-	                return PLANE_Z;
-
-	        return PLANE_NON_AXIAL;
-	}
-	*/
-
 // plane_t structure
-// !!! if this is changed, it must be changed in asm code too !!!
 	typedef struct cplane_s
 	{
 		vec3_t normal;

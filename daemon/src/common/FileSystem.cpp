@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -58,7 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mach-o/dyld.h>
 #endif
 
-Log::Logger fsLogs(VM_STRING_PREFIX "fs", Log::LOG_NOTICE);
+Log::Logger fsLogs(VM_STRING_PREFIX "fs", "[FS]", Log::LOG_NOTICE);
 
 // SerializeTraits for PakInfo/LoadedPakInfo
 namespace Util {
