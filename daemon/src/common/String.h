@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef COMMON_STRING_H_
 #define COMMON_STRING_H_
 
+#include <algorithm>
+
+namespace Str {
+    void AssertOnTinyFormatError(std::string reason);
+}
+
+#define TINYFORMAT_ERROR(reason) Str::AssertOnTinyFormatError(#reason);
 #include "tinyformat/tinyformat.h"
 
 namespace Str {

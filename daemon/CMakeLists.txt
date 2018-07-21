@@ -1,6 +1,6 @@
 # Daemon BSD Source Code
 # Copyright (c) 2015-2016, Unreal Arena
-# Copyright (c) 2013-2014, Daemon Developers
+# Copyright (c) 2013-2016, Daemon Developers
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 2.8.12)
 if (POLICY CMP0017)
     cmake_policy(SET CMP0017 NEW)
 endif()
@@ -72,6 +72,7 @@ if(NOT DAEMON_EXTERNAL_APP)
         set(BUILD_GAME_NACL_NEXE 0)
     endif()
     option(BUILD_TTY_CLIENT "Build Daemon headless client" 1)
+    option(BUILD_DUMMPY_APP "Build the dummy app for daemon" 0)
 
     set(NACL_RUNTIME_PATH "" CACHE STRING "Directory containing the NaCl binaries")
 
@@ -527,12 +528,12 @@ if (BUILD_CLIENT OR BUILD_TTY_CLIENT)
     set(LIBS_CLIENTBASE ${LIBS_CLIENTBASE} srclibs-mumblelink)
 endif()
 
-# SDL, required for all targets on win32 because of iconv
-if (BUILD_CLIENT OR (WIN32 AND (BUILD_TTY_CLIENT OR BUILD_SERVER)))
+# SDL, required for all targets on win32 because of iconv and SDL_SetHint(SDL_TIMER_RESOLUTION, 0)
+if (BUILD_CLIENT OR WIN32)
     find_package(SDL2 REQUIRED)
     include_directories(${SDL2_INCLUDE_DIR})
     if (WIN32)
-        set(LIBS_ENGINE ${LIBS_ENGINE} ${SDL2_LIBRARY})
+        set(LIBS_ENGINE_BASE ${LIBS_ENGINE_BASE} ${SDL2_LIBRARY})
     else()
         set(LIBS_CLIENT ${LIBS_CLIENT} ${SDL2_LIBRARY})
     endif()
@@ -572,7 +573,8 @@ if (USE_BREAKPAD)
             endif()
         endforeach(breaklib)
 
-        add_executable(crash_server src/engine/crash_server/crash_server_windows.cpp)
+        # WIN32 option prevents a console from being created for the process
+        add_executable(crash_server WIN32 src/engine/crash_server/crash_server_windows.cpp)
         target_link_libraries(crash_server
             srclibs-breakpad-crash_generation_server srclibs-breakpad-common)
         target_compile_definitions(crash_server PRIVATE UNICODE)
@@ -643,21 +645,15 @@ endif()
 ################################################################################
 # Engine
 ################################################################################
-if (NOT NACL)
-    add_library(engine-lib ${PCH_FILE} ${COMMONLIST} ${ENGINELIST})
-    target_link_libraries(engine-lib ${LIBS_BASE} ${LIBS_ENGINE_BASE})
-    set_property(TARGET engine-lib APPEND PROPERTY COMPILE_DEFINITIONS BUILD_ENGINE)
-    set_property(TARGET engine-lib APPEND PROPERTY INCLUDE_DIRECTORIES ${ENGINE_DIR} ${MOUNT_DIR} ${LIB_DIR})
-    set_property(TARGET engine-lib APPEND PROPERTY COMPILE_OPTIONS ${WARNINGS})
-    ADD_PRECOMPILED_HEADER(engine-lib)
-endif()
-
 function(AddApplication)
     set(oneValueArgs Target ExecutableName)
     set(multiValueArgs Definitions Flags Files Libs)
     cmake_parse_arguments(A "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    add_executable(${A_Target} ${A_Files} ${PCH_FILE})
+    # HACK: Because of the linking rules on Windows, linking SDLCompat in engine-lib is not
+    # enough for SDLMain to see __iob_func so we add SDLCompat to the executable source
+    # list directly.
+    add_executable(${A_Target} ${A_Files} ${ENGINE_DIR}/framework/SDLCompat.cpp ${PCH_FILE})
     target_link_libraries(${A_Target} engine-lib ${A_Libs})
 
     set_property(TARGET ${A_Target} APPEND PROPERTY COMPILE_OPTIONS ${A_Flags})
@@ -668,6 +664,24 @@ function(AddApplication)
     message(STATUS ${A_Target})
     ADD_PRECOMPILED_HEADER(${A_Target})
 endfunction()
+
+if (NOT NACL)
+    add_library(engine-lib ${PCH_FILE} ${COMMONLIST} ${ENGINELIST})
+    target_link_libraries(engine-lib ${LIBS_BASE} ${LIBS_ENGINE_BASE})
+    set_property(TARGET engine-lib APPEND PROPERTY COMPILE_DEFINITIONS BUILD_ENGINE)
+    set_property(TARGET engine-lib APPEND PROPERTY INCLUDE_DIRECTORIES ${ENGINE_DIR} ${MOUNT_DIR} ${LIB_DIR})
+    set_property(TARGET engine-lib APPEND PROPERTY COMPILE_OPTIONS ${WARNINGS})
+    ADD_PRECOMPILED_HEADER(engine-lib)
+
+    if(BUILD_DUMMPY_APP)
+        AddApplication(
+            Target dummyapp
+            ExecutableName dummyapp
+            Flags ${WARNINGS}
+            Files ${ENGINE_DIR}/null/NullApplication.cpp
+        )
+    endif()
+endif()
 
 if (BUILD_CLIENT)
     set(Definitions

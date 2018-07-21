@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, Unreal Arena
- * Copyright (c) 2013-2014, Daemon Developers
+ * Copyright (c) 2013-2016, Daemon Developers
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@
 #include <nacl/nacl_minidump.h>
 #endif
 #include <nacl/nacl_random.h>
-#include "engine/client/cg_api.h"
+#include "shared/CommonProxies.h"
 #else
 #include <dlfcn.h>
 #endif
@@ -251,10 +251,10 @@ static void CrashHandler(const void* data, size_t n)
 {
 #ifdef UNREALARENA
 #ifdef USE_BREAKPAD
-    trap_CrashDump(static_cast<const uint8_t*>(data), n);
+    VM::CrashDump(static_cast<const uint8_t*>(data), n);
 #endif
 #else
-    trap_CrashDump(static_cast<const uint8_t*>(data), n);
+    VM::CrashDump(static_cast<const uint8_t*>(data), n);
 #endif
     Sys::Error("Crashed with NaCl exception");
 }

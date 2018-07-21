@@ -1,6 +1,6 @@
 # Daemon BSD Source Code
 # Copyright (c) 2015-2016, Unreal Arena
-# Copyright (c) 2013-2014, Daemon Developers
+# Copyright (c) 2013-2016, Daemon Developers
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -334,4 +334,9 @@ endif()
 if (LINUX)
     set(CMAKE_INSTALL_RPATH "$ORIGIN")
     set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+endif()
+
+# Configuration specific definitions
+if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo)
+    add_definitions(-DDEBUG)
 endif()

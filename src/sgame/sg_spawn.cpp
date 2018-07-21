@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -1056,6 +1056,7 @@ bool G_ParseSpawnVars()
 	return true;
 }
 
+#ifndef UNREALARENA
 /**
  * Warning: The following comment contains information, that might be parsed and used by radiant based mapeditors.
  */
@@ -1068,8 +1069,15 @@ Every map should have exactly one.
 ; music: path/name of looping .wav file used for level's music (eg. music/sonic5.wav).
 ; gravity: level gravity [g_gravity (800)]
 
+; humanBuildPoints: maximum amount of power the humans can use. [g_humanBuildPoints]
+; humanRepeaterBuildPoints: maximum amount of power the humans can use around each repeater. [g_humanRepeaterBuildPoints]
+; alienBuildPoints: maximum amount of sentience available to the overmind. [g_alienBuildPoints]
+
 ; disabledEquipment: A comma delimited list of human weapons or upgrades to disable for this map. [g_disabledEquipment ()]
+; disabledClasses: A comma delimited list of alien classes to disable for this map. [g_disabledClasses ()]
+; disabledBuildables: A comma delimited list of buildables to disable for this map. [g_disabledBuildables ()]
 */
+#endif
 void SP_worldspawn()
 {
 	char *s;

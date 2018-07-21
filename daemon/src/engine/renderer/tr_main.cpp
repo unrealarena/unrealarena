@@ -235,13 +235,6 @@ void R_TBNtoQtangents( const vec3_t tangent, const vec3_t binormal,
 		}
 	}
 
-	// assert( fabs(DotProduct( tangent2, tangent2 ) - 1.0f) < 0.01f );
-	// assert( fabs(DotProduct( binormal2, binormal2 ) - 1.0f) < 0.01f );
-	// assert( fabs(DotProduct( normal2, normal2 ) - 1.0f) < 0.01f );
-	// assert( fabs(DotProduct( tangent2, binormal2 ) ) < 0.01f );
-	// assert( fabs(DotProduct( tangent2, normal2 ) ) < 0.01f );
-	// assert( fabs(DotProduct( binormal2, normal2 ) ) < 0.01f );
-
 	// check of orientation
 	CrossProduct( binormal2, normal2, tangent3 );
 	dot = DotProduct( tangent2, tangent3 );
@@ -316,12 +309,12 @@ void R_TBNtoQtangents( const vec3_t tangent, const vec3_t binormal,
 	if (0) {
 		vec3_t T, B, N;
 		R_QtangentsToTBN( qtangent, T, B, N );
-		assert( Distance( N, normal2 ) < 0.01f );
+		ASSERT_LT(Distance(N, normal2), 0.01f);
 		if( flipped ) {
 			VectorNegate( T, T );
 		}
-		assert( Distance( T, tangent2 ) < 0.01f );
-		assert( Distance( B, binormal2 ) < 0.01f );
+		ASSERT_LT(Distance(T, tangent2), 0.01f);
+		ASSERT_LT(Distance(B, binormal2), 0.01f);
 	}
 }
 
@@ -955,7 +948,7 @@ static void R_SetupUnprojection()
 	MatrixInverse( unprojectMatrix );
 
 	MatrixMultiplyTranslation( unprojectMatrix, -1.0, -1.0, -1.0 );
-	MatrixMultiplyScale( unprojectMatrix, 2.0 * Q_recip( ( float ) glConfig.vidWidth ), 2.0 * Q_recip( ( float ) glConfig.vidHeight ), 2.0 );
+	MatrixMultiplyScale( unprojectMatrix, 2.0f / glConfig.vidWidth, 2.0f / glConfig.vidHeight, 2.0 );
 }
 
 /*

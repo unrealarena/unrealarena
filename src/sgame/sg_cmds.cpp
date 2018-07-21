@@ -21,6 +21,7 @@
 
 #include "sg_local.h"
 #include "engine/qcommon/q_unicode.h"
+#include <common/FileSystem.h>
 #include "CBSE.h"
 
 #define CMD_CHEAT        0x0001

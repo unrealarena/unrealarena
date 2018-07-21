@@ -1436,9 +1436,9 @@ void G_SpawnClients( team_t team )
 #endif
 
 #ifdef UNREALARENA
-	assert(team == TEAM_Q || team == TEAM_U);
+	ASSERT(team == TEAM_Q || team == TEAM_U);
 #else
-	assert(team == TEAM_ALIENS || team == TEAM_HUMANS);
+	ASSERT(team == TEAM_ALIENS || team == TEAM_HUMANS);
 #endif
 	sq = &level.team[ team ].spawnQueue;
 

@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Common.h"
 
 namespace Str {
+
+    void AssertOnTinyFormatError(std::string reason) {
+        if (reason != "") {
+            ASSERT_EQ(reason, "");
+        } else {
+            ASSERT_NQ(reason, "");
+        }
+    }
 
     bool ParseInt(int& value, Str::StringRef text) {
         if (text.empty())

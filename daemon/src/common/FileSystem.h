@@ -1,7 +1,7 @@
 /*
 ===========================================================================
 Daemon BSD Source Code
-Copyright (c) 2013-2014, Daemon Developers
+Copyright (c) 2013-2016, Daemon Developers
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef COMMON_FILESYSTEM_H_
 #define COMMON_FILESYSTEM_H_
+
+#include "Command.h"
 
 #ifdef BUILD_ENGINE
 #include "IPC/Channel.h"

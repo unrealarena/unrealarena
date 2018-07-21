@@ -18,6 +18,7 @@
  */
 
 
+#include <common/FileSystem.h>
 #include "q_shared.h"
 #include "qcommon.h"
 

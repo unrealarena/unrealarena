@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016, Unreal Arena
- * Copyright (c) 2013-2014, Daemon Developers
+ * Copyright (c) 2013-2016, Daemon Developers
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@
 #include "LogSystem.h"
 #include "System.h"
 #include "CrashDump.h"
+#include <common/FileSystem.h>
 #ifdef _WIN32
 #include <windows.h>
 #include <SDL2/SDL.h>
@@ -308,7 +309,7 @@ void Error(Str::StringRef message)
 	if (errorEntered.test_and_set())
 		_exit(-1);
 
-	Log::Notice("^1 Error: %s", message);
+	Log::Notice("^1Error: %s", message);
 	Shutdown(true, message);
 
 	OSExit(1);
@@ -618,9 +619,7 @@ static void Init(int argc, char** argv)
 
     if (CreateCrashDumpPath()) {
         EarlyCvar("common.breakpad.enabled", cmdlineArgs);
-        if (BreakpadInit()) {
-            Log::Notice("Starting crash logging server");
-        }
+        BreakpadInit();
     }
 
 	// Load the base paks
