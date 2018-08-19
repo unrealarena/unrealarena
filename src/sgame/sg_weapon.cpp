@@ -234,7 +234,7 @@ bool G_FindAmmo( gentity_t *self )
 	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, ENTITY_BUY_RANGE ) ) )
 	{
 		// only friendly, living and powered buildables provide ammo
-		if ( neighbor->s.eType != ET_BUILDABLE || !G_OnSameTeam( self, neighbor ) ||
+		if ( neighbor->s.eType != entityType_t::ET_BUILDABLE || !G_OnSameTeam( self, neighbor ) ||
 		     !neighbor->spawned || !neighbor->powered || G_Dead( neighbor ) )
 		{
 			continue;
@@ -284,7 +284,7 @@ bool G_FindFuel( gentity_t *self )
 	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, ENTITY_BUY_RANGE ) ) )
 	{
 		// only friendly, living and powered buildables provide fuel
-		if ( neighbor->s.eType != ET_BUILDABLE || !G_OnSameTeam( self, neighbor ) ||
+		if ( neighbor->s.eType != entityType_t::ET_BUILDABLE || !G_OnSameTeam( self, neighbor ) ||
 		     !neighbor->spawned || !neighbor->powered || G_Dead( neighbor ) )
 		{
 			continue;
@@ -736,7 +736,7 @@ static void HiveMissileThink( gentity_t *self )
 	if ( level.time > self->timestamp ) // swarm lifetime exceeded
 	{
 		VectorCopy( self->r.currentOrigin, self->s.pos.trBase );
-		self->s.pos.trType = TR_STATIONARY;
+		self->s.pos.trType = trType_t::TR_STATIONARY;
 		self->s.pos.trTime = level.time;
 
 		self->think = G_ExplodeMissile;
@@ -958,7 +958,7 @@ static void FirebombMissileThink( gentity_t *self )
 	neighbor = nullptr;
 	while ( ( neighbor = G_IterateEntitiesWithinRadius( neighbor, self->s.origin, FIREBOMB_IGNITE_RANGE ) ) )
 	{
-		if ( neighbor->s.eType == ET_BUILDABLE && neighbor->buildableTeam == TEAM_ALIENS &&
+		if ( neighbor->s.eType == entityType_t::ET_BUILDABLE && neighbor->buildableTeam == TEAM_ALIENS &&
 		     G_LineOfSight( self, neighbor ) )
 		{
 			neighbor->entity->Ignite( self->parent );
@@ -1160,7 +1160,7 @@ void G_CheckCkitRepair( gentity_t *self )
 	trap_Trace( &tr, viewOrigin, nullptr, nullptr, end, self->s.number, MASK_PLAYERSOLID, 0 );
 	traceEnt = &g_entities[ tr.entityNum ];
 
-	if ( tr.fraction < 1.0f && traceEnt->spawned && traceEnt->s.eType == ET_BUILDABLE &&
+	if ( tr.fraction < 1.0f && traceEnt->spawned && traceEnt->s.eType == entityType_t::ET_BUILDABLE &&
 	     traceEnt->buildableTeam == TEAM_HUMANS )
 	{
 		HealthComponent *healthComponent = traceEnt->entity->Get<HealthComponent>();
@@ -1287,7 +1287,7 @@ bool G_CheckVenomAttack( gentity_t *self )
 
 #ifndef UNREALARENA
 	// only allow bites to work against buildables in construction
-	if ( traceEnt->s.eType == ET_BUILDABLE && traceEnt->spawned )
+	if ( traceEnt->s.eType == entityType_t::ET_BUILDABLE && traceEnt->spawned )
 	{
 		return false;
 	}
@@ -1357,7 +1357,7 @@ static void FindZapChainTargets( zap_t *zap )
 #else
 		if ( ( ( enemy->client &&
 		         enemy->client->pers.team == TEAM_HUMANS ) ||
-		       ( enemy->s.eType == ET_BUILDABLE &&
+		       ( enemy->s.eType == entityType_t::ET_BUILDABLE &&
 		         BG_Buildable( enemy->s.modelindex )->team == TEAM_HUMANS ) ) &&
 		     G_Alive( enemy ) &&
 		     distance <= LEVEL2_AREAZAP_CHAIN_RANGE )
@@ -1450,7 +1450,7 @@ static void CreateNewZap( gentity_t *creator, gentity_t *target )
 		}
 
 		zap->effectChannel = G_NewEntity();
-		zap->effectChannel->s.eType = ET_LEV2_ZAP_CHAIN;
+		zap->effectChannel->s.eType = entityType_t::ET_LEV2_ZAP_CHAIN;
 		zap->effectChannel->classname = "lev2zapchain";
 		UpdateZapEffect( zap );
 
@@ -1557,7 +1557,7 @@ static void FireAreaZap( gentity_t *ent )
 	if ( traceEnt->client && traceEnt->client->pers.team == TEAM_U )
 #else
 	if ( ( traceEnt->client && traceEnt->client->pers.team == TEAM_HUMANS ) ||
-	     ( traceEnt->s.eType == ET_BUILDABLE &&
+	     ( traceEnt->s.eType == entityType_t::ET_BUILDABLE &&
 	       BG_Buildable( traceEnt->s.modelindex )->team == TEAM_HUMANS ) )
 #endif
 	{
@@ -2049,13 +2049,13 @@ void G_FireUpgrade( gentity_t *self, upgrade_t upgrade )
 {
 	if ( !self || !self->client )
 	{
-		Com_Printf( S_WARNING "G_FireUpgrade: Called with non-player parameter.\n" );
+		Log::Warn( "G_FireUpgrade: Called with non-player parameter." );
 		return;
 	}
 
 	if ( upgrade <= UP_NONE || upgrade >= UP_NUM_UPGRADES )
 	{
-		Com_Printf( S_WARNING "G_FireUpgrade: Called with unknown upgrade.\n" );
+		Log::Warn( "G_FireUpgrade: Called with unknown upgrade." );
 		return;
 	}
 

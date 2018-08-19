@@ -34,7 +34,7 @@ void GL_Bind( image_t *image )
 
 	if ( !image )
 	{
-		ri.Printf( PRINT_WARNING, "GL_Bind: NULL image\n" );
+		Log::Warn("GL_Bind: NULL image" );
 		image = tr.defaultImage;
 	}
 	else
@@ -149,7 +149,7 @@ void GL_SelectTexture( int unit )
 	}
 	else
 	{
-		ri.Error( ERR_DROP, "GL_SelectTexture: unit = %i", unit );
+		ri.Error( errorParm_t::ERR_DROP, "GL_SelectTexture: unit = %i", unit );
 	}
 
 	glState.currenttmu = unit;
@@ -161,7 +161,7 @@ void GL_BindToTMU( int unit, image_t *image )
 
 	if ( unit < 0 || unit > 31 )
 	{
-		ri.Error( ERR_DROP, "GL_BindToTMU: unit %i is out of range\n", unit );
+		ri.Error( errorParm_t::ERR_DROP, "GL_BindToTMU: unit %i is out of range\n", unit );
 	}
 
 	if ( glState.currenttextures[ unit ] == texnum )
@@ -311,7 +311,7 @@ void GL_PushMatrix()
 	if ( glState.stackIndex >= MAX_GLSTACK )
 	{
 		glState.stackIndex = MAX_GLSTACK - 1;
-		ri.Error( ERR_DROP, "GL_PushMatrix: stack overflow = %i", glState.stackIndex );
+		ri.Error( errorParm_t::ERR_DROP, "GL_PushMatrix: stack overflow = %i", glState.stackIndex );
 	}
 }
 
@@ -322,7 +322,7 @@ void GL_PopMatrix()
 	if ( glState.stackIndex < 0 )
 	{
 		glState.stackIndex = 0;
-		ri.Error( ERR_DROP, "GL_PushMatrix: stack underflow" );
+		ri.Error( errorParm_t::ERR_DROP, "GL_PushMatrix: stack underflow" );
 	}
 }
 
@@ -374,7 +374,7 @@ void GL_PolygonOffset( float factor, float units )
 	}
 }
 
-void GL_Cull( int cullType )
+void GL_Cull( cullType_t cullType )
 {
 	if ( backEnd.viewParms.isMirror )
 	{
@@ -390,16 +390,16 @@ void GL_Cull( int cullType )
 		return;
 	}
 
-	if ( cullType == CT_TWO_SIDED )
+	if ( cullType == cullType_t::CT_TWO_SIDED )
 	{
 		glDisable( GL_CULL_FACE );
 	}
 	else
 	{
-		if( glState.faceCulling == CT_TWO_SIDED )
+		if( glState.faceCulling == cullType_t::CT_TWO_SIDED )
 			glEnable( GL_CULL_FACE );
 
-		if ( cullType == CT_BACK_SIDED )
+		if ( cullType == cullType_t::CT_BACK_SIDED )
 		{
 			GL_CullFace( GL_BACK );
 		}
@@ -492,7 +492,7 @@ void GL_State( uint32_t stateBits )
 
 				default:
 					srcFactor = GL_ONE; // to get warning to shut up
-					ri.Error( ERR_DROP, "GL_State: invalid src blend state bits" );
+					ri.Error( errorParm_t::ERR_DROP, "GL_State: invalid src blend state bits" );
 			}
 
 			switch ( stateBits & GLS_DSTBLEND_BITS )
@@ -531,7 +531,7 @@ void GL_State( uint32_t stateBits )
 
 				default:
 					dstFactor = GL_ONE; // to get warning to shut up
-					ri.Error( ERR_DROP, "GL_State: invalid dst blend state bits" );
+					ri.Error( errorParm_t::ERR_DROP, "GL_State: invalid dst blend state bits" );
 			}
 
 			glEnable( GL_BLEND );
@@ -674,7 +674,7 @@ void GL_VertexAttribPointers( uint32_t attribBits )
 
 	if ( !glState.currentVBO )
 	{
-		ri.Error( ERR_FATAL, "GL_VertexAttribPointers: no VBO bound" );
+		ri.Error( errorParm_t::ERR_FATAL, "GL_VertexAttribPointers: no VBO bound" );
 	}
 
 	if ( r_logFile->integer )
@@ -796,10 +796,7 @@ static void RB_SetGL2D()
 	GLimp_LogComment( "--- RB_SetGL2D ---\n" );
 
 	// disable offscreen rendering
-	if ( glConfig2.framebufferObjectAvailable )
-	{
-		R_BindNullFBO();
-	}
+	R_BindNullFBO();
 
 	backEnd.projection2D = true;
 
@@ -813,7 +810,7 @@ static void RB_SetGL2D()
 
 	GL_State( GLS_DEPTHTEST_DISABLE | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 
-	GL_Cull( CT_TWO_SIDED );
+	GL_Cull( cullType_t::CT_TWO_SIDED );
 
 	// set time for 2D shaders
 	backEnd.refdef.time = ri.Milliseconds();
@@ -823,15 +820,16 @@ static void RB_SetGL2D()
 // used as bitfield
 enum renderDrawSurfaces_e
 {
-  DRAWSURFACES_WORLD         = 1,
-  DRAWSURFACES_FAR_ENTITIES  = 2,
-  DRAWSURFACES_ALL_FAR       = 3,
-  DRAWSURFACES_NEAR_ENTITIES = 4,
-  DRAWSURFACES_ALL_ENTITIES  = 6,
-  DRAWSURFACES_ALL           = 7
+  DRAWSURFACES_WORLD         = 1 << 0,
+  DRAWSURFACES_FAR_ENTITIES  = 1 << 1,
+  DRAWSURFACES_NEAR_ENTITIES = 1 << 2,
+  DRAWSURFACES_ALL_FAR       = DRAWSURFACES_WORLD | DRAWSURFACES_FAR_ENTITIES,
+  DRAWSURFACES_ALL_ENTITIES  = DRAWSURFACES_FAR_ENTITIES | DRAWSURFACES_NEAR_ENTITIES,
+  DRAWSURFACES_ALL           = DRAWSURFACES_WORLD | DRAWSURFACES_ALL_ENTITIES
 };
 
-static void RB_RenderDrawSurfaces( bool opaque, renderDrawSurfaces_e drawSurfFilter )
+static void RB_RenderDrawSurfaces( shaderSort_t fromSort, shaderSort_t toSort,
+				   renderDrawSurfaces_e drawSurfFilter )
 {
 	trRefEntity_t *entity, *oldEntity;
 	shader_t      *shader, *oldShader;
@@ -840,6 +838,7 @@ static void RB_RenderDrawSurfaces( bool opaque, renderDrawSurfaces_e drawSurfFil
 	bool      depthRange, oldDepthRange;
 	int           i;
 	drawSurf_t    *drawSurf;
+	int           lastSurf;
 
 	GLimp_LogComment( "--- RB_RenderDrawSurfaces ---\n" );
 
@@ -852,8 +851,11 @@ static void RB_RenderDrawSurfaces( bool opaque, renderDrawSurfaces_e drawSurfFil
 	depthRange = false;
 	backEnd.currentLight = nullptr;
 
-	for ( i = 0, drawSurf = backEnd.viewParms.drawSurfs; i < backEnd.viewParms.numDrawSurfs; i++, drawSurf++ )
+	lastSurf = backEnd.viewParms.firstDrawSurf[ Util::ordinal(toSort) + 1 ];
+	for ( i = backEnd.viewParms.firstDrawSurf[ Util::ordinal(fromSort) ]; i < lastSurf; i++ )
 	{
+		drawSurf = &backEnd.viewParms.drawSurfs[ i ];
+
 		// update locals
 		entity = drawSurf->entity;
 		shader = tr.sortedShaders[ drawSurf->shaderNum() ];
@@ -871,27 +873,10 @@ static void RB_RenderDrawSurfaces( bool opaque, renderDrawSurfaces_e drawSurfFil
 				continue;
 		}
 
-		if ( opaque )
-		{
-			// skip all translucent surfaces that don't matter for this pass
-			if ( shader->sort > SS_OPAQUE )
-			{
-				break;
-			}
-		}
-		else
-		{
-			// skip all opaque surfaces that don't matter for this pass
-			if ( shader->sort <= SS_OPAQUE )
-			{
-				continue;
-			}
-		}
-
 		if ( entity == oldEntity && shader == oldShader && lightmapNum == oldLightmapNum && fogNum == oldFogNum )
 		{
 			// fast path, same as previous sort
-			rb_surfaceTable[ *drawSurf->surface ]( drawSurf->surface );
+			rb_surfaceTable[Util::ordinal(*drawSurf->surface)](drawSurf->surface );
 			continue;
 		}
 
@@ -962,7 +947,7 @@ static void RB_RenderDrawSurfaces( bool opaque, renderDrawSurfaces_e drawSurfFil
 		}
 
 		// add the triangles for this surface
-		rb_surfaceTable[ *drawSurf->surface ]( drawSurf->surface );
+		rb_surfaceTable[Util::ordinal(*drawSurf->surface)](drawSurf->surface );
 	}
 
 	// draw the contents of the last shader batch
@@ -1030,21 +1015,21 @@ static int MergeInteractionBounds( const matrix_t lightViewProjectionMatrix, int
 			}
 		}
 
-		if ( *surface == SF_FACE || *surface == SF_GRID || *surface == SF_TRIANGLES )
+		if ( *surface == surfaceType_t::SF_FACE || *surface == surfaceType_t::SF_GRID || *surface == surfaceType_t::SF_TRIANGLES )
 		{
 			srfGeneric_t *gen = ( srfGeneric_t * ) surface;
 
 			VectorCopy( gen->bounds[ 0 ], worldBounds[ 0 ] );
 			VectorCopy( gen->bounds[ 1 ], worldBounds[ 1 ] );
 		}
-		else if ( *surface == SF_VBO_MESH )
+		else if ( *surface == surfaceType_t::SF_VBO_MESH )
 		{
 			srfVBOMesh_t *srf = ( srfVBOMesh_t * ) surface;
 
 			VectorCopy( srf->bounds[ 0 ], worldBounds[ 0 ] );
 			VectorCopy( srf->bounds[ 1 ], worldBounds[ 1 ] );
 		}
-		else if ( *surface == SF_MDV )
+		else if ( *surface == surfaceType_t::SF_MDV )
 		{
 			goto skipInteraction;
 		}
@@ -1059,7 +1044,7 @@ static int MergeInteractionBounds( const matrix_t lightViewProjectionMatrix, int
 			clipPlane = &frustum[ i ];
 
 			// we can have shadow casters outside the initial computed light view frustum
-			if ( i == FRUSTUM_NEAR && shadowCasters )
+			if ( i == Util::ordinal(frustumBits_t::FRUSTUM_NEAR) && shadowCasters )
 			{
 				continue;
 			}
@@ -1161,7 +1146,7 @@ static void RB_SetupLightAttenuationForEntity( trRefLight_t *light, const trRefE
 	// build the attenuation matrix using the entity transform
 	switch ( light->l.rlType )
 	{
-		case RL_OMNI:
+		case refLightType_t::RL_OMNI:
 			{
 				MatrixSetupTranslation( light->attenuationMatrix, 0.5, 0.5, 0.5 );  // bias
 				MatrixMultiplyScale( light->attenuationMatrix, 0.5, 0.5, 0.5 );  // scale
@@ -1172,7 +1157,7 @@ static void RB_SetupLightAttenuationForEntity( trRefLight_t *light, const trRefE
 				break;
 			}
 
-		case RL_PROJ:
+		case refLightType_t::RL_PROJ:
 			{
 				MatrixSetupTranslation( light->attenuationMatrix, 0.5, 0.5, 0.0 );  // bias
 				MatrixMultiplyScale( light->attenuationMatrix, 0.5f, 0.5f, 1.0f / std::min( light->falloffLength, 1.0f ) );   // scale
@@ -1183,7 +1168,7 @@ static void RB_SetupLightAttenuationForEntity( trRefLight_t *light, const trRefE
 				break;
 			}
 
-		case RL_DIRECTIONAL:
+		case refLightType_t::RL_DIRECTIONAL:
 			{
 				MatrixSetupTranslation( light->attenuationMatrix, 0.5, 0.5, 0.5 );  // bias
 				MatrixMultiplyScale( light->attenuationMatrix, 0.5, 0.5, 0.5 );  // scale
@@ -1192,7 +1177,7 @@ static void RB_SetupLightAttenuationForEntity( trRefLight_t *light, const trRefE
 				break;
 			}
 
-		case RL_MAX_REF_LIGHT_TYPE:
+		case refLightType_t::RL_MAX_REF_LIGHT_TYPE:
 			{
 				//Nothing for right now...
 				break;
@@ -1218,7 +1203,7 @@ static void RB_RenderInteractions()
 
 	GLimp_LogComment( "--- RB_RenderInteractions ---\n" );
 
-	if ( r_speeds->integer == RSPEEDS_SHADING_TIMES )
+	if ( r_speeds->integer == Util::ordinal(renderSpeeds_t::RSPEEDS_SHADING_TIMES))
 	{
 		glFinish();
 		startTime = ri.Milliseconds();
@@ -1264,7 +1249,7 @@ static void RB_RenderInteractions()
 			if ( entity == oldEntity && shader == oldShader )
 			{
 				// fast path, same as previous
-				rb_surfaceTable[ *surface ]( surface );
+				rb_surfaceTable[Util::ordinal(*surface)](surface );
 				continue;
 			}
 
@@ -1316,7 +1301,7 @@ static void RB_RenderInteractions()
 			}
 
 			// add the triangles for this surface
-			rb_surfaceTable[ *surface ]( surface );
+			rb_surfaceTable[Util::ordinal(*surface)](surface );
 			oldEntity = entity;
 			oldShader = shader;
 		}
@@ -1345,7 +1330,7 @@ static void RB_RenderInteractions()
 
 	GL_CheckErrors();
 
-	if ( r_speeds->integer == RSPEEDS_SHADING_TIMES )
+	if ( r_speeds->integer == Util::ordinal(renderSpeeds_t::RSPEEDS_SHADING_TIMES) )
 	{
 		glFinish();
 		endTime = ri.Milliseconds();
@@ -1368,7 +1353,7 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 
 	switch ( light->l.rlType )
 	{
-		case RL_OMNI:
+		case refLightType_t::RL_OMNI:
 			{
 				float    zNear, zFar;
 				float    fovX, fovY;
@@ -1405,7 +1390,6 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 				GL_Scissor( 0, 0, shadowMapResolutions[ light->shadowLOD ], shadowMapResolutions[ light->shadowLOD ] );
 
 				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-				backEnd.depthRenderImageValid = false;
 
 				switch ( cubeSide )
 				{
@@ -1502,7 +1486,7 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 				break;
 			}
 
-		case RL_PROJ:
+		case refLightType_t::RL_PROJ:
 			{
 				GLimp_LogComment( "--- Rendering projective shadowMap ---\n" );
 
@@ -1526,13 +1510,12 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 				GL_Scissor( 0, 0, shadowMapResolutions[ light->shadowLOD ], shadowMapResolutions[ light->shadowLOD ] );
 
 				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-				backEnd.depthRenderImageValid = false;
 
 				GL_LoadProjectionMatrix( light->projectionMatrix );
 				break;
 			}
 
-		case RL_DIRECTIONAL:
+		case refLightType_t::RL_DIRECTIONAL:
 			{
 				int      j;
 				vec3_t   angles;
@@ -1579,7 +1562,6 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 				GL_Scissor( 0, 0, sunShadowMapResolutions[ splitFrustumIndex ], sunShadowMapResolutions[ splitFrustumIndex ] );
 
 				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-				backEnd.depthRenderImageValid = false;
 
 				VectorCopy( tr.sunDirection, lightDirection );
 
@@ -1797,7 +1779,7 @@ static void RB_SetupLightForLighting( trRefLight_t *light )
 		GLimp_LogComment( va( "----- First Light Interaction: %i -----\n", (int)( light->firstInteraction - backEnd.viewParms.interactions ) ) );
 	}
 
-	R_BindNullFBO();
+	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
 
 	// set the window clipping
 	GL_Viewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
@@ -1814,15 +1796,15 @@ static void RB_SetupLightForLighting( trRefLight_t *light )
 	// reset light view and projection matrices
 	switch ( light->l.rlType )
 	{
-		case RL_OMNI:
+		case refLightType_t::RL_OMNI:
 			{
 				MatrixAffineInverse( light->transformMatrix, light->viewMatrix );
-				MatrixSetupScale( light->projectionMatrix, 1.0 / light->l.radius[ 0 ], 1.0 / light->l.radius[ 1 ],
-							        1.0 / light->l.radius[ 2 ] );
+				MatrixSetupScale( light->projectionMatrix, 1.0 / light->l.radius, 1.0 / light->l.radius,
+							        1.0 / light->l.radius );
 				break;
 			}
 
-		case RL_DIRECTIONAL:
+		case refLightType_t::RL_DIRECTIONAL:
 			{
 				// draw split frustum shadow maps
 				if ( r_showShadowMaps->integer )
@@ -1843,7 +1825,7 @@ static void RB_SetupLightForLighting( trRefLight_t *light )
 
 					for ( frustumIndex = 0; frustumIndex <= r_parallelShadowSplits->integer; frustumIndex++ )
 					{
-						GL_Cull( CT_TWO_SIDED );
+						GL_Cull( cullType_t::CT_TWO_SIDED );
 						GL_State( GLS_DEPTHTEST_DISABLE );
 
 						gl_debugShadowMapShader->BindProgram( 0 );
@@ -1883,11 +1865,11 @@ static void RB_SetupLightForLighting( trRefLight_t *light )
 
 							// set uniforms
 							gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-							gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+							gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 							gl_genericShader->SetUniform_Color( Color::Black );
 
 							GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
-							GL_Cull( CT_TWO_SIDED );
+							GL_Cull( cullType_t::CT_TWO_SIDED );
 
 							// bind u_ColorMap
 							GL_BindToTMU( 0, tr.whiteImage );
@@ -1939,7 +1921,7 @@ static void RB_SetupLightForLighting( trRefLight_t *light )
 							// draw light volume
 							if ( light->isStatic && light->frustumVBO && light->frustumIBO )
 							{
-								gl_genericShader->SetUniform_ColorModulate( CGEN_CUSTOM_RGB, AGEN_CUSTOM );
+								gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CUSTOM_RGB, alphaGen_t::AGEN_CUSTOM );
 								gl_genericShader->SetUniform_Color( Color::Yellow );
 
 								R_BindVBO( light->frustumVBO );
@@ -1985,19 +1967,19 @@ static void RB_BlurShadowMap( const trRefLight_t *light, int i )
 	vec2_t  texScale;
 	matrix_t ortho;
 
-	if ( light->l.inverseShadows || r_shadows->integer < SHADOWING_VSM16 || !r_softShadowsPP->integer )
+	if ( light->l.inverseShadows || r_shadows->integer < Util::ordinal(shadowingMode_t::SHADOWING_VSM16) || !r_softShadowsPP->integer )
 	{
 		return;
 	}
 
-	if ( light->l.rlType == RL_OMNI )
+	if ( light->l.rlType == refLightType_t::RL_OMNI )
 	{
 		return;
 	}
 
-	fbos = ( light->l.rlType == RL_DIRECTIONAL ) ? tr.sunShadowMapFBO : tr.shadowMapFBO;
-	images = ( light->l.rlType == RL_DIRECTIONAL ) ? tr.sunShadowMapFBOImage : tr.shadowMapFBOImage;
-	index = ( light->l.rlType == RL_DIRECTIONAL ) ? i : light->shadowLOD;
+	fbos = ( light->l.rlType == refLightType_t::RL_DIRECTIONAL ) ? tr.sunShadowMapFBO : tr.shadowMapFBO;
+	images = ( light->l.rlType == refLightType_t::RL_DIRECTIONAL ) ? tr.sunShadowMapFBOImage : tr.shadowMapFBOImage;
+	index = ( light->l.rlType == refLightType_t::RL_DIRECTIONAL ) ? i : light->shadowLOD;
 
 	Vector4Set( verts[ 0 ], 0, 0, 0, 1 );
 	Vector4Set( verts[ 1 ], fbos[ index ]->width, 0, 0, 1 );
@@ -2021,7 +2003,7 @@ static void RB_BlurShadowMap( const trRefLight_t *light, int i )
 
 	glClear( GL_COLOR_BUFFER_BIT );
 
-	GL_Cull( CT_TWO_SIDED );
+	GL_Cull( cullType_t::CT_TWO_SIDED );
 	GL_State( GLS_DEPTHTEST_DISABLE );
 
 	GL_BindToTMU( 0, images[ index ] );
@@ -2080,7 +2062,7 @@ static void RB_RenderInteractionsShadowMapped()
 	                               0.5,     0.5, 0.5, 1.0
 	                      };
 
-	if ( !glConfig2.framebufferObjectAvailable || !glConfig2.textureFloatAvailable )
+	if ( !glConfig2.textureFloatAvailable )
 	{
 		RB_RenderInteractions();
 		return;
@@ -2088,7 +2070,7 @@ static void RB_RenderInteractionsShadowMapped()
 
 	GLimp_LogComment( "--- RB_RenderInteractionsShadowMapped ---\n" );
 
-	if ( r_speeds->integer == RSPEEDS_SHADING_TIMES )
+	if ( r_speeds->integer == Util::ordinal(renderSpeeds_t::RSPEEDS_SHADING_TIMES) )
 	{
 		glFinish();
 		startTime = ri.Milliseconds();
@@ -2114,10 +2096,10 @@ static void RB_RenderInteractionsShadowMapped()
 		int numMaps;
 		switch( light->l.rlType )
 		{
-			case RL_OMNI:
+			case refLightType_t::RL_OMNI:
 				numMaps = 6;
 				break;
-			case RL_DIRECTIONAL:
+			case refLightType_t::RL_DIRECTIONAL:
 				numMaps = std::max( r_parallelShadowSplits->integer + 1, 1 );
 				break;
 			default:
@@ -2165,7 +2147,7 @@ static void RB_RenderInteractionsShadowMapped()
 					continue;
 				}
 
-				if ( shader->sort > SS_OPAQUE )
+				if ( shader->sort > Util::ordinal(shaderSort_t::SS_OPAQUE) )
 				{
 					continue;
 				}
@@ -2184,16 +2166,16 @@ static void RB_RenderInteractionsShadowMapped()
 					continue;
 				}
 
-				if ( light->l.rlType == RL_OMNI && !( ia->cubeSideBits & ( 1 << i ) ) )
+				if ( light->l.rlType == refLightType_t::RL_OMNI && !( ia->cubeSideBits & ( 1 << i ) ) )
 				{
 					continue;
 				}
 
 				switch ( light->l.rlType )
 				{
-					case RL_OMNI:
-					case RL_PROJ:
-					case RL_DIRECTIONAL:
+					case refLightType_t::RL_OMNI:
+					case refLightType_t::RL_PROJ:
+					case refLightType_t::RL_DIRECTIONAL:
 						{
 							if ( entity == oldEntity && ( alphaTest ? shader == oldShader : alphaTest == oldAlphaTest ) )
 							{
@@ -2205,7 +2187,7 @@ static void RB_RenderInteractionsShadowMapped()
 								}
 
 								// fast path, same as previous
-								rb_surfaceTable[ *surface ]( surface );
+								rb_surfaceTable[ Util::ordinal(*surface) ]( surface );
 								continue;
 							}
 							else
@@ -2284,12 +2266,12 @@ static void RB_RenderInteractionsShadowMapped()
 
 				switch ( light->l.rlType )
 				{
-					case RL_OMNI:
-					case RL_PROJ:
-					case RL_DIRECTIONAL:
+					case refLightType_t::RL_OMNI:
+					case refLightType_t::RL_PROJ:
+					case refLightType_t::RL_DIRECTIONAL:
 						{
 							// add the triangles for this surface
-							rb_surfaceTable[ *surface ]( surface );
+							rb_surfaceTable[ Util::ordinal(*surface) ]( surface );
 							break;
 						}
 
@@ -2348,7 +2330,7 @@ static void RB_RenderInteractionsShadowMapped()
 						continue;
 					}
 
-					if ( shader->sort > SS_OPAQUE )
+					if ( shader->sort > Util::ordinal(shaderSort_t::SS_OPAQUE) )
 					{
 						continue;
 					}
@@ -2363,16 +2345,16 @@ static void RB_RenderInteractionsShadowMapped()
 						continue;
 					}
 
-					if ( light->l.rlType == RL_OMNI && !( ia->cubeSideBits & ( 1 << i ) ) )
+					if ( light->l.rlType == refLightType_t::RL_OMNI && !( ia->cubeSideBits & ( 1 << i ) ) )
 					{
 						continue;
 					}
 
 					switch ( light->l.rlType )
 					{
-						case RL_OMNI:
-						case RL_PROJ:
-						case RL_DIRECTIONAL:
+						case refLightType_t::RL_OMNI:
+						case refLightType_t::RL_PROJ:
+						case refLightType_t::RL_DIRECTIONAL:
 							{
 								if ( entity == oldEntity && ( alphaTest ? shader == oldShader : alphaTest == oldAlphaTest ) )
 								{
@@ -2384,7 +2366,7 @@ static void RB_RenderInteractionsShadowMapped()
 									}
 
 									// fast path, same as previous
-									rb_surfaceTable[ *surface ]( surface );
+									rb_surfaceTable[ Util::ordinal(*surface) ]( surface );
 									continue;
 								}
 								else
@@ -2463,12 +2445,12 @@ static void RB_RenderInteractionsShadowMapped()
 
 					switch ( light->l.rlType )
 					{
-						case RL_OMNI:
-						case RL_PROJ:
-						case RL_DIRECTIONAL:
+						case refLightType_t::RL_OMNI:
+						case refLightType_t::RL_PROJ:
+						case refLightType_t::RL_DIRECTIONAL:
 							{
 								// add the triangles for this surface
-								rb_surfaceTable[ *surface ]( surface );
+								rb_surfaceTable[ Util::ordinal(*surface) ]( surface );
 								break;
 							}
 
@@ -2491,7 +2473,7 @@ static void RB_RenderInteractionsShadowMapped()
 			}
 
 			// set shadow matrix including scale + offset
-			if ( light->l.rlType == RL_DIRECTIONAL )
+			if ( light->l.rlType == refLightType_t::RL_DIRECTIONAL )
 			{
 				MatrixCopy( bias, light->shadowMatricesBiased[ i ] );
 				MatrixMultiply2( light->shadowMatricesBiased[ i ], light->projectionMatrix );
@@ -2537,7 +2519,7 @@ static void RB_RenderInteractionsShadowMapped()
 				}
 
 				// fast path, same as previous
-				rb_surfaceTable[ *surface ]( surface );
+				rb_surfaceTable[ Util::ordinal(*surface) ]( surface );
 				continue;
 			}
 			else
@@ -2600,7 +2582,7 @@ static void RB_RenderInteractionsShadowMapped()
 			}
 
 			// add the triangles for this surface
-			rb_surfaceTable[ *surface ]( surface );
+			rb_surfaceTable[ Util::ordinal(*surface) ]( surface );
 			oldEntity = entity;
 			oldShader = shader;
 			oldAlphaTest = alphaTest;
@@ -2636,12 +2618,234 @@ static void RB_RenderInteractionsShadowMapped()
 
 	GL_CheckErrors();
 
-	if ( r_speeds->integer == RSPEEDS_SHADING_TIMES )
+	if ( r_speeds->integer == Util::ordinal(renderSpeeds_t::RSPEEDS_SHADING_TIMES) )
 	{
 		glFinish();
 		endTime = ri.Milliseconds();
 		backEnd.pc.c_forwardLightingTime = endTime - startTime;
 	}
+}
+
+/*
+=============
+RB_RunVisTests
+=============
+*/
+void RB_RunVisTests( )
+{
+	int i;
+
+	// finish any 2D drawing if needed
+	if ( tess.numIndexes )
+	{
+		Tess_End();
+	}
+
+	for ( i = 0; i < backEnd.refdef.numVisTests; i++ )
+	{
+		vec3_t           diff;
+		vec3_t           center, left, up;
+		visTestResult_t  *test = &backEnd.refdef.visTests[ i ];
+		visTestQueries_t *testState = &backEnd.visTestQueries[ test->visTestHandle - 1 ];
+
+		if ( testState->running && !test->discardExisting )
+		{
+			GLint  available;
+			GLuint result, resultRef;
+
+			glGetQueryObjectiv( testState->hQuery,
+					    GL_QUERY_RESULT_AVAILABLE,
+					    &available );
+			if( !available )
+			{
+				continue;
+			}
+
+			glGetQueryObjectiv( testState->hQueryRef,
+					    GL_QUERY_RESULT_AVAILABLE,
+					    &available );
+			if ( !available )
+			{
+				continue;
+			}
+
+			glGetQueryObjectuiv( testState->hQueryRef, GL_QUERY_RESULT,
+					     &resultRef );
+			glGetQueryObjectuiv( testState->hQuery, GL_QUERY_RESULT,
+					     &result );
+
+			if ( resultRef > 0 )
+			{
+				test->lastResult = (float)result / (float)resultRef;
+			}
+			else
+			{
+				test->lastResult = 0.0f;
+			}
+
+			testState->running = false;
+		}
+
+		Tess_MapVBOs( false );
+		VectorSubtract( backEnd.orientation.viewOrigin,
+				test->position, diff );
+		VectorNormalize( diff );
+		VectorMA( test->position, test->depthAdjust, diff, center );
+
+		VectorScale( backEnd.viewParms.orientation.axis[ 1 ],
+			     test->area, left );
+		VectorScale( backEnd.viewParms.orientation.axis[ 2 ],
+			     test->area, up );
+
+		tess.verts[ 0 ].xyz[ 0 ] = center[ 0 ] + left[ 0 ] + up[ 0 ];
+		tess.verts[ 0 ].xyz[ 1 ] = center[ 1 ] + left[ 1 ] + up[ 1 ];
+		tess.verts[ 0 ].xyz[ 2 ] = center[ 2 ] + left[ 2 ] + up[ 2 ];
+		tess.verts[ 1 ].xyz[ 0 ] = center[ 0 ] - left[ 0 ] + up[ 0 ];
+		tess.verts[ 1 ].xyz[ 1 ] = center[ 1 ] - left[ 1 ] + up[ 1 ];
+		tess.verts[ 1 ].xyz[ 2 ] = center[ 2 ] - left[ 2 ] + up[ 2 ];
+		tess.verts[ 2 ].xyz[ 0 ] = center[ 0 ] - left[ 0 ] - up[ 0 ];
+		tess.verts[ 2 ].xyz[ 1 ] = center[ 1 ] - left[ 1 ] - up[ 1 ];
+		tess.verts[ 2 ].xyz[ 2 ] = center[ 2 ] - left[ 2 ] - up[ 2 ];
+		tess.verts[ 3 ].xyz[ 0 ] = center[ 0 ] + left[ 0 ] - up[ 0 ];
+		tess.verts[ 3 ].xyz[ 1 ] = center[ 1 ] + left[ 1 ] - up[ 1 ];
+		tess.verts[ 3 ].xyz[ 2 ] = center[ 2 ] + left[ 2 ] - up[ 2 ];
+		tess.numVertexes = 4;
+
+		tess.indexes[ 0 ] = 0;
+		tess.indexes[ 1 ] = 1;
+		tess.indexes[ 2 ] = 2;
+		tess.indexes[ 3 ] = 0;
+		tess.indexes[ 4 ] = 2;
+		tess.indexes[ 5 ] = 3;
+		tess.numIndexes = 6;
+
+		Tess_UpdateVBOs( );
+		GL_VertexAttribsState( ATTR_POSITION );
+
+		gl_genericShader->DisableVertexSkinning();
+		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableTCGenEnvironment();
+		gl_genericShader->DisableTCGenLightmap();
+
+		gl_genericShader->BindProgram( 0 );
+
+		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		gl_genericShader->SetUniform_Color( Color::White );
+
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CONST, alphaGen_t::AGEN_CONST );
+
+		gl_genericShader->SetUniform_ModelMatrix( backEnd.orientation.transformMatrix );
+		gl_genericShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
+
+		// bind u_ColorMap
+		GL_BindToTMU( 0, tr.whiteImage );
+		gl_genericShader->SetUniform_ColorTextureMatrix( tess.svars.texMatrices[ TB_COLORMAP ] );
+
+		GL_State( GLS_DEPTHTEST_DISABLE | GLS_COLORMASK_BITS );
+		glBeginQuery( GL_SAMPLES_PASSED, testState->hQueryRef );
+		Tess_DrawElements();
+		glEndQuery( GL_SAMPLES_PASSED );
+
+		GL_State( GLS_COLORMASK_BITS );
+		glBeginQuery( GL_SAMPLES_PASSED, testState->hQuery );
+		Tess_DrawElements();
+		glEndQuery( GL_SAMPLES_PASSED );
+
+		tess.numIndexes = 0;
+		tess.numVertexes = 0;
+		tess.multiDrawPrimitives = 0;
+		testState->running = true;
+	}
+}
+
+void RB_RenderPostDepth()
+{
+	static vec4_t quadVerts[4] = {
+		{ -1.0f, -1.0f, 0.0f, 1.0f },
+		{  1.0f, -1.0f, 0.0f, 1.0f },
+		{  1.0f,  1.0f, 0.0f, 1.0f },
+		{ -1.0f,  1.0f, 0.0f, 1.0f }
+	};
+	vec3_t zParams;
+	int w, h;
+
+	GLimp_LogComment( "--- RB_RenderPostDepth ---\n" );
+
+	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) )
+	{
+		return;
+	}
+
+	// 1st step
+	GL_State( GLS_DEPTHTEST_DISABLE );
+	GL_Cull( CT_TWO_SIDED );
+
+	R_BindFBO( tr.depthtile1FBO );
+	w = (glConfig.vidWidth + TILE_SIZE_STEP1 - 1) >> TILE_SHIFT_STEP1;
+	h = (glConfig.vidHeight + TILE_SIZE_STEP1 - 1) >> TILE_SHIFT_STEP1;
+	GL_Viewport( 0, 0, w, h );
+	gl_depthtile1Shader->BindProgram( 0 );
+
+	zParams[ 0 ] = 2.0f * tanf( DEG2RAD( backEnd.refdef.fov_x * 0.5f) ) / glConfig.vidWidth;
+	zParams[ 1 ] = 2.0f * tanf( DEG2RAD( backEnd.refdef.fov_y * 0.5f) ) / glConfig.vidHeight;
+	zParams[ 2 ] = backEnd.viewParms.zFar;
+
+	gl_depthtile1Shader->SetUniform_zFar( zParams );
+	GL_BindToTMU( 0, tr.currentDepthImage );
+
+	Tess_InstantQuad( quadVerts );
+
+	// 2nd step
+	R_BindFBO( tr.depthtile2FBO );
+
+	w = (glConfig.vidWidth + TILE_SIZE - 1) >> TILE_SHIFT;
+	h = (glConfig.vidHeight + TILE_SIZE - 1) >> TILE_SHIFT;
+	GL_Viewport( 0, 0, w, h );
+	gl_depthtile2Shader->BindProgram( 0 );
+
+	GL_BindToTMU( 0, tr.depthtile1RenderImage );
+
+	Tess_InstantQuad( quadVerts );
+
+	// render lights
+	R_BindFBO( tr.lighttileFBO );
+	gl_lighttileShader->BindProgram( 0 );
+	gl_lighttileShader->SetUniform_ModelMatrix( backEnd.viewParms.world.modelViewMatrix );
+	gl_lighttileShader->SetUniform_numLights( backEnd.refdef.numLights );
+	if( glConfig2.uniformBufferObjectAvailable ) {
+		gl_lighttileShader->SetUniformBlock_Lights( tr.dlightUBO );
+	} else {
+		GL_BindToTMU( 1, tr.dlightImage );
+	}
+
+	GL_BindToTMU( 0, tr.depthtile2RenderImage );
+
+	R_BindVBO( tr.lighttileVBO );
+
+	for( int layer = 0; layer < MAX_REF_LIGHTS / 256; layer++ ) {
+		R_AttachFBOTexture3D( tr.lighttileRenderImage->texnum, 0, layer );
+		gl_lighttileShader->SetUniform_lightLayer( layer );
+
+		GL_Viewport( 0, 0, tr.lighttileRenderImage->width, tr.lighttileRenderImage->height );
+		tess.numIndexes = 0;
+		tess.numVertexes = tr.lighttileVBO->vertexesNum;
+
+		GL_VertexAttribsState( ATTR_POSITION | ATTR_TEXCOORD );
+		if( !glConfig2.glCoreProfile )
+			glEnable( GL_POINT_SPRITE );
+		glEnable( GL_PROGRAM_POINT_SIZE );
+		Tess_DrawArrays( GL_POINTS );
+		glDisable( GL_PROGRAM_POINT_SIZE );
+		if( !glConfig2.glCoreProfile )
+			glDisable( GL_POINT_SPRITE );
+	}
+
+	// back to main image
+	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
+	GL_Viewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
+		     backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
+
+	GL_CheckErrors();
 }
 
 void RB_RenderGlobalFog()
@@ -2667,7 +2871,7 @@ void RB_RenderGlobalFog()
 		return;
 	}
 
-	GL_Cull( CT_TWO_SIDED );
+	GL_Cull( cullType_t::CT_TWO_SIDED );
 
 	gl_fogGlobalShader->BindProgram( 0 );
 
@@ -2712,14 +2916,7 @@ void RB_RenderGlobalFog()
 	GL_BindToTMU( 0, tr.fogImage );
 
 	// bind u_DepthMap
-	GL_SelectTexture( 1 );
-
-	// depth texture is not bound to a FBO
-	if( !backEnd.depthRenderImageValid ) {
-		GL_Bind( tr.depthRenderImage );
-		glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.depthRenderImage->uploadWidth, tr.depthRenderImage->uploadHeight );
-		backEnd.depthRenderImageValid = true;
-	}
+	GL_BindToTMU( 1, tr.currentDepthImage );
 
 	// set 2D virtual screen size
 	GL_PushMatrix();
@@ -2748,7 +2945,7 @@ void RB_RenderBloom()
 
 	GLimp_LogComment( "--- RB_RenderBloom ---\n" );
 
-	if ( ( backEnd.refdef.rdflags & ( RDF_NOWORLDMODEL | RDF_NOBLOOM ) ) || !r_bloom->integer || backEnd.viewParms.isPortal || !glConfig2.framebufferObjectAvailable )
+	if ( ( backEnd.refdef.rdflags & ( RDF_NOWORLDMODEL | RDF_NOBLOOM ) ) || !r_bloom->integer || backEnd.viewParms.isPortal )
 	{
 		return;
 	}
@@ -2766,7 +2963,7 @@ void RB_RenderBloom()
 	//if(glConfig.hardwareType != GLHW_ATI && glConfig.hardwareType != GLHW_ATI_DX10)
 	{
 		GL_State( GLS_DEPTHTEST_DISABLE );
-		GL_Cull( CT_TWO_SIDED );
+		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		GL_PushMatrix();
 		GL_LoadModelViewMatrix( matrixIdentity );
@@ -2779,10 +2976,7 @@ void RB_RenderBloom()
 
 		gl_contrastShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
 
-		GL_SelectTexture( 0 );
-		GL_Bind( tr.currentRenderImage );
-		glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.currentRenderImage->uploadWidth,
-							 tr.currentRenderImage->uploadHeight );
+		GL_BindToTMU( 0, tr.currentRenderImage[ backEnd.currentMainFBO ] );
 
 		GL_PopMatrix(); // special 1/4th of the screen contrastRenderFBO ortho
 
@@ -2842,7 +3036,7 @@ void RB_RenderBloom()
 			}
 		}
 
-		R_BindNullFBO();
+		R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
 
 		gl_screenShader->BindProgram( 0 );
 		GL_State( GLS_DEPTHTEST_DISABLE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
@@ -2870,33 +3064,23 @@ void RB_RenderMotionBlur()
 
 	GLimp_LogComment( "--- RB_RenderMotionBlur ---\n" );
 
-	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) || backEnd.viewParms.isPortal || !glConfig2.framebufferObjectAvailable )
+	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) || backEnd.viewParms.isPortal )
 	{
 		return;
 	}
 
 	GL_State( GLS_DEPTHTEST_DISABLE );
-	GL_Cull( CT_TWO_SIDED );
+	GL_Cull( cullType_t::CT_TWO_SIDED );
 
-	GL_SelectTexture( 0 );
-	GL_Bind( tr.currentRenderImage );
-	glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0,
-			     tr.currentRenderImage->uploadWidth,
-			     tr.currentRenderImage->uploadHeight );
-
-	if( !backEnd.depthRenderImageValid ) {
-		GL_Bind( tr.depthRenderImage );
-		glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0,
-				     tr.depthRenderImage->uploadWidth,
-				     tr.depthRenderImage->uploadHeight );
-		backEnd.depthRenderImageValid = true;
-	}
+	// Swap main FBOs
+	GL_BindToTMU( 0, tr.currentRenderImage[ backEnd.currentMainFBO ] );
+	backEnd.currentMainFBO = 1 - backEnd.currentMainFBO;
+	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
 
 	gl_motionblurShader->BindProgram( 0 );
 	gl_motionblurShader->SetUniform_blurVec(tr.refdef.blurVec);
 
-	GL_BindToTMU( 0, tr.currentRenderImage );
-	GL_BindToTMU( 1, tr.depthRenderImage );
+	GL_BindToTMU( 1, tr.currentDepthImage );
 
 	// draw quad
 	Tess_InstantQuad( quadVerts );
@@ -2920,21 +3104,13 @@ void RB_RenderSSAO()
 		return;
 	}
 
-	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) || backEnd.viewParms.isPortal || !glConfig2.framebufferObjectAvailable )
+	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) || backEnd.viewParms.isPortal )
 	{
 		return;
 	}
 
 	GL_State( GLS_DEPTHTEST_DISABLE | GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO );
-	GL_Cull( CT_TWO_SIDED );
-
-	if( !backEnd.depthRenderImageValid ) {
-		GL_Bind( tr.depthRenderImage );
-		glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0,
-				     tr.depthRenderImage->uploadWidth,
-				     tr.depthRenderImage->uploadHeight );
-		backEnd.depthRenderImageValid = true;
-	}
+	GL_Cull( cullType_t::CT_TWO_SIDED );
 
 	if ( r_ssao->integer < 0 ) {
 		// clear the screen to show only SSAO
@@ -2950,7 +3126,7 @@ void RB_RenderSSAO()
 
 	gl_ssaoShader->SetUniform_zFar( zParams );
 
-	GL_BindToTMU( 0, tr.depthRenderImage );
+	GL_BindToTMU( 0, tr.currentDepthImage );
 
 	// draw quad
 	Tess_InstantQuad( quadVerts );
@@ -2981,22 +3157,15 @@ void RB_FXAA()
 	}
 
 	GL_State( GLS_DEPTHTEST_DISABLE );
-	GL_Cull( CT_TWO_SIDED );
+	GL_Cull( cullType_t::CT_TWO_SIDED );
 
-	// copy the framebuffer in a texture
-	// TODO: it is pretty inefficient
-	GL_SelectTexture( 0 );
-	GL_Bind( tr.currentRenderImage );
-	glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.currentRenderImage->uploadWidth,
-						 tr.currentRenderImage->uploadHeight );
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// Swap main FBOs
+	GL_BindToTMU( 0, tr.currentRenderImage[ backEnd.currentMainFBO ] );
+	backEnd.currentMainFBO = 1 - backEnd.currentMainFBO;
+	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
 
 	// set the shader parameters
 	gl_fxaaShader->BindProgram( 0 );
-
-	R_BindNullFBO();
 
 	Tess_InstantQuad( quadVerts );
 
@@ -3025,7 +3194,7 @@ void RB_CameraPostFX()
 	GL_LoadModelViewMatrix( matrixIdentity );
 
 	GL_State( GLS_DEPTHTEST_DISABLE );
-	GL_Cull( CT_TWO_SIDED );
+	GL_Cull( cullType_t::CT_TWO_SIDED );
 
 	// enable shader, set arrays
 	gl_cameraEffectsShader->BindProgram( 0 );
@@ -3035,12 +3204,10 @@ void RB_CameraPostFX()
 
 	gl_cameraEffectsShader->SetUniform_InverseGamma( 1.0 / r_gamma->value );
 
-	// bind u_CurrentMap
-	GL_SelectTexture( 0 );
-	GL_Bind( tr.occlusionRenderFBOImage );
-
-	glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.occlusionRenderFBOImage->uploadWidth, tr.occlusionRenderFBOImage->uploadHeight );
-
+	// This shader is run last, so let it render to screen instead of
+	// tr.mainFBO
+	R_BindNullFBO();
+	GL_BindToTMU( 0, tr.currentRenderImage[ backEnd.currentMainFBO ] );
 	GL_BindToTMU( 3, tr.colorGradeImage );
 
 	// draw viewport
@@ -3072,11 +3239,11 @@ static void RB_RenderDebugUtils()
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
-		GL_Cull( CT_TWO_SIDED );
+		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
 		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_ColorModulate( CGEN_CUSTOM_RGB, AGEN_CUSTOM );
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CUSTOM_RGB, alphaGen_t::AGEN_CUSTOM );
 
 		gl_genericShader->SetRequiredVertexPointers();
 
@@ -3167,8 +3334,8 @@ static void RB_RenderDebugUtils()
 
 				switch ( light->l.rlType )
 				{
-					case RL_OMNI:
-					case RL_DIRECTIONAL:
+					case refLightType_t::RL_OMNI:
+					case refLightType_t::RL_DIRECTIONAL:
 						{
 							if ( !VectorCompare( light->l.center, vec3_origin ) )
 							{
@@ -3177,7 +3344,7 @@ static void RB_RenderDebugUtils()
 							break;
 						}
 
-					case RL_PROJ:
+					case refLightType_t::RL_PROJ:
 						{
 							// draw light_target
 							Tess_AddCube( light->l.projTarget, minSize, maxSize, Color::Red );
@@ -3230,11 +3397,11 @@ static void RB_RenderDebugUtils()
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
-		GL_Cull( CT_TWO_SIDED );
+		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
 		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
 		// bind u_ColorMap
@@ -3262,7 +3429,7 @@ static void RB_RenderDebugUtils()
 			GL_LoadModelViewMatrix( backEnd.orientation.modelViewMatrix );
 			gl_genericShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
 
-			if ( r_shadows->integer >= SHADOWING_ESM16 && light->l.rlType == RL_OMNI )
+			if ( r_shadows->integer >= Util::ordinal(shadowingMode_t::SHADOWING_ESM16) && light->l.rlType == refLightType_t::RL_OMNI )
 			{
 				// count how many cube sides are in use for this interaction
 				cubeSides = 0;
@@ -3287,21 +3454,21 @@ static void RB_RenderDebugUtils()
 			tess.numIndexes = 0;
 			tess.multiDrawPrimitives = 0;
 
-			if ( *surface == SF_FACE || *surface == SF_GRID || *surface == SF_TRIANGLES )
+			if ( *surface == surfaceType_t::SF_FACE || *surface == surfaceType_t::SF_GRID || *surface == surfaceType_t::SF_TRIANGLES )
 			{
 				srfGeneric_t *gen;
 
 				gen = ( srfGeneric_t * ) surface;
 
-				if ( *surface == SF_FACE )
+				if ( *surface == surfaceType_t::SF_FACE )
 				{
 					lightColor = Color::MdGrey;
 				}
-				else if ( *surface == SF_GRID )
+				else if ( *surface == surfaceType_t::SF_GRID )
 				{
 					lightColor = Color::Cyan;
 				}
-				else if ( *surface == SF_TRIANGLES )
+				else if ( *surface == surfaceType_t::SF_TRIANGLES )
 				{
 					lightColor = Color::Magenta;
 				}
@@ -3314,12 +3481,12 @@ static void RB_RenderDebugUtils()
 
 				Tess_AddCube( gen->origin, mins, maxs, Color::White );
 			}
-			else if ( *surface == SF_VBO_MESH )
+			else if ( *surface == surfaceType_t::SF_VBO_MESH )
 			{
 				srfVBOMesh_t *srf = ( srfVBOMesh_t * ) surface;
 				Tess_AddCube( vec3_origin, srf->bounds[ 0 ], srf->bounds[ 1 ], lightColor );
 			}
-			else if ( *surface == SF_MDV )
+			else if ( *surface == surfaceType_t::SF_MDV )
 			{
 				Tess_AddCube( vec3_origin, entity->localBounds[ 0 ], entity->localBounds[ 1 ], lightColor );
 			}
@@ -3352,11 +3519,11 @@ static void RB_RenderDebugUtils()
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
-		GL_Cull( CT_TWO_SIDED );
+		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
 		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
 		// bind u_ColorMap
@@ -3372,7 +3539,7 @@ static void RB_RenderDebugUtils()
 				continue;
 			}
 
-			if ( ent->cull == CULL_OUT )
+			if ( ent->cull == cullResult_t::CULL_OUT )
 			{
 				continue;
 			}
@@ -3424,11 +3591,11 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->BindProgram( 0 );
 
-		GL_Cull( CT_TWO_SIDED );
+		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
 		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
 		// bind u_ColorMap
@@ -3455,7 +3622,7 @@ static void RB_RenderDebugUtils()
 
 			skel = nullptr;
 
-			if ( ent->e.skeleton.type == SK_ABSOLUTE )
+			if ( ent->e.skeleton.type == refSkeletonType_t::SK_ABSOLUTE )
 			{
 				skel = &ent->e.skeleton;
 			}
@@ -3470,7 +3637,7 @@ static void RB_RenderDebugUtils()
 				{
 					switch ( model->type )
 					{
-						case MOD_MD5:
+						case modtype_t::MOD_MD5:
 							{
 								// copy absolute bones
 								skeleton.numBones = model->md5->numBones;
@@ -3647,11 +3814,11 @@ static void RB_RenderDebugUtils()
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
-		GL_Cull( CT_TWO_SIDED );
+		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
 		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_ColorModulate( CGEN_CUSTOM_RGB, AGEN_CUSTOM );
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CUSTOM_RGB, alphaGen_t::AGEN_CUSTOM );
 
 		// bind u_ColorMap
 		GL_BindToTMU( 0, tr.whiteImage );
@@ -3728,7 +3895,7 @@ static void RB_RenderDebugUtils()
 		gl_reflectionShader->SetUniform_ViewOrigin( backEnd.viewParms.orientation.origin );  // in world space
 
 		GL_State( 0 );
-		GL_Cull( CT_FRONT_SIDED );
+		GL_Cull( cullType_t::CT_FRONT_SIDED );
 
 		// set up the transformation matrix
 		backEnd.orientation = backEnd.viewParms.world;
@@ -3762,13 +3929,13 @@ static void RB_RenderDebugUtils()
 			gl_genericShader->BindProgram( 0 );
 
 			gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-			gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+			gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 			gl_genericShader->SetUniform_Color( Color::Black );
 
 			gl_genericShader->SetRequiredVertexPointers();
 
 			GL_State( GLS_DEFAULT );
-			GL_Cull( CT_TWO_SIDED );
+			GL_Cull( cullType_t::CT_TWO_SIDED );
 
 			// set uniforms
 
@@ -3835,13 +4002,13 @@ static void RB_RenderDebugUtils()
 		gl_genericShader->BindProgram( 0 );
 
 		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
 		gl_genericShader->SetRequiredVertexPointers();
 
 		GL_State( GLS_DEFAULT );
-		GL_Cull( CT_TWO_SIDED );
+		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
 
@@ -3930,7 +4097,7 @@ static void RB_RenderDebugUtils()
 
 		// set uniforms
 		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_ColorModulate( CGEN_CUSTOM_RGB, AGEN_CUSTOM );
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CUSTOM_RGB, alphaGen_t::AGEN_CUSTOM );
 
 		// bind u_ColorMap
 		GL_BindToTMU( 0, tr.whiteImage );
@@ -3955,7 +4122,7 @@ static void RB_RenderDebugUtils()
 				GL_LoadProjectionMatrix( ortho );
 				GL_LoadModelViewMatrix( matrixIdentity );
 
-				GL_Cull( CT_TWO_SIDED );
+				GL_Cull( cullType_t::CT_TWO_SIDED );
 				GL_State( GLS_DEPTHTEST_DISABLE );
 
 				gl_genericShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
@@ -4021,11 +4188,11 @@ static void RB_RenderDebugUtils()
 					}
 
 					// set uniforms
-					gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+					gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 					gl_genericShader->SetUniform_Color( Color::Black );
 
 					GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
-					GL_Cull( CT_TWO_SIDED );
+					GL_Cull( cullType_t::CT_TWO_SIDED );
 
 					// bind u_ColorMap
 					GL_BindToTMU( 0, tr.whiteImage );
@@ -4077,13 +4244,13 @@ static void RB_RenderDebugUtils()
 					GL_VertexAttribsState( ATTR_POSITION | ATTR_COLOR );
 					Tess_DrawElements();
 
-					gl_genericShader->SetUniform_ColorModulate( CGEN_CUSTOM_RGB, AGEN_CUSTOM );
+					gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CUSTOM_RGB, alphaGen_t::AGEN_CUSTOM );
 				}
 			} // i == 1
 			else
 			{
 				GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
-				GL_Cull( CT_TWO_SIDED );
+				GL_Cull( cullType_t::CT_TWO_SIDED );
 
 				// render in world space
 				backEnd.orientation = backEnd.viewParms.world;
@@ -4214,11 +4381,11 @@ static void RB_RenderDebugUtils()
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
-		GL_Cull( CT_TWO_SIDED );
+		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
 		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
 		// set up the transformation matrix
@@ -4250,7 +4417,7 @@ static void RB_RenderDebugUtils()
 
 		for ( i = 0, srfDecal = backEnd.refdef.decals; i < backEnd.refdef.numDecals; i++, srfDecal++ )
 		{
-			rb_surfaceTable[ SF_DECAL ]( srfDecal );
+			rb_surfaceTable[ Util::ordinal(surfaceType_t::SF_DECAL) ]( srfDecal );
 		}
 
 		glDisable( GL_POLYGON_OFFSET_FILL );
@@ -4279,21 +4446,21 @@ void DebugDrawBegin( debugDrawMode_t mode, float size ) {
 	currentDebugDrawMode = mode;
 	currentDebugSize = size;
 	switch(mode) {
-		case D_DRAW_POINTS:
+		case debugDrawMode_t::D_DRAW_POINTS:
 			glPointSize( size );
 			drawMode = GL_POINTS;
 			maxDebugVerts = SHADER_MAX_VERTEXES - 1;
 			break;
-		case D_DRAW_LINES:
+		case debugDrawMode_t::D_DRAW_LINES:
 			glLineWidth( size );
 			drawMode = GL_LINES;
 			maxDebugVerts = ( SHADER_MAX_VERTEXES - 1 )/2*2;
 			break;
-		case D_DRAW_TRIS:
+		case debugDrawMode_t::D_DRAW_TRIS:
 			drawMode = GL_TRIANGLES;
 			maxDebugVerts = ( SHADER_MAX_VERTEXES - 1 )/3*3;
 			break;
-		case D_DRAW_QUADS:
+		case debugDrawMode_t::D_DRAW_QUADS:
 			drawMode = GL_QUADS;
 			maxDebugVerts = ( SHADER_MAX_VERTEXES - 1 )/4*4;
 			break;
@@ -4306,13 +4473,13 @@ void DebugDrawBegin( debugDrawMode_t mode, float size ) {
 	gl_genericShader->BindProgram( 0 );
 
 	GL_State( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
-	GL_Cull( CT_FRONT_SIDED );
+	GL_Cull( cullType_t::CT_FRONT_SIDED );
 
 	GL_VertexAttribsState( ATTR_POSITION | ATTR_COLOR | ATTR_TEXCOORD );
 
 	// set uniforms
 	gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-	gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+	gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 	gl_genericShader->SetUniform_Color( colorClear );
 
 	// bind u_ColorMap
@@ -4421,10 +4588,7 @@ static void RB_RenderView()
 	}
 
 	// disable offscreen rendering
-	if ( glConfig2.framebufferObjectAvailable )
-	{
-		R_BindNullFBO();
-	}
+	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
 
 	// we will need to change the projection matrix before drawing
 	// 2D images again
@@ -4439,8 +4603,11 @@ static void RB_RenderView()
 	// clear relevant buffers
 	clearBits = GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
 
+	if ( r_clear->integer && !backEnd.viewParms.isPortal ) {
+		clearBits |= GL_COLOR_BUFFER_BIT;
+	}
+
 	glClear( clearBits );
-	backEnd.depthRenderImageValid = false;
 
 	if ( ( backEnd.refdef.rdflags & RDF_HYPERSPACE ) )
 	{
@@ -4457,42 +4624,46 @@ static void RB_RenderView()
 
 	GL_CheckErrors();
 
-	if ( r_speeds->integer == RSPEEDS_SHADING_TIMES )
+	if ( r_speeds->integer == Util::ordinal(renderSpeeds_t::RSPEEDS_SHADING_TIMES) )
 	{
 		glFinish();
 		startTime = ri.Milliseconds();
 	}
+
+	RB_RenderDrawSurfaces( shaderSort_t::SS_DEPTH, shaderSort_t::SS_DEPTH, DRAWSURFACES_ALL );
+	RB_RunVisTests();
+	RB_RenderPostDepth();
 
 	if( tr.refdef.blurVec[0] != 0.0f ||
 			tr.refdef.blurVec[1] != 0.0f ||
 			tr.refdef.blurVec[2] != 0.0f )
 	{
 		// draw everything that is not the gun
-		RB_RenderDrawSurfaces( true, DRAWSURFACES_ALL_FAR );
+		RB_RenderDrawSurfaces( shaderSort_t::SS_ENVIRONMENT_FOG, shaderSort_t::SS_OPAQUE, DRAWSURFACES_ALL_FAR );
 
 		RB_RenderMotionBlur();
 
 		// draw the gun and other "near" stuff
-		RB_RenderDrawSurfaces( true, DRAWSURFACES_NEAR_ENTITIES );
+		RB_RenderDrawSurfaces( shaderSort_t::SS_ENVIRONMENT_FOG, shaderSort_t::SS_OPAQUE, DRAWSURFACES_NEAR_ENTITIES );
 	}
 	else
 	{
 		// draw everything that is opaque
-		RB_RenderDrawSurfaces( true, DRAWSURFACES_ALL );
+		RB_RenderDrawSurfaces( shaderSort_t::SS_ENVIRONMENT_FOG, shaderSort_t::SS_OPAQUE, DRAWSURFACES_ALL );
 	}
 
 	if ( r_ssao->integer && GLEW_ARB_texture_gather ) {
 		RB_RenderSSAO();
 	}
 
-	if ( r_speeds->integer == RSPEEDS_SHADING_TIMES )
+	if ( r_speeds->integer == Util::ordinal(renderSpeeds_t::RSPEEDS_SHADING_TIMES) )
 	{
 		glFinish();
 		endTime = ri.Milliseconds();
 		backEnd.pc.c_forwardAmbientTime = endTime - startTime;
 	}
 
-	if ( r_shadows->integer >= SHADOWING_ESM16 )
+	if ( r_shadows->integer >= Util::ordinal(shadowingMode_t::SHADOWING_ESM16) )
 	{
 		// render dynamic shadowing and lighting using shadow mapping
 		RB_RenderInteractionsShadowMapped();
@@ -4507,7 +4678,7 @@ static void RB_RenderView()
 	RB_RenderGlobalFog();
 
 	// draw everything that is translucent
-	RB_RenderDrawSurfaces( false, DRAWSURFACES_ALL );
+	RB_RenderDrawSurfaces( shaderSort_t::SS_ENVIRONMENT_NOFOG, shaderSort_t::SS_POST_PROCESS, DRAWSURFACES_ALL );
 
 	GL_CheckErrors();
 	// render bloom post process effect
@@ -4605,7 +4776,7 @@ void RE_StretchRaw( int x, int y, int w, int h, int cols, int rows, const byte *
 
 	if ( ( 1 << i ) != cols || ( 1 << j ) != rows )
 	{
-		ri.Error( ERR_DROP, "Draw_StretchRaw: size not a power of 2: %i by %i", cols, rows );
+		ri.Error( errorParm_t::ERR_DROP, "Draw_StretchRaw: size not a power of 2: %i by %i", cols, rows );
 	}
 
 	RB_SetGL2D();
@@ -4621,7 +4792,7 @@ void RE_StretchRaw( int x, int y, int w, int h, int cols, int rows, const byte *
 
 	// set uniforms
 	gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-	gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+	gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 	gl_genericShader->SetUniform_Color( Color::Black );
 
 	gl_genericShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
@@ -4658,7 +4829,7 @@ void RE_StretchRaw( int x, int y, int w, int h, int cols, int rows, const byte *
 	{
 		glFinish();
 		end = ri.Milliseconds();
-		ri.Printf( PRINT_DEVELOPER, "glTexSubImage2D %i, %i: %i msec\n", cols, rows, end - start );
+		Log::Debug("glTexSubImage2D %i, %i: %i msec", cols, rows, end - start );
 	}
 
 	tess.multiDrawPrimitives = 0;
@@ -5238,6 +5409,66 @@ const void     *RB_StretchPicGradient( const void *data )
 
 /*
 =============
+RB_SetupLights
+=============
+*/
+static const void *RB_SetupLights( const void *data )
+{
+	const setupLightsCommand_t *cmd;
+	int numLights;
+	GLenum bufferTarget = glConfig2.uniformBufferObjectAvailable ? GL_UNIFORM_BUFFER : GL_PIXEL_UNPACK_BUFFER;
+
+	GLimp_LogComment( "--- RB_SetupLights ---\n" );
+
+	cmd = ( const setupLightsCommand_t * ) data;
+
+	if( (numLights = cmd->refdef.numLights) > 0 ) {
+		shaderLight_t *buffer;
+
+		glBindBuffer( bufferTarget, tr.dlightUBO );
+		buffer = (shaderLight_t *)glMapBufferRange( bufferTarget,
+							    0, numLights * sizeof( shaderLight_t ),
+							    GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
+
+		for( int i = 0, j = 0; i < numLights; i++, j++ ) {
+			trRefLight_t *light = &cmd->refdef.lights[j];
+
+			while( light->l.inverseShadows ) {
+				light = &cmd->refdef.lights[++j];
+			}
+
+			VectorCopy( light->l.origin, buffer[i].center );
+			buffer[i].radius = light->l.radius;
+			VectorScale( light->l.color, 4.0f * light->l.scale, buffer[i].color );
+			buffer[i].type = Util::ordinal( light->l.rlType );
+			switch( light->l.rlType ) {
+			case refLightType_t::RL_PROJ:
+				VectorCopy( light->l.projTarget,
+					    buffer[i].direction );
+				buffer[i].angle = cosf( atan2f( VectorLength( light->l.projUp), VectorLength( light->l.projTarget ) ) );
+				break;
+			case refLightType_t::RL_DIRECTIONAL:
+				VectorCopy( light->l.projTarget,
+					    buffer[i].direction );
+				break;
+			default:
+				break;
+			}
+		}
+
+		glUnmapBuffer( bufferTarget );
+		if( !glConfig2.uniformBufferObjectAvailable ) {
+			GL_BindToTMU( 0, tr.dlightImage );
+			glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, tr.dlightImage->width, tr.dlightImage->height, GL_RGBA, GL_FLOAT, NULL );
+		}
+		glBindBuffer( bufferTarget, 0 );
+	}
+
+	return ( const void * )( cmd + 1 );
+}
+
+/*
+=============
 RB_DrawView
 =============
 */
@@ -5265,147 +5496,6 @@ const void     *RB_DrawView( const void *data )
 
 /*
 =============
-RB_RunVisTests
-
-=============
-*/
-const void *RB_RunVisTests( const void *data )
-{
-	const runVisTestsCommand_t *cmd;
-	int i;
-
-	// finish any 2D drawing if needed
-	if ( tess.numIndexes )
-	{
-		Tess_End();
-	}
-
-	cmd = ( const runVisTestsCommand_t * ) data;
-
-	backEnd.refdef = cmd->refdef;
-	backEnd.viewParms = cmd->viewParms;
-
-	for ( i = 0; i < backEnd.refdef.numVisTests; i++ )
-	{
-		vec3_t           diff;
-		vec3_t           center, left, up;
-		visTestResult_t  *test = &backEnd.refdef.visTests[ i ];
-		visTestQueries_t *testState = &backEnd.visTestQueries[ test->visTestHandle - 1 ];
-
-		if ( testState->running && !test->discardExisting )
-		{
-			GLint  available;
-			GLuint result, resultRef;
-
-			glGetQueryObjectiv( testState->hQuery,
-					    GL_QUERY_RESULT_AVAILABLE,
-					    &available );
-			if( !available )
-			{
-				continue;
-			}
-
-			glGetQueryObjectiv( testState->hQueryRef,
-					    GL_QUERY_RESULT_AVAILABLE,
-					    &available );
-			if ( !available )
-			{
-				continue;
-			}
-
-			glGetQueryObjectuiv( testState->hQueryRef, GL_QUERY_RESULT,
-					     &resultRef );
-			glGetQueryObjectuiv( testState->hQuery, GL_QUERY_RESULT,
-					     &result );
-
-			if ( resultRef > 0 )
-			{
-				test->lastResult = (float)result / (float)resultRef;
-			}
-			else
-			{
-				test->lastResult = 0.0f;
-			}
-
-			testState->running = false;
-		}
-
-		Tess_MapVBOs( false );
-		VectorSubtract( backEnd.orientation.viewOrigin,
-				test->position, diff );
-		VectorNormalize( diff );
-		VectorMA( test->position, test->depthAdjust, diff, center );
-
-		VectorScale( backEnd.viewParms.orientation.axis[ 1 ],
-			     test->area, left );
-		VectorScale( backEnd.viewParms.orientation.axis[ 2 ],
-			     test->area, up );
-
-		tess.verts[ 0 ].xyz[ 0 ] = center[ 0 ] + left[ 0 ] + up[ 0 ];
-		tess.verts[ 0 ].xyz[ 1 ] = center[ 1 ] + left[ 1 ] + up[ 1 ];
-		tess.verts[ 0 ].xyz[ 2 ] = center[ 2 ] + left[ 2 ] + up[ 2 ];
-		tess.verts[ 1 ].xyz[ 0 ] = center[ 0 ] - left[ 0 ] + up[ 0 ];
-		tess.verts[ 1 ].xyz[ 1 ] = center[ 1 ] - left[ 1 ] + up[ 1 ];
-		tess.verts[ 1 ].xyz[ 2 ] = center[ 2 ] - left[ 2 ] + up[ 2 ];
-		tess.verts[ 2 ].xyz[ 0 ] = center[ 0 ] - left[ 0 ] - up[ 0 ];
-		tess.verts[ 2 ].xyz[ 1 ] = center[ 1 ] - left[ 1 ] - up[ 1 ];
-		tess.verts[ 2 ].xyz[ 2 ] = center[ 2 ] - left[ 2 ] - up[ 2 ];
-		tess.verts[ 3 ].xyz[ 0 ] = center[ 0 ] + left[ 0 ] - up[ 0 ];
-		tess.verts[ 3 ].xyz[ 1 ] = center[ 1 ] + left[ 1 ] - up[ 1 ];
-		tess.verts[ 3 ].xyz[ 2 ] = center[ 2 ] + left[ 2 ] - up[ 2 ];
-		tess.numVertexes = 4;
-
-		tess.indexes[ 0 ] = 0;
-		tess.indexes[ 1 ] = 1;
-		tess.indexes[ 2 ] = 2;
-		tess.indexes[ 3 ] = 0;
-		tess.indexes[ 4 ] = 2;
-		tess.indexes[ 5 ] = 3;
-		tess.numIndexes = 6;
-
-		Tess_UpdateVBOs( );
-		GL_VertexAttribsState( ATTR_POSITION );
-
-		gl_genericShader->DisableVertexSkinning();
-		gl_genericShader->DisableVertexAnimation();
-		gl_genericShader->DisableTCGenEnvironment();
-		gl_genericShader->DisableTCGenLightmap();
-
-		gl_genericShader->BindProgram( 0 );
-
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-		gl_genericShader->SetUniform_Color( Color::White );
-
-		gl_genericShader->SetUniform_ColorModulate( CGEN_CONST, AGEN_CONST );
-
-		gl_genericShader->SetUniform_ModelMatrix( backEnd.orientation.transformMatrix );
-		gl_genericShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
-
-		// bind u_ColorMap
-		GL_BindToTMU( 0, tr.whiteImage );
-		gl_genericShader->SetUniform_ColorTextureMatrix( tess.svars.texMatrices[ TB_COLORMAP ] );
-
-		GL_State( GLS_DEPTHTEST_DISABLE | GLS_COLORMASK_BITS );
-		glBeginQuery( GL_SAMPLES_PASSED, testState->hQueryRef );
-		Tess_DrawElements();
-		glEndQuery( GL_SAMPLES_PASSED );
-
-		GL_State( GLS_COLORMASK_BITS );
-		glBeginQuery( GL_SAMPLES_PASSED, testState->hQuery );
-		Tess_DrawElements();
-		glEndQuery( GL_SAMPLES_PASSED );
-
-		tess.numIndexes = 0;
-		tess.numVertexes = 0;
-		tess.multiDrawPrimitives = 0;
-		testState->running = true;
-	}
-
-	return ( const void * )( cmd + 1 );
-}
-
-/*
-=============
 RB_DrawBuffer
 =============
 */
@@ -5418,15 +5508,6 @@ const void     *RB_DrawBuffer( const void *data )
 	cmd = ( const drawBufferCommand_t * ) data;
 
 	GL_DrawBuffer( cmd->buffer );
-
-	// clear screen for debugging
-	if ( r_clear->integer )
-	{
-//      GL_ClearColor(1, 0, 0.5, 1);
-		GL_ClearColor( 0, 0, 0, 1 );
-		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-		backEnd.depthRenderImageValid = false;
-	}
 
 	glState.finishCalled = false;
 	return ( const void * )( cmd + 1 );
@@ -5467,11 +5548,11 @@ void RB_ShowImages()
 
 	gl_genericShader->BindProgram( 0 );
 
-	GL_Cull( CT_TWO_SIDED );
+	GL_Cull( cullType_t::CT_TWO_SIDED );
 
 	// set uniforms
 	gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
-	gl_genericShader->SetUniform_ColorModulate( CGEN_VERTEX, AGEN_VERTEX );
+	gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 	gl_genericShader->SetUniform_ColorTextureMatrix( matrixIdentity );
 
 	GL_SelectTexture( 0 );
@@ -5516,7 +5597,7 @@ void RB_ShowImages()
 	glFinish();
 
 	end = ri.Milliseconds();
-	ri.Printf( PRINT_DEVELOPER, "%i msec to draw all images\n", end - start );
+	Log::Debug("%i msec to draw all images", end - start );
 
 	GL_CheckErrors();
 }
@@ -5634,67 +5715,67 @@ void RB_ExecuteRenderCommands( const void *data )
 	{
 		switch ( * ( const int * ) data )
 		{
-			case RC_SET_COLORGRADING:
+			case Util::ordinal(renderCommand_t::RC_SET_COLORGRADING):
 				data = RB_SetColorGrading( data );
 				break;
 
-			case RC_SET_COLOR:
+			case Util::ordinal(renderCommand_t::RC_SET_COLOR):
 				data = RB_SetColor( data );
 				break;
 
-			case RC_STRETCH_PIC:
+			case Util::ordinal(renderCommand_t::RC_STRETCH_PIC):
 				data = RB_StretchPic( data );
 				break;
 
-			case RC_2DPOLYS:
+			case Util::ordinal(renderCommand_t::RC_2DPOLYS):
 				data = RB_Draw2dPolys( data );
 				break;
 
-			case RC_2DPOLYSINDEXED:
+			case Util::ordinal(renderCommand_t::RC_2DPOLYSINDEXED):
 				data = RB_Draw2dPolysIndexed( data );
 				break;
 
-			case RC_ROTATED_PIC:
+			case Util::ordinal(renderCommand_t::RC_ROTATED_PIC):
 				data = RB_RotatedPic( data );
 				break;
 
-			case RC_STRETCH_PIC_GRADIENT:
+			case Util::ordinal(renderCommand_t::RC_STRETCH_PIC_GRADIENT):
 				data = RB_StretchPicGradient( data );
 				break;
 
-			case RC_DRAW_VIEW:
+			case Util::ordinal(renderCommand_t::RC_SETUP_LIGHTS):
+				data = RB_SetupLights( data );
+				break;
+
+			case Util::ordinal(renderCommand_t::RC_DRAW_VIEW):
 				data = RB_DrawView( data );
 				break;
 
-			case RC_RUN_VISTESTS:
-				data = RB_RunVisTests( data );
-				break;
-
-			case RC_DRAW_BUFFER:
+			case Util::ordinal(renderCommand_t::RC_DRAW_BUFFER):
 				data = RB_DrawBuffer( data );
 				break;
 
-			case RC_SWAP_BUFFERS:
+			case Util::ordinal(renderCommand_t::RC_SWAP_BUFFERS):
 				data = RB_SwapBuffers( data );
 				break;
 
-			case RC_SCREENSHOT:
+			case Util::ordinal(renderCommand_t::RC_SCREENSHOT):
 				data = RB_TakeScreenshotCmd( data );
 				break;
 
-			case RC_VIDEOFRAME:
+			case Util::ordinal(renderCommand_t::RC_VIDEOFRAME):
 				data = RB_TakeVideoFrameCmd( data );
 				break;
 
-			case RC_FINISH:
+			case Util::ordinal(renderCommand_t::RC_FINISH):
 				data = RB_Finish( data );
 				break;
 
-			case RC_SCISSORSET:
+			case Util::ordinal(renderCommand_t::RC_SCISSORSET):
 				data = RB_ScissorSet( data );
 				break;
 
-			case RC_END_OF_LIST:
+			case Util::ordinal(renderCommand_t::RC_END_OF_LIST):
 			default:
 				// stop rendering on this thread
 				t2 = ri.Milliseconds();

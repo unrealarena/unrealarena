@@ -138,7 +138,7 @@ bool G_TryPushingEntity( gentity_t *check, gentity_t *pusher, vec3_t move, vec3_
 
 #ifndef UNREALARENA
 	//don't try to move buildables unless standing on a mover
-	if ( check->s.eType == ET_BUILDABLE &&
+	if ( check->s.eType == entityType_t::ET_BUILDABLE &&
 	     check->s.groundEntityNum != pusher->s.number )
 	{
 		return false;
@@ -148,7 +148,7 @@ bool G_TryPushingEntity( gentity_t *check, gentity_t *pusher, vec3_t move, vec3_
 	// save off the old position
 	if ( pushed_p > &pushed[ MAX_GENTITIES ] )
 	{
-		G_Error( "pushed_p > &pushed[MAX_GENTITIES]" );
+		Com_Error(errorParm_t::ERR_DROP,  "pushed_p > &pushed[MAX_GENTITIES]" );
 	}
 
 	pushed_p->ent = check;
@@ -319,12 +319,12 @@ bool G_MoverPush( gentity_t *pusher, vec3_t move, vec3_t amove, gentity_t **obst
 
 		// only push items and players
 #ifdef UNREALARENA
-		if ( check->s.eType != ET_ITEM &&
-		     check->s.eType != ET_CORPSE && check->s.eType != ET_PLAYER &&
+		if ( check->s.eType != entityType_t::ET_ITEM &&
+		     check->s.eType != entityType_t::ET_CORPSE && check->s.eType != entityType_t::ET_PLAYER &&
 		     !check->physicsObject )
 #else
-		if ( check->s.eType != ET_ITEM && check->s.eType != ET_BUILDABLE &&
-		     check->s.eType != ET_CORPSE && check->s.eType != ET_PLAYER &&
+		if ( check->s.eType != entityType_t::ET_ITEM && check->s.eType != entityType_t::ET_BUILDABLE &&
+		     check->s.eType != entityType_t::ET_CORPSE && check->s.eType != entityType_t::ET_PLAYER &&
 		     !check->physicsObject )
 #endif
 		{
@@ -362,7 +362,7 @@ bool G_MoverPush( gentity_t *pusher, vec3_t move, vec3_t amove, gentity_t **obst
 		// the move was blocked an entity
 
 		// bobbing entities are instant-kill and never get blocked
-		if ( pusher->s.pos.trType == TR_SINE || pusher->s.apos.trType == TR_SINE )
+		if ( pusher->s.pos.trType == trType_t::TR_SINE || pusher->s.apos.trType == trType_t::TR_SINE )
 		{
 			G_Kill(check, pusher, MOD_CRUSH);
 			continue;
@@ -414,8 +414,8 @@ void G_MoverGroup( gentity_t *ent )
 
 	for ( part = ent; part; part = part->groupChain )
 	{
-		if ( part->s.pos.trType == TR_STATIONARY &&
-		     part->s.apos.trType == TR_STATIONARY )
+		if ( part->s.pos.trType == trType_t::TR_STATIONARY &&
+		     part->s.apos.trType == trType_t::TR_STATIONARY )
 		{
 			continue;
 		}
@@ -437,8 +437,8 @@ void G_MoverGroup( gentity_t *ent )
 		// go back to the previous position
 		for ( part = ent; part; part = part->groupChain )
 		{
-			if ( part->s.pos.trType == TR_STATIONARY &&
-			     part->s.apos.trType == TR_STATIONARY )
+			if ( part->s.pos.trType == trType_t::TR_STATIONARY &&
+			     part->s.apos.trType == trType_t::TR_STATIONARY )
 			{
 				continue;
 			}
@@ -463,7 +463,7 @@ void G_MoverGroup( gentity_t *ent )
 	for ( part = ent; part; part = part->groupChain )
 	{
 		// call the reached function if time is at or past end point
-		if ( part->s.pos.trType == TR_LINEAR_STOP )
+		if ( part->s.pos.trType == trType_t::TR_LINEAR_STOP )
 		{
 			if ( level.time >= part->s.pos.trTime + part->s.pos.trDuration )
 			{
@@ -474,7 +474,7 @@ void G_MoverGroup( gentity_t *ent )
 			}
 		}
 
-		if ( part->s.apos.trType == TR_LINEAR_STOP )
+		if ( part->s.apos.trType == trType_t::TR_LINEAR_STOP )
 		{
 			if ( level.time >= part->s.apos.trTime + part->s.apos.trDuration )
 			{
@@ -537,7 +537,7 @@ void SetMoverState( gentity_t *ent, moverState_t moverState, int time )
 	{
 		case MOVER_POS1:
 			VectorCopy( ent->restingPosition, ent->s.pos.trBase );
-			ent->s.pos.trType = TR_STATIONARY;
+			ent->s.pos.trType = trType_t::TR_STATIONARY;
 
 			if ( !Q_stricmp( ent->classname, "func_door" ) && ( ent->names[0] || ent->takedamage  ) )
 			{
@@ -550,7 +550,7 @@ void SetMoverState( gentity_t *ent, moverState_t moverState, int time )
 
 		case MOVER_POS2:
 			VectorCopy( ent->activatedPosition, ent->s.pos.trBase );
-			ent->s.pos.trType = TR_STATIONARY;
+			ent->s.pos.trType = trType_t::TR_STATIONARY;
 
 			if ( !Q_stricmp( ent->classname, "func_door" ) && ( ent->names[0] || ent->takedamage ) )
 			{
@@ -567,7 +567,7 @@ void SetMoverState( gentity_t *ent, moverState_t moverState, int time )
 			VectorSubtract( ent->activatedPosition, ent->restingPosition, delta );
 			f = 1000.0 / ent->s.pos.trDuration;
 			VectorScale( delta, f, ent->s.pos.trDelta );
-			ent->s.pos.trType = TR_LINEAR_STOP;
+			ent->s.pos.trType = trType_t::TR_LINEAR_STOP;
 			break;
 
 		case MOVER_2TO1:
@@ -575,17 +575,17 @@ void SetMoverState( gentity_t *ent, moverState_t moverState, int time )
 			VectorSubtract( ent->restingPosition, ent->activatedPosition, delta );
 			f = 1000.0 / ent->s.pos.trDuration;
 			VectorScale( delta, f, ent->s.pos.trDelta );
-			ent->s.pos.trType = TR_LINEAR_STOP;
+			ent->s.pos.trType = trType_t::TR_LINEAR_STOP;
 			break;
 
 		case ROTATOR_POS1:
 			VectorCopy( ent->restingPosition, ent->s.apos.trBase );
-			ent->s.apos.trType = TR_STATIONARY;
+			ent->s.apos.trType = trType_t::TR_STATIONARY;
 			break;
 
 		case ROTATOR_POS2:
 			VectorCopy( ent->activatedPosition, ent->s.apos.trBase );
-			ent->s.apos.trType = TR_STATIONARY;
+			ent->s.apos.trType = trType_t::TR_STATIONARY;
 			break;
 
 		case ROTATOR_1TO2:
@@ -593,7 +593,7 @@ void SetMoverState( gentity_t *ent, moverState_t moverState, int time )
 			VectorSubtract( ent->activatedPosition, ent->restingPosition, delta );
 			f = 1000.0 / ent->s.apos.trDuration;
 			VectorScale( delta, f, ent->s.apos.trDelta );
-			ent->s.apos.trType = TR_LINEAR_STOP;
+			ent->s.apos.trType = trType_t::TR_LINEAR_STOP;
 			break;
 
 		case ROTATOR_2TO1:
@@ -601,7 +601,7 @@ void SetMoverState( gentity_t *ent, moverState_t moverState, int time )
 			VectorSubtract( ent->restingPosition, ent->activatedPosition, delta );
 			f = 1000.0 / ent->s.apos.trDuration;
 			VectorScale( delta, f, ent->s.apos.trDelta );
-			ent->s.apos.trType = TR_LINEAR_STOP;
+			ent->s.apos.trType = trType_t::TR_LINEAR_STOP;
 			break;
 
 		case MODEL_POS1:
@@ -766,12 +766,12 @@ void Think_CloseModelDoor( gentity_t *ent )
 
 		//only test items and players
 #ifdef UNREALARENA
-		if ( check->s.eType != ET_ITEM &&
-		     check->s.eType != ET_CORPSE && check->s.eType != ET_PLAYER &&
+		if ( check->s.eType != entityType_t::ET_ITEM &&
+		     check->s.eType != entityType_t::ET_CORPSE && check->s.eType != entityType_t::ET_PLAYER &&
 		     !check->physicsObject )
 #else
-		if ( check->s.eType != ET_ITEM && check->s.eType != ET_BUILDABLE &&
-		     check->s.eType != ET_CORPSE && check->s.eType != ET_PLAYER &&
+		if ( check->s.eType != entityType_t::ET_ITEM && check->s.eType != entityType_t::ET_BUILDABLE &&
+		     check->s.eType != entityType_t::ET_CORPSE && check->s.eType != entityType_t::ET_PLAYER &&
 		     !check->physicsObject )
 #endif
 		{
@@ -938,7 +938,7 @@ void BinaryMover_reached( gentity_t *ent )
 	}
 	else
 	{
-		G_Error( "Reached_BinaryMover: bad moverState" );
+		Com_Error(errorParm_t::ERR_DROP,  "Reached_BinaryMover: bad moverState" );
 	}
 }
 
@@ -1179,12 +1179,12 @@ void reset_moverspeed( gentity_t *self, float fallbackSpeed )
 	float    distance;
 
 	if(!fallbackSpeed)
-		G_Error("No default speed was supplied to reset_moverspeed for entity #%i of type %s.\n", self->s.number, self->classname);
+		Com_Error(errorParm_t::ERR_DROP, "No default speed was supplied to reset_moverspeed for entity #%i of type %s.\n", self->s.number, self->classname);
 
 	G_ResetFloatField(&self->speed, true, self->config.speed, self->eclass->config.speed, fallbackSpeed);
 
 	// reset duration only for linear movement else func_bobbing will not move
-	if ( self->s.pos.trType != TR_SINE )
+	if ( self->s.pos.trType != trType_t::TR_SINE )
 	{
 		// calculate time to reach second position from speed
 		VectorSubtract( self->activatedPosition, self->restingPosition, move );
@@ -1281,12 +1281,12 @@ void InitMover( gentity_t *ent )
 	}
 
 	ent->moverState = MOVER_POS1;
-	ent->s.eType = ET_MOVER;
+	ent->s.eType = entityType_t::ET_MOVER;
 	ent->r.contents |= CONTENTS_MOVER;
 	VectorCopy( ent->restingPosition, ent->r.currentOrigin );
 	trap_LinkEntity( ent );
 
-	ent->s.pos.trType = TR_STATIONARY;
+	ent->s.pos.trType = trType_t::TR_STATIONARY;
 	VectorCopy( ent->restingPosition, ent->s.pos.trBase );
 }
 
@@ -1296,7 +1296,7 @@ void reset_rotatorspeed( gentity_t *self, float fallbackSpeed )
 	float    angle;
 
 	if(!fallbackSpeed)
-		G_Error("No default speed was supplied to reset_rotatorspeed for entity #%i of type %s.\n", self->s.number, self->classname);
+		Com_Error(errorParm_t::ERR_DROP, "No default speed was supplied to reset_rotatorspeed for entity #%i of type %s.\n", self->s.number, self->classname);
 
 	// calculate time to reach second position from speed
 	VectorSubtract( self->activatedPosition, self->restingPosition, move );
@@ -1348,12 +1348,12 @@ void InitRotator( gentity_t *ent )
 	}
 
 	ent->moverState = ROTATOR_POS1;
-	ent->s.eType = ET_MOVER;
+	ent->s.eType = entityType_t::ET_MOVER;
 	ent->r.contents |= CONTENTS_MOVER;
 	VectorCopy( ent->restingPosition, ent->r.currentAngles );
 	trap_LinkEntity( ent );
 
-	ent->s.apos.trType = TR_STATIONARY;
+	ent->s.apos.trType = trType_t::TR_STATIONARY;
 	VectorCopy( ent->restingPosition, ent->s.apos.trBase );
 }
 
@@ -1379,7 +1379,7 @@ void func_door_block( gentity_t *self, gentity_t *other )
 #ifdef UNREALARENA
 	if ( !other->client )
 #else
-	if ( !other->client && other->s.eType != ET_BUILDABLE )
+	if ( !other->client && other->s.eType != entityType_t::ET_BUILDABLE )
 #endif
 	{
 		G_FreeEntity( other );
@@ -1411,7 +1411,7 @@ void door_trigger_touch( gentity_t *self, gentity_t *other, trace_t* )
 
 #ifndef UNREALARENA
 	//buildables don't trigger movers
-	if ( other->s.eType == ET_BUILDABLE )
+	if ( other->s.eType == entityType_t::ET_BUILDABLE )
 	{
 		return;
 	}
@@ -1675,7 +1675,7 @@ void SP_func_door_rotating( gentity_t *self )
 	// leave out, so we'll tell him if he does.
 	if ( !self->rotatorAngle )
 	{
-		G_Printf( "%s at %s with no rotatorAngle set.\n",
+		Log::Warn( "%s at %s with no rotatorAngle set.",
 		          self->classname, vtos( self->s.origin ) );
 
 		self->rotatorAngle = 90.0;
@@ -1774,7 +1774,7 @@ void SP_func_door_model( gentity_t *self )
 	clipBrush = self->clipBrush = G_NewEntity();
 	clipBrush->model = self->model;
 	trap_SetBrushModel( clipBrush, clipBrush->model );
-	clipBrush->s.eType = ET_INVISIBLE;
+	clipBrush->s.eType = entityType_t::ET_INVISIBLE;
 
 	//copy the bounds back from the clipBrush so the
 	//triggers can be made
@@ -1791,7 +1791,7 @@ void SP_func_door_model( gentity_t *self )
 	// for drawing, but clip against the brushes
 	if ( !self->model2 )
 	{
-		G_Printf( S_WARNING "func_door_model %d spawned with no model2 key\n", self->s.number );
+		Log::Warn("func_door_model %d spawned with no model2 key", self->s.number );
 	}
 	else
 	{
@@ -1809,15 +1809,15 @@ void SP_func_door_model( gentity_t *self )
 	self->act = BinaryMover_act;
 
 	self->moverState = MODEL_POS1;
-	self->s.eType = ET_MODELDOOR;
+	self->s.eType = entityType_t::ET_MODELDOOR;
 	self->r.contents |= CONTENTS_MOVER; // TODO: Check if this is the right thing to add the flag to
 	VectorCopy( self->s.origin, self->s.pos.trBase );
-	self->s.pos.trType = TR_STATIONARY;
+	self->s.pos.trType = trType_t::TR_STATIONARY;
 	self->s.pos.trTime = 0;
 	self->s.pos.trDuration = 0;
 	VectorClear( self->s.pos.trDelta );
 	VectorCopy( self->s.angles, self->s.apos.trBase );
-	self->s.apos.trType = TR_STATIONARY;
+	self->s.apos.trType = trType_t::TR_STATIONARY;
 	self->s.apos.trTime = 0;
 	self->s.apos.trDuration = 0;
 	VectorClear( self->s.apos.trDelta );
@@ -2116,7 +2116,7 @@ The wait time at a corner has completed, so start moving again
 void Think_BeginMoving( gentity_t *self )
 {
 	self->s.pos.trTime = level.time;
-	self->s.pos.trType = TR_LINEAR_STOP;
+	self->s.pos.trType = trType_t::TR_LINEAR_STOP;
 }
 
 /*
@@ -2180,7 +2180,7 @@ void func_train_reached( gentity_t *self )
 
 	if ( self->spawnflags & TRAIN_START_OFF )
 	{
-		self->s.pos.trType = TR_STATIONARY;
+		self->s.pos.trType = trType_t::TR_STATIONARY;
 		return;
 	}
 
@@ -2193,7 +2193,7 @@ void func_train_reached( gentity_t *self )
 	{
 		self->nextthink = level.time + next->config.wait.time * 1000;
 		self->think = Think_BeginMoving;
-		self->s.pos.trType = TR_STATIONARY;
+		self->s.pos.trType = trType_t::TR_STATIONARY;
 	}
 }
 
@@ -2267,7 +2267,7 @@ void Think_SetupTrainTargets( gentity_t *self )
 
 	if ( !self->nextPathSegment )
 	{
-		G_Printf( "func_train at %s with an unfound target\n",
+		Log::Warn( "func_train at %s with an unfound target",
 		          vtos( self->r.absmin ) );
 		return;
 	}
@@ -2283,7 +2283,7 @@ void Think_SetupTrainTargets( gentity_t *self )
 
 		if ( !path->targetCount )
 		{
-			G_Printf( "Train corner at %s without a target\n",
+			Log::Warn( "Train corner at %s without a target",
 			          vtos( path->s.origin ) );
 			return;
 		}
@@ -2299,7 +2299,7 @@ void Think_SetupTrainTargets( gentity_t *self )
 
 			if ( !next )
 			{
-				G_Printf( "Train corner at %s without a referenced " S_PATH_CORNER "\n",
+				Log::Warn( "Train corner at %s without a referenced " S_PATH_CORNER,
 				          vtos( path->s.origin ) );
 				return;
 			}
@@ -2336,7 +2336,7 @@ void func_train_blocked( gentity_t *self, gentity_t *other )
 #ifndef UNREALARENA
 			//buildables need to be handled differently since even when
 			//dealt fatal amounts of damage they won't instantly become non-solid
-			if ( other->s.eType == ET_BUILDABLE && other->spawned )
+			if ( other->s.eType == entityType_t::ET_BUILDABLE && other->spawned )
 			{
 				vec3_t    dir;
 				gentity_t *tent;
@@ -2464,7 +2464,7 @@ void SP_func_rotating( gentity_t *self )
 	G_ResetFloatField(&self->speed, false, self->config.speed, self->eclass->config.speed, 400);
 
 	// set the axis of rotation
-	self->s.apos.trType = TR_LINEAR;
+	self->s.apos.trType = trType_t::TR_LINEAR;
 
 	if ( self->spawnflags & 4 )
 	{
@@ -2523,7 +2523,7 @@ void SP_func_bobbing( gentity_t *self )
 
 	self->s.pos.trDuration = self->config.speed * 1000;
 	self->s.pos.trTime = self->s.pos.trDuration * phase;
-	self->s.pos.trType = TR_SINE;
+	self->s.pos.trType = trType_t::TR_SINE;
 
 	// set the axis of bobbing
 	if ( self->spawnflags & 1 )
@@ -2579,7 +2579,7 @@ void SP_func_pendulum( gentity_t *self )
 	frequency = 1 / ( M_PI * 2 ) * sqrt( g_gravity.value / ( 3 * length ) );
 	self->s.apos.trDuration = 1000 / frequency;
 	self->s.apos.trTime = self->s.apos.trDuration * phase;
-	self->s.apos.trType = TR_SINE;
+	self->s.apos.trType = trType_t::TR_SINE;
 	self->s.apos.trDelta[ 2 ] = self->speed;
 }
 
@@ -2615,7 +2615,7 @@ SP_func_spawn
 void SP_func_spawn( gentity_t *self )
 {
   //ent->r.svFlags = SVF_USE_CURRENT_ORIGIN;
-  self->s.eType = ET_MOVER;
+  self->s.eType = entityType_t::ET_MOVER;
   self->r.contents |= CONTENTS_MOVER;
   self->moverState = MOVER_POS1;
   VectorCopy( self->s.origin, self->restingPosition );
@@ -2686,7 +2686,7 @@ void SP_func_destructable( gentity_t *self )
   G_SpawnInt( "radius", "0", &self->splashRadius );
 
   //ent->r.svFlags = SVF_USE_CURRENT_ORIGIN;
-  self->s.eType = ET_MOVER;
+  self->s.eType = entityType_t::ET_MOVER;
   self->r.contents |= CONTENTS_MOVER;
   self->moverState = MOVER_POS1;
   VectorCopy( self->s.origin, self->restingPosition );

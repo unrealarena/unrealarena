@@ -874,7 +874,7 @@ void CG_Rocket_BuildDemoList( const char* )
 	char  demolist[ 4096 ];
 	char demoExt[ 32 ];
 	char  *demoname;
-	int   i, len;
+	int   i;
 
 	Com_sprintf( demoExt, sizeof( demoExt ), "dm_%d", ( int ) trap_Cvar_VariableIntegerValue( "protocol" ) );
 
@@ -890,14 +890,15 @@ void CG_Rocket_BuildDemoList( const char* )
 		}
 
 		demoname = demolist;
+		auto demoExtLen = strlen( demoExt );
 
 		for ( i = 0; i < rocketInfo.data.demoCount; i++ )
 		{
-			len = strlen( demoname );
+			auto len = strlen( demoname );
 
-			if ( !Q_stricmp( demoname +  len - strlen( demoExt ), demoExt ) )
+			if ( !Q_stricmp( demoname + len - demoExtLen, demoExt ) )
 			{
-				demoname[ len - strlen( demoExt ) ] = '\0';
+				demoname[ len - demoExtLen ] = '\0';
 			}
 
 			rocketInfo.data.demoList[ i ] = BG_strdup( demoname );
@@ -937,7 +938,7 @@ void CG_Rocket_BuildPlayerList( const char* )
 	//CG_RequestScores();
 
 	// Do not build list if not currently playing
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1028,7 +1029,7 @@ void CG_Rocket_SortPlayerList( const char*, const char *sortBy )
 	char buf[ MAX_INFO_STRING ];
 
 	// Do not sort list if not currently playing
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1322,7 +1323,7 @@ void AddHumanSpawnItem( weapon_t weapon )
 
 void CG_Rocket_BuildHumanSpawnItems( const char* )
 {
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1422,7 +1423,7 @@ static void AddUpgradeToBuyList( int i, const char *table, int tblIndex )
 {
 	static char buf[ MAX_STRING_CHARS ];
 
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1451,7 +1452,7 @@ void CG_Rocket_BuildArmouryBuyList( const char *table )
 	int i;
 	int tblIndex = ROCKETDS_BOTH;
 
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1606,7 +1607,7 @@ void CG_Rocket_BuildArmourySellList( const char *table )
 {
 	static char buf[ MAX_STRING_CHARS ];
 
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1703,7 +1704,7 @@ void CG_Rocket_BuildAlienEvolveList( const char *table )
 {
 	static char buf[ MAX_STRING_CHARS ];
 
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1760,7 +1761,7 @@ void CG_Rocket_BuildHumanBuildList( const char *table )
 {
 	static char buf[ MAX_STRING_CHARS ];
 
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1817,7 +1818,7 @@ void CG_Rocket_BuildAlienBuildList( const char *table )
 {
 	static char buf[ MAX_STRING_CHARS ];
 
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1882,7 +1883,7 @@ void AddAlienSpawnClass( class_t _class )
 
 void CG_Rocket_BuildAlienSpawnList( const char *table )
 {
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -1952,7 +1953,7 @@ void CG_Rocket_BuildBeaconList( const char *table )
 {
 	static char buf[ MAX_STRING_CHARS ];
 
-	if ( rocketInfo.cstate.connState < CA_ACTIVE )
+	if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE )
 	{
 		return;
 	}
@@ -2155,7 +2156,7 @@ void CG_Rocket_RegisterDataSources()
 		// Check that the commands are in increasing order so that it can be used by bsearch
 		if ( i != 0 && Q_stricmp( dataSourceCmdList[ i - 1 ].name, dataSourceCmdList[ i ].name ) > 0 )
 		{
-			CG_Printf( "CGame dataSourceCmdList is in the wrong order for %s and %s\n", dataSourceCmdList[i - 1].name, dataSourceCmdList[ i ].name );
+			Log::Warn( "CGame dataSourceCmdList is in the wrong order for %s and %s", dataSourceCmdList[i - 1].name, dataSourceCmdList[ i ].name );
 		}
 
 		Rocket_RegisterDataSource( dataSourceCmdList[ i ].name );

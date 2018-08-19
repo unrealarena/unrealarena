@@ -68,7 +68,7 @@ void CG_Rocket_Init( glconfig_t gl )
 	char text[ 20000 ];
 	fileHandle_t f;
 
-	oldConnState = CA_UNINITIALIZED;
+	oldConnState = connstate_t::CA_UNINITIALIZED;
 	cgs.glconfig = gl;
 
 	// Init Rocket
@@ -98,22 +98,22 @@ void CG_Rocket_Init( glconfig_t gl )
 		// Only load stuff from ui/
 		if ( !trap_FS_LoadPak( rocket_pak.string, "ui/" ) )
 		{
-			Com_Error( ERR_DROP, "Unable to load custom UI pak: %s.", rocket_pak.string );
+			Com_Error(errorParm_t::ERR_DROP, "Unable to load custom UI pak: %s.", rocket_pak.string );
 		}
 	}
 
 	// Preload all the menu files...
-	len = trap_FS_FOpenFile( rocket_menuFile.string, &f, FS_READ );
+	len = trap_FS_FOpenFile( rocket_menuFile.string, &f, fsMode_t::FS_READ );
 
 	if ( len <= 0 )
 	{
-		Com_Error( ERR_DROP, "Unable to load %s. No rocket menus loaded.", rocket_menuFile.string );
+		Com_Error(errorParm_t::ERR_DROP, "Unable to load %s. No rocket menus loaded.", rocket_menuFile.string );
 	}
 
 	if ( len >= (int) sizeof( text ) - 1 )
 	{
 		trap_FS_FCloseFile( f );
-		Com_Error( ERR_DROP, "File %s too long.", rocket_menuFile.string );
+		Com_Error(errorParm_t::ERR_DROP, "File %s too long.", rocket_menuFile.string );
 	}
 
 	trap_FS_Read( text, len, f );
@@ -161,7 +161,7 @@ void CG_Rocket_Init( glconfig_t gl )
 
 			if ( *token != '{' )
 			{
-				Com_Error( ERR_DROP, "Error parsing %s. Expecting \"{\" but found \"%c\".", rocket_menuFile.string, *token );
+				Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Expecting \"{\" but found \"%c\".", rocket_menuFile.string, *token );
 			}
 
 			for ( i = 0; i < ROCKETMENU_NUM_TYPES; ++i )
@@ -170,7 +170,7 @@ void CG_Rocket_Init( glconfig_t gl )
 
 				if ( !*token )
 				{
-					Com_Error( ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting path to RML menu.", rocket_menuFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting path to RML menu.", rocket_menuFile.string );
 				}
 
 				rocketInfo.menu[ i ].path = BG_strdup( token );
@@ -180,7 +180,7 @@ void CG_Rocket_Init( glconfig_t gl )
 
 				if ( !*token )
 				{
-					Com_Error( ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting RML document id.", rocket_menuFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting RML document id.", rocket_menuFile.string );
 				}
 
 				rocketInfo.menu[ i ].id = BG_strdup( token );
@@ -190,7 +190,7 @@ void CG_Rocket_Init( glconfig_t gl )
 
 			if ( *token != '}' )
 			{
-				Com_Error( ERR_DROP, "Error parsing %s. Expecting \"}\" but found \"%c\".", rocket_menuFile.string, *token );
+				Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Expecting \"}\" but found \"%c\".", rocket_menuFile.string, *token );
 			}
 
 			while ( *token && *token != '}' )
@@ -199,7 +199,7 @@ void CG_Rocket_Init( glconfig_t gl )
 
 				if ( !*token )
 				{
-					Com_Error( ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting RML document.", rocket_menuFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting RML document.", rocket_menuFile.string );
 				}
 
 				Rocket_LoadDocument( token );
@@ -214,7 +214,7 @@ void CG_Rocket_Init( glconfig_t gl )
 
 			if ( *token != '{' )
 			{
-				Com_Error( ERR_DROP, "Error parsing %s. Expecting \"{\" but found \"%c\".", rocket_menuFile.string, *token );
+				Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Expecting \"{\" but found \"%c\".", rocket_menuFile.string, *token );
 			}
 
 			while ( 1 )
@@ -228,13 +228,13 @@ void CG_Rocket_Init( glconfig_t gl )
 
 				if ( !*token )
 				{
-					Com_Error( ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting closing '}'.", rocket_menuFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting closing '}'.", rocket_menuFile.string );
 				}
 
 				// Skip non-RML files
 				if ( Q_stricmp( token + strlen( token ) - 4, ".rml" ) )
 				{
-					Com_Printf( "^3WARNING: Non-RML file listed in %s: \"%s\" . Skipping.", rocket_menuFile.string, token );
+					Log::Warn( "Non-RML file listed in %s: \"%s\" . Skipping.", rocket_menuFile.string, token );
 					continue;
 				}
 
@@ -251,7 +251,7 @@ void CG_Rocket_Init( glconfig_t gl )
 
 			if ( *token != '{' )
 			{
-				Com_Error( ERR_DROP, "Error parsing %s. Expecting \"{\" but found \"%c\".", rocket_menuFile.string, *token );
+				Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Expecting \"{\" but found \"%c\".", rocket_menuFile.string, *token );
 			}
 
 			while ( 1 )
@@ -265,7 +265,7 @@ void CG_Rocket_Init( glconfig_t gl )
 
 				if ( !*token )
 				{
-					Com_Error( ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting closing '}'.", rocket_menuFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Error parsing %s. Unexpected end of file. Expecting closing '}'.", rocket_menuFile.string );
 				}
 
 				Rocket_LoadFont( token );
@@ -297,17 +297,17 @@ void CG_Rocket_LoadHuds()
 	fileHandle_t f;
 
 	// Preload all the menu files...
-	len = trap_FS_FOpenFile( rocket_hudFile.string, &f, FS_READ );
+	len = trap_FS_FOpenFile( rocket_hudFile.string, &f, fsMode_t::FS_READ );
 
 	if ( len <= 0 )
 	{
-		Com_Error( ERR_DROP, "Unable to load %s. No rocket menus loaded.", rocket_menuFile.string );
+		Com_Error(errorParm_t::ERR_DROP, "Unable to load %s. No rocket menus loaded.", rocket_menuFile.string );
 	}
 
 	if ( len >= (int) sizeof( text ) - 1 )
 	{
 		trap_FS_FCloseFile( f );
-		Com_Error( ERR_DROP, "File %s too long.", rocket_hudFile.string );
+		Com_Error(errorParm_t::ERR_DROP, "File %s too long.", rocket_hudFile.string );
 	}
 
 	trap_FS_Read( text, len, f );
@@ -341,7 +341,7 @@ void CG_Rocket_LoadHuds()
 
 				if ( !*token )
 				{
-					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off units.", rocket_hudFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off units.", rocket_hudFile.string );
 				}
 
 				if ( *token == '}' )
@@ -382,9 +382,9 @@ void CG_Rocket_LoadHuds()
 				if ( !*token )
 				{
 #ifdef UNREALARENA
-					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off u_hud.", rocket_hudFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off u_hud.", rocket_hudFile.string );
 #else
-					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off human_hud.", rocket_hudFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off human_hud.", rocket_hudFile.string );
 #endif
 				}
 
@@ -424,7 +424,7 @@ void CG_Rocket_LoadHuds()
 
 				if ( !*token )
 				{
-					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off spectator_hud.", rocket_hudFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off spectator_hud.", rocket_hudFile.string );
 				}
 
 				if ( *token == '{' )
@@ -468,9 +468,9 @@ void CG_Rocket_LoadHuds()
 				if ( !*token )
 				{
 #ifdef UNREALARENA
-					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off q_hud.", rocket_hudFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off q_hud.", rocket_hudFile.string );
 #else
-					Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off alien_hud.", rocket_hudFile.string );
+					Com_Error(errorParm_t::ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off alien_hud.", rocket_hudFile.string );
 #endif
 				}
 
@@ -507,7 +507,7 @@ void CG_Rocket_LoadHuds()
 
 					if ( !*token )
 					{
-						Com_Error( ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off %s_hud.", rocket_hudFile.string, BG_Weapon( i )->name );
+						Com_Error(errorParm_t::ERR_DROP, "Unable to load huds from %s. Unexpected end of file. Expected closing } to close off %s_hud.", rocket_hudFile.string, BG_Weapon( i )->name );
 					}
 
 					if ( *token == '{' )
@@ -530,7 +530,7 @@ void CG_Rocket_LoadHuds()
 
 		if ( !valid )
 		{
-			Com_Error( ERR_DROP, "Could not parse %s. Unrecognized top level item: %s", rocket_hudFile.string, token );
+			Com_Error(errorParm_t::ERR_DROP, "Could not parse %s. Unrecognized top level item: %s", rocket_hudFile.string, token );
 		}
 	}
 }
@@ -579,7 +579,7 @@ void CG_Rocket_Frame( cgClientState_t state )
 	{
 		switch ( rocketInfo.cstate.connState )
 		{
-			case CA_DISCONNECTED:
+			case connstate_t::CA_DISCONNECTED:
 				// Kill the server if its still running
 				if ( trap_Cvar_VariableIntegerValue( "sv_running" ) )
 				{
@@ -587,20 +587,20 @@ void CG_Rocket_Frame( cgClientState_t state )
 				}
 				break;
 
-			case CA_CONNECTING:
-			case CA_CHALLENGING:
-			case CA_CONNECTED:
+			case connstate_t::CA_CONNECTING:
+			case connstate_t::CA_CHALLENGING:
+			case connstate_t::CA_CONNECTED:
 				Rocket_DocumentAction( rocketInfo.menu[ ROCKETMENU_CONNECTING ].id, "show" );
 				break;
-			case CA_DOWNLOADING:
+			case connstate_t::CA_DOWNLOADING:
 				Rocket_DocumentAction( rocketInfo.menu[ ROCKETMENU_DOWNLOADING ].id, "show" );
 				break;
-			case CA_LOADING:
-			case CA_PRIMED:
+			case connstate_t::CA_LOADING:
+			case connstate_t::CA_PRIMED:
 				Rocket_DocumentAction( rocketInfo.menu[ ROCKETMENU_LOADING ].id, "show" );
 				break;
 
-			case CA_ACTIVE:
+			case connstate_t::CA_ACTIVE:
 				Rocket_DocumentAction( "", "blurall" );
                 break;
 
@@ -678,7 +678,7 @@ bool CG_Rocket_IsCommandAllowed( rocketElementType_t type )
 			return true;
 
 		case ELEMENT_LOADING:
-			if ( rocketInfo.cstate.connState < CA_ACTIVE && rocketInfo.cstate.connState > CA_CONNECTED )
+			if ( rocketInfo.cstate.connState < connstate_t::CA_ACTIVE && rocketInfo.cstate.connState > connstate_t::CA_CONNECTED )
 			{
 				return true;
 			}
@@ -686,7 +686,7 @@ bool CG_Rocket_IsCommandAllowed( rocketElementType_t type )
 			return false;
 
 		case ELEMENT_GAME:
-			if ( rocketInfo.cstate.connState == CA_ACTIVE )
+			if ( rocketInfo.cstate.connState == connstate_t::CA_ACTIVE )
 			{
 				return true;
 			}

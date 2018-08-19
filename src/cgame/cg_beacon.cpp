@@ -137,7 +137,7 @@ else if( !Q_stricmp( token.string, #x ) ) \
 			bc->highlightAngle = cos( angle / 180.0 * M_PI );
 		}
 		else
-			Com_Printf( "^3WARNING: bad keyword \"%s\" in \"%s\"\n", token.string, path );
+			Log::Warn( "bad keyword \"%s\" in \"%s\"\n", token.string, path );
 	}
 
 	bc->fadeMinDist = Square( bc->hudSize / bc->hudMaxSize );
@@ -168,7 +168,7 @@ static bool LoadExplicitBeacons()
 		es     = &ent->currentState;
 		beacon = &ent->beacon;
 
-		if ( es->eType != ET_BEACON )
+		if ( es->eType != entityType_t::ET_BEACON )
 			continue;
 
 		if( es->modelindex <= BCT_NONE || es->modelindex >= NUM_BEACON_TYPES )
@@ -191,7 +191,7 @@ static bool LoadExplicitBeacons()
 		// Snap beacon origin to exact player location if known.
 		centity_t *targetCent; entityState_t *targetES;
 		if ( beacon->target && ( targetCent = &cg_entities[ beacon->target ] )->valid &&
-		     ( targetES = &targetCent->currentState )->eType == ET_PLAYER )
+		     ( targetES = &targetCent->currentState )->eType == entityType_t::ET_PLAYER )
 		{
 			vec3_t mins, maxs, center;
 #ifdef UNREALARENA
@@ -467,7 +467,7 @@ static void DrawBeacon( cbeacon_t *b )
 		else
 		{
 			if( ba->inSound && ( b->type != BCT_TAG || ( b->flags & EF_BC_ENEMY ) ) )
-				trap_S_StartLocalSound( ba->inSound, CHAN_LOCAL_SOUND );
+				trap_S_StartLocalSound( ba->inSound, soundChannel_t::CHAN_LOCAL_SOUND );
 		}
 	}
 
@@ -477,7 +477,7 @@ static void DrawBeacon( cbeacon_t *b )
 	    ( b->flags & EF_BC_DYING ) )
 	{
 		if( ba->outSound )
-			trap_S_StartLocalSound( ba->outSound, CHAN_LOCAL_SOUND );
+			trap_S_StartLocalSound( ba->outSound, soundChannel_t::CHAN_LOCAL_SOUND );
 	}
 
 	// fade in
@@ -516,7 +516,7 @@ static void DrawBeacon( cbeacon_t *b )
 
 			if( !b->eventFired )
 			{
-				trap_S_StartLocalSound( cgs.media.timerBeaconExpiredSound, CHAN_LOCAL_SOUND );
+				trap_S_StartLocalSound( cgs.media.timerBeaconExpiredSound, soundChannel_t::CHAN_LOCAL_SOUND );
 				b->eventFired = true;
 			}
 		}

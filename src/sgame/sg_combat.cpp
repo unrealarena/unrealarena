@@ -229,7 +229,7 @@ void G_RewardAttackers( gentity_t *self )
 		maxHealth = self->entity->Get<HealthComponent>()->MaxHealth();
 		value     = BG_GetValueOfPlayer( &self->client->ps );
 	}
-	else if ( self->s.eType == ET_BUILDABLE )
+	else if ( self->s.eType == entityType_t::ET_BUILDABLE )
 	{
 		ownTeam   = (team_t) self->buildableTeam;
 		maxHealth = self->entity->Get<HealthComponent>()->MaxHealth();
@@ -296,7 +296,7 @@ void G_RewardAttackers( gentity_t *self )
 		share  = damageShare / ( float )maxHealth;
 		reward = value * share;
 
-		if ( self->s.eType == ET_BUILDABLE )
+		if ( self->s.eType == entityType_t::ET_BUILDABLE )
 		{
 			// Add score
 			G_AddMomentumToScore( player, reward );
@@ -458,7 +458,7 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 		}
 	}
 #ifndef UNREALARENA
-	else if ( attacker->s.eType != ET_BUILDABLE )
+	else if ( attacker->s.eType != entityType_t::ET_BUILDABLE )
 	{
 		if ( self->client->pers.team == TEAM_ALIENS )
 		{
@@ -780,17 +780,17 @@ void G_InitDamageLocations()
 #endif
 		Com_sprintf( filename, sizeof( filename ), "configs/classes/%s.locdamage.cfg", modelName );
 
-		len = trap_FS_FOpenFile( filename, &fileHandle, FS_READ );
+		len = trap_FS_FOpenFile( filename, &fileHandle, fsMode_t::FS_READ );
 
 		if ( !fileHandle )
 		{
-			G_Printf( "^1file not found: %s\n", filename );
+			Log::Warn( "^1file not found: %s", filename );
 			continue;
 		}
 
 		if ( len >= MAX_DAMAGE_REGION_TEXT )
 		{
-			G_Printf( "^1file too large: %s is %i, max allowed is %i\n",
+			Log::Warn( "^1file too large: %s is %i, max allowed is %i",
 			          filename, len, MAX_DAMAGE_REGION_TEXT );
 			trap_FS_FCloseFile( fileHandle );
 			continue;

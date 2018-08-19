@@ -126,6 +126,9 @@ static void GLSL_InitGPUShadersOrError()
 		Log::Warn("SSAO not used because GL_ARB_texture_gather is not available.");
 	}
 
+	gl_shaderManager.load( gl_depthtile1Shader );
+	gl_shaderManager.load( gl_depthtile2Shader );
+	gl_shaderManager.load( gl_lighttileShader );
 	gl_shaderManager.load( gl_fxaaShader );
 
 	if ( !r_lazyShaders->integer )
@@ -233,6 +236,9 @@ void GLSL_ShutdownGPUShaders()
 	gl_volumetricFogShader = nullptr;
 	gl_motionblurShader = nullptr;
 	gl_ssaoShader = nullptr;
+	gl_depthtile1Shader = nullptr;
+	gl_depthtile2Shader = nullptr;
+	gl_lighttileShader = nullptr;
 	gl_fxaaShader = nullptr;
 
 	GL_BindNullProgram();
@@ -304,6 +310,33 @@ void Tess_DrawElements()
 
 		backEnd.pc.c_indexes += tess.numIndexes;
 		backEnd.pc.c_vertexes += tess.numVertexes;
+	}
+}
+
+/*
+==================
+Tess_DrawArrays
+==================
+*/
+void Tess_DrawArrays( GLenum elementType )
+{
+	if ( tess.numVertexes == 0 )
+	{
+		return;
+	}
+
+	// move tess data through the GPU, finally
+	glDrawArrays( elementType, 0, tess.numVertexes );
+
+	backEnd.pc.c_drawElements++;
+
+	backEnd.pc.c_indexes += tess.numIndexes;
+	backEnd.pc.c_vertexes += tess.numVertexes;
+
+	if ( glState.currentVBO )
+	{
+		backEnd.pc.c_vboVertexes += tess.numVertexes;
+		backEnd.pc.c_vboIndexes += tess.numIndexes;
 	}
 }
 
@@ -430,7 +463,7 @@ static void DrawTris()
 		gl_genericShader->SetUniform_Color( Color::White );
 	}
 
-	gl_genericShader->SetUniform_ColorModulate( CGEN_CONST, AGEN_CONST );
+	gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CONST, alphaGen_t::AGEN_CONST );
 
 	gl_genericShader->SetUniform_ModelMatrix( backEnd.orientation.transformMatrix );
 	gl_genericShader->SetUniform_ModelViewProjectionMatrix( glState.modelViewProjectionMatrix[ glState.stackIndex ] );
@@ -511,7 +544,7 @@ void Tess_Begin( void ( *stageIteratorFunc )(),
 
 	if ( !tess.stageIteratorFunc )
 	{
-		ri.Error( ERR_FATAL, "tess.stageIteratorFunc == NULL" );
+		ri.Error( errorParm_t::ERR_FATAL, "tess.stageIteratorFunc == NULL" );
 	}
 
 	if ( tess.stageIteratorFunc == &Tess_StageIteratorGeneric )
@@ -559,11 +592,6 @@ static void Render_generic( int stage )
 
 	GL_State( pStage->stateBits );
 
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
-
 	// choose right shader program ----------------------------------
 	gl_genericShader->SetVertexSkinning( glConfig2.vboVertexSkinningAvailable && tess.vboVertexSkinning );
 	gl_genericShader->SetVertexAnimation( tess.vboVertexAnimation );
@@ -578,6 +606,13 @@ static void Render_generic( int stage )
 		gl_genericShader->DisableMacro_USE_DEPTH_FADE();
 	}
 
+	if( backEnd.refdef.numShaderLights > 0 ) {
+		gl_genericShader->EnableMacro_USE_SHADER_LIGHTS();
+		GL_BindToTMU( 8, tr.lighttileRenderImage );
+	} else {
+		gl_genericShader->DisableMacro_USE_SHADER_LIGHTS();
+	}
+
 	if( tess.surfaceShader->autoSpriteMode ) {
 		gl_genericShader->EnableVertexSprite();
 		needDepthMap = true;
@@ -585,12 +620,6 @@ static void Render_generic( int stage )
 	} else {
 		gl_genericShader->DisableVertexSprite();
 		tess.vboVertexSprite = false;
-	}
-
-	if( needDepthMap && !backEnd.depthRenderImageValid ) {
-		GL_Bind( tr.depthRenderImage );
-		glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.depthRenderImage->uploadWidth, tr.depthRenderImage->uploadHeight );
-		backEnd.depthRenderImageValid = true;
 	}
 
 	gl_genericShader->BindProgram( pStage->deformIndex );
@@ -604,32 +633,41 @@ static void Render_generic( int stage )
 		gl_genericShader->SetUniform_ViewUp( backEnd.orientation.axis[ 2 ] );
 	}
 
+	if( backEnd.refdef.numShaderLights > 0 ) {
+		gl_genericShader->SetUniform_numLights( backEnd.refdef.numLights );
+		if( glConfig2.uniformBufferObjectAvailable ) {
+			gl_genericShader->SetUniformBlock_Lights( tr.dlightUBO );
+		} else {
+			GL_BindToTMU( 9, tr.dlightImage );
+		}
+	}
+
 	// u_AlphaTest
 	gl_genericShader->SetUniform_AlphaTest( pStage->stateBits );
 
 	// u_ColorGen
 	switch ( pStage->rgbGen )
 	{
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
+		case colorGen_t::CGEN_VERTEX:
+		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
 			rgbGen = pStage->rgbGen;
 			break;
 
 		default:
-			rgbGen = CGEN_CONST;
+			rgbGen = colorGen_t::CGEN_CONST;
 			break;
 	}
 
 	// u_AlphaGen
 	switch ( pStage->alphaGen )
 	{
-		case AGEN_VERTEX:
-		case AGEN_ONE_MINUS_VERTEX:
+		case alphaGen_t::AGEN_VERTEX:
+		case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
 			alphaGen = pStage->alphaGen;
 			break;
 
 		default:
-			alphaGen = AGEN_CONST;
+			alphaGen = alphaGen_t::AGEN_CONST;
 			break;
 	}
 
@@ -666,8 +704,7 @@ static void Render_generic( int stage )
 		gl_genericShader->SetUniform_DepthScale( pStage->depthFadeValue );
 	}
 	if( needDepthMap ) {
-		GL_SelectTexture( 1 );
-		GL_Bind( tr.depthRenderImage );
+		GL_BindToTMU( 1, tr.currentDepthImage );
 	}
 
 	gl_genericShader->SetRequiredVertexPointers();
@@ -675,6 +712,16 @@ static void Render_generic( int stage )
 	Tess_DrawElements();
 
 	GL_CheckErrors();
+}
+
+static bool hasMaterialMapping( shader_t *shader ) {
+  switch( shader->collapseType ) {
+  case collapseType_t::COLLAPSE_lighting_DBM:
+  case collapseType_t::COLLAPSE_lighting_DBMG:
+    return true;
+  default:
+    return false;
+  }
 }
 
 static void Render_vertexLighting_DBS_entity( int stage )
@@ -689,13 +736,9 @@ static void Render_vertexLighting_DBS_entity( int stage )
 
 	GL_State( stateBits );
 
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
-
 	bool normalMapping = r_normalMapping->integer && ( pStage->bundle[ TB_NORMALMAP ].image[ 0 ] != nullptr );
 	bool glowMapping = ( pStage->bundle[ TB_GLOWMAP ].image[ 0 ] != nullptr );
+	bool materialMapping = hasMaterialMapping( tess.surfaceShader );
 
 	// choose right shader program ----------------------------------
 	gl_vertexLightingShader_DBS_entity->SetVertexSkinning( glConfig2.vboVertexSkinningAvailable && tess.vboVertexSkinning );
@@ -703,11 +746,19 @@ static void Render_vertexLighting_DBS_entity( int stage )
 
 	tess.vboVertexSprite = false;
 
+	if( backEnd.refdef.numShaderLights > 0 ) {
+		gl_vertexLightingShader_DBS_entity->EnableMacro_USE_SHADER_LIGHTS();
+		GL_BindToTMU( 8, tr.lighttileRenderImage );
+	} else {
+		gl_vertexLightingShader_DBS_entity->DisableMacro_USE_SHADER_LIGHTS();
+	}
+
 	gl_vertexLightingShader_DBS_entity->SetNormalMapping( normalMapping );
 	gl_vertexLightingShader_DBS_entity->SetParallaxMapping( normalMapping && r_parallaxMapping->integer && tess.surfaceShader->parallax );
 
 	gl_vertexLightingShader_DBS_entity->SetReflectiveSpecular( normalMapping && tr.cubeHashTable != nullptr );
 
+	gl_vertexLightingShader_DBS_entity->SetPhysicalShading( materialMapping );
 	gl_vertexLightingShader_DBS_entity->SetGlowMapping( glowMapping );
 
 	gl_vertexLightingShader_DBS_entity->BindProgram( pStage->deformIndex );
@@ -723,6 +774,15 @@ static void Render_vertexLighting_DBS_entity( int stage )
 
 	// set uniforms
 	VectorCopy( backEnd.viewParms.orientation.origin, viewOrigin );  // in world space
+
+	if( backEnd.refdef.numShaderLights > 0 ) {
+		gl_vertexLightingShader_DBS_entity->SetUniform_numLights( backEnd.refdef.numLights );
+		if( glConfig2.uniformBufferObjectAvailable ) {
+			gl_vertexLightingShader_DBS_entity->SetUniformBlock_Lights( tr.dlightUBO );
+		} else {
+			GL_BindToTMU( 9, tr.dlightImage );
+		}
+	}
 
 	// u_AlphaTest
 	gl_vertexLightingShader_DBS_entity->SetUniform_AlphaTest( pStage->stateBits );
@@ -909,6 +969,13 @@ static void Render_vertexLighting_DBS_world( int stage )
 	bool glowMapping = ( pStage->bundle[ TB_GLOWMAP ].image[ 0 ] != nullptr );
 
 	// choose right shader program ----------------------------------
+	if( backEnd.refdef.numShaderLights > 0 ) {
+		gl_vertexLightingShader_DBS_world->EnableMacro_USE_SHADER_LIGHTS();
+		GL_BindToTMU( 8, tr.lighttileRenderImage );
+	} else {
+		gl_vertexLightingShader_DBS_world->DisableMacro_USE_SHADER_LIGHTS();
+	}
+
 	gl_vertexLightingShader_DBS_world->SetNormalMapping( normalMapping );
 	gl_vertexLightingShader_DBS_world->SetParallaxMapping( normalMapping && r_parallaxMapping->integer && tess.surfaceShader->parallax );
 	gl_vertexLightingShader_DBS_world->SetGlowMapping( glowMapping );
@@ -924,6 +991,15 @@ static void Render_vertexLighting_DBS_world( int stage )
 	// set uniforms
 	VectorCopy( backEnd.orientation.viewOrigin, viewOrigin );
 
+	if( backEnd.refdef.numShaderLights > 0 ) {
+		gl_vertexLightingShader_DBS_world->SetUniform_numLights( backEnd.refdef.numLights );
+		if( glConfig2.uniformBufferObjectAvailable ) {
+			gl_vertexLightingShader_DBS_world->SetUniformBlock_Lights( tr.dlightUBO );
+		} else {
+			GL_BindToTMU( 9, tr.dlightImage );
+		}
+	}
+
 	GL_CheckErrors();
 
 	// u_DeformGen
@@ -932,37 +1008,32 @@ static void Render_vertexLighting_DBS_world( int stage )
 	// u_ColorModulate
 	switch ( pStage->rgbGen )
 	{
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
+		case colorGen_t::CGEN_VERTEX:
+		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
 			colorGen = pStage->rgbGen;
 			break;
 
 		default:
-			colorGen = CGEN_CONST;
+			colorGen = colorGen_t::CGEN_CONST;
 			break;
 	}
 
 	switch ( pStage->alphaGen )
 	{
-		case AGEN_VERTEX:
+		case alphaGen_t::AGEN_VERTEX:
 			alphaGen = pStage->alphaGen;
 			break;
 
-		case AGEN_ONE_MINUS_VERTEX:
+		case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
 			alphaGen = pStage->alphaGen;
 			break;
 
 		default:
-			alphaGen = AGEN_CONST;
+			alphaGen = alphaGen_t::AGEN_CONST;
 			break;
 	}
 
 	GL_State( stateBits );
-
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
 
 	gl_vertexLightingShader_DBS_world->SetUniform_ColorModulate( colorGen, alphaGen );
 
@@ -1061,25 +1132,25 @@ static void Render_lightMapping( int stage, bool asColorMap, bool normalMapping 
 
 	switch ( pStage->rgbGen )
 	{
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
+		case colorGen_t::CGEN_VERTEX:
+		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
 			rgbGen = pStage->rgbGen;
 			break;
 
 		default:
-			rgbGen = CGEN_CONST;
+			rgbGen = colorGen_t::CGEN_CONST;
 			break;
 	}
 
 	switch ( pStage->alphaGen )
 	{
-		case AGEN_VERTEX:
-		case AGEN_ONE_MINUS_VERTEX:
+		case alphaGen_t::AGEN_VERTEX:
+		case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
 			alphaGen = pStage->alphaGen;
 			break;
 
 		default:
-			alphaGen = AGEN_CONST;
+			alphaGen = alphaGen_t::AGEN_CONST;
 			break;
 	}
 
@@ -1089,11 +1160,6 @@ static void Render_lightMapping( int stage, bool asColorMap, bool normalMapping 
 	}
 
 	GL_State( stateBits );
-
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
 
 	if ( pStage->bundle[ TB_NORMALMAP ].image[ 0 ] == nullptr )
 	{
@@ -1106,6 +1172,13 @@ static void Render_lightMapping( int stage, bool asColorMap, bool normalMapping 
 	}
 
 	// choose right shader program ----------------------------------
+	if( backEnd.refdef.numShaderLights > 0 ) {
+		gl_lightMappingShader->EnableMacro_USE_SHADER_LIGHTS();
+		GL_BindToTMU( 8, tr.lighttileRenderImage );
+	} else {
+		gl_lightMappingShader->DisableMacro_USE_SHADER_LIGHTS();
+	}
+
 	gl_lightMappingShader->SetNormalMapping( normalMapping );
 	gl_lightMappingShader->SetParallaxMapping( normalMapping && r_parallaxMapping->integer && tess.surfaceShader->parallax );
 	gl_lightMappingShader->SetGlowMapping( glowMapping );
@@ -1117,6 +1190,15 @@ static void Render_lightMapping( int stage, bool asColorMap, bool normalMapping 
 	// end choose right shader program ------------------------------
 
 	// now we are ready to set the shader program uniforms
+
+	if( backEnd.refdef.numShaderLights > 0 ) {
+		gl_lightMappingShader->SetUniform_numLights( backEnd.refdef.numLights );
+		if( glConfig2.uniformBufferObjectAvailable ) {
+			gl_lightMappingShader->SetUniformBlock_Lights( tr.dlightUBO );
+		} else {
+			GL_BindToTMU( 9, tr.dlightImage );
+		}
+	}
 
 	// u_DeformGen
 	gl_lightMappingShader->SetUniform_Time( backEnd.refdef.floatTime - backEnd.currentEntity->e.shaderTime );
@@ -1218,11 +1300,6 @@ static void Render_depthFill( int stage )
 
 	GL_State( stateBits );
 
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
-
 	gl_genericShader->SetVertexSkinning( glConfig2.vboVertexSkinningAvailable && tess.vboVertexSkinning );
 	gl_genericShader->SetVertexAnimation( glState.vertexAttribsInterpolation > 0 );
 
@@ -1241,7 +1318,7 @@ static void Render_depthFill( int stage )
 	gl_genericShader->SetUniform_AlphaTest( pStage->stateBits );
 
 	// u_ColorModulate
-	gl_genericShader->SetUniform_ColorModulate( CGEN_CONST, AGEN_CONST );
+	gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CONST, alphaGen_t::AGEN_CONST );
 
 	// u_Color
 	Color::Color ambientColor;
@@ -1295,15 +1372,10 @@ static void Render_shadowFill( int stage )
 
 	GL_State( stateBits );
 
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
-
 	gl_shadowFillShader->SetVertexSkinning( glConfig2.vboVertexSkinningAvailable && tess.vboVertexSkinning );
 	gl_shadowFillShader->SetVertexAnimation( glState.vertexAttribsInterpolation > 0 );
 
-	gl_shadowFillShader->SetMacro_LIGHT_DIRECTIONAL( backEnd.currentLight->l.rlType == RL_DIRECTIONAL );
+	gl_shadowFillShader->SetMacro_LIGHT_DIRECTIONAL( backEnd.currentLight->l.rlType == refLightType_t::RL_DIRECTIONAL );
 
 	gl_shadowFillShader->BindProgram( pStage->deformIndex );
 
@@ -1316,7 +1388,7 @@ static void Render_shadowFill( int stage )
 
 	gl_shadowFillShader->SetUniform_AlphaTest( pStage->stateBits );
 
-	if ( backEnd.currentLight->l.rlType != RL_DIRECTIONAL )
+	if ( backEnd.currentLight->l.rlType != refLightType_t::RL_DIRECTIONAL )
 	{
 		gl_shadowFillShader->SetUniform_LightOrigin( backEnd.currentLight->origin );
 		gl_shadowFillShader->SetUniform_LightRadius( backEnd.currentLight->sphereRadius );
@@ -1370,9 +1442,7 @@ static void Render_forwardLighting_DBS_omni( shaderStage_t *diffuseStage,
 
 	bool normalMapping = r_normalMapping->integer && ( diffuseStage->bundle[ TB_NORMALMAP ].image[ 0 ] != nullptr );
 
-	bool shadowCompare = ( r_shadows->integer >= SHADOWING_ESM16 && !light->l.noShadows && light->shadowLOD >= 0 );
-
-	backEnd.depthRenderImageValid = false;
+	bool shadowCompare = ( r_shadows->integer >= Util::ordinal(shadowingMode_t::SHADOWING_ESM16) && !light->l.noShadows && light->shadowLOD >= 0 );
 
 	// choose right shader program ----------------------------------
 	gl_forwardLightingShader_omniXYZ->SetVertexSkinning( glConfig2.vboVertexSkinningAvailable && tess.vboVertexSkinning );
@@ -1392,25 +1462,25 @@ static void Render_forwardLighting_DBS_omni( shaderStage_t *diffuseStage,
 	// u_ColorModulate
 	switch ( diffuseStage->rgbGen )
 	{
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
+		case colorGen_t::CGEN_VERTEX:
+		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
 			colorGen = diffuseStage->rgbGen;
 			break;
 
 		default:
-			colorGen = CGEN_CONST;
+			colorGen = colorGen_t::CGEN_CONST;
 			break;
 	}
 
 	switch ( diffuseStage->alphaGen )
 	{
-		case AGEN_VERTEX:
-		case AGEN_ONE_MINUS_VERTEX:
+		case alphaGen_t::AGEN_VERTEX:
+		case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
 			alphaGen = diffuseStage->alphaGen;
 			break;
 
 		default:
-			alphaGen = AGEN_CONST;
+			alphaGen = alphaGen_t::AGEN_CONST;
 			break;
 	}
 
@@ -1560,9 +1630,7 @@ static void Render_forwardLighting_DBS_proj( shaderStage_t *diffuseStage,
 
 	bool normalMapping = r_normalMapping->integer && ( diffuseStage->bundle[ TB_NORMALMAP ].image[ 0 ] != nullptr );
 
-	bool shadowCompare = ( r_shadows->integer >= SHADOWING_ESM16 && !light->l.noShadows && light->shadowLOD >= 0 );
-
-	backEnd.depthRenderImageValid = false;
+	bool shadowCompare = ( r_shadows->integer >= Util::ordinal(shadowingMode_t::SHADOWING_ESM16) && !light->l.noShadows && light->shadowLOD >= 0 );
 
 	// choose right shader program ----------------------------------
 	gl_forwardLightingShader_projXYZ->SetVertexSkinning( glConfig2.vboVertexSkinningAvailable && tess.vboVertexSkinning );
@@ -1582,25 +1650,25 @@ static void Render_forwardLighting_DBS_proj( shaderStage_t *diffuseStage,
 	// u_ColorModulate
 	switch ( diffuseStage->rgbGen )
 	{
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
+		case colorGen_t::CGEN_VERTEX:
+		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
 			colorGen = diffuseStage->rgbGen;
 			break;
 
 		default:
-			colorGen = CGEN_CONST;
+			colorGen = colorGen_t::CGEN_CONST;
 			break;
 	}
 
 	switch ( diffuseStage->alphaGen )
 	{
-		case AGEN_VERTEX:
-		case AGEN_ONE_MINUS_VERTEX:
+		case alphaGen_t::AGEN_VERTEX:
+		case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
 			alphaGen = diffuseStage->alphaGen;
 			break;
 
 		default:
-			alphaGen = AGEN_CONST;
+			alphaGen = alphaGen_t::AGEN_CONST;
 			break;
 	}
 
@@ -1749,9 +1817,7 @@ static void Render_forwardLighting_DBS_directional( shaderStage_t *diffuseStage,
 
 	bool normalMapping = r_normalMapping->integer && ( diffuseStage->bundle[ TB_NORMALMAP ].image[ 0 ] != nullptr );
 
-	bool shadowCompare = ( r_shadows->integer >= SHADOWING_ESM16 && !light->l.noShadows && light->shadowLOD >= 0 );
-
-	backEnd.depthRenderImageValid = false;
+	bool shadowCompare = ( r_shadows->integer >= Util::ordinal(shadowingMode_t::SHADOWING_ESM16) && !light->l.noShadows && light->shadowLOD >= 0 );
 
 	// choose right shader program ----------------------------------
 	gl_forwardLightingShader_directionalSun->SetVertexSkinning( glConfig2.vboVertexSkinningAvailable && tess.vboVertexSkinning );
@@ -1771,25 +1837,25 @@ static void Render_forwardLighting_DBS_directional( shaderStage_t *diffuseStage,
 	// u_ColorModulate
 	switch ( diffuseStage->rgbGen )
 	{
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
+		case colorGen_t::CGEN_VERTEX:
+		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
 			colorGen = diffuseStage->rgbGen;
 			break;
 
 		default:
-			colorGen = CGEN_CONST;
+			colorGen = colorGen_t::CGEN_CONST;
 			break;
 	}
 
 	switch ( diffuseStage->alphaGen )
 	{
-		case AGEN_VERTEX:
-		case AGEN_ONE_MINUS_VERTEX:
+		case alphaGen_t::AGEN_VERTEX:
+		case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
 			alphaGen = diffuseStage->alphaGen;
 			break;
 
 		default:
-			alphaGen = AGEN_CONST;
+			alphaGen = alphaGen_t::AGEN_CONST;
 			break;
 	}
 
@@ -1951,11 +2017,6 @@ static void Render_reflection_CB( int stage )
 
 	GL_State( pStage->stateBits );
 
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
-
 	bool normalMapping = r_normalMapping->integer && ( pStage->bundle[ TB_NORMALMAP ].image[ 0 ] != nullptr );
 
 	// choose right shader program ----------------------------------
@@ -2043,11 +2104,6 @@ static void Render_screen( int stage )
 
 	GL_State( pStage->stateBits );
 
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
-
 	gl_screenShader->BindProgram( pStage->deformIndex );
 
 	{
@@ -2073,11 +2129,6 @@ static void Render_portal( int stage )
 	GLimp_LogComment( "--- Render_portal ---\n" );
 
 	GL_State( pStage->stateBits );
-
-	if( pStage->stateBits & GLS_DEPTHMASK_TRUE ) {
-		// depth buffer may change
-		backEnd.depthRenderImageValid = false;
-	}
 
 	// enable shader, set arrays
 	gl_portalShader->BindProgram( pStage->deformIndex );
@@ -2165,15 +2216,23 @@ static void Render_heatHaze( int stage )
 		gl_heatHazeShader->SetUniform_Time( backEnd.refdef.floatTime - backEnd.currentEntity->e.shaderTime );
 	}
 
+	// draw to background image
+	R_BindFBO( tr.mainFBO[ 1 - backEnd.currentMainFBO ] );
+
 	// bind u_NormalMap
 	GL_BindToTMU( 0, pStage->bundle[ TB_COLORMAP ].image[ 0 ] );
 	gl_heatHazeShader->SetUniform_NormalTextureMatrix( tess.svars.texMatrices[ TB_COLORMAP ] );
 
-	GL_BindToTMU( 1, tr.currentRenderImage );
-	glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.currentRenderImage->uploadWidth, tr.currentRenderImage->uploadHeight );
+	GL_BindToTMU( 1, tr.currentRenderImage[ backEnd.currentMainFBO ] );
 
 	gl_heatHazeShader->SetRequiredVertexPointers();
 
+	Tess_DrawElements();
+
+	// copy to foreground image
+	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
+	GL_BindToTMU( 1, tr.currentRenderImage[ 1 - backEnd.currentMainFBO ] );
+	gl_heatHazeShader->SetUniform_DeformMagnitude( 0.0f );
 	Tess_DrawElements();
 
 	GL_CheckErrors();
@@ -2222,17 +2281,13 @@ static void Render_liquid( int stage )
 	float specMax = RB_EvalExpression( &pStage->specularExponentMax, r_specularExponentMax->value );
 	gl_liquidShader->SetUniform_SpecularExponent( specMin, specMAx );
 
-	GL_SelectTexture( 0 );
-	GL_Bind( tr.currentRenderImage );
-	glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.currentRenderImage->uploadWidth, tr.currentRenderImage->uploadHeight );
+	GL_BindToTMU( 0, tr.currentRenderImage[ backEnd.currentMainFBO ] );
 
 	// bind u_PortalMap
 	GL_BindToTMU( 1, tr.portalRenderImage );
 
-	// depth texture is not bound to a FBO
-	GL_SelectTexture( 2 );
-	GL_Bind( tr.depthRenderImage );
-	glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.depthRenderImage->uploadWidth, tr.depthRenderImage->uploadHeight );
+	// depth texture
+	GL_BindToTMU( 2, tr.currentDepthImage );
 
 	// bind u_NormalMap
 	GL_BindToTMU( 3, pStage->bundle[ TB_COLORMAP ].image[ 0 ] );
@@ -2268,7 +2323,7 @@ static void Render_fog()
 	fog = tr.world->fogs + tess.fogNum;
 
 	// Tr3B: use this only to render fog brushes
-	if ( fog->originalBrushNumber < 0 && tess.surfaceShader->sort <= SS_OPAQUE )
+	if ( fog->originalBrushNumber < 0 && tess.surfaceShader->sort <= Util::ordinal(shaderSort_t::SS_OPAQUE) )
 	{
 		return;
 	}
@@ -2315,7 +2370,7 @@ static void Render_fog()
 
 	fogDistanceVector[ 3 ] += 1.0 / 512;
 
-	if ( tess.surfaceShader->fogPass == FP_EQUAL )
+	if ( tess.surfaceShader->fogPass == fogPass_t::FP_EQUAL )
 	{
 		GL_State( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHFUNC_EQUAL );
 	}
@@ -2381,33 +2436,33 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 	// rgbGen
 	switch ( pStage->rgbGen )
 	{
-		case CGEN_IDENTITY:
+		case colorGen_t::CGEN_IDENTITY:
 			{
 				tess.svars.color = Color::White;
 				break;
 			}
 
-		case CGEN_VERTEX:
-		case CGEN_ONE_MINUS_VERTEX:
+		case colorGen_t::CGEN_VERTEX:
+		case colorGen_t::CGEN_ONE_MINUS_VERTEX:
 			{
 				tess.svars.color = Color::Color();
 				break;
 			}
 
 		default:
-		case CGEN_IDENTITY_LIGHTING:
+		case colorGen_t::CGEN_IDENTITY_LIGHTING:
 			{
 				tess.svars.color = Color::White * tr.identityLight;
 				break;
 			}
 
-		case CGEN_CONST:
+		case colorGen_t::CGEN_CONST:
 			{
 				tess.svars.color = pStage->constantColor;
 				break;
 			}
 
-		case CGEN_ENTITY:
+		case colorGen_t::CGEN_ENTITY:
 			{
 				if ( backEnd.currentLight )
 				{
@@ -2427,7 +2482,7 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case CGEN_ONE_MINUS_ENTITY:
+		case colorGen_t::CGEN_ONE_MINUS_ENTITY:
 			{
 				if ( backEnd.currentLight )
 				{
@@ -2449,14 +2504,14 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case CGEN_WAVEFORM:
+		case colorGen_t::CGEN_WAVEFORM:
 			{
 				float      glow;
 				waveForm_t *wf;
 
 				wf = &pStage->rgbWave;
 
-				if ( wf->func == GF_NOISE )
+				if ( wf->func == genFunc_t::GF_NOISE )
 				{
 					glow = wf->base + R_NoiseGet4f( 0, 0, 0, ( backEnd.refdef.floatTime + wf->phase ) * wf->frequency ) * wf->amplitude;
 				}
@@ -2472,7 +2527,7 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case CGEN_CUSTOM_RGB:
+		case colorGen_t::CGEN_CUSTOM_RGB:
 			{
 				rgb = Math::Clamp( RB_EvalExpression( &pStage->rgbExp, 1.0 ), 0.0f, 1.0f );
 
@@ -2480,7 +2535,7 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case CGEN_CUSTOM_RGBs:
+		case colorGen_t::CGEN_CUSTOM_RGBs:
 			{
 				if ( backEnd.currentLight )
 				{
@@ -2515,11 +2570,11 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 	switch ( pStage->alphaGen )
 	{
 		default:
-		case AGEN_IDENTITY:
+		case alphaGen_t::AGEN_IDENTITY:
 			{
-				if ( pStage->rgbGen != CGEN_IDENTITY )
+				if ( pStage->rgbGen != colorGen_t::CGEN_IDENTITY )
 				{
-					if ( ( pStage->rgbGen == CGEN_VERTEX && tr.identityLight != 1 ) || pStage->rgbGen != CGEN_VERTEX )
+					if ( ( pStage->rgbGen == colorGen_t::CGEN_VERTEX && tr.identityLight != 1 ) || pStage->rgbGen != colorGen_t::CGEN_VERTEX )
 					{
 						tess.svars.color.SetAlpha( 1.0 );
 					}
@@ -2528,16 +2583,16 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case AGEN_VERTEX:
-		case AGEN_ONE_MINUS_VERTEX:
+		case alphaGen_t::AGEN_VERTEX:
+		case alphaGen_t::AGEN_ONE_MINUS_VERTEX:
 			{
 				tess.svars.color.SetAlpha( 0.0 );
 				break;
 			}
 
-		case AGEN_CONST:
+		case alphaGen_t::AGEN_CONST:
 			{
-				if ( pStage->rgbGen != CGEN_CONST )
+				if ( pStage->rgbGen != colorGen_t::CGEN_CONST )
 				{
 					tess.svars.color.SetAlpha( pStage->constantColor.Alpha() * ( 1.0 / 255.0 ) );
 				}
@@ -2545,7 +2600,7 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case AGEN_ENTITY:
+		case alphaGen_t::AGEN_ENTITY:
 			{
 				if ( backEnd.currentLight )
 				{
@@ -2563,7 +2618,7 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case AGEN_ONE_MINUS_ENTITY:
+		case alphaGen_t::AGEN_ONE_MINUS_ENTITY:
 			{
 				if ( backEnd.currentLight )
 				{
@@ -2581,7 +2636,7 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case AGEN_WAVEFORM:
+		case alphaGen_t::AGEN_WAVEFORM:
 			{
 				float      glow;
 				waveForm_t *wf;
@@ -2594,7 +2649,7 @@ void Tess_ComputeColor( shaderStage_t *pStage )
 				break;
 			}
 
-		case AGEN_CUSTOM:
+		case alphaGen_t::AGEN_CUSTOM:
 			{
 				alpha = Math::Clamp( RB_EvalExpression( &pStage->alphaExp, 1.0 ), 0.0f, 1.0f );
 
@@ -2707,23 +2762,25 @@ void Tess_StageIteratorGeneric()
 
 		switch ( pStage->type )
 		{
-			case ST_COLORMAP:
+			case stageType_t::ST_COLORMAP:
 				{
 					Render_generic( stage );
 					break;
 				}
 
-			case ST_LIGHTMAP:
+			case stageType_t::ST_LIGHTMAP:
 				{
 					Render_lightMapping( stage, true, false );
 					break;
 				}
 
-			case ST_DIFFUSEMAP:
-			case ST_COLLAPSE_lighting_DBSG:
-			case ST_COLLAPSE_lighting_DBG:
-			case ST_COLLAPSE_lighting_DB:
-			case ST_COLLAPSE_lighting_DBS:
+			case stageType_t::ST_DIFFUSEMAP:
+			case stageType_t::ST_COLLAPSE_lighting_DBSG:
+			case stageType_t::ST_COLLAPSE_lighting_DBG:
+			case stageType_t::ST_COLLAPSE_lighting_DB:
+			case stageType_t::ST_COLLAPSE_lighting_DBS:
+			case stageType_t::ST_COLLAPSE_lighting_DBM:
+			case stageType_t::ST_COLLAPSE_lighting_DBMG:
 				{
 					{
 						if ( r_precomputedLighting->integer || r_vertexLighting->integer )
@@ -2756,8 +2813,8 @@ void Tess_StageIteratorGeneric()
 					break;
 				}
 
-			case ST_COLLAPSE_reflection_CB:
-			case ST_REFLECTIONMAP:
+			case stageType_t::ST_COLLAPSE_reflection_CB:
+			case stageType_t::ST_REFLECTIONMAP:
 				{
 					if ( r_reflectionMapping->integer )
 					{
@@ -2767,35 +2824,35 @@ void Tess_StageIteratorGeneric()
 					break;
 				}
 
-			case ST_REFRACTIONMAP:
+			case stageType_t::ST_REFRACTIONMAP:
 				{
 					break;
 				}
 
-			case ST_DISPERSIONMAP:
+			case stageType_t::ST_DISPERSIONMAP:
 				{
 					break;
 				}
 
-			case ST_SKYBOXMAP:
+			case stageType_t::ST_SKYBOXMAP:
 				{
 					Render_skybox( stage );
 					break;
 				}
 
-			case ST_SCREENMAP:
+			case stageType_t::ST_SCREENMAP:
 				{
 					Render_screen( stage );
 					break;
 				}
 
-			case ST_PORTALMAP:
+			case stageType_t::ST_PORTALMAP:
 				{
 					Render_portal( stage );
 					break;
 				}
 
-			case ST_HEATHAZEMAP:
+			case stageType_t::ST_HEATHAZEMAP:
 				{
 					if ( r_heatHaze->integer )
 					{
@@ -2805,7 +2862,7 @@ void Tess_StageIteratorGeneric()
 					break;
 				}
 
-			case ST_LIQUIDMAP:
+			case stageType_t::ST_LIQUIDMAP:
 				{
 					Render_liquid( stage );
 					break;
@@ -2815,13 +2872,13 @@ void Tess_StageIteratorGeneric()
 				break;
 		}
 
-		if ( r_showLightMaps->integer && pStage->type == ST_LIGHTMAP )
+		if ( r_showLightMaps->integer && pStage->type == stageType_t::ST_LIGHTMAP )
 		{
 			break;
 		}
 	}
 
-	if ( !r_noFog->integer && tess.fogNum >= 1 && tess.surfaceShader->fogPass )
+	if ( !r_noFog->integer && tess.fogNum >= 1 && tess.surfaceShader->fogPass != fogPass_t::FP_NONE )
 	{
 		Render_fog();
 	}
@@ -2886,9 +2943,9 @@ void Tess_StageIteratorDepthFill()
 
 		switch ( pStage->type )
 		{
-			case ST_COLORMAP:
+			case stageType_t::ST_COLORMAP:
 				{
-					if ( tess.surfaceShader->sort <= SS_OPAQUE )
+					if ( tess.surfaceShader->sort <= Util::ordinal(shaderSort_t::SS_OPAQUE) )
 					{
 						Render_depthFill( stage );
 					}
@@ -2896,17 +2953,17 @@ void Tess_StageIteratorDepthFill()
 					break;
 				}
 
-			case ST_LIGHTMAP:
+			case stageType_t::ST_LIGHTMAP:
 				{
 					Render_depthFill( stage );
 					break;
 				}
 
-			case ST_DIFFUSEMAP:
-			case ST_COLLAPSE_lighting_DBSG:
-			case ST_COLLAPSE_lighting_DBG:
-			case ST_COLLAPSE_lighting_DB:
-			case ST_COLLAPSE_lighting_DBS:
+			case stageType_t::ST_DIFFUSEMAP:
+			case stageType_t::ST_COLLAPSE_lighting_DBSG:
+			case stageType_t::ST_COLLAPSE_lighting_DBG:
+			case stageType_t::ST_COLLAPSE_lighting_DB:
+			case stageType_t::ST_COLLAPSE_lighting_DBS:
 				{
 					Render_depthFill( stage );
 					break;
@@ -2974,9 +3031,9 @@ void Tess_StageIteratorShadowFill()
 
 		switch ( pStage->type )
 		{
-			case ST_COLORMAP:
+			case stageType_t::ST_COLORMAP:
 				{
-					if ( tess.surfaceShader->sort <= SS_OPAQUE )
+					if ( tess.surfaceShader->sort <= Util::ordinal(shaderSort_t::SS_OPAQUE) )
 					{
 						Render_shadowFill( stage );
 					}
@@ -2984,12 +3041,12 @@ void Tess_StageIteratorShadowFill()
 					break;
 				}
 
-			case ST_LIGHTMAP:
-			case ST_DIFFUSEMAP:
-			case ST_COLLAPSE_lighting_DBSG:
-			case ST_COLLAPSE_lighting_DBG:
-			case ST_COLLAPSE_lighting_DB:
-			case ST_COLLAPSE_lighting_DBS:
+			case stageType_t::ST_LIGHTMAP:
+			case stageType_t::ST_DIFFUSEMAP:
+			case stageType_t::ST_COLLAPSE_lighting_DBSG:
+			case stageType_t::ST_COLLAPSE_lighting_DBG:
+			case stageType_t::ST_COLLAPSE_lighting_DB:
+			case stageType_t::ST_COLLAPSE_lighting_DBS:
 				{
 					Render_shadowFill( stage );
 					break;
@@ -3037,7 +3094,7 @@ void Tess_StageIteratorLighting()
 	}
 	else
 	{
-		if ( tess.surfaceShader->sort > SS_OPAQUE )
+		if ( tess.surfaceShader->sort > Util::ordinal(shaderSort_t::SS_OPAQUE) )
 		{
 			GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
 		}
@@ -3088,7 +3145,7 @@ void Tess_StageIteratorLighting()
 				break;
 			}
 
-			if ( attenuationXYStage->type != ST_ATTENUATIONMAP_XY )
+			if ( attenuationXYStage->type != stageType_t::ST_ATTENUATIONMAP_XY )
 			{
 				continue;
 			}
@@ -3103,20 +3160,20 @@ void Tess_StageIteratorLighting()
 
 			switch ( diffuseStage->type )
 			{
-				case ST_DIFFUSEMAP:
-				case ST_COLLAPSE_lighting_DB:
-				case ST_COLLAPSE_lighting_DBS:
-					if ( light->l.rlType == RL_OMNI )
+				case stageType_t::ST_DIFFUSEMAP:
+				case stageType_t::ST_COLLAPSE_lighting_DB:
+				case stageType_t::ST_COLLAPSE_lighting_DBS:
+					if ( light->l.rlType == refLightType_t::RL_OMNI )
 					{
 						Render_forwardLighting_DBS_omni( diffuseStage, attenuationXYStage, attenuationZStage, light );
 					}
-					else if ( light->l.rlType == RL_PROJ )
+					else if ( light->l.rlType == refLightType_t::RL_PROJ )
 					{
 						{
 							Render_forwardLighting_DBS_proj( diffuseStage, attenuationXYStage, attenuationZStage, light );
 						}
 					}
-					else if ( light->l.rlType == RL_DIRECTIONAL )
+					else if ( light->l.rlType == refLightType_t::RL_DIRECTIONAL )
 					{
 						{
 							Render_forwardLighting_DBS_directional( diffuseStage, light );

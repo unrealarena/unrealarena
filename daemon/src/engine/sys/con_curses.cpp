@@ -39,10 +39,10 @@
 #else
 #define PROMPT        "^3-> "
 #endif
-#define INPUT_SCROLL  15
-#define LOG_SCROLL    5
-#define MAX_LOG_LINES 1024
-#define LOG_BUF_SIZE  65536
+static const int INPUT_SCROLL  = 15;
+static const int LOG_SCROLL    = 5;
+static const int MAX_LOG_LINES = 1024;
+static const int LOG_BUF_SIZE  = 65536;
 
 // TTY Console prototypes
 void CON_Shutdown_TTY();
@@ -70,7 +70,7 @@ static bool     forceRedraw = false;
 static int      stderr_fd;
 #endif
 
-#define LOG_LINES      ( LINES - 3 )
+static const int LOG_LINES = ( LINES - 3 );
 
 static const int CURSES_DEFAULT_COLOR = 32;
 
@@ -123,7 +123,7 @@ static void CON_ColorPrint( WINDOW *win, const char *msg, bool stripcodes )
 	for ( const auto& token : Color::Parser( msg, Color::Color() ) )
 	{
 
-		if ( token.Type() == Color::Token::COLOR )
+		if ( token.Type() == Color::Token::TokenType::COLOR )
 		{
 			if ( !buffer.empty() )
 			{
@@ -145,7 +145,7 @@ static void CON_ColorPrint( WINDOW *win, const char *msg, bool stripcodes )
 				buffer.append( token.Begin(), token.Size() );
 			}
 		}
-		else if ( token.Type() == Color::Token::ESCAPE )
+		else if ( token.Type() == Color::Token::TokenType::ESCAPE )
 		{
 			if ( !stripcodes )
 			{
@@ -156,7 +156,7 @@ static void CON_ColorPrint( WINDOW *win, const char *msg, bool stripcodes )
 				buffer += Color::Constants::ESCAPE;
 			}
 		}
-		else if ( token.Type() == Color::Token::CHARACTER )
+		else if ( token.Type() == Color::Token::TokenType::CHARACTER )
 		{
 			if ( *token.Begin() == '\n' )
 			{
@@ -649,7 +649,6 @@ char *CON_Input()
 				}
 			}
 
-			std::u32string u32text;
 			switch ( mode )
 			{
 			case MODE_UNKNOWN:

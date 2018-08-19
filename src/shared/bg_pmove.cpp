@@ -886,7 +886,7 @@ static bool PM_CheckPounce()
 
 							if ( pm->debugLevel > 0 )
 							{
-								Com_Printf( "[PM_CheckPounce] Aiming at ceiling; move target into surface by %.2f\n",
+								Log::Notice( "[PM_CheckPounce] Aiming at ceiling; move target into surface by %.2f\n",
 								            zCorrection );
 							}
 
@@ -895,7 +895,7 @@ static bool PM_CheckPounce()
 
 						if ( pm->debugLevel > 0 )
 						{
-							Com_Printf( "[PM_CheckPounce] Trajectory target has a distance of %.1f qu\n",
+							Log::Notice( "[PM_CheckPounce] Trajectory target has a distance of %.1f qu\n",
 							            Distance( pm->ps->origin, endpos ) );
 						}
 					}
@@ -910,14 +910,14 @@ static bool PM_CheckPounce()
 						if ( pm->debugLevel > 0 )
 						{
 #ifdef UNREALARENA
-							Com_Printf( "[PM_CheckPounce] Found trajectory angles: "
+							Log::Notice( "[PM_CheckPounce] Found trajectory angles: "
 							            "%.1f ( %.2f, %.2f, %.2f ), %.1f ( %.2f, %.2f, %.2f )\n",
 							            180.0f / M_PI * trajAngles[ 0 ],
 							            trajDir1[ 0 ], trajDir1[ 1 ], trajDir1[ 2 ],
 							            180.0f / M_PI * trajAngles[ 1 ],
 							            trajDir2[ 0 ], trajDir2[ 1 ], trajDir2[ 2 ] );
 #else
-							Com_Printf( "[PM_CheckPounce] Found trajectory angles: "
+							Log::Notice( "[PM_CheckPounce] Found trajectory angles: "
 							            "%.1f° ( %.2f, %.2f, %.2f ), %.1f° ( %.2f, %.2f, %.2f )\n",
 							            180.0f / M_PI * trajAngles[ 0 ],
 							            trajDir1[ 0 ], trajDir1[ 1 ], trajDir1[ 2 ],
@@ -930,7 +930,7 @@ static bool PM_CheckPounce()
 						{
 							if ( pm->debugLevel > 0 )
 							{
-								Com_Printf("[PM_CheckPounce] Using angle #1\n");
+								Log::Notice("[PM_CheckPounce] Using angle #1\n");
 							}
 
 							VectorCopy( trajDir1, jumpDirection );
@@ -939,7 +939,7 @@ static bool PM_CheckPounce()
 						{
 							if ( pm->debugLevel > 0 )
 							{
-								Com_Printf("[PM_CheckPounce] Using angle #2\n");
+								Log::Notice("[PM_CheckPounce] Using angle #2\n");
 							}
 
 							VectorCopy( trajDir2, jumpDirection );
@@ -954,7 +954,7 @@ static bool PM_CheckPounce()
 							{
 								if ( pm->debugLevel > 0 )
 								{
-									Com_Printf("[PM_CheckPounce] Giving up adjusting jump direction.\n");
+									Log::Notice("[PM_CheckPounce] Giving up adjusting jump direction.\n");
 								}
 
 								break;
@@ -965,7 +965,7 @@ static bool PM_CheckPounce()
 
 							if ( pm->debugLevel > 0 )
 							{
-								Com_Printf("[PM_CheckPounce] Adjusting jump direction to get off the surface: "
+								Log::Notice("[PM_CheckPounce] Adjusting jump direction to get off the surface: "
 								           "( %.2f, %.2f, %.2f )\n",
 								           jumpDirection[ 0 ], jumpDirection[ 1 ], jumpDirection[ 2 ] );
 							}
@@ -976,7 +976,7 @@ static bool PM_CheckPounce()
 					{
 						if ( pm->debugLevel > 0 )
 						{
-							Com_Printf("[PM_CheckPounce] Failed to find a trajectory\n");
+							Log::Notice("[PM_CheckPounce] Failed to find a trajectory\n");
 						}
 
 						VectorCopy( pml.forward, jumpDirection );
@@ -1324,7 +1324,7 @@ static bool PM_CheckJetpack()
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_CheckJetpack] %sJetpack enabled\n", Color::CString( Color::Cyan ) );
+			Log::Notice( "[PM_CheckJetpack] %sJetpack enabled\n", Color::CString( Color::Cyan ) );
 		}
 
 		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ENABLED;
@@ -1340,7 +1340,7 @@ static bool PM_CheckJetpack()
 		{
 			if ( pm->debugLevel > 0 && pm->cmd.upmove < 10 )
 			{
-				Com_Printf( "[PM_CheckJetpack] %sJetpack thrust stopped (jump key released)\n", Color::CString( Color::LtOrange ) );
+				Log::Notice( "[PM_CheckJetpack] %sJetpack thrust stopped (jump key released)\n", Color::CString( Color::LtOrange ) );
 			}
 
 			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
@@ -1355,7 +1355,7 @@ static bool PM_CheckJetpack()
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_CheckJetpack] %sCan't start jetpack thrust (jetpack not enabled)\n", Color::CString( Color::Red ) );
+			Log::Notice( "[PM_CheckJetpack] %sCan't start jetpack thrust (jetpack not enabled)\n", Color::CString( Color::Red ) );
 		}
 
 		return false;
@@ -1408,7 +1408,7 @@ static bool PM_CheckJetpack()
 		{
 			if ( pm->debugLevel > 0 )
 			{
-				Com_Printf( "[PM_CheckJetpack] %sJetpack thrust stopped (out of fuel)\n", Color::CString( Color::LtOrange ) );
+				Log::Notice( "[PM_CheckJetpack] %sJetpack thrust stopped (out of fuel)\n", Color::CString( Color::LtOrange ) );
 			}
 
 			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
@@ -1429,7 +1429,7 @@ static bool PM_CheckJetpack()
 
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_CheckJetpack] %sJetpack thrust started\n", Color::CString( Color::Green ) );
+			Log::Notice( "[PM_CheckJetpack] %sJetpack thrust started\n", Color::CString( Color::Green ) );
 		}
 
 		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ACTIVE;
@@ -1497,7 +1497,7 @@ static void PM_LandJetpack( bool force )
 		{
 			if ( pm->debugLevel > 0 )
 			{
-				Com_Printf( "[PM_LandJetpack] Landing ignored (hit surface at %.0f°)\n", RAD2DEG( angle ) );
+				Log::Notice( "[PM_LandJetpack] Landing ignored (hit surface at %.0f°)\n", RAD2DEG( angle ) );
 			}
 
 			return;
@@ -1508,7 +1508,7 @@ static void PM_LandJetpack( bool force )
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_LandJetpack] %sJetpack thrust stopped (hit surface at %.0f°)%s\n",
+			Log::Notice( "[PM_LandJetpack] %sJetpack thrust stopped (hit surface at %.0f°)%s\n",
 			            Color::CString( Color::LtOrange ),
 			            RAD2DEG( angle ),
 			            force ? " ^1(FORCED)" : "" );
@@ -1526,7 +1526,7 @@ static void PM_LandJetpack( bool force )
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_LandJetpack] %sJetpack disabled (hit surface at %.0f°)%s\n",
+			Log::Notice( "[PM_LandJetpack] %sJetpack disabled (hit surface at %.0f°)%s\n",
 			            Color::CString( Color::Yellow ),
 			            RAD2DEG( angle ),
 			            force ? " ^1(FORCED)" : "" );
@@ -1681,7 +1681,7 @@ static bool PM_CheckJump()
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Com_Printf( "[PM_CheckJump] Using jetpack: Decreasing jump magnitude to %.0f%%\n",
+			Log::Notice( "[PM_CheckJump] Using jetpack: Decreasing jump magnitude to %.0f%%\n",
 			            JETPACK_JUMPMAG_REDUCTION * 100.0f );
 		}
 
@@ -1789,8 +1789,8 @@ static bool PM_CheckDodge( void )
 	// Reasons why we can't start a dodge only
 	if ( pm->ps->pm_flags & ( PMF_CHARGE ) ||
 	        pm->ps->groundEntityNum == ENTITYNUM_NONE ||
-	        ( pm->cmd.doubleTap != DT_MOVELEFT &&
-	          pm->cmd.doubleTap != DT_MOVERIGHT ) )
+	        ( pm->cmd.doubleTap != dtType_t::DT_MOVELEFT &&
+	          pm->cmd.doubleTap != dtType_t::DT_MOVERIGHT ) )
 	{
 		return false;
 	}
@@ -1830,7 +1830,7 @@ static bool PM_CheckDodge( void )
 	}
 
 	// The dodge sets minimum velocity
-	if ( pm->cmd.doubleTap == DT_MOVELEFT )
+	if ( pm->cmd.doubleTap == dtType_t::DT_MOVELEFT )
 	{
 		VectorNegate( right, right );
 	}
@@ -2346,8 +2346,8 @@ static void PM_WalkMove()
 
 	PM_Accelerate( wishdir, wishspeed, accelerate );
 
-	//Com_Printf("velocity = %1.1f %1.1f %1.1f\n", pm->ps->velocity[0], pm->ps->velocity[1], pm->ps->velocity[2]);
-	//Com_Printf("velocity1 = %1.1f\n", VectorLength(pm->ps->velocity));
+	//Log::Notice("velocity = %1.1f %1.1f %1.1f\n", pm->ps->velocity[0], pm->ps->velocity[1], pm->ps->velocity[2]);
+	//Log::Notice("velocity1 = %1.1f\n", VectorLength(pm->ps->velocity));
 
 	if ( ( pml.groundTrace.surfaceFlags & SURF_SLICK ) || pm->ps->pm_flags & PMF_TIME_KNOCKBACK )
 	{
@@ -2370,7 +2370,7 @@ static void PM_WalkMove()
 
 	PM_StepSlideMove( false, false );
 
-	//Com_Printf("velocity2 = %1.1f\n", VectorLength(pm->ps->velocity));
+	//Log::Notice("velocity2 = %1.1f\n", VectorLength(pm->ps->velocity));
 }
 
 #ifndef UNREALARENA
@@ -2679,7 +2679,7 @@ static int PM_CorrectAllSolid( trace_t *trace )
 
 	if ( pm->debugLevel > 1 )
 	{
-		Com_Printf( "%i:allsolid\n", c_pmove );
+		Log::Notice( "%i:allsolid\n", c_pmove );
 	}
 
 	// jitter around
@@ -2735,7 +2735,7 @@ static void PM_GroundTraceMissed()
 		// we just transitioned into freefall
 		if ( pm->debugLevel > 1 )
 		{
-			Com_Printf( "%i:lift\n", c_pmove );
+			Log::Notice( "%i:lift\n", c_pmove );
 		}
 
 		// if they aren't in a jumping animation and the ground is a ways away, force into it
@@ -3373,7 +3373,7 @@ static void PM_GroundTrace()
 	{
 		if ( pm->debugLevel > 1 )
 		{
-			Com_Printf( "%i:kickoff\n", c_pmove );
+			Log::Notice( "%i:kickoff\n", c_pmove );
 		}
 
 		// go into jump animation
@@ -3415,7 +3415,7 @@ static void PM_GroundTrace()
 	{
 		if ( pm->debugLevel > 1 )
 		{
-			Com_Printf( "%i:steep\n", c_pmove );
+			Log::Notice( "%i:steep\n", c_pmove );
 		}
 
 		// FIXME: if they can't slide down the slope, let them
@@ -3441,7 +3441,7 @@ static void PM_GroundTrace()
 		// just hit the ground
 		if ( pm->debugLevel > 1 )
 		{
-			Com_Printf( "%i:Land\n", c_pmove );
+			Log::Notice( "%i:Land\n", c_pmove );
 		}
 
 		// communicate the impact velocity to the server
@@ -4884,7 +4884,7 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 		return; // no view changes at all
 	}
 
-	if ( ps->pm_type != PM_SPECTATOR && ps->stats[ STAT_HEALTH ] <= 0 )
+	if ( ps->persistant[ PERS_SPECSTATE ] == SPECTATOR_NOT && ps->stats[ STAT_HEALTH ] <= 0 )
 	{
 		return; // no view changes at all
 	}
