@@ -91,7 +91,7 @@ cmake_dependent_option(USE_SLIM_LTO "Generate slim LTO objects, improves build t
 option(USE_HARDENING "Use stack protection and other hardening flags" 0)
 option(USE_WERROR "Tell the compiler to make the build fail when warnings are present" 0)
 option(USE_PEDANTIC "Tell the compiler to be pedantic" 0)
-option(USE_DEBUG_OPTIMIZE "Try to optimize the debug build" 1)
+option(USE_DEBUG_OPTIMIZE "Try to optimize the debug build" 0)
 option(USE_PRECOMPILED_HEADER "Improve build times by using a precompiled header" 1)
 option(USE_ADDRESS_SANITIZER "Try to use the address sanitizer" 0)
 option(BE_VERBOSE "Tell the compiler to report all warnings" 0)

@@ -71,16 +71,16 @@ namespace Beacon //this should eventually become a class
 			switch( ent->s.eType )
 			{
 #ifndef UNREALARENA
-				case ET_BUILDABLE:
+				case entityType_t::ET_BUILDABLE:
 #endif
-				case ET_PLAYER:
+				case entityType_t::ET_PLAYER:
 					if( ent->tagScoreTime + 2000 < level.time )
 						ent->tagScore -= 50;
 					if( ent->tagScore < 0 )
 						ent->tagScore = 0;
 					break;
 
-				case ET_BEACON:
+				case entityType_t::ET_BEACON:
 					if ( ent->s.bc_etime && level.time > ent->s.bc_etime )
 						Delete( ent );
 					continue;
@@ -128,7 +128,7 @@ namespace Beacon //this should eventually become a class
 		}
 
 		ent = G_NewEntity( );
-		ent->s.eType = ET_BEACON;
+		ent->s.eType = entityType_t::ET_BEACON;
 		ent->classname = "beacon";
 
 		ent->s.bc_type = type;
@@ -143,7 +143,7 @@ namespace Beacon //this should eventually become a class
 		decayTime = BG_Beacon( type )->decayTime;
 		ent->s.bc_etime = ( decayTime ? level.time + decayTime : 0 );
 
-		ent->s.pos.trType = TR_INTERPOLATE;
+		ent->s.pos.trType = trType_t::TR_INTERPOLATE;
 		Move( ent, origin );
 
 		return ent;
@@ -287,7 +287,7 @@ namespace Beacon //this should eventually become a class
 
 		for ( gentity_t *ent = nullptr; (ent = G_IterateEntities(ent)); )
 		{
-			if ( ent->s.eType != ET_BEACON )
+			if ( ent->s.eType != entityType_t::ET_BEACON )
 				continue;
 
 			if ( ent->s.bc_type != type )
@@ -403,7 +403,7 @@ namespace Beacon //this should eventually become a class
 	{
 		for ( gentity_t *ent = nullptr; (ent = G_IterateEntities( ent )); )
 		{
-			if ( ent->s.eType != ET_BEACON )
+			if ( ent->s.eType != entityType_t::ET_BEACON )
 				continue;
 
 			Propagate( ent );
@@ -419,7 +419,7 @@ namespace Beacon //this should eventually become a class
 	{
 		for ( gentity_t *ent = nullptr; ( ent = G_IterateEntities( ent ) ); )
 		{
-			if ( ent->s.eType != ET_BEACON )
+			if ( ent->s.eType != entityType_t::ET_BEACON )
 				continue;
 
 			if ( ent->s.bc_owner != clientNum )
@@ -460,7 +460,7 @@ namespace Beacon //this should eventually become a class
 			}
 		}
 #ifndef UNREALARENA
-		else if ( parent->s.eType == ET_BUILDABLE )
+		else if ( parent->s.eType == entityType_t::ET_BUILDABLE )
 		{
 			BG_BuildableBoundingBox( parent->s.modelindex, mins, maxs );
 			BG_MoveOriginToBBOXCenter( center, mins, maxs );
@@ -477,7 +477,7 @@ namespace Beacon //this should eventually become a class
 	{
 #ifndef UNREALARENA
 		// Buildables are supposed to be static.
-		if( ent->s.eType == ET_BUILDABLE )
+		if( ent->s.eType == entityType_t::ET_BUILDABLE )
 			return;
 #endif
 
@@ -615,7 +615,7 @@ namespace Beacon //this should eventually become a class
 		switch( ent->s.eType )
 		{
 #ifndef UNREALARENA
-			case ET_BUILDABLE:
+			case entityType_t::ET_BUILDABLE:
 				if( G_Dead( ent ) )
 					return false;
 				if( ent->buildableTeam == team )
@@ -623,7 +623,7 @@ namespace Beacon //this should eventually become a class
 				return true;
 #endif
 
-			case ET_PLAYER:
+			case entityType_t::ET_PLAYER:
 				if ( trace ) return false;
 
 				if( !ent->client )
@@ -754,7 +754,7 @@ namespace Beacon //this should eventually become a class
 
 		switch( ent->s.eType ) {
 #ifndef UNREALARENA
-			case ET_BUILDABLE:
+			case entityType_t::ET_BUILDABLE:
 				targetTeam = ent->buildableTeam;
 				data       = ent->s.modelindex;
 				dead       = G_Dead( ent );
@@ -763,7 +763,7 @@ namespace Beacon //this should eventually become a class
 				break;
 #endif
 
-			case ET_PLAYER:
+			case entityType_t::ET_PLAYER:
 				targetTeam = (team_t)ent->client->pers.team;
 				dead       = G_Dead( ent );
 				player     = true;
@@ -817,7 +817,7 @@ namespace Beacon //this should eventually become a class
 
 #ifndef UNREALARENA
 		// Update the base clusterings.
-		if ( ent->s.eType == ET_BUILDABLE ) BaseClustering::Update( beacon );
+		if ( ent->s.eType == entityType_t::ET_BUILDABLE ) BaseClustering::Update( beacon );
 #endif
 
 		Propagate( beacon );

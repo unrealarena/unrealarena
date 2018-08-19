@@ -46,7 +46,7 @@ static void G_Bounce( gentity_t *ent, trace_t *trace )
 		minNormal = 0.707f;
 	}
 #else
-	if ( ent->s.eType == ET_BUILDABLE )
+	if ( ent->s.eType == entityType_t::ET_BUILDABLE )
 	{
 		minNormal = BG_Buildable( ent->s.modelindex )->minNormal;
 		invert = BG_Buildable( ent->s.modelindex )->invertNormal;
@@ -102,7 +102,7 @@ void G_Physics( gentity_t *ent, int )
 	if ( ent->s.groundEntityNum == ENTITYNUM_NONE )
 	{
 #ifndef UNREALARENA
-		if ( ent->s.eType == ET_BUILDABLE )
+		if ( ent->s.eType == entityType_t::ET_BUILDABLE )
 		{
 			if ( ent->s.pos.trType != BG_Buildable( ent->s.modelindex )->traj )
 			{
@@ -112,17 +112,17 @@ void G_Physics( gentity_t *ent, int )
 		}
 #endif
 #ifdef UNREALARENA
-		if ( ent->s.pos.trType != TR_GRAVITY )
+		if ( ent->s.pos.trType != trType_t::TR_GRAVITY )
 #else
-		else if ( ent->s.pos.trType != TR_GRAVITY )
+		else if ( ent->s.pos.trType != trType_t::TR_GRAVITY )
 #endif
 		{
-			ent->s.pos.trType = TR_GRAVITY;
+			ent->s.pos.trType = trType_t::TR_GRAVITY;
 			ent->s.pos.trTime = level.time;
 		}
 	}
 
-	if ( ent->s.pos.trType == TR_STATIONARY )
+	if ( ent->s.pos.trType == trType_t::TR_STATIONARY )
 	{
 		// check think function
 		G_RunThink( ent );

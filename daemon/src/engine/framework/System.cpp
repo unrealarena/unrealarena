@@ -309,7 +309,7 @@ void Error(Str::StringRef message)
 	if (errorEntered.test_and_set())
 		_exit(-1);
 
-	Log::Notice("^1Error: %s", message);
+	Log::Warn(message);
 	Shutdown(true, message);
 
 	OSExit(1);
@@ -679,7 +679,7 @@ ALIGN_STACK int main(int argc, char** argv)
 			try {
                 Application::Frame();
 			} catch (Sys::DropErr& err) {
-				Log::Notice("^1Error: %s", err.what());
+				Log::Warn(err.what());
                 Application::OnDrop(err.what());
 			}
 		}

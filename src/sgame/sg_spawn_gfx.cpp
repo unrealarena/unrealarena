@@ -66,7 +66,7 @@ void SP_gfx_particle_system( gentity_t *self )
 	}
 
 	self->act = gfx_particle_system_act;
-	self->s.eType = ET_PARTICLE_SYSTEM;
+	self->s.eType = entityType_t::ET_PARTICLE_SYSTEM;
 	trap_LinkEntity( self );
 }
 
@@ -129,7 +129,7 @@ static void findEmptySpot( vec3_t origin, float radius, vec3_t spot )
 
 void SP_gfx_light_flare( gentity_t *self )
 {
-	self->s.eType = ET_LIGHTFLARE;
+	self->s.eType = entityType_t::ET_LIGHTFLARE;
 	self->s.modelindex = G_ShaderIndex( self->shaderKey );
 	VectorCopy( self->activatedPosition, self->s.origin2 );
 
@@ -226,7 +226,7 @@ void SP_gfx_portal_surface( gentity_t *self )
 	trap_LinkEntity( self );
 
 	self->r.svFlags = SVF_PORTAL;
-	self->s.eType = ET_PORTAL;
+	self->s.eType = entityType_t::ET_PORTAL;
 
 	if ( !self->targetCount )
 	{
@@ -303,7 +303,7 @@ void SP_gfx_animated_model( gentity_t *self )
 
 	self->act = gfx_animated_model_act;
 
-	self->s.eType = ET_ANIMMAPOBJ;
+	self->s.eType = entityType_t::ET_ANIMMAPOBJ;
 
 	// spawn with animation stopped
 	if ( self->spawnflags & 2 )

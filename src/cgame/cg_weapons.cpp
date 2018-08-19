@@ -40,14 +40,14 @@ void CG_RegisterUpgrade( int upgradeNum )
 
 	if ( upgradeNum <= UP_NONE || upgradeNum >= UP_NUM_UPGRADES )
 	{
-		CG_Error( "CG_RegisterUpgrade: out of range: %d", upgradeNum );
+		Com_Error(errorParm_t::ERR_DROP,  "CG_RegisterUpgrade: out of range: %d", upgradeNum );
 	}
 
 	upgradeInfo = &cg_upgrades[ upgradeNum ];
 
 	if ( upgradeInfo->registered )
 	{
-		CG_Printf( "CG_RegisterUpgrade: already registered: (%d) %s\n", upgradeNum,
+		Log::Warn( "CG_RegisterUpgrade: already registered: (%d) %s", upgradeNum,
 		           BG_Upgrade( upgradeNum )->name );
 		return;
 	}
@@ -56,7 +56,7 @@ void CG_RegisterUpgrade( int upgradeNum )
 
 	if ( !BG_Upgrade( upgradeNum )->name[ 0 ] )
 	{
-		CG_Error( "Couldn't find upgrade %i", upgradeNum );
+		Com_Error(errorParm_t::ERR_DROP,  "Couldn't find upgrade %i", upgradeNum );
 	}
 
 	upgradeInfo->humanName = BG_Upgrade( upgradeNum )->humanName;
@@ -84,7 +84,7 @@ static void CG_LoadCustomCrosshairs()
 	fileHandle_t f;
 	weapon_t     weapon;
 
-	len = trap_FS_FOpenFile( cg_crosshairFile.string, &f, FS_READ );
+	len = trap_FS_FOpenFile( cg_crosshairFile.string, &f, fsMode_t::FS_READ );
 
 	if ( len < 0 )
 	{
@@ -93,7 +93,7 @@ static void CG_LoadCustomCrosshairs()
 
 	if ( len == 0 || len + 1 >= (int) sizeof( text ) )
 	{
-		CG_Printf( len == 0 ? "File %s is empty\n" : "File %s is too long\n", cg_crosshairFile.string );
+		Log::Warn( len == 0 ? "File %s is empty" : "File %s is too long", cg_crosshairFile.string );
 		trap_FS_FCloseFile( f );
 		return;
 	}
@@ -131,7 +131,7 @@ static void CG_LoadCustomCrosshairs()
 
 				if ( !cg_weapons[ weapon ].crossHair )
 				{
-					CG_Printf( S_ERROR "weapon crosshair not found %s\n", token );
+					Log::Warn( "weapon crosshair not found %s", token );
 				}
 
 				continue;
@@ -149,7 +149,7 @@ static void CG_LoadCustomCrosshairs()
 
 				if ( !cg_weapons[ weapon ].crossHairIndicator )
 				{
-					CG_Printf( S_ERROR "weapon crosshair indicator not found %s\n", token );
+					Log::Warn( "weapon crosshair indicator not found %s", token );
 				}
 
 				continue;
@@ -178,13 +178,13 @@ static void CG_LoadCustomCrosshairs()
 			}
 			else
 			{
-				CG_Printf( S_ERROR "Unexpected keyword %s in crosshair file\n", token );
+				Log::Warn( "Unexpected keyword %s in crosshair file", token );
 				break;
 			}
 		}
 		else
 		{
-			CG_Printf( S_ERROR "Unknown weapon %s in crosshair file\n", token );
+			Log::Warn( "Unknown weapon %s in crosshair file", token );
 			break;
 		}
 	}
@@ -236,7 +236,7 @@ static bool CG_ParseWeaponAnimationFile( const char *filename, weaponInfo_t *wi 
 	animations = wi->animations;
 
 	// load the file
-	len = trap_FS_FOpenFile( filename, &f, FS_READ );
+	len = trap_FS_FOpenFile( filename, &f, fsMode_t::FS_READ );
 
 	if ( len < 0 )
 	{
@@ -245,7 +245,7 @@ static bool CG_ParseWeaponAnimationFile( const char *filename, weaponInfo_t *wi 
 
 	if ( len == 0 || len + 1 >= (int) sizeof( text ) )
 	{
-		CG_Printf( len == 0 ? "File %s is empty\n" : "File %s is too long\n", filename );
+		Log::Warn( len == 0 ? "File %s is empty" : "File %s is too long", filename );
 		trap_FS_FCloseFile( f );
 		return false;
 	}
@@ -275,6 +275,11 @@ static bool CG_ParseWeaponAnimationFile( const char *filename, weaponInfo_t *wi 
 
 		token = COM_Parse2( &text_p );
 		animations[ i ].loopFrames = atoi( token );
+		if ( animations[ i ].loopFrames && animations[ i ].loopFrames != animations[ i ].numFrames )
+		{
+			Log::Warn("CG_ParseWeaponAnimationFile: loopFrames != numFrames");
+			animations[ i ].loopFrames = animations[ i ].numFrames;
+		}
 
 		token = COM_Parse2( &text_p );
 		fps = atof( token );
@@ -290,7 +295,7 @@ static bool CG_ParseWeaponAnimationFile( const char *filename, weaponInfo_t *wi 
 
 	if ( i != MAX_WEAPON_ANIMATIONS )
 	{
-		CG_Printf( "Error parsing weapon animation file: %s\n", filename );
+		Log::Warn( "Error parsing weapon animation file: %s", filename );
 		return false;
 	}
 
@@ -335,7 +340,7 @@ static bool CG_ParseWeaponModeSection( weaponInfoMode_t *wim, const char **text_
 
 			if ( !wim->muzzleParticleSystem )
 			{
-				CG_Printf( S_ERROR "muzzle particle system not found %s\n", token );
+				Log::Warn( "muzzle particle system not found %s", token );
 			}
 
 			continue;
@@ -353,7 +358,7 @@ static bool CG_ParseWeaponModeSection( weaponInfoMode_t *wim, const char **text_
 
 			if ( !wim->impactParticleSystem )
 			{
-				CG_Printf( S_ERROR "impact particle system not found %s\n", token );
+				Log::Warn( "impact particle system not found %s", token );
 			}
 
 			continue;
@@ -389,7 +394,7 @@ static bool CG_ParseWeaponModeSection( weaponInfoMode_t *wim, const char **text_
 
 			if ( !wim->impactMark )
 			{
-				CG_Printf( S_ERROR "impact mark shader not found %s\n", token );
+				Log::Warn( "impact mark shader not found %s", token );
 			}
 
 			continue;
@@ -578,7 +583,7 @@ static bool CG_ParseWeaponModeSection( weaponInfoMode_t *wim, const char **text_
 		}
 		else
 		{
-			CG_Printf( S_ERROR "unknown token '%s' in weapon section\n", token );
+			Log::Warn( "unknown token '%s' in weapon section", token );
 			return false;
 		}
 	}
@@ -595,7 +600,7 @@ bool CG_RegisterWeaponAnimation( animation_t *anim, const char *filename, bool l
 
 	if ( !anim->handle )
 	{
-		Com_Printf( "Failed to load animation file %s\n", filename );
+		Log::Notice( "Failed to load animation file %s\n", filename );
 		return false;
 	}
 
@@ -645,7 +650,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 	int          i;
 
 	// load the file
-	len = trap_FS_FOpenFile( filename, &f, FS_READ );
+	len = trap_FS_FOpenFile( filename, &f, fsMode_t::FS_READ );
 
 	if ( len < 0 )
 	{
@@ -655,7 +660,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 	if ( len == 0 || len + 1 >= (int) sizeof( text ) )
 	{
 		trap_FS_FCloseFile( f );
-		CG_Printf( len == 0 ? "File %s is empty\n" : "File %s is too long\n", filename );
+		Log::Warn( len == 0 ? "File %s is empty" : "File %s is too long", filename );
 		return false;
 	}
 
@@ -682,12 +687,12 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 		{
 			if ( weaponMode == WPM_NONE )
 			{
-				CG_Printf( S_ERROR "weapon mode section started without a declaration\n" );
+				Log::Warn( "weapon mode section started without a declaration" );
 				return false;
 			}
 			else if ( !CG_ParseWeaponModeSection( &wi->wim[ weaponMode ], &text_p ) )
 			{
-				CG_Printf( S_ERROR "failed to parse weapon mode section\n" );
+				Log::Warn( "failed to parse weapon mode section" );
 				return false;
 			}
 
@@ -731,7 +736,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 				if ( !CG_RegisterWeaponAnimation( &wi->animations[ WANIM_IDLE ],
 				                                  va( "%s_view.iqm:idle", token2 ), true, false, false ) )
 				{
-					//CG_Error( "could not find '%s'", path );
+					//Com_Error(errorParm_t::ERR_DROP,  "could not find '%s'", path );
 				}
 
 				// default all weapon animations to the idle animation
@@ -821,7 +826,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 				if ( !CG_RegisterWeaponAnimation( &wi->animations[ WANIM_IDLE ],
 					va( "%s_view_idle.md5anim", token2 ), true, false, false ) )
 				{
-					//CG_Error( "could not find '%s'", path );
+					//Com_Error(errorParm_t::ERR_DROP,  "could not find '%s'", path );
 				}
 
 				// default all weapon animations to the idle animation
@@ -911,7 +916,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 
 			if ( !wi->weaponModel )
 			{
-				CG_Printf( S_ERROR "weapon model not found %s\n", token );
+				Log::Warn( "weapon model not found %s", token );
 			}
 
 			COM_StripExtension( token, path );
@@ -943,8 +948,8 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 
 			if ( !wi->weaponModel3rdPerson )
 			{
-				CG_Printf( S_ERROR "3rd person weapon "
-				           "model not found %s\n", token );
+				Log::Warn( "3rd person weapon "
+				           "model not found %s", token );
 			}
 
 			COM_StripExtension( token, path );
@@ -984,7 +989,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 
 			if ( !wi->weaponIcon )
 			{
-				CG_Printf( S_ERROR "weapon icon not found %s\n", token );
+				Log::Warn( "weapon icon not found %s", token );
 			}
 
 			continue;
@@ -1002,7 +1007,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 
 			if ( !wi->crossHair )
 			{
-				CG_Printf( S_ERROR "weapon crosshair not found %s\n", token );
+				Log::Warn( "weapon crosshair not found %s", token );
 			}
 
 			continue;
@@ -1020,7 +1025,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 
 			if ( !wi->crossHairIndicator )
 			{
-				CG_Printf( S_ERROR "weapon crosshair indicator not found %s\n", token );
+				Log::Warn( "weapon crosshair indicator not found %s", token );
 			}
 
 			continue;
@@ -1132,7 +1137,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 			continue;
 		}
 
-		Com_Printf( S_ERROR "unknown token '%s'\n", token );
+		Log::Warn( "unknown token '%s'", token );
 		return false;
 	}
 
@@ -1153,14 +1158,14 @@ void CG_RegisterWeapon( int weaponNum )
 
 	if ( weaponNum <= WP_NONE || weaponNum >= WP_NUM_WEAPONS )
 	{
-		CG_Error( "CG_RegisterWeapon: out of range: %d", weaponNum );
+		Com_Error(errorParm_t::ERR_DROP,  "CG_RegisterWeapon: out of range: %d", weaponNum );
 	}
 
 	weaponInfo = &cg_weapons[ weaponNum ];
 
 	if ( weaponInfo->registered )
 	{
-		CG_Printf( "CG_RegisterWeapon: already registered: (%d) %s\n", weaponNum,
+		Log::Warn( "CG_RegisterWeapon: already registered: (%d) %s", weaponNum,
 		           BG_Weapon( weaponNum )->name );
 		return;
 	}
@@ -1169,7 +1174,7 @@ void CG_RegisterWeapon( int weaponNum )
 
 	if ( !BG_Weapon( weaponNum )->name[ 0 ] )
 	{
-		CG_Error( "Couldn't find weapon %i", weaponNum );
+		Com_Error(errorParm_t::ERR_DROP,  "Couldn't find weapon %i", weaponNum );
 	}
 
 	Com_sprintf( path, MAX_QPATH, "models/weapons/%s/weapon.cfg", BG_Weapon( weaponNum )->name );
@@ -1178,7 +1183,7 @@ void CG_RegisterWeapon( int weaponNum )
 
 	if ( !CG_ParseWeaponFile( path, weaponNum, weaponInfo ) )
 	{
-		Com_Printf( S_ERROR "failed to parse %s\n", path );
+		Log::Warn( "failed to parse %s", path );
 	}
 
 	if( !weaponInfo->md5 )
@@ -1243,7 +1248,7 @@ static void CG_SetWeaponLerpFrameAnimation( weapon_t weapon, lerpFrame_t *lf, in
 
 	if ( newAnimation < 0 || newAnimation >= MAX_WEAPON_ANIMATIONS )
 	{
-		CG_Error( "Bad animation number: %i", newAnimation );
+		Com_Error(errorParm_t::ERR_DROP,  "Bad animation number: %i", newAnimation );
 	}
 
 	anim = &cg_weapons[ weapon ].animations[ newAnimation ];
@@ -1253,14 +1258,14 @@ static void CG_SetWeaponLerpFrameAnimation( weapon_t weapon, lerpFrame_t *lf, in
 	lf->frame = lf->oldFrame = 0;
 	if ( cg_debugAnim.integer )
 	{
-		CG_Printf( "Anim: %i\n", newAnimation );
+		Log::Debug( "Anim: %i", newAnimation );
 	}
 
 	if ( /*&cg_weapons[ weapon ].md5 &&*/ !toggle && lf && lf->old_animation && lf->old_animation->handle )
 	{
 		if ( !trap_R_BuildSkeleton( &oldGunSkeleton, lf->old_animation->handle, lf->oldFrame, lf->frame, lf->backlerp, lf->old_animation->clearOrigin ) )
 		{
-			CG_Printf( "CG_SetWeaponLerpFrameAnimation: can't build old gunSkeleton\n" );
+			Log::Warn( "CG_SetWeaponLerpFrameAnimation: can't build old gunSkeleton" );
 			return;
 		}
 	}
@@ -1548,8 +1553,8 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 
 	if ( !weapon->registered )
 	{
-		Com_Printf( S_WARNING "CG_AddPlayerWeapon: weapon %d (%s) "
-		            "is not registered\n", weaponNum, BG_Weapon( weaponNum )->name );
+		Log::Warn( "CG_AddPlayerWeapon: weapon %d (%s) "
+		            "is not registered", weaponNum, BG_Weapon( weaponNum )->name );
 		return;
 	}
 
@@ -1646,7 +1651,7 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 
 				if ( boneIndex < 0 )
 				{
-					Com_Printf( S_WARNING "Cannot find bone index %s, using root bone\n",
+					Log::Warn( "Cannot find bone index %s, using root bone",
 								weapon->rotationBone );
 					weapon->rotationBone[ 0 ] = '\0'; // avoid repeated warnings
 					boneIndex = 0;
@@ -1867,8 +1872,8 @@ void CG_AddViewWeapon( playerState_t *ps )
 
 	if ( !wi->registered )
 	{
-		Com_Printf( S_WARNING "CG_AddViewWeapon: weapon %d (%s) "
-		            "is not registered\n", weapon, BG_Weapon( weapon )->name );
+		Log::Warn( "CG_AddViewWeapon: weapon %d (%s) "
+		            "is not registered", weapon, BG_Weapon( weapon )->name );
 		return;
 	}
 
@@ -2107,8 +2112,8 @@ void CG_DrawHumanInventory()
 
 		if ( !cg_weapons[ i ].registered )
 		{
-			Com_Printf( S_WARNING "CG_DrawItemSelect: weapon %d (%s) "
-			            "is not registered\n", i, BG_Weapon( i )->name );
+			Log::Warn( "CG_DrawItemSelect: weapon %d (%s) "
+			            "is not registered", i, BG_Weapon( i )->name );
 			continue;
 		}
 
@@ -2133,8 +2138,8 @@ void CG_DrawHumanInventory()
 
 		if ( !cg_upgrades[ i ].registered )
 		{
-			Com_Printf( S_WARNING "CG_DrawItemSelect: upgrade %d (%s) "
-			            "is not registered\n", i, BG_Upgrade( i )->name );
+			Log::Warn( "CG_DrawItemSelect: upgrade %d (%s) "
+			            "is not registered", i, BG_Upgrade( i )->name );
 			continue;
 		}
 
@@ -2433,7 +2438,7 @@ static void PlayHitSound( vec3_t origin, const sfxHandle_t *impactSound )
 
 		if ( impactSound[ c ] )
 		{
-			trap_S_StartSound( origin, ENTITYNUM_WORLD, CHAN_AUTO, impactSound[ c ] );
+			trap_S_StartSound( origin, ENTITYNUM_WORLD, soundChannel_t::CHAN_AUTO, impactSound[ c ] );
 		}
 	}
 }
@@ -2470,7 +2475,7 @@ static void DrawEntityHitEffect( vec3_t origin, vec3_t normal, int targetNum )
 
 	target = &cg_entities[ targetNum ];
 
-	if ( cg_blood.integer && target->currentState.eType == ET_PLAYER )
+	if ( cg_blood.integer && target->currentState.eType == entityType_t::ET_PLAYER )
 	{
 		team = cgs.clientinfo[ targetNum ].team;
 
@@ -2499,7 +2504,7 @@ static void DrawEntityHitEffect( vec3_t origin, vec3_t normal, int targetNum )
 		}
 	}
 #ifndef UNREALARENA
-	else if ( target->currentState.eType == ET_BUILDABLE )
+	else if ( target->currentState.eType == entityType_t::ET_BUILDABLE )
 	{
 		team = BG_Buildable( target->currentState.modelindex )->team;
 
@@ -2654,10 +2659,10 @@ static void ShotgunPattern( vec3_t origin, vec3_t origin2, int seed, int attacke
 			dummy.torsoAnim       = 0; // Make sure it is not used uninitialized
 
 #ifdef UNREALARENA
-			if ( cg_entities[ tr.entityNum ].currentState.eType == ET_PLAYER )
+			if ( cg_entities[ tr.entityNum ].currentState.eType == entityType_t::ET_PLAYER )
 #else
-			if ( cg_entities[ tr.entityNum ].currentState.eType == ET_PLAYER ||
-			     cg_entities[ tr.entityNum ].currentState.eType == ET_BUILDABLE )
+			if ( cg_entities[ tr.entityNum ].currentState.eType == entityType_t::ET_PLAYER ||
+			     cg_entities[ tr.entityNum ].currentState.eType == entityType_t::ET_BUILDABLE )
 #endif
 			{
 				CG_HandleWeaponHitEntity( &dummy, tr.endpos );
@@ -2693,7 +2698,7 @@ void CG_HandleFireWeapon( centity_t *cent, weaponMode_t weaponMode )
 
 	if ( weaponNum >= WP_NUM_WEAPONS )
 	{
-		CG_Error( "CG_FireWeapon: ent->weapon >= WP_NUM_WEAPONS" );
+		Com_Error(errorParm_t::ERR_DROP,  "CG_FireWeapon: ent->weapon >= WP_NUM_WEAPONS" );
 	}
 
 	wi = &cg_weapons[ weaponNum ];
@@ -2726,7 +2731,7 @@ void CG_HandleFireWeapon( centity_t *cent, weaponMode_t weaponMode )
 
 		if ( wi->wim[ weaponMode ].flashSound[ c ] )
 		{
-			trap_S_StartSound( nullptr, es->number, CHAN_WEAPON, wi->wim[ weaponMode ].flashSound[ c ] );
+			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_WEAPON, wi->wim[ weaponMode ].flashSound[ c ] );
 		}
 	}
 }
@@ -2778,12 +2783,12 @@ void CG_HandleWeaponHitEntity( entityState_t *es, vec3_t origin )
 	DrawEntityHitEffect( origin, normal, victimNum );
 
 	// sound
-	if ( victim->currentState.eType == ET_PLAYER )
+	if ( victim->currentState.eType == entityType_t::ET_PLAYER )
 	{
 		PlayHitSound( origin, wim->impactFleshSound );
 	}
 #ifndef UNREALARENA
-	else if ( victim->currentState.eType == ET_BUILDABLE &&
+	else if ( victim->currentState.eType == entityType_t::ET_BUILDABLE &&
 			  BG_Buildable( victim->currentState.modelindex )->team == TEAM_ALIENS )
 	{
 		PlayHitSound( origin, wim->impactFleshSound );
@@ -2871,12 +2876,12 @@ void CG_HandleMissileHitEntity( entityState_t *es, vec3_t origin )
 	DrawEntityHitEffect( origin, normal, victimNum );
 
 	// sound
-	if ( victim->currentState.eType == ET_PLAYER )
+	if ( victim->currentState.eType == entityType_t::ET_PLAYER )
 	{
 		PlayHitSound( origin, ma->impactFleshSound );
 	}
 #ifndef UNREALARENA
-	else if ( victim->currentState.eType == ET_BUILDABLE &&
+	else if ( victim->currentState.eType == entityType_t::ET_BUILDABLE &&
 			  BG_Buildable( victim->currentState.modelindex )->team == TEAM_ALIENS )
 	{
 		PlayHitSound( origin, ma->impactFleshSound );

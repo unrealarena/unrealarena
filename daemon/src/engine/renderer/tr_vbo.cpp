@@ -253,27 +253,53 @@ static void R_SetAttributeLayoutsPosition( VBO_t *vbo )
 	vbo->vertexesSize = sizeof( vec3_t ) * vbo->vertexesNum;
 }
 
+static void R_SetAttributeLayoutsXYST( VBO_t *vbo )
+{
+	vbo->attribs[ ATTR_INDEX_POSITION ].numComponents = 2;
+	vbo->attribs[ ATTR_INDEX_POSITION ].componentType = GL_FLOAT;
+	vbo->attribs[ ATTR_INDEX_POSITION ].normalize     = GL_FALSE;
+	vbo->attribs[ ATTR_INDEX_POSITION ].ofs           = 0;
+	vbo->attribs[ ATTR_INDEX_POSITION ].realStride    = sizeof( vec4_t );
+	vbo->attribs[ ATTR_INDEX_POSITION ].stride        = sizeof( vec4_t );
+	vbo->attribs[ ATTR_INDEX_POSITION ].frameOffset   = 0;
+
+	vbo->attribs[ ATTR_INDEX_TEXCOORD ].numComponents = 2;
+	vbo->attribs[ ATTR_INDEX_TEXCOORD ].componentType = GL_FLOAT;
+	vbo->attribs[ ATTR_INDEX_TEXCOORD ].normalize     = GL_FALSE;
+	vbo->attribs[ ATTR_INDEX_TEXCOORD ].ofs           = sizeof( vec2_t );
+	vbo->attribs[ ATTR_INDEX_TEXCOORD ].realStride    = sizeof( vec4_t );
+	vbo->attribs[ ATTR_INDEX_TEXCOORD ].stride        = sizeof( vec4_t );
+	vbo->attribs[ ATTR_INDEX_TEXCOORD ].frameOffset   = 0;
+
+	// total size
+	vbo->vertexesSize = sizeof( vec4_t ) * vbo->vertexesNum;
+}
+
 static void R_SetVBOAttributeLayouts( VBO_t *vbo )
 {
-	if ( vbo->layout == VBO_LAYOUT_VERTEX_ANIMATION )
+	if ( vbo->layout == vboLayout_t::VBO_LAYOUT_VERTEX_ANIMATION )
 	{
 		R_SetAttributeLayoutsVertexAnimation( vbo );
 	}
-	else if ( vbo->layout == VBO_LAYOUT_SKELETAL )
+	else if ( vbo->layout == vboLayout_t::VBO_LAYOUT_SKELETAL )
 	{
 		R_SetAttributeLayoutsSkeletal( vbo );
 	}
-	else if ( vbo->layout == VBO_LAYOUT_STATIC )
+	else if ( vbo->layout == vboLayout_t::VBO_LAYOUT_STATIC )
 	{
 		R_SetAttributeLayoutsStatic( vbo );
 	}
-	else if ( vbo->layout == VBO_LAYOUT_POSITION )
+	else if ( vbo->layout == vboLayout_t::VBO_LAYOUT_POSITION )
 	{
 		R_SetAttributeLayoutsPosition( vbo );
 	}
+	else if ( vbo->layout == vboLayout_t::VBO_LAYOUT_XYST )
+	{
+		R_SetAttributeLayoutsXYST( vbo );
+	}
 	else
 	{
-		ri.Error( ERR_DROP, "%sUnknown attribute layout for vbo: %s\n",
+		ri.Error(errorParm_t::ERR_DROP, "%sUnknown attribute layout for vbo: %s\n",
 			Color::CString( Color::Yellow ),
 			vbo->name );
 	}
@@ -290,7 +316,7 @@ static void R_CopyVertexData( VBO_t *vbo, byte *outData, vboData_t inData )
 {
 	uint32_t v;
 
-	if ( vbo->layout == VBO_LAYOUT_VERTEX_ANIMATION )
+	if ( vbo->layout == vboLayout_t::VBO_LAYOUT_VERTEX_ANIMATION )
 	{
 		struct fmtVertexAnim1 *ptr = ( struct fmtVertexAnim1 * )outData;
 
@@ -315,7 +341,7 @@ static void R_CopyVertexData( VBO_t *vbo, byte *outData, vboData_t inData )
 
 	for ( v = 0; v < vbo->vertexesNum; v++ )
 	{
-		if ( vbo->layout == VBO_LAYOUT_SKELETAL ) {
+		if ( vbo->layout == vboLayout_t::VBO_LAYOUT_SKELETAL ) {
 			struct fmtSkeletal *ptr = ( struct fmtSkeletal * )outData;
 			if ( ( vbo->attribBits & ATTR_POSITION ) )
 			{
@@ -352,7 +378,7 @@ static void R_CopyVertexData( VBO_t *vbo, byte *outData, vboData_t inData )
 										inData.boneWeights[ v ][ j ] );
 				}
 			}
-		} else if ( vbo->layout == VBO_LAYOUT_STATIC ) {
+		} else if ( vbo->layout == vboLayout_t::VBO_LAYOUT_STATIC ) {
 			shaderVertex_t *ptr = ( shaderVertex_t * )outData;
 			if ( ( vbo->attribBits & ATTR_POSITION ) )
 			{
@@ -378,13 +404,24 @@ static void R_CopyVertexData( VBO_t *vbo, byte *outData, vboData_t inData )
 			{
 				Vector4Copy( inData.spriteOrientation[ v ], ptr[ v ].spriteOrientation );
 			}
-		} else if ( vbo->layout == VBO_LAYOUT_POSITION ) {
+		} else if ( vbo->layout == vboLayout_t::VBO_LAYOUT_POSITION ) {
 			vec3_t *ptr = ( vec3_t * )outData;
 			if ( ( vbo->attribBits & ATTR_POSITION ) )
 			{
 				VectorCopy( inData.xyz[ v ], ptr[ v ] );
 			}
-		} else if ( vbo->layout == VBO_LAYOUT_VERTEX_ANIMATION ) {
+		} else if ( vbo->layout == vboLayout_t::VBO_LAYOUT_XYST ) {
+			vec2_t *ptr = ( vec2_t * )outData;
+			if ( ( vbo->attribBits & ATTR_POSITION ) )
+			{
+				Vector2Copy( inData.xyz[ v ], ptr[ 2 * v ] );
+			}
+
+			if ( ( vbo->attribBits & ATTR_TEXCOORD ) )
+			{
+				Vector2Copy( inData.stf[ v ], ptr[ 2 * v + 1 ] );
+			}
+		} else if ( vbo->layout == vboLayout_t::VBO_LAYOUT_VERTEX_ANIMATION ) {
 			struct fmtVertexAnim2 *ptr = ( struct fmtVertexAnim2 * )( outData + ( vbo->framesNum * vbo->vertexesNum ) * sizeVertexAnim1 );
 
 			if ( ( vbo->attribBits & ATTR_TEXCOORD ) )
@@ -401,7 +438,7 @@ static void R_CopyVertexData( VBO_t *vbo, byte *outData, vboData_t inData )
 
 }
 
-#if defined( GLEW_ARB_buffer_storage ) && defined( GLEW_ARB_sync )
+#if defined( GL_ARB_buffer_storage ) && defined( GL_ARB_sync )
 /*
 ============
 R_InitRingbuffer
@@ -441,7 +478,7 @@ static GLsizei R_RotateRingbuffer( glRingbuffer_t *rb ) {
 	// wait until next segment is ready in 1 sec intervals
 	while( glClientWaitSync( rb->syncs[ rb->activeSegment ], GL_SYNC_FLUSH_COMMANDS_BIT,
 				 10000000 ) == GL_TIMEOUT_EXPIRED ) {
-		ri.Printf( PRINT_WARNING, "long wait for GL buffer" );
+		Log::Warn("long wait for GL buffer" );
 	};
 	glDeleteSync( rb->syncs[ rb->activeSegment ] );
 
@@ -479,13 +516,13 @@ VBO_t *R_CreateDynamicVBO( const char *name, int numVertexes, uint32_t stateBits
 
 	if ( strlen( name ) >= MAX_QPATH )
 	{
-		ri.Error( ERR_DROP, "R_CreateDynamicVBO: \"%s\" is too long", name );
+		ri.Error(errorParm_t::ERR_DROP, "R_CreateDynamicVBO: \"%s\" is too long", name );
 	}
 
 	// make sure the render thread is stopped
 	R_SyncRenderThread();
 
-	vbo = (VBO_t*) ri.Hunk_Alloc( sizeof( *vbo ), h_low );
+	vbo = (VBO_t*) ri.Hunk_Alloc( sizeof( *vbo ), ha_pref::h_low );
 	memset( vbo, 0, sizeof( *vbo ) );
 
 	Com_AddToGrowList( &tr.vbos, vbo );
@@ -504,7 +541,7 @@ VBO_t *R_CreateDynamicVBO( const char *name, int numVertexes, uint32_t stateBits
 
 	R_BindVBO( vbo );
 
-#if defined( GLEW_ARB_buffer_storage ) && defined( GLEW_ARB_sync )
+#if defined( GL_ARB_buffer_storage ) && defined( GL_ARB_sync )
 	if( glConfig2.bufferStorageAvailable &&
 	    glConfig2.syncAvailable ) {
 		R_InitRingbuffer( GL_ARRAY_BUFFER, sizeof( shaderVertex_t ),
@@ -533,13 +570,13 @@ VBO_t *R_CreateStaticVBO( const char *name, vboData_t data, vboLayout_t layout )
 
 	if ( strlen( name ) >= MAX_QPATH )
 	{
-		ri.Error( ERR_DROP, "R_CreateVBO: \"%s\" is too long", name );
+		ri.Error(errorParm_t::ERR_DROP, "R_CreateVBO: \"%s\" is too long", name );
 	}
 
 	// make sure the render thread is stopped
 	R_SyncRenderThread();
 
-	vbo = (VBO_t*) ri.Hunk_Alloc( sizeof( *vbo ), h_low );
+	vbo = (VBO_t*) ri.Hunk_Alloc( sizeof( *vbo ), ha_pref::h_low );
 	memset( vbo, 0, sizeof( *vbo ) );
 
 	Com_AddToGrowList( &tr.vbos, vbo );
@@ -557,7 +594,7 @@ VBO_t *R_CreateStaticVBO( const char *name, vboData_t data, vboLayout_t layout )
 	glGenBuffers( 1, &vbo->vertexesVBO );
 	R_BindVBO( vbo );
 
-#ifdef GLEW_ARB_buffer_storage
+#ifdef GL_ARB_buffer_storage
 	if( glConfig2.bufferStorageAvailable ) {
 		outData = (byte *)ri.Hunk_AllocateTempMemory( vbo->vertexesSize );
 		R_CopyVertexData( vbo, outData, data );
@@ -596,20 +633,20 @@ VBO_t *R_CreateStaticVBO2( const char *name, int numVertexes, shaderVertex_t *ve
 
 	if ( strlen( name ) >= MAX_QPATH )
 	{
-		ri.Error( ERR_DROP, "R_CreateVBO2: \"%s\" is too long", name );
+		ri.Error(errorParm_t::ERR_DROP, "R_CreateVBO2: \"%s\" is too long", name );
 	}
 
 	// make sure the render thread is stopped
 	R_SyncRenderThread();
 
-	vbo = ( VBO_t * ) ri.Hunk_Alloc( sizeof( *vbo ), h_low );
+	vbo = ( VBO_t * ) ri.Hunk_Alloc( sizeof( *vbo ), ha_pref::h_low );
 	memset( vbo, 0, sizeof( *vbo ) );
 
 	Com_AddToGrowList( &tr.vbos, vbo );
 
 	Q_strncpyz( vbo->name, name, sizeof( vbo->name ) );
 
-	vbo->layout = VBO_LAYOUT_STATIC;
+	vbo->layout = vboLayout_t::VBO_LAYOUT_STATIC;
 	vbo->framesNum = 0;
 	vbo->vertexesNum = numVertexes;
 	vbo->attribBits = stateBits;
@@ -620,7 +657,7 @@ VBO_t *R_CreateStaticVBO2( const char *name, int numVertexes, shaderVertex_t *ve
 	glGenBuffers( 1, &vbo->vertexesVBO );
 	R_BindVBO( vbo );
 
-#ifdef GLEW_ARB_buffer_storage
+#ifdef GL_ARB_buffer_storage
 	if( glConfig2.bufferStorageAvailable ) {
 		glBufferStorage( GL_ARRAY_BUFFER, vbo->vertexesSize,
 				 verts, 0 );
@@ -649,13 +686,13 @@ IBO_t *R_CreateDynamicIBO( const char *name, int numIndexes )
 
 	if ( strlen( name ) >= MAX_QPATH )
 	{
-		ri.Error( ERR_DROP, "R_CreateIBO: \"%s\" is too long", name );
+		ri.Error(errorParm_t::ERR_DROP, "R_CreateIBO: \"%s\" is too long", name );
 	}
 
 	// make sure the render thread is stopped
 	R_SyncRenderThread();
 
-	ibo = (IBO_t*) ri.Hunk_Alloc( sizeof( *ibo ), h_low );
+	ibo = (IBO_t*) ri.Hunk_Alloc( sizeof( *ibo ), ha_pref::h_low );
 	Com_AddToGrowList( &tr.ibos, ibo );
 
 	Q_strncpyz( ibo->name, name, sizeof( ibo->name ) );
@@ -666,7 +703,7 @@ IBO_t *R_CreateDynamicIBO( const char *name, int numIndexes )
 	glGenBuffers( 1, &ibo->indexesVBO );
 
 	R_BindIBO( ibo );
-#if defined( GLEW_ARB_buffer_storage ) && defined( GLEW_ARB_sync )
+#if defined( GL_ARB_buffer_storage ) && defined( GL_ARB_sync )
 	if( glConfig2.bufferStorageAvailable &&
 	    glConfig2.syncAvailable ) {
 		R_InitRingbuffer( GL_ELEMENT_ARRAY_BUFFER, sizeof( glIndex_t ),
@@ -699,13 +736,13 @@ IBO_t *R_CreateStaticIBO( const char *name, glIndex_t *indexes, int numIndexes )
 
 	if ( strlen( name ) >= MAX_QPATH )
 	{
-		ri.Error( ERR_DROP, "R_CreateIBO: \"%s\" is too long", name );
+		ri.Error(errorParm_t::ERR_DROP, "R_CreateIBO: \"%s\" is too long", name );
 	}
 
 	// make sure the render thread is stopped
 	R_SyncRenderThread();
 
-	ibo = ( IBO_t * ) ri.Hunk_Alloc( sizeof( *ibo ), h_low );
+	ibo = ( IBO_t * ) ri.Hunk_Alloc( sizeof( *ibo ), ha_pref::h_low );
 	Com_AddToGrowList( &tr.ibos, ibo );
 
 	Q_strncpyz( ibo->name, name, sizeof( ibo->name ) );
@@ -717,7 +754,7 @@ IBO_t *R_CreateStaticIBO( const char *name, glIndex_t *indexes, int numIndexes )
 
 	R_BindIBO( ibo );
 
-#ifdef GLEW_ARB_buffer_storage
+#ifdef GL_ARB_buffer_storage
 	if( glConfig2.bufferStorageAvailable ) {
 		glBufferStorage( GL_ELEMENT_ARRAY_BUFFER, ibo->indexesSize, indexes, 0 );
 	} else
@@ -743,13 +780,13 @@ IBO_t *R_CreateStaticIBO2( const char *name, int numTriangles, glIndex_t *indexe
 
 	if ( strlen( name ) >= MAX_QPATH )
 	{
-		ri.Error( ERR_DROP, "R_CreateIBO2: \"%s\" is too long", name );
+		ri.Error(errorParm_t::ERR_DROP, "R_CreateIBO2: \"%s\" is too long", name );
 	}
 
 	// make sure the render thread is stopped
 	R_SyncRenderThread();
 
-	ibo = ( IBO_t * ) ri.Hunk_Alloc( sizeof( *ibo ), h_low );
+	ibo = ( IBO_t * ) ri.Hunk_Alloc( sizeof( *ibo ), ha_pref::h_low );
 	Com_AddToGrowList( &tr.ibos, ibo );
 
 	Q_strncpyz( ibo->name, name, sizeof( ibo->name ) );
@@ -759,7 +796,7 @@ IBO_t *R_CreateStaticIBO2( const char *name, int numTriangles, glIndex_t *indexe
 	glGenBuffers( 1, &ibo->indexesVBO );
 	R_BindIBO( ibo );
 
-#ifdef GLEW_ARB_buffer_storage
+#ifdef GL_ARB_buffer_storage
 	if( glConfig2.bufferStorageAvailable ) {
 		glBufferStorage( GL_ELEMENT_ARRAY_BUFFER, ibo->indexesSize,
 				 indexes, 0 );
@@ -783,7 +820,7 @@ void R_BindVBO( VBO_t *vbo )
 {
 	if ( !vbo )
 	{
-		ri.Error( ERR_DROP, "R_BindNullVBO: NULL vbo" );
+		ri.Error(errorParm_t::ERR_DROP, "R_BindNullVBO: NULL vbo" );
 	}
 
 	if ( r_logFile->integer )
@@ -834,7 +871,7 @@ void R_BindIBO( IBO_t *ibo )
 {
 	if ( !ibo )
 	{
-		ri.Error( ERR_DROP, "R_BindIBO: NULL ibo" );
+		ri.Error(errorParm_t::ERR_DROP, "R_BindIBO: NULL ibo" );
 	}
 
 	if ( r_logFile->integer )
@@ -896,7 +933,7 @@ static void R_InitUnitCubeVBO()
 		VectorCopy( tess.verts[ i ].xyz, data.xyz[ i ] );
 	}
 
-	tr.unitCubeVBO = R_CreateStaticVBO( "unitCube_VBO", data, VBO_LAYOUT_POSITION );
+	tr.unitCubeVBO = R_CreateStaticVBO( "unitCube_VBO", data, vboLayout_t::VBO_LAYOUT_POSITION );
 	tr.unitCubeIBO = R_CreateStaticIBO( "unitCube_IBO", tess.indexes, tess.numIndexes );
 
 	ri.Hunk_FreeTempMemory( data.xyz );
@@ -906,6 +943,40 @@ static void R_InitUnitCubeVBO()
 	tess.numVertexes = 0;
 	tess.verts = nullptr;
 	tess.indexes = nullptr;
+}
+
+static void R_InitTileVBO()
+{
+	int       x, y, w, h;
+	vboData_t data;
+
+	R_SyncRenderThread();
+
+	w = tr.depthtile2RenderImage->width;
+	h = tr.depthtile2RenderImage->height;
+
+	memset( &data, 0, sizeof( data ) );
+	data.numVerts = w * h;
+
+	data.xyz = ( vec3_t * ) ri.Hunk_AllocateTempMemory( data.numVerts * sizeof( *data.xyz ) );
+	data.stf = ( vec2_t * ) ri.Hunk_AllocateTempMemory( data.numVerts * sizeof( *data.stf ) );
+
+	for (y = 0; y < h; y++ ) {
+		for (x = 0; x < w; x++ ) {
+			VectorSet( data.xyz[ y * w + x ],
+				   (2 * x - w + 1) * (1.0f / w),
+				   (2 * y - h + 1) * (1.0f / h),
+				   0.0f );
+			Vector2Set( data.stf[ y * w + x ],
+				    2 * x * glState.tileStep[ 0 ] + glState.tileStep[ 0 ] - 1.0f,
+				    2 * y * glState.tileStep[ 1 ] + glState.tileStep[ 1 ] - 1.0f );
+		}
+	}
+
+	tr.lighttileVBO = R_CreateStaticVBO( "lighttile_VBO", data, vboLayout_t::VBO_LAYOUT_XYST );
+
+	ri.Hunk_FreeTempMemory( data.stf );
+	ri.Hunk_FreeTempMemory( data.xyz );
 }
 
 const int vertexCapacity = DYN_BUFFER_SIZE / sizeof( shaderVertex_t );
@@ -920,7 +991,7 @@ void R_InitVBOs()
 {
 	uint32_t attribs = ATTR_POSITION | ATTR_TEXCOORD | ATTR_QTANGENT | ATTR_COLOR;
 
-	ri.Printf( PRINT_DEVELOPER, "------- R_InitVBOs -------\n" );
+	Log::Debug("------- R_InitVBOs -------" );
 
 	Com_InitGrowList( &tr.vbos, 100 );
 	Com_InitGrowList( &tr.ibos, 100 );
@@ -929,19 +1000,20 @@ void R_InitVBOs()
 	tess.indexesBuffer = ( glIndex_t * ) Com_Allocate_Aligned( 64, SHADER_MAX_INDEXES * sizeof( glIndex_t ) );
 
 	if( glConfig2.mapBufferRangeAvailable ) {
-		tess.vbo = R_CreateDynamicVBO( "tessVertexArray_VBO", vertexCapacity, attribs, VBO_LAYOUT_STATIC );
+		tess.vbo = R_CreateDynamicVBO( "tessVertexArray_VBO", vertexCapacity, attribs, vboLayout_t::VBO_LAYOUT_STATIC );
 
 		tess.ibo = R_CreateDynamicIBO( "tessVertexArray_IBO", indexCapacity );
 		tess.vertsWritten = tess.indexesWritten = 0;
 	} else {
 		// use glBufferSubData to update VBO
-		tess.vbo = R_CreateDynamicVBO( "tessVertexArray_VBO", SHADER_MAX_VERTEXES, attribs, VBO_LAYOUT_STATIC );
+		tess.vbo = R_CreateDynamicVBO( "tessVertexArray_VBO", SHADER_MAX_VERTEXES, attribs, vboLayout_t::VBO_LAYOUT_STATIC );
 
 		tess.ibo = R_CreateDynamicIBO( "tessVertexArray_IBO", SHADER_MAX_INDEXES );
 	}
 
 
 	R_InitUnitCubeVBO();
+	R_InitTileVBO();
 
 	// allocate a PBO for color grade map transfers
 	glGenBuffers( 1, &tr.colorGradePBO );
@@ -950,6 +1022,18 @@ void R_InitVBOs()
 		      REF_COLORGRADEMAP_STORE_SIZE * sizeof(u8vec4_t),
 		      nullptr, GL_STREAM_COPY );
 	glBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
+
+	if( glConfig2.uniformBufferObjectAvailable ) {
+		glGenBuffers( 1, &tr.dlightUBO );
+		glBindBuffer( GL_UNIFORM_BUFFER, tr.dlightUBO );
+		glBufferData( GL_UNIFORM_BUFFER, MAX_REF_LIGHTS * sizeof( shaderLight_t ), nullptr, GL_DYNAMIC_DRAW );
+		glBindBuffer( GL_UNIFORM_BUFFER, 0 );
+	} else {
+		glGenBuffers( 1, &tr.dlightUBO );
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, tr.dlightUBO );
+		glBufferData( GL_PIXEL_UNPACK_BUFFER, MAX_REF_LIGHTS * sizeof( shaderLight_t ), nullptr, GL_DYNAMIC_DRAW );
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0 );
+	}
 
 	GL_CheckErrors();
 }
@@ -965,12 +1049,12 @@ void R_ShutdownVBOs()
 	VBO_t *vbo;
 	IBO_t *ibo;
 
-	ri.Printf( PRINT_DEVELOPER, "------- R_ShutdownVBOs -------\n" );
+	Log::Debug("------- R_ShutdownVBOs -------" );
 
 	if( !glConfig2.mapBufferRangeAvailable ) {
 		// nothing
 	}
-#if defined( GLEW_ARB_buffer_storage ) && defined( GLEW_ARB_sync )
+#if defined( GL_ARB_buffer_storage ) && defined( GL_ARB_sync )
 	else if( glConfig2.bufferStorageAvailable &&
 		 glConfig2.syncAvailable ) {
 		R_BindVBO( tess.vbo );
@@ -1022,6 +1106,11 @@ void R_ShutdownVBOs()
 	Com_Free_Aligned( tess.vertsBuffer );
 	Com_Free_Aligned( tess.indexesBuffer );
 
+	if( glConfig2.uniformBufferObjectAvailable ) {
+		glDeleteBuffers( 1, &tr.dlightUBO );
+		tr.dlightUBO = 0;
+	}
+
 	tess.verts = tess.vertsBuffer = nullptr;
 	tess.indexes = tess.indexesBuffer = nullptr;
 }
@@ -1045,7 +1134,7 @@ void Tess_MapVBOs( bool forceCPU ) {
 	if( tess.verts == nullptr ) {
 		R_BindVBO( tess.vbo );
 
-#if defined( GLEW_ARB_buffer_storage ) && defined( GL_ARB_sync )
+#if defined( GL_ARB_buffer_storage ) && defined( GL_ARB_sync )
 		if( glConfig2.bufferStorageAvailable &&
 		    glConfig2.syncAvailable ) {
 			GLsizei segmentEnd = (tess.vertexRB.activeSegment + 1) * tess.vertexRB.segmentElements;
@@ -1072,7 +1161,7 @@ void Tess_MapVBOs( bool forceCPU ) {
 	if( tess.indexes == nullptr ) {
 		R_BindIBO( tess.ibo );
 
-#if defined( GLEW_ARB_buffer_storage ) && defined( GL_ARB_sync )
+#if defined( GL_ARB_buffer_storage ) && defined( GL_ARB_sync )
 		if( glConfig2.bufferStorageAvailable &&
 		    glConfig2.syncAvailable ) {
 			GLsizei segmentEnd = (tess.indexRB.activeSegment + 1) * tess.indexRB.segmentElements;
@@ -1193,14 +1282,14 @@ void R_VBOList_f()
 	int   vertexesSize = 0;
 	int   indexesSize = 0;
 
-	ri.Printf( PRINT_ALL, " size          name\n" );
-	ri.Printf( PRINT_ALL, "----------------------------------------------------------\n" );
+	Log::Notice(" size          name" );
+	Log::Notice("----------------------------------------------------------" );
 
 	for ( i = 0; i < tr.vbos.currentElements; i++ )
 	{
 		vbo = ( VBO_t * ) Com_GrowListElement( &tr.vbos, i );
 
-		ri.Printf( PRINT_ALL, "%d.%02d MB %s\n", vbo->vertexesSize / ( 1024 * 1024 ),
+		Log::Notice("%d.%02d MB %s", vbo->vertexesSize / ( 1024 * 1024 ),
 		           ( vbo->vertexesSize % ( 1024 * 1024 ) ) * 100 / ( 1024 * 1024 ), vbo->name );
 
 		vertexesSize += vbo->vertexesSize;
@@ -1210,17 +1299,17 @@ void R_VBOList_f()
 	{
 		ibo = ( IBO_t * ) Com_GrowListElement( &tr.ibos, i );
 
-		ri.Printf( PRINT_ALL, "%d.%02d MB %s\n", ibo->indexesSize / ( 1024 * 1024 ),
+		Log::Notice("%d.%02d MB %s", ibo->indexesSize / ( 1024 * 1024 ),
 		           ( ibo->indexesSize % ( 1024 * 1024 ) ) * 100 / ( 1024 * 1024 ), ibo->name );
 
 		indexesSize += ibo->indexesSize;
 	}
 
-	ri.Printf( PRINT_ALL, " %i total VBOs\n", tr.vbos.currentElements );
-	ri.Printf( PRINT_ALL, " %d.%02d MB total vertices memory\n", vertexesSize / ( 1024 * 1024 ),
+	Log::Notice(" %i total VBOs", tr.vbos.currentElements );
+	Log::Notice(" %d.%02d MB total vertices memory", vertexesSize / ( 1024 * 1024 ),
 	           ( vertexesSize % ( 1024 * 1024 ) ) * 100 / ( 1024 * 1024 ) );
 
-	ri.Printf( PRINT_ALL, " %i total IBOs\n", tr.ibos.currentElements );
-	ri.Printf( PRINT_ALL, " %d.%02d MB total triangle indices memory\n", indexesSize / ( 1024 * 1024 ),
+	Log::Notice(" %i total IBOs", tr.ibos.currentElements );
+	Log::Notice(" %d.%02d MB total triangle indices memory", indexesSize / ( 1024 * 1024 ),
 	           ( indexesSize % ( 1024 * 1024 ) ) * 100 / ( 1024 * 1024 ) );
 }

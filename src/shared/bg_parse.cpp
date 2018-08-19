@@ -351,18 +351,18 @@ bool BG_ReadWholeFile( const char *filename, char *buffer, int size)
 	fileHandle_t f;
 	int len;
 
-	len = trap_FS_FOpenFile( filename, &f, FS_READ );
+	len = trap_FS_FOpenFile( filename, &f, fsMode_t::FS_READ );
 
 	if ( len < 0 )
 	{
-		Com_Printf( S_ERROR "file %s doesn't exist\n", filename );
+		Log::Warn( "file %s doesn't exist", filename );
 		return false;
 	}
 
 	if ( len == 0 || len >= size - 1 )
 	{
 		trap_FS_FCloseFile( f );
-		Com_Printf( S_ERROR "file %s is %s\n", filename,
+		Log::Warn( "file %s is %s", filename,
 					len == 0 ? "empty" : "too long" );
 		return false;
 	}
@@ -401,7 +401,7 @@ static team_t ParseTeam(const char* token)
 	}
 	else
 	{
-		Com_Printf( S_ERROR "unknown team value '%s'\n", token );
+		Log::Warn( "unknown team value '%s'", token );
 		return TEAM_NONE;
 	}
 }
@@ -464,7 +464,7 @@ static int ParseSlotList(const char** text)
 		}
 		else
 		{
-			Com_Printf( S_ERROR "unknown slot '%s'\n", token );
+			Log::Warn( "unknown slot '%s'", token );
 		}
 	}
 
@@ -503,7 +503,7 @@ static int ParseClipmask( const char *token )
 	}
 	else
 	{
-		Com_Printf( S_ERROR "unknown clipmask value '%s'\n", token );
+		Log::Warn( "unknown clipmask value '%s'", token );
 		return 0;
 	}
 }
@@ -512,36 +512,36 @@ static trType_t ParseTrajectoryType( const char *token )
 {
 	if      ( !Q_stricmp( token, "TR_STATIONARY" ) )
 	{
-		return TR_STATIONARY;
+		return trType_t::TR_STATIONARY;
 	}
 	else if ( !Q_stricmp( token, "TR_INTERPOLATE" ) )
 	{
-		return TR_INTERPOLATE;
+		return trType_t::TR_INTERPOLATE;
 	}
 	else if ( !Q_stricmp( token, "TR_LINEAR" ) )
 	{
-		return TR_LINEAR;
+		return trType_t::TR_LINEAR;
 	}
 	else if ( !Q_stricmp( token, "TR_LINEAR_STOP" ) )
 	{
-		return TR_LINEAR_STOP;
+		return trType_t::TR_LINEAR_STOP;
 	}
 	else if ( !Q_stricmp( token, "TR_SINE" ) )
 	{
-		return TR_SINE;
+		return trType_t::TR_SINE;
 	}
 	else if ( !Q_stricmp( token, "TR_GRAVITY" ) )
 	{
-		return TR_GRAVITY;
+		return trType_t::TR_GRAVITY;
 	}
 	else if ( !Q_stricmp( token, "TR_BUOYANCY" ) )
 	{
-		return TR_BUOYANCY;
+		return trType_t::TR_BUOYANCY;
 	}
 	else
 	{
-		Com_Printf( S_ERROR "unknown trajectory value '%s'\n", token );
-		return TR_STATIONARY;
+		Log::Warn( "unknown trajectory value '%s'", token );
+		return trType_t::TR_STATIONARY;
 	}
 }
 
@@ -565,7 +565,7 @@ bool BG_ParseConfigVar(configVar_t *var, const char **text, const char *filename
 
 	if( !*token )
 	{
-		Com_Printf( "^1ERROR: %s expected argument for '%s'\n", filename, var->name );
+		Log::Warn( "%s expected argument for '%s'\n", filename, var->name );
 		return false;
 	}
 
@@ -592,7 +592,7 @@ bool BG_CheckConfigVars()
 		if( !bg_configVars[i].defined )
 		{
 			ok = false;
-			Com_Printf( "^3WARNING: config var %s was not defined\n", bg_configVars[i].name );
+			Log::Warn( "config var %s was not defined\n", bg_configVars[i].name );
 		}
 	}
 
@@ -724,7 +724,7 @@ void BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t
 
 			if ( !ba->weapon )
 			{
-				Com_Printf( S_ERROR "unknown weapon name '%s'\n", token );
+				Log::Warn( "unknown weapon name '%s'", token );
 			}
 		}
 		else if ( !Q_stricmp( token, "meansOfDeath" ) )
@@ -741,7 +741,7 @@ void BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t
 			}
 			else
 			{
-				Com_Printf( S_ERROR "unknown meanOfDeath value '%s'\n", token );
+				Log::Warn( "unknown meanOfDeath value '%s'", token );
 			}
 
 			defined |= DEATHMOD;
@@ -768,7 +768,7 @@ void BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t
 			}
 			else
 			{
-				Com_Printf( S_ERROR "unknown buildWeapon value '%s'\n", token );
+				Log::Warn( "unknown buildWeapon value '%s'", token );
 			}
 
 			defined |= BUILDWEAPON;
@@ -828,7 +828,7 @@ void BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t
 		}
 		else
 		{
-			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );
+			Log::Warn( "%s: unknown token '%s'", filename, token );
 		}
 	}
 
@@ -845,7 +845,7 @@ void BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t
 
 	if ( strlen( token ) > 0 )
 	{
-		Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+		Log::Warn( "%s not defined in %s", token, filename );
 	}
 }
 
@@ -989,7 +989,7 @@ void BG_ParseBuildableModelFile( const char *filename, buildableModelConfig_t *b
 		}
 		else
 		{
-			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );
+			Log::Warn( "%s: unknown token '%s'", filename, token );
 		}
 	}
 
@@ -1002,7 +1002,7 @@ void BG_ParseBuildableModelFile( const char *filename, buildableModelConfig_t *b
 
 	if ( strlen( token ) > 0 )
 	{
-		Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+		Log::Warn( "%s not defined in %s", token, filename );
 	}
 }
 #endif
@@ -1295,7 +1295,7 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		}
 		else
 		{
-			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );
+			Log::Warn( "%s: unknown token '%s'", filename, token );
 		}
 	}
 
@@ -1323,7 +1323,7 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 
 		if ( token )
 		{
-			Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+			Log::Warn( "%s not defined in %s", token, filename );
 		}
 	}
 
@@ -1345,10 +1345,10 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		if ( token )
 		{
 #ifdef UNREALARENA
-			Com_Printf( S_ERROR "%s (mandatory for U team) not defined in %s\n",
+			Log::Warn( "%s (mandatory for U team) not defined in %s",
 			            token, filename );
 #else
-			Com_Printf( S_ERROR "%s (mandatory for human team) not defined in %s\n",
+			Log::Warn( "%s (mandatory for human team) not defined in %s",
 			            token, filename );
 #endif
 		}
@@ -1645,13 +1645,13 @@ void BG_ParseClassModelFile( const char *filename, classModelConfig_t *cc )
 			}
 			else
 			{
-				Com_Printf( S_ERROR "%s: unknown or yet-unloaded player model '%s'\n", filename, token );
+				Log::Warn( "%s: unknown or yet-unloaded player model '%s'", filename, token );
 			}
 		}
 #endif
 		else
 		{
-			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );
+			Log::Warn( "%s: unknown token '%s'", filename, token );
 		}
 	}
 
@@ -1674,7 +1674,7 @@ void BG_ParseClassModelFile( const char *filename, classModelConfig_t *cc )
 
 	if ( strlen( token ) > 0 )
 	{
-		Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+		Log::Warn( "%s not defined in %s", token, filename );
 	}
 }
 
@@ -1864,7 +1864,7 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		}
 		else
 		{
-			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );
+			Log::Warn( "%s: unknown token '%s'", filename, token );
 		}
 	}
 
@@ -1880,7 +1880,7 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 
 	if ( strlen( token ) > 0 )
 	{
-		Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+		Log::Warn( "%s not defined in %s", token, filename );
 	}
 }
 
@@ -2010,7 +2010,7 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 		}
 		else
 		{
-			Com_Printf( S_ERROR "%s: unknown token '%s'\n", filename, token );
+			Log::Warn( "%s: unknown token '%s'", filename, token );
 		}
 	}
 
@@ -2025,7 +2025,7 @@ void BG_ParseUpgradeAttributeFile( const char *filename, upgradeAttributes_t *ua
 
 	if ( strlen( token ) > 0 )
 	{
-		Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+		Log::Warn( "%s not defined in %s", token, filename );
 	}
 }
 
@@ -2173,7 +2173,7 @@ void BG_ParseMissileAttributeFile( const char *filename, missileAttributes_t *ma
 		}*/
 		/*else
 		{
-			Com_Printf( S_WARNING "%s: unknown token '%s'\n", filename, token );
+			Log::Warn( "%s: unknown token '%s'\n", filename, token );
 		}*/
 	}
 
@@ -2187,7 +2187,7 @@ void BG_ParseMissileAttributeFile( const char *filename, missileAttributes_t *ma
 
 	if ( strlen( token ) > 0 )
 	{
-		Com_Printf( S_ERROR "%s not defined in %s\n", token, filename );
+		Log::Warn( "%s not defined in %s", token, filename );
 	}
 }
 
@@ -2452,7 +2452,7 @@ void BG_ParseMissileDisplayFile( const char *filename, missileAttributes_t *ma )
 		}
 		/*else
 		{
-			Com_Printf( S_WARNING "%s: unknown token '%s'\n", filename, token );
+			Log::Warn( "%s: unknown token '%s'\n", filename, token );
 		}*/
 	}
 
@@ -2462,7 +2462,7 @@ void BG_ParseMissileDisplayFile( const char *filename, missileAttributes_t *ma )
 	     !( defined & SPRITE_SIZE   ) ) )
 	{
 		ma->usesSprite = false;
-		Com_Printf( S_ERROR "Not all mandatory sprite vars defined in %s\n", filename );
+		Log::Warn( "Not all mandatory sprite vars defined in %s", filename );
 	}
 
 	// check animation data set for completeness
@@ -2472,7 +2472,7 @@ void BG_ParseMissileDisplayFile( const char *filename, missileAttributes_t *ma )
 	     !( defined & ANIM_FRAME_RATE  ) ) )
 	{
 		ma->usesAnim = false;
-		Com_Printf( S_ERROR "Not all mandatory animation vars defined in %s\n", filename );
+		Log::Warn( "Not all mandatory animation vars defined in %s", filename );
 	}
 
 	// check dlight data set for completeness
@@ -2482,7 +2482,7 @@ void BG_ParseMissileDisplayFile( const char *filename, missileAttributes_t *ma )
 	     !( defined & DLIGHT_COLOR     ) ) )
 	{
 		ma->usesDlight = false;
-		Com_Printf( S_ERROR "Not all mandatory dlight vars defined in %s\n", filename );
+		Log::Warn( "Not all mandatory dlight vars defined in %s", filename );
 	}
 
 	// check impactMark data set for completeness
@@ -2491,7 +2491,7 @@ void BG_ParseMissileDisplayFile( const char *filename, missileAttributes_t *ma )
 	     !( defined & IMPACT_MARK_SIZE ) ) )
 	{
 		ma->usesImpactMark = false;
-		Com_Printf( S_ERROR "Not all mandatory impactMark vars defined in %s\n", filename );
+		Log::Warn( "Not all mandatory impactMark vars defined in %s", filename );
 	}
 
 	// default values
@@ -2539,7 +2539,7 @@ void BG_ParseBeaconAttributeFile( const char *filename, beaconAttributes_t *ba )
 			PARSE( text, token );
 #ifdef BUILD_CGAME
 			if( index < 0 || index >= 4 )
-				Com_Printf( S_ERROR "Invalid beacon icon index %i in %s\n", index, filename );
+				Log::Warn( "Invalid beacon icon index %i in %s", index, filename );
 			else
 				ba->text[ index ] = BG_strdup( token );
 #endif
@@ -2560,7 +2560,7 @@ void BG_ParseBeaconAttributeFile( const char *filename, beaconAttributes_t *ba )
 			PARSE( text, token );
 #ifdef BUILD_CGAME
 			if( index < 0 || index >= 4 )
-				Com_Printf( S_ERROR "Invalid beacon icon index %i in %s\n", index, filename );
+				Log::Warn( "Invalid beacon icon index %i in %s", index, filename );
 			else
 				ba->icon[ 0 ][ index ] = trap_R_RegisterShader( token, RSF_DEFAULT );
 #endif
@@ -2574,7 +2574,7 @@ void BG_ParseBeaconAttributeFile( const char *filename, beaconAttributes_t *ba )
 			PARSE( text, token );
 #ifdef BUILD_CGAME
 			if( index < 0 || index >= 4 )
-				Com_Printf( S_ERROR "Invalid beacon highlighted icon index %i in %s\n", index, filename );
+				Log::Warn( "Invalid beacon highlighted icon index %i in %s", index, filename );
 			else
 				ba->icon[ 1 ][ index ] = trap_R_RegisterShader( token, RSF_DEFAULT );
 #endif
