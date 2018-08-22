@@ -25,6 +25,7 @@
 */
 
 #include "server.h"
+#include "CryptoChallenge.h"
 
 /*
 ===============
@@ -635,8 +636,6 @@ void SV_Init()
 #endif
 	sv_maxclients = Cvar_Get( "sv_maxclients", "20", CVAR_SERVERINFO | CVAR_LATCH );  // NERVE - SMF - changed to 20 from 8
 	sv_maxRate = Cvar_Get( "sv_maxRate", "0",  CVAR_SERVERINFO );
-	sv_minPing = Cvar_Get( "sv_minPing", "0",  CVAR_SERVERINFO );
-	sv_maxPing = Cvar_Get( "sv_maxPing", "0",  CVAR_SERVERINFO );
 	sv_floodProtect = Cvar_Get( "sv_floodProtect", "0",  CVAR_SERVERINFO );
 
 	sv_statsURL = Cvar_Get( "sv_statsURL", "", CVAR_SERVERINFO  );
@@ -653,7 +652,6 @@ void SV_Init()
 	Cvar_Get( "sv_paks", "", CVAR_SYSTEMINFO | CVAR_ROM );
 
 	// server vars
-	sv_rconPassword = Cvar_Get( "rconPassword", "", CVAR_TEMP );
 	sv_privatePassword = Cvar_Get( "sv_privatePassword", "", CVAR_TEMP );
 	sv_fps = Cvar_Get( "sv_fps", "40", CVAR_TEMP );
 	sv_timeout = Cvar_Get( "sv_timeout", "240", CVAR_TEMP );
@@ -788,6 +786,7 @@ void SV_Shutdown( const char *finalmsg )
 
 	memset( &svs, 0, sizeof( svs ) );
 	svs.serverLoad = -1;
+	ChallengeManager::Clear();
 
 	Cvar_Set( "sv_running", "0" );
 #ifndef BUILD_SERVER

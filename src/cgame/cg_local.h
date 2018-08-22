@@ -488,6 +488,10 @@ typedef struct baseTrailBeam_s
 
 	bool          realLight;
 
+	bool          dynamicLight;
+	float         dLightRadius;
+	byte          dLightColor[ 3 ];
+
 	int               numJitters;
 	baseTrailJitter_t jitters[ MAX_TRAIL_BEAM_JITTERS ];
 	bool          jitterAttachments;
