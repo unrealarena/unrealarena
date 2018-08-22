@@ -1933,7 +1933,7 @@ void QDECL PRINTF_LIKE(1) G_LogPrintf( const char *fmt, ... )
 
 	Color::StripColors( string, decolored, sizeof( decolored ) );
 	trap_FS_Write( decolored, strlen( decolored ), level.logFile );
-    trap_FS_Write( "", 1, level.logFile );
+    trap_FS_Write( "\n", 1, level.logFile );
 }
 
 #ifndef UNREALARENA
@@ -2015,17 +2015,17 @@ static void G_LogGameplayStats( int state )
 
 #ifdef UNREALARENA
 			Com_sprintf( logline, sizeof( logline ),
-			             "# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-			             "#"
-			             "# Version: %s"
-			             "# Map:     %s"
-			             "# Date:    %04i-%02i-%02i"
-			             "# Time:    %02i:%02i:%02i"
-			             "# Format:  %i"
-			             "#"
-			             "#  1  2  3"
-			             "#  T #Q #U"
-			             "# -------------------------------------------------------------------------",
+			             "# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+			             "#\n"
+			             "# Version: %s\n"
+			             "# Map:     %s\n"
+			             "# Date:    %04i-%02i-%02i\n"
+			             "# Time:    %02i:%02i:%02i\n"
+			             "# Format:  %i\n"
+			             "#\n"
+			             "#  1  2  3\n"
+			             "#  T #Q #U\n"
+			             "# -------------------------------------------------------------------------\n",
 			             Q3_VERSION,
 			             mapname,
 			             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
@@ -2033,22 +2033,22 @@ static void G_LogGameplayStats( int state )
 			             LOG_GAMEPLAY_STATS_VERSION );
 #else
 			Com_sprintf( logline, sizeof( logline ),
-			             "# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-			             "#"
-			             "# Version: %s"
-			             "# Map:     %s"
-			             "# Date:    %04i-%02i-%02i"
-			             "# Time:    %02i:%02i:%02i"
-			             "# Format:  %i"
-			             "#"
-			             "# g_momentumHalfLife:        %4i"
-			             "# g_initialBuildPoints:      %4i"
-			             "# g_initialMineRate:         %4i"
-			             "# g_mineRateHalfLife:        %4i"
-			             "#"
-			             "#  1  2  3    4    5    6    7    8    9   10   11   12   13   14   15   16"
-			             "#  T #A #H AMom HMom  LMR  AME  HME  ABP  HBP ABRV HBRV ACre HCre AVal HVal"
-			             "# -------------------------------------------------------------------------",
+			             "# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+			             "#\n"
+			             "# Version: %s\n"
+			             "# Map:     %s\n"
+			             "# Date:    %04i-%02i-%02i\n"
+			             "# Time:    %02i:%02i:%02i\n"
+			             "# Format:  %i\n"
+			             "#\n"
+			             "# g_momentumHalfLife:        %4i\n"
+			             "# g_initialBuildPoints:      %4i\n"
+			             "# g_initialMineRate:         %4i\n"
+			             "# g_mineRateHalfLife:        %4i\n"
+			             "#\n"
+			             "#  1  2  3    4    5    6    7    8    9   10   11   12   13   14   15   16\n"
+			             "#  T #A #H AMom HMom  LMR  AME  HME  ABP  HBP ABRV HBRV ACre HCre AVal HVal\n"
+			             "# -------------------------------------------------------------------------\n",
 			             Q3_VERSION,
 			             mapname,
 			             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
@@ -2106,11 +2106,11 @@ static void G_LogGameplayStats( int state )
 
 #ifdef UNREALARENA
 			Com_sprintf( logline, sizeof( logline ),
-			             "%4i %2i %2i",
+			             "%4i %2i %2i\n",
 			             time, num[ TEAM_Q ], num[ TEAM_U ] );
 #else
 			Com_sprintf( logline, sizeof( logline ),
-			             "%4i %2i %2i %4i %4i %4.1f %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i",
+			             "%4i %2i %2i %4i %4i %4.1f %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i\n",
 			             time, num[ TEAM_ALIENS ], num[ TEAM_HUMANS ], Mom[ TEAM_ALIENS ], Mom[ TEAM_HUMANS ],
 			             LMR, ME[ TEAM_ALIENS ], ME[ TEAM_HUMANS ], BP[ TEAM_ALIENS ], BP[ TEAM_HUMANS ],
 			             BRV[ TEAM_ALIENS ], BRV[ TEAM_HUMANS ], Cre[ TEAM_ALIENS ], Cre[ TEAM_HUMANS ],
@@ -2152,14 +2152,14 @@ static void G_LogGameplayStats( int state )
 
 #ifdef UNREALARENA
 			Com_sprintf( logline, sizeof( logline ),
-			             "# -------------------------------------------------------------------------"
-			             "#"
-			             "# Match duration:  %i:%02i"
-			             "# Winning team:    %s"
-			             "# Average Players: %.1f + %.1f"
-			             "# Average Q team:  %.1f + %.1f"
-			             "# Average U team:  %.1f + %.1f"
-			             "#",
+			             "# -------------------------------------------------------------------------\n"
+			             "#\n"
+			             "# Match duration:  %i:%02i\n"
+			             "# Winning team:    %s\n"
+			             "# Average Players: %.1f + %.1f\n"
+			             "# Average Q team:  %.1f + %.1f\n"
+			             "# Average U team:  %.1f + %.1f\n"
+			             "#\n",
 			             min, sec,
 			             winner,
 			             level.team[ TEAM_Q ].averageNumPlayers + level.team[ TEAM_U ].averageNumPlayers,
@@ -2168,14 +2168,14 @@ static void G_LogGameplayStats( int state )
 			             level.team[ TEAM_U ].averageNumPlayers, level.team[ TEAM_U ].averageNumBots);
 #else
 			Com_sprintf( logline, sizeof( logline ),
-			             "# -------------------------------------------------------------------------"
-			             "#"
-			             "# Match duration:  %i:%02i"
-			             "# Winning team:    %s"
-			             "# Average Players: %.1f + %.1f"
-			             "# Average Aliens:  %.1f + %.1f"
-			             "# Average Humans:  %.1f + %.1f"
-			             "#",
+			             "# -------------------------------------------------------------------------\n"
+			             "#\n"
+			             "# Match duration:  %i:%02i\n"
+			             "# Winning team:    %s\n"
+			             "# Average Players: %.1f + %.1f\n"
+			             "# Average Aliens:  %.1f + %.1f\n"
+			             "# Average Humans:  %.1f + %.1f\n"
+			             "#\n",
 			             min, sec,
 			             winner,
 			             level.team[ TEAM_ALIENS ].averageNumPlayers + level.team[ TEAM_HUMANS ].averageNumPlayers,
