@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -945,6 +945,16 @@ static int CG_CalcFov()
 			trap_SendClientCommand( "follow\n" );
 		}
 	}
+#ifdef UNREALARENA
+	else if ( usercmdButtonPressed( cmd.buttons, BUTTON_ATTACK2 ) && !usercmdButtonPressed( oldcmd.buttons, BUTTON_ATTACK2 ) )
+	{
+		if ( cg.snap->ps.pm_flags & PMF_FOLLOW )
+		{
+			// Unfollow
+			trap_SendClientCommand( "follow\n" );
+		}
+	}
+#endif
 
 	if ( cg.predictedPlayerState.pm_type == PM_INTERMISSION ||
 	     ( cg.snap->ps.persistant[ PERS_SPECSTATE ] != SPECTATOR_NOT ) ||
