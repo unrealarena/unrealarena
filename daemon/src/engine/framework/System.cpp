@@ -311,6 +311,19 @@ class QuitCmd : public Cmd::StaticCmd {
 };
 static QuitCmd QuitCmdRegistration;
 
+#ifdef UNREALARENA
+class ExitCmd : public Cmd::StaticCmd {
+    public:
+        ExitCmd(): StaticCmd("exit", Cmd::BASE, "quits the program") {
+        }
+
+        void Run(const Cmd::Args& args) const override {
+            Quit(args.ConcatArgs(1));
+        }
+};
+static ExitCmd ExitCmdRegistration;
+#endif
+
 void Error(Str::StringRef message)
 {
 	// Crash immediately in case of a recursive error
