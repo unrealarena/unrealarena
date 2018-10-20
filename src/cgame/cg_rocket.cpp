@@ -278,7 +278,21 @@ void CG_Rocket_Init( glconfig_t gl )
 		}
 	}
 
+#ifdef UNREALARENA
+	static bool disclaimerShown = false;
+
+	if (!disclaimerShown)
+	{
+		Rocket_DocumentAction( rocketInfo.menu[ ROCKETMENU_DISCLAIMER ].id, "open" );
+		disclaimerShown = true;
+	}
+	else
+	{
+		Rocket_DocumentAction( rocketInfo.menu[ ROCKETMENU_MAIN ].id, "open" );
+	}
+#else
 	Rocket_DocumentAction( rocketInfo.menu[ ROCKETMENU_MAIN ].id, "open" );
+#endif
 
 	// Check if we need to display a server connect/disconnect error
 	text[ 0 ] = '\0';

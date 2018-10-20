@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2011  Dusan Jocic <dusanjocic@msn.com>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -85,6 +85,9 @@ enum rocketMenuType_t {
 	ROCKETMENU_CHAT,
 	ROCKETMENU_BEACONS,
 	ROCKETMENU_ERROR,
+#ifdef UNREALARENA
+	ROCKETMENU_DISCLAIMER,
+#endif
 	ROCKETMENU_NUM_TYPES
 };
 

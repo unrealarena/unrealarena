@@ -17,7 +17,7 @@ Inc. in the United States of America and elsewhere. Quake III Arena™ is a
 trademark or registered trademark of id Software LLC in the United States and/or
 other countries. The authors of Unreal Arena are not affiliated with, endorsed
 by, nor connected in any way to Epic Games, Inc., id Software LLC or any of
-theirs subsidiaries.*
+their subsidiaries.*
 
 
 ## Build Instructions
