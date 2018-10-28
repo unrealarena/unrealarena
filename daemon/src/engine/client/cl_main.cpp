@@ -3323,7 +3323,7 @@ void CL_Init()
 	j_up_axis = Cvar_Get( "j_up_axis", "2", 0 );
 
 #ifdef UNREALARENA
-	cl_consoleFont = Cvar_Get( "cl_consoleFont", "fonts/Play-Regular.ttf",  CVAR_LATCH );
+	cl_consoleFont = Cvar_Get( "cl_consoleFont", "fonts/Hermit-medium.otf",  CVAR_LATCH );
 #else
 	cl_consoleFont = Cvar_Get( "cl_consoleFont", "fonts/unifont.ttf",  CVAR_LATCH );
 #endif
