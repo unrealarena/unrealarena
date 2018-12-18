@@ -38,7 +38,11 @@
 #define MINS_Z             -24
 #define DEFAULT_VIEWHEIGHT 26
 #define CROUCH_VIEWHEIGHT  12
+#ifdef UNREALARENA
+#define DEAD_VIEWHEIGHT    -16
+#else
 #define DEAD_VIEWHEIGHT    4 // height from ground
+#endif
 
 #ifndef UNREALARENA
 #define POWER_REFRESH_TIME 2000 // nextthink time for power checks

@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2016-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -68,11 +68,20 @@ extern  pml_t   pml;
 
 #define pm_accelerate        (10.0f)
 #define pm_wateraccelerate   (4.0f)
+#ifdef UNREALARENA
+#define pm_flyaccelerate     (8.0f)
+#else
 #define pm_flyaccelerate     (4.0f)
+#endif
 
 #define pm_friction          (6.0f)
+#ifdef UNREALARENA
+#define pm_waterfriction     (1.0f)
+#define pm_flightfriction    (3.0f)
+#else
 #define pm_waterfriction     (1.125f)
 #define pm_flightfriction    (6.0f)
+#endif
 #define pm_spectatorfriction (5.0f)
 
 extern  int     c_pmove;
@@ -82,9 +91,13 @@ void            PM_AddTouchEnt( int entityNum );
 void            PM_AddEvent( int newEvent );
 
 bool        PM_SlideMove( bool gravity );
+#ifndef UNREALARENA
 void            PM_StepEvent( const vec3_t from, const vec3_t to, const vec3_t normal );
+#endif
 bool        PM_StepSlideMove( bool gravity, bool predictive );
+#ifndef UNREALARENA
 bool        PM_PredictStepMove();
+#endif
 
 //==================================================================
 #endif /* BG_LOCAL_H_ */

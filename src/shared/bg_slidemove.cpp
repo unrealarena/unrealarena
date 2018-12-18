@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2016-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -61,10 +61,15 @@ bool  PM_SlideMove( bool gravity )
 	numbumps = 4;
 
 	VectorCopy( pm->ps->velocity, primal_velocity );
+#ifndef UNREALARENA
 	VectorCopy( pm->ps->velocity, endVelocity );
+#endif
 
 	if ( gravity )
 	{
+#ifdef UNREALARENA
+		VectorCopy( pm->ps->velocity, endVelocity );
+#endif
 		endVelocity[ 2 ] -= pm->ps->gravity * pml.frametime;
 		pm->ps->velocity[ 2 ] = ( pm->ps->velocity[ 2 ] + endVelocity[ 2 ] ) * 0.5;
 		primal_velocity[ 2 ] = endVelocity[ 2 ];
@@ -178,8 +183,16 @@ bool  PM_SlideMove( bool gravity )
 			// slide along the plane
 			PM_ClipVelocity( pm->ps->velocity, planes[ i ], clipVelocity );
 
+#ifdef UNREALARENA
+			if ( gravity )
+			{
+				// slide along the plane
+				PM_ClipVelocity( endVelocity, planes[ i ], endClipVelocity );
+			}
+#else
 			// slide along the plane
 			PM_ClipVelocity( endVelocity, planes[ i ], endClipVelocity );
+#endif
 
 			// see if there is a second plane that the new move enters
 			for ( j = 0; j < numplanes; j++ )
@@ -196,7 +209,14 @@ bool  PM_SlideMove( bool gravity )
 
 				// try clipping the move to the plane
 				PM_ClipVelocity( clipVelocity, planes[ j ], clipVelocity );
+#ifdef UNREALARENA
+				if ( gravity )
+				{
+					PM_ClipVelocity( endClipVelocity, planes[ j ], endClipVelocity );
+				}
+#else
 				PM_ClipVelocity( endClipVelocity, planes[ j ], endClipVelocity );
+#endif
 
 				// see if it goes back into the first clip plane
 				if ( DotProduct( clipVelocity, planes[ i ] ) >= 0 )
@@ -210,10 +230,20 @@ bool  PM_SlideMove( bool gravity )
 				d = DotProduct( dir, pm->ps->velocity );
 				VectorScale( dir, d, clipVelocity );
 
+#ifdef UNREALARENA
+				if ( gravity )
+				{
+					CrossProduct( planes[ i ], planes[ j ], dir );
+					VectorNormalize( dir );
+					d = DotProduct( dir, endVelocity );
+					VectorScale( dir, d, endClipVelocity );
+				}
+#else
 				CrossProduct( planes[ i ], planes[ j ], dir );
 				VectorNormalize( dir );
 				d = DotProduct( dir, endVelocity );
 				VectorScale( dir, d, endClipVelocity );
+#endif
 
 				// see if there is a third plane the new move enters
 				for ( k = 0; k < numplanes; k++ )
@@ -236,7 +266,14 @@ bool  PM_SlideMove( bool gravity )
 
 			// if we have fixed all interactions, try another move
 			VectorCopy( clipVelocity, pm->ps->velocity );
+#ifdef UNREALARENA
+			if ( gravity )
+			{
+				VectorCopy( endClipVelocity, endVelocity );
+			}
+#else
 			VectorCopy( endClipVelocity, endVelocity );
+#endif
 			break;
 		}
 	}
@@ -255,6 +292,7 @@ bool  PM_SlideMove( bool gravity )
 	return ( bumpcount != 0 );
 }
 
+#ifndef UNREALARENA
 /*
 ==================
 PM_StepEvent
@@ -323,6 +361,7 @@ void PM_StepEvent( const vec3_t from, const vec3_t to, const vec3_t normal )
 		Log::Notice( "%i:stepped\n", c_pmove );
 	}
 }
+#endif
 
 /*
 ==================
@@ -332,21 +371,30 @@ PM_StepSlideMove
 bool PM_StepSlideMove( bool gravity, bool predictive )
 {
 	vec3_t   start_o, start_v;
+#ifndef UNREALARENA
 	vec3_t   down_o, down_v;
+#endif
 	trace_t  trace;
+#ifndef UNREALARENA
 	vec3_t   normal;
 	vec3_t   step_v, step_vNormal;
+#endif
 	vec3_t   up, down;
 	float    stepSize;
 	bool stepped = false;
 
+#ifndef UNREALARENA
 	BG_GetClientNormal( pm->ps, normal );
+#endif
 
 	VectorCopy( pm->ps->origin, start_o );
 	VectorCopy( pm->ps->velocity, start_v );
 
 	if ( !PM_SlideMove( gravity ) )
 	{
+#ifdef UNREALARENA
+		return stepped; // we got exactly where we wanted to go first try
+#else
 		VectorCopy( start_o, down );
 		VectorMA( down, -STEPSIZE, normal, down );
 		pm->trace( &trace, start_o, pm->mins, pm->maxs, down, pm->ps->clientNum, pm->tracemask, 0 );
@@ -362,16 +410,28 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 
 			stepped = true;
 		}
+#endif
 	}
 	else
 	{
 		VectorCopy( start_o, down );
+#ifdef UNREALARENA
+		down[ 2 ] -= STEPSIZE;
+#else
 		VectorMA( down, -STEPSIZE, normal, down );
+#endif
 		pm->trace( &trace, start_o, pm->mins, pm->maxs, down, pm->ps->clientNum, pm->tracemask, 0 );
+#ifdef UNREALARENA
+		VectorSet( up, 0.0f, 0.0f, 1.0f );
+#endif
 
 		// never step up when you still have up velocity
+#ifdef UNREALARENA
+		if ( pm->ps->velocity[ 2 ] > 0.0f && ( trace.fraction == 1.0f || DotProduct( trace.plane.normal, up ) < 0.7f ) )
+#else
 		if ( DotProduct( trace.plane.normal, pm->ps->velocity ) > 0.0f &&
 		     ( trace.fraction == 1.0f || DotProduct( trace.plane.normal, normal ) < 0.7f ) )
+#endif
 		{
 			return stepped;
 		}
@@ -382,13 +442,17 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 		{
 			return stepped;
 		}
-#endif
 
 		VectorCopy( pm->ps->origin, down_o );
 		VectorCopy( pm->ps->velocity, down_v );
+#endif
 
 		VectorCopy( start_o, up );
+#ifdef UNREALARENA
+		up[ 2 ] += STEPSIZE;
+#else
 		VectorMA( up, STEPSIZE, normal, up );
+#endif
 
 		// test the player position if they were a stepheight higher
 		pm->trace( &trace, start_o, pm->mins, pm->maxs, up, pm->ps->clientNum, pm->tracemask, 0 );
@@ -403,15 +467,22 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 			return stepped; // can't step up
 		}
 
+#ifdef UNREALARENA
+		stepSize = trace.endpos[ 2 ] - start_o[ 2 ];
+#else
 		VectorSubtract( trace.endpos, start_o, step_v );
 		VectorCopy( step_v, step_vNormal );
 		VectorNormalize( step_vNormal );
 
 		stepSize = DotProduct( normal, step_vNormal ) * VectorLength( step_v );
+#endif
 		// try slidemove from this position
 		VectorCopy( trace.endpos, pm->ps->origin );
 		VectorCopy( start_v, pm->ps->velocity );
 
+#ifdef UNREALARENA
+		PM_SlideMove( gravity );
+#else
 		if ( PM_SlideMove( gravity ) == 0 )
 		{
 			if ( pm->debugLevel > 1 )
@@ -421,10 +492,15 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 
 			stepped = true;
 		}
+#endif
 
 		// push down the final amount
 		VectorCopy( pm->ps->origin, down );
+#ifdef UNREALARENA
+		down[ 2 ] -= stepSize;
+#else
 		VectorMA( down, -stepSize, normal, down );
+#endif
 		pm->trace( &trace, pm->ps->origin, pm->mins, pm->maxs, down, pm->ps->clientNum,
 		           pm->tracemask, 0 );
 
@@ -439,14 +515,52 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 		}
 	}
 
+#ifdef UNREALARENA
+	if ( !predictive )
+	{
+		stepped = true;
+
+		// use the step move
+		float	delta;
+
+		delta = pm->ps->origin[ 2 ] - start_o[ 2 ];
+
+		if ( delta > 2.0f )
+		{
+			if ( delta < 7.0f )
+			{
+				PM_AddEvent( EV_STEP_4 );
+			}
+			else if ( delta < 11.0f )
+			{
+				PM_AddEvent( EV_STEP_8 );
+			}
+			else if ( delta < 15.0f )
+			{
+				PM_AddEvent( EV_STEP_12 );
+			}
+			else
+			{
+				PM_AddEvent( EV_STEP_16 );
+			}
+		}
+
+		if ( pm->debugLevel > 1 )
+		{
+			Log::Notice( "%i:stepped\n", c_pmove );
+		}
+	}
+#else
 	if ( !predictive && stepped )
 	{
 		PM_StepEvent( start_o, pm->ps->origin, normal );
 	}
+#endif
 
 	return stepped;
 }
 
+#ifndef UNREALARENA
 /*
 ==================
 PM_PredictStepMove
@@ -473,3 +587,4 @@ bool PM_PredictStepMove()
 
 	return stepped;
 }
+#endif

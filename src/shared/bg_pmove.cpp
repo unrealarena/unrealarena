@@ -273,8 +273,17 @@ static void PM_Friction()
 
 	speed = VectorLength( vec );
 
+#ifdef UNREALARENA
+	if ( speed < 1.0f )
+	{
+		vel[ 0 ] = 0;
+		vel[ 1 ] = 0;
+		return;
+	}
+#else
 	if ( speed < 0.1f )
 		return;
+#endif
 
 	drop = 0;
 
@@ -409,20 +418,13 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 	int   max;
 	float total;
 	float scale;
+#ifndef UNREALARENA
 	float modifier = 1.0f;
 	int   staminaJumpCost;
 
-#ifdef UNREALARENA
-	staminaJumpCost = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->staminaJumpCost;
-#else
 	staminaJumpCost = BG_Class( pm->ps->stats[ STAT_CLASS ] )->staminaJumpCost;
-#endif
 
-#ifdef UNREALARENA
-	if ( pm->ps->persistant[ PERS_TEAM ] == TEAM_U && pm->ps->pm_type == PM_NORMAL )
-#else
 	if ( pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS && pm->ps->pm_type == PM_NORMAL )
-#endif
 	{
 		bool wasSprinting, sprint;
 
@@ -481,20 +483,13 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 		// TODO: Try to move code upwards so sprinting isn't activated in the first place.
 		if ( sprint && !usercmdButtonPressed( cmd->buttons, BUTTON_WALKING ) )
 		{
-#ifdef UNREALARENA
-			modifier *= BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->sprintMod;
-#else
 			modifier *= BG_Class( pm->ps->stats[ STAT_CLASS ] )->sprintMod;
-#endif
 		}
-#ifndef UNREALARENA
 		else
 		{
 			modifier *= HUMAN_JOG_MODIFIER;
 		}
-#endif
 
-#ifndef UNREALARENA
 		// Apply modfiers for strafing and going backwards
 		if ( cmd->forwardmove < 0 )
 		{
@@ -504,7 +499,6 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 		{
 			modifier *= HUMAN_SIDE_MODIFIER;
 		}
-#endif
 
 		// Cancel jump if low on stamina
 		if ( !zFlight && pm->ps->stats[ STAT_STAMINA ] < staminaJumpCost )
@@ -512,7 +506,6 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 			cmd->upmove = 0;
 		}
 
-#ifndef UNREALARENA
 		// Apply creepslow modifier
 		// TODO: Move modifer into upgrade/class config files of armour items/classes
 		if ( pm->ps->stats[ STAT_STATE ] & SS_CREEPSLOWED )
@@ -528,7 +521,6 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 				modifier *= CREEP_MODIFIER;
 			}
 		}
-#endif
 
 		// Apply level1 slow modifier
 		if ( pm->ps->stats[ STAT_STATE2 ] & SS2_LEVEL1SLOW )
@@ -563,6 +555,7 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 	{
 		modifier = 0.0f;
 	}
+#endif
 
 	max = abs( cmd->forwardmove );
 
@@ -573,7 +566,9 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 
 	total = cmd->forwardmove * cmd->forwardmove + cmd->rightmove * cmd->rightmove;
 
+#ifndef UNREALARENA
 	if ( zFlight )
+#endif
 	{
 		if ( abs( cmd->upmove ) > max )
 		{
@@ -590,7 +585,11 @@ static float PM_CmdScale( usercmd_t *cmd, bool zFlight )
 
 	total = sqrt( total );
 
+#ifdef UNREALARENA
+	scale = ( float ) pm->ps->speed * max / ( 127.0 * total );
+#else
 	scale = ( float ) pm->ps->speed * max / ( 127.0 * total ) * modifier;
+#endif
 
 	return scale;
 }
@@ -655,6 +654,7 @@ static void PM_SetMovementDir()
 	}
 }
 
+#ifndef UNREALARENA
 /*
 =============
 PM_CheckCharge
@@ -717,6 +717,7 @@ static void PM_CheckWaterPounce()
 		}
 	}
 }
+#endif
 
 /*
 =============
@@ -753,6 +754,7 @@ static void PM_PlayJumpingAnimation()
 	}
 }
 
+#ifndef UNREALARENA
 /*
 =============
 PM_CheckPounce
@@ -909,21 +911,12 @@ static bool PM_CheckPounce()
 
 						if ( pm->debugLevel > 0 )
 						{
-#ifdef UNREALARENA
-							Log::Notice( "[PM_CheckPounce] Found trajectory angles: "
-							            "%.1f ( %.2f, %.2f, %.2f ), %.1f ( %.2f, %.2f, %.2f )\n",
-							            180.0f / M_PI * trajAngles[ 0 ],
-							            trajDir1[ 0 ], trajDir1[ 1 ], trajDir1[ 2 ],
-							            180.0f / M_PI * trajAngles[ 1 ],
-							            trajDir2[ 0 ], trajDir2[ 1 ], trajDir2[ 2 ] );
-#else
 							Log::Notice( "[PM_CheckPounce] Found trajectory angles: "
 							            "%.1f° ( %.2f, %.2f, %.2f ), %.1f° ( %.2f, %.2f, %.2f )\n",
 							            180.0f / M_PI * trajAngles[ 0 ],
 							            trajDir1[ 0 ], trajDir1[ 1 ], trajDir1[ 2 ],
 							            180.0f / M_PI * trajAngles[ 1 ],
 							            trajDir2[ 0 ], trajDir2[ 1 ], trajDir2[ 2 ] );
-#endif
 						}
 
 						if ( trajDir1[ 2 ] < trajDir2[ 2 ] )
@@ -1093,7 +1086,6 @@ static bool PM_CheckPounce()
 	return true;
 }
 
-#ifndef UNREALARENA
 /*
 =============
 PM_CheckWallJump
@@ -1542,8 +1534,10 @@ static void PM_LandJetpack( bool force )
 
 static bool PM_CheckJump()
 {
+#ifndef UNREALARENA
 	vec3_t   normal;
 	int      staminaJumpCost;
+#endif
 	float    magnitude;
 #ifndef UNREALARENA
 	bool jetpackJump;
@@ -1595,35 +1589,20 @@ static bool PM_CheckJump()
 		return false;
 	}
 
+#ifndef UNREALARENA
 	// can't jump whilst grabbed
 	if ( pm->ps->pm_type == PM_GRABBED )
 	{
 		return false;
 	}
 
-#ifdef UNREALARENA
-	staminaJumpCost = BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->staminaJumpCost;
-#else
 	staminaJumpCost = BG_Class( pm->ps->stats[ STAT_CLASS ] )->staminaJumpCost;
-#endif
-#ifndef UNREALARENA
 	jetpackJump     = false;
-#endif
 
 	// humans need stamina or jetpack to jump
-#ifdef UNREALARENA
-	if ( ( pm->ps->persistant[ PERS_TEAM ] == TEAM_U ) &&
-	     ( pm->ps->stats[ STAT_STAMINA ] < staminaJumpCost ) )
-#else
 	if ( ( pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS ) &&
 	     ( pm->ps->stats[ STAT_STAMINA ] < staminaJumpCost ) )
-#endif
 	{
-#ifdef UNREALARENA
-		{
-			return false;
-		}
-#else
 		// use jetpack instead of stamina to take off
 		if ( BG_InventoryContainsUpgrade( UP_JETPACK, pm->ps->stats ) &&
 		     pm->ps->stats[ STAT_FUEL ] > JETPACK_FUEL_LOW )
@@ -1634,19 +1613,24 @@ static bool PM_CheckJump()
 		{
 			return false;
 		}
-#endif
 	}
 
 	// take some stamina off
-#ifdef UNREALARENA
-	if ( pm->ps->persistant[ PERS_TEAM ] == TEAM_U )
-#else
 	if ( !jetpackJump && pm->ps->persistant[ PERS_TEAM ] == TEAM_HUMANS )
-#endif
 	{
 		pm->ps->stats[ STAT_STAMINA ] -= staminaJumpCost;
 	}
+#endif
 
+#ifdef UNREALARENA
+	// must wait for jump to be released
+	if ( pm->ps->pm_flags & PMF_JUMP_HELD )
+	{
+		// clear upmove so cmdscale doesn't lower running speed
+		pm->cmd.upmove = 0;
+		return false;
+	}
+#endif
 	// go into jump mode
 	pml.groundPlane = false;
 	pml.walking     = false;
@@ -1663,10 +1647,10 @@ static bool PM_CheckJump()
 		pm->ps->pm_flags |= PMF_TIME_WALLJUMP;
 		pm->ps->pm_time = 200;
 	}
-#endif
 
 	// jump in surface normal direction
 	BG_GetClientNormal( pm->ps, normal );
+#endif
 
 	// retrieve jump magnitude
 #ifdef UNREALARENA
@@ -1689,6 +1673,9 @@ static bool PM_CheckJump()
 	}
 #endif
 
+#ifdef UNREALARENA
+	pm->ps->velocity[ 2 ] = magnitude;
+#else
 	// sanity clip velocity Z
 	if ( pm->ps->velocity[ 2 ] < 0.0f )
 	{
@@ -1696,6 +1683,7 @@ static bool PM_CheckJump()
 	}
 
 	VectorMA( pm->ps->velocity, magnitude, normal, pm->ps->velocity );
+#endif
 
 	PM_AddEvent( EV_JUMP );
 	PM_PlayJumpingAnimation();
@@ -1792,8 +1780,10 @@ static void PM_WaterMove()
 	float  scale;
 	float  vel;
 
+#ifndef UNREALARENA
 	// if pouncing, stop
 	PM_CheckWaterPounce();
+#endif
 
 	if ( PM_CheckWaterJump() )
 	{
@@ -1831,13 +1821,30 @@ static void PM_WaterMove()
 	//
 	// user intentions
 	//
+#ifdef UNREALARENA
+	if ( !scale )
+	{
+		wishvel[ 0 ] = 0;
+		wishvel[ 1 ] = 0;
+		wishvel[ 2 ] = -60;		// sink towards bottom
+	}
+	else
+	{
+		for ( i = 0; i < 3; i++ )
+		{
+			wishvel[ i ] = scale * pml.forward[ i ] * pm->cmd.forwardmove + scale * pml.right[ i ] * pm->cmd.rightmove;
+		}
 
+		wishvel[ 2 ] += scale * pm->cmd.upmove;
+	}
+#else
 	for ( i = 0; i < 3; i++ )
 	{
 		wishvel[ i ] = scale * pml.forward[ i ] * pm->cmd.forwardmove + scale * pml.right[ i ] * pm->cmd.rightmove;
 	}
 
 	wishvel[ 2 ] += scale * pm->cmd.upmove;
+#endif
 
 	VectorCopy( wishvel, wishdir );
 	wishspeed = VectorNormalize( wishdir );
@@ -2116,6 +2123,9 @@ static void PM_WalkMove()
 	float     scale;
 	usercmd_t cmd;
 	float     accelerate;
+#ifdef UNREALARENA
+	float     vel;
+#endif
 
 	if ( pm->waterlevel > 2 && DotProduct( pml.forward, pml.groundTrace.plane.normal ) > 0 )
 	{
@@ -2124,7 +2134,11 @@ static void PM_WalkMove()
 		return;
 	}
 
+#ifdef UNREALARENA
+	if ( PM_CheckJump() )
+#else
 	if ( PM_CheckJump() || PM_CheckPounce() )
+#endif
 	{
 		if ( pm->waterlevel > 1 )
 		{
@@ -2138,15 +2152,11 @@ static void PM_WalkMove()
 		return;
 	}
 
+#ifndef UNREALARENA
 	// Slide
-#ifdef UNREALARENA
-	if ( pm->cmd.upmove < 0
-		&& VectorLength(pm->ps->velocity) > 400.0f )
-#else
 	if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_SLIDER )
 		&& pm->cmd.upmove < 0
 		&& VectorLength(pm->ps->velocity) > HUMAN_SLIDE_THRESHOLD )
-#endif
 	{
 		pm->ps->stats[ STAT_STATE ] |= SS_SLIDING;
 		PM_StepSlideMove( false, true );
@@ -2158,13 +2168,12 @@ static void PM_WalkMove()
 		pm->ps->stats[ STAT_STATE ] &= ~SS_SLIDING;
 	}
 
-#ifndef UNREALARENA
 	// if PM_Land didn't stop the jetpack (e.g. to allow for a jump) but we didn't get away
 	// from the ground, stop it now
 	PM_LandJetpack( true );
-#endif
 
 	PM_CheckCharge();
+#endif
 
 	PM_Friction();
 
@@ -2257,8 +2266,18 @@ static void PM_WalkMove()
 //    pm->ps->velocity[2] = 0;
 	}
 
+#ifdef UNREALARENA
+	vel = VectorLength( pm->ps->velocity );
+#endif
+
 	// slide along the ground plane
 	PM_ClipVelocity( pm->ps->velocity, pml.groundTrace.plane.normal, pm->ps->velocity );
+
+#ifdef UNREALARENA
+	// don't decrease velocity when going up or down a slope
+	VectorNormalize( pm->ps->velocity );
+	VectorScale( pm->ps->velocity, vel, pm->ps->velocity );
+#endif
 
 	// don't do anything if standing still
 	if ( !pm->ps->velocity[ 0 ] && !pm->ps->velocity[ 1 ] )
@@ -2504,6 +2523,13 @@ static void PM_CrashLand()
 	delta = vel + t * acc;
 	delta = delta * delta * 0.0001;
 
+#ifdef UNREALARENA
+	// ducking while falling doubles damage
+	if ( pm->ps->pm_flags & PMF_DUCKED )
+	{
+		delta *= 2;
+	}
+#endif
 	// never take falling damage if completely underwater
 	if ( pm->waterlevel == 3 )
 	{
@@ -2548,6 +2574,16 @@ static void PM_CrashLand()
 				PM_AddEvent( EV_FALL_MEDIUM );
 			}
 		}
+#ifdef UNREALARENA
+		else if ( delta > 7 )
+		{
+			PM_AddEvent( EV_FALL_SHORT );
+		}
+		else
+		{
+			PM_AddEvent( PM_FootstepForSurface() );
+		}
+#else
 		else
 		{
 			if ( delta > 7 )
@@ -2559,6 +2595,7 @@ static void PM_CrashLand()
 				PM_AddEvent( PM_FootstepForSurface() );
 			}
 		}
+#endif
 	}
 
 	// start footstep cycle over
@@ -2641,7 +2678,11 @@ static void PM_GroundTraceMissed()
 		VectorCopy( pm->ps->origin, point );
 		point[ 2 ] -= 64.0f;
 
+#ifdef UNREALARENA
+		pm->trace( &trace, pm->ps->origin, pm->mins, pm->maxs, point, pm->ps->clientNum, pm->tracemask, 0 );
+#else
 		pm->trace( &trace, pm->ps->origin, nullptr, nullptr, point, pm->ps->clientNum, pm->tracemask, 0 );
+#endif
 
 		if ( trace.fraction == 1.0f )
 		{
@@ -3126,9 +3167,9 @@ static void PM_GroundTrace()
 	vec3_t  point;
 	trace_t trace;
 
+#ifndef UNREALARENA
 	static const vec3_t refNormal = { 0.0f, 0.0f, 1.0f };
 
-#ifndef UNREALARENA
 	if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_WALLCLIMBER ) )
 	{
 		if ( pm->ps->persistant[ PERS_STATE ] & PS_WALLCLIMBINGTOGGLE )
@@ -3229,14 +3270,17 @@ static void PM_GroundTrace()
 		}
 	}
 
+#ifndef UNREALARENA
 	//make sure that the surfNormal is reset to the ground
 	VectorCopy( refNormal, pm->ps->grapplePoint );
+#endif
 
 	// if the trace didn't hit anything, we are in free fall
 	if ( trace.fraction == 1.0f )
 	{
 		bool steppedDown = false;
 
+#ifndef UNREALARENA
 		// try to step down
 		if ( pml.groundPlane && PM_PredictStepMove() )
 		{
@@ -3255,6 +3299,7 @@ static void PM_GroundTrace()
 				steppedDown = true;
 			}
 		}
+#endif
 
 		if ( !steppedDown )
 		{
@@ -3350,6 +3395,13 @@ static void PM_GroundTrace()
 #ifdef UNREALARENA
 		{
 			PM_CrashLand();
+		}
+
+		// don't do landing time if we were just going down a slope
+		if ( pml.previous_velocity[ 2 ] < -200 )
+		{
+			// don't allow another jump for a little while
+			pm->ps->pm_time = 250;
 		}
 #else
 		if ( BG_ClassHasAbility( pm->ps->stats[ STAT_CLASS ], SCA_TAKESFALLDAMAGE ) )
@@ -3461,7 +3513,11 @@ static void PM_CheckDuck()
 	if ( pm->ps->pm_type == PM_DEAD )
 	{
 		pm->maxs[ 2 ] = -8;
+#ifdef UNREALARENA
+		pm->ps->viewheight = DEAD_VIEWHEIGHT;
+#else
 		pm->ps->viewheight = PCmins[ 2 ] + DEAD_VIEWHEIGHT;
+#endif
 		return;
 	}
 
@@ -3751,20 +3807,14 @@ static void PM_Footsteps()
 		}
 	}
 
-#ifdef UNREALARENA
-	bobmove *= BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->bobCycle;
-#else
+#ifndef UNREALARENA
 	bobmove *= BG_Class( pm->ps->stats[ STAT_CLASS ] )->bobCycle;
-#endif
 
 	if ( pm->ps->stats[ STAT_STATE ] & SS_SPEEDBOOST && pm->ps->groundEntityNum != ENTITYNUM_NONE )
 	{
-#ifdef UNREALARENA
-		bobmove *= BG_Class( ( team_t ) pm->ps->persistant[ PERS_TEAM ] )->sprintMod;
-#else
 		bobmove *= BG_Class( pm->ps->stats[ STAT_CLASS ] )->sprintMod;
-#endif
 	}
+#endif
 
 	// check for footstep / splash sounds
 	old = pm->ps->bobCycle;
@@ -4761,7 +4811,9 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 {
 	short  temp[ 3 ];
 	int    i;
+#ifndef UNREALARENA
 	vec3_t axis[ 3 ], rotaxis[ 3 ];
+#endif
 	vec3_t tempang;
 
 	if ( ps->pm_type == PM_INTERMISSION )
@@ -4777,6 +4829,11 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 	// circularly clamp the angles with deltas
 	for ( i = 0; i < 3; i++ )
 	{
+#ifdef UNREALARENA
+		{
+			temp[ i ] = cmd->angles[ i ] + ps->delta_angles[ i ];
+		}
+#else
 		if ( i == ROLL )
 		{
 			// Guard against speed hack
@@ -4793,6 +4850,7 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 		{
 			temp[ i ] = cmd->angles[ i ] + ps->delta_angles[ i ];
 		}
+#endif
 
 		if ( i == PITCH )
 		{
@@ -4812,21 +4870,16 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 		tempang[ i ] = SHORT2ANGLE( temp[ i ] );
 	}
 
+#ifndef UNREALARENA
 	//convert viewangles -> axis
 	AnglesToAxis( tempang, axis );
 
-#ifdef UNREALARENA
-	{
-		AxisCopy( axis, rotaxis );
-	}
-#else
 	if ( !( ps->stats[ STAT_STATE ] & SS_WALLCLIMBING ) ||
 	     !BG_RotateAxis( ps->grapplePoint, axis, rotaxis, false,
 	                     ps->eFlags & EF_WALLCLIMBCEILING ) )
 	{
 		AxisCopy( axis, rotaxis );
 	}
-#endif
 
 	//convert the new axis back to angles
 	AxisToAngles( rotaxis, tempang );
@@ -4836,6 +4889,7 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 	{
 		tempang[ i ] -= 360.0f * floor( ( tempang[ i ] + 180.0f ) / 360.0f );
 	}
+#endif
 
 	//actually set the viewangles
 	for ( i = 0; i < 3; i++ )
@@ -4843,6 +4897,7 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 		ps->viewangles[ i ] = tempang[ i ];
 	}
 
+#ifndef UNREALARENA
 	//pull the view into the lock point
 	if ( ps->pm_type == PM_GRABBED && !BG_InventoryContainsUpgrade( UP_BATTLESUIT, ps->stats ) )
 	{
@@ -4877,6 +4932,7 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 			}
 		}
 	}
+#endif
 }
 
 #ifndef UNREALARENA
@@ -5021,7 +5077,9 @@ void PmoveSingle( pmove_t *pmove )
 		pmove->cmd.forwardmove = 0;
 		pmove->cmd.rightmove = 0;
 
+#ifndef UNREALARENA
 		if ( pmove->cmd.upmove > 0 )
+#endif
 		{
 			pmove->cmd.upmove = 0;
 		}
@@ -5052,6 +5110,10 @@ void PmoveSingle( pmove_t *pmove )
 
 	pml.frametime = pml.msec * 0.001;
 
+#ifdef UNREALARENA
+	// update the viewangles
+	PM_UpdateViewAngles( pm->ps, &pm->cmd );
+#endif
 	AngleVectors( pm->ps->viewangles, pml.forward, pml.right, pml.up );
 
 	if ( pm->cmd.upmove < 10 )
@@ -5080,14 +5142,18 @@ void PmoveSingle( pmove_t *pmove )
 	switch ( pm->ps->pm_type )
 	{
 		case PM_SPECTATOR:
+#ifndef UNREALARENA
 			PM_UpdateViewAngles( pm->ps, &pm->cmd );
+#endif
 			PM_CheckDuck();
 			PM_GhostMove( false );
 			PM_DropTimers();
 			return;
 
 		case PM_NOCLIP:
+#ifndef UNREALARENA
 			PM_UpdateViewAngles( pm->ps, &pm->cmd );
+#endif
 			PM_GhostMove( true );
 			PM_SetViewheight();
 			PM_Weapon();
@@ -5116,8 +5182,10 @@ void PmoveSingle( pmove_t *pmove )
 	// set groundentity
 	PM_GroundTrace();
 
+#ifndef UNREALARENA
 	// update the viewangles
 	PM_UpdateViewAngles( pm->ps, &pm->cmd );
+#endif
 
 	if ( pm->ps->pm_type == PM_DEAD || pm->ps->pm_type == PM_GRABBED )
 	{
@@ -5176,8 +5244,10 @@ void PmoveSingle( pmove_t *pmove )
 	// set groundentity, watertype, and waterlevel
 	PM_GroundTrace();
 
+#ifndef UNREALARENA
 	// update the viewangles
 	PM_UpdateViewAngles( pm->ps, &pm->cmd );
+#endif
 
 	PM_SetWaterLevel();
 
@@ -5250,5 +5320,12 @@ void Pmove( pmove_t *pmove )
 
 		pmove->cmd.serverTime = pmove->ps->commandTime + msec;
 		PmoveSingle( pmove );
+
+#ifdef UNREALARENA
+		if ( pmove->ps->pm_flags & PMF_JUMP_HELD )
+		{
+			pmove->cmd.upmove = 20;
+		}
+#endif
 	}
 }
