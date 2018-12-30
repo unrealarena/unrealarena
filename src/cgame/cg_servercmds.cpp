@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -142,11 +142,17 @@ void CG_ParseServerinfo()
 
 	cgs.timelimit          = atoi( Info_ValueForKey( info, "timelimit" ) );
 	cgs.maxclients         = atoi( Info_ValueForKey( info, "sv_maxclients" ) );
+
 #ifndef UNREALARENA
+	// TODO: Remove this one.
 	cgs.powerReactorRange  = atoi( Info_ValueForKey( info, "g_powerReactorRange" ) );
-	cgs.powerRepeaterRange = atoi( Info_ValueForKey( info, "g_powerRepeaterRange" ) );
-	cgs.momentumHalfLife = atof( Info_ValueForKey( info, "g_momentumHalfLife" ) );
-	cgs.unlockableMinTime  = atof( Info_ValueForKey( info, "g_unlockableMinTime" ) );
+
+	cgs.momentumHalfLife  = atof( Info_ValueForKey( info, "g_momentumHalfLife" ) );
+	cgs.unlockableMinTime = atof( Info_ValueForKey( info, "g_unlockableMinTime" ) );
+
+	cgs.buildPointBudgetPerMiner       = atof( Info_ValueForKey( info, "g_BPBudgetPerMiner" ) );
+	cgs.buildPointRecoveryInitialRate  = atof( Info_ValueForKey( info, "g_BPRecoveryInitialRate" ) );
+	cgs.buildPointRecoveryRateHalfLife = atof( Info_ValueForKey( info, "g_BPRecoveryRateHalfLife" ) );
 #endif
 
 	Q_strncpyz( cgs.mapname, Info_ValueForKey( info, "mapname" ), sizeof(cgs.mapname) );
@@ -414,6 +420,8 @@ static void CG_MapRestart()
 	// we really should clear more parts of cg here and stop sounds
 
 	trap_Cvar_Set( "cg_thirdPerson", "0" );
+
+	CG_OnMapRestart();
 }
 
 /*
@@ -636,21 +644,14 @@ void CG_Menu( int menuType, int arg )
 			break;
 
 		case MN_H_NOTPOWERED:
-			longMsg = _("This buildable is not powered. Build a Reactor and/or Repeater "
-			          "in order to power it.");
+			longMsg = _("This buildable is not powered.");
 			shortMsg = _("This buildable is not powered");
 			break;
 
-		case MN_H_NOPOWERHERE:
-			longMsg = _("There is not enough power in this area. Keep a distance to other "
-			            "buildables or build a repeater to increase the local capacity.");
-			shortMsg = _("There is not enough power here");
-			break;
-
 		case MN_H_NOREACTOR:
-			longMsg = _("There is no reactor and the local power supply is insufficient. "
-			            "Build the reactor or a repeater to increase the local capacity.");
-			shortMsg = _("There is no reactor and the local power supply is insufficient");
+			longMsg = _("There is no reactor. A reactor must be built before any other "
+			            "structure can be placed.");
+			shortMsg = _("There is no reactor");
 			break;
 
 		case MN_H_ONEREACTOR:
@@ -684,9 +685,9 @@ void CG_Menu( int menuType, int arg )
 			break;
 
 		case MN_H_NOENERGYAMMOHERE:
-			longMsg = _("You must be near a Reactor or a powered Armoury or Repeater "
+			longMsg = _("You must be near a Reactor or a powered Armoury "
 			          "in order to purchase energy ammunition.");
-			shortMsg = _("You must be near a Reactor or a powered Armoury or Repeater");
+			shortMsg = _("You must be near a Reactor or a powered Armoury");
 			break;
 
 		case MN_H_NOROOMARMOURCHANGE:
@@ -711,15 +712,9 @@ void CG_Menu( int menuType, int arg )
 
 			//===============================
 
-		case MN_A_NOCREEP:
-			longMsg = _("There is no creep here. You must build near existing Eggs or "
-			          "the Overmind. Alien structures will not support themselves.");
-			shortMsg = _("There is no creep here");
-			break;
-
 		case MN_A_NOOVMND:
-			longMsg = _("There is no Overmind. An Overmind must be built to control "
-			          "the structure you tried to place.");
+			longMsg = _("There is no Overmind. An Overmind must be built before any other "
+			            "structure can be placed.");
 			shortMsg = _("There is no Overmind");
 			break;
 
@@ -809,12 +804,12 @@ void CG_Menu( int menuType, int arg )
 
 		if ( shortMsg && cg_disableWarningDialogs.integer < 2 )
 		{
-			Log::Notice( "%s", shortMsg );
+			Log::Notice( shortMsg );
 		}
 	}
 	else if ( shortMsg && cg_disableWarningDialogs.integer < 2 )
 	{
-		Log::Notice( "%s", shortMsg );
+		Log::Notice( shortMsg );
 	}
 }
 
@@ -823,6 +818,9 @@ void CG_Menu( int menuType, int arg )
 CG_Say
 =================
 */
+// Disable log spam suppression since chat should be rate-limited server-side
+static Log::Logger chatLog = Log::Logger("chat", "", Log::Level::NOTICE).WithoutSuppression();
+
 static void CG_Say( const char *name, int clientNum, saymode_t mode, const char *text )
 {
 	char prefix[ 21 ] = "";
@@ -860,7 +858,7 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 		if ( cg_chatTeamPrefix.integer )
 		{
 			Com_sprintf( prefix, sizeof( prefix ), "[%s%c^*] ",
-			             Color::CString( tcolor ),
+			             Color::ToString( tcolor ).c_str(),
 			             Str::ctoupper( * ( BG_TeamName( ci->team ) ) ) );
 		}
 
@@ -921,7 +919,7 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 		Q_strcat( prefix, sizeof( prefix ), "* " );
 	}
 
-	const char* color = Color::CString( UI_GetChatColour( mode, team ) );
+	auto color = Color::ToString( UI_GetChatColour( mode, team ) );
 
 	switch ( mode )
 	{
@@ -931,70 +929,66 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 			{
 				ignore = S_SKIPNOTIFY;
 			}
+			DAEMON_FALLTHROUGH;
 
 		case SAY_ALL_ADMIN:
-			Log::Notice(  "%s%s%s^7: %s%s",
-			           ignore, prefix, name, color, text );
+			chatLog.Notice( "%s%s%s^*: %s%s", ignore, prefix, name, color, text );
 			break;
 
 		case SAY_TEAM:
-			Log::Notice( "%s%s(%s^7)%s: %s%s",
-			           ignore, prefix, name, location, color, text );
+			chatLog.Notice( "%s%s(%s^*)%s: %s%s", ignore, prefix, name, location, color, text );
 			break;
 
 		case SAY_ADMINS:
 		case SAY_ADMINS_PUBLIC:
-			Log::Notice( "%s%s%s%s^7: %s%s",
-			           ignore, prefix,
-			           ( mode == SAY_ADMINS ) ? "[ADMIN]" : "[PLAYER]",
-			           name, color, text );
+			chatLog.Notice( "%s%s%s%s^*: %s%s",
+			                ignore, prefix,
+			                ( mode == SAY_ADMINS ) ? "[ADMIN]" : "[PLAYER]",
+			                name, color, text );
 			break;
 
 		case SAY_AREA:
 		case SAY_AREA_TEAM:
-			Log::Notice( "%s%s<%s^7>%s: %s%s",
-			           ignore, prefix, name, location, color, text );
+			chatLog.Notice( "%s%s<%s^*>%s: %s%s", ignore, prefix, name, location, color, text );
 			break;
 
 		case SAY_PRIVMSG:
 		case SAY_TPRIVMSG:
 #ifdef UNREALARENA
-			Log::Notice( "%s%s[%s^7 -> %s^7]: %s%s",
-			           ignore, prefix, name, cgs.clientinfo[ cg.clientNum ].name,
-			           color, text );
+			chatLog.Notice( "%s%s[%s^* -> %s^*]: %s%s",
+			                ignore, prefix, name, cgs.clientinfo[ cg.clientNum ].name,
+			                color, text );
 #else
-			Log::Notice( "%s%s[%s^7 → %s^7]: %s%s",
-			           ignore, prefix, name, cgs.clientinfo[ cg.clientNum ].name,
-			           color, text );
+			chatLog.Notice( "%s%s[%s^* → %s^*]: %s%s",
+			                ignore, prefix, name, cgs.clientinfo[ cg.clientNum ].name,
+			                color, text );
 #endif
 
 			if ( !ignore[ 0 ] )
 			{
 				CG_CenterPrint( va( _("%sPrivate message from: ^7%s"),
-				                    color, name ), 200, GIANTCHAR_WIDTH * 4 );
+				                    color.c_str(), name ), 200, GIANTCHAR_WIDTH * 4 );
 
 				if ( clientNum < 0 || clientNum >= MAX_CLIENTS )
 				{
 					clientNum = cg.clientNum;
 				}
 
-				Log::Notice(_( ">> to reply, say: /m %d [your message] <<"), clientNum );
+				chatLog.Notice(_( ">> to reply, say: /m %d [your message] <<"), clientNum );
 			}
 
 			break;
 
 		case SAY_ALL_ME:
-			Log::Notice(  "%s* %s%s^7 %s%s",
-			           ignore, prefix, name, color, text );
+			chatLog.Notice( "%s* %s%s^* %s%s", ignore, prefix, name, color, text );
 			break;
 
 		case SAY_TEAM_ME:
-			Log::Notice( "%s* %s(%s^7)%s %s%s",
-			           ignore, prefix, name, location, color, text );
+			chatLog.Notice( "%s* %s(%s^*)%s %s%s", ignore, prefix, name, location, color, text );
 			break;
 
 		case SAY_RAW:
-			Log::Notice( "%s", text );
+			chatLog.Notice( text );
 			break;
 
 		case SAY_DEFAULT:
@@ -1030,6 +1024,7 @@ static void CG_Say( const char *name, int clientNum, saymode_t mode, const char 
 				break;
 			}
 #endif
+			DAEMON_FALLTHROUGH;
 
 		default:
 			trap_S_StartLocalSound( cgs.media.talkSound, soundChannel_t::CHAN_LOCAL_SOUND );
@@ -1274,7 +1269,7 @@ CG_Print_f
 */
 static void CG_Print_f()
 {
-	Log::Notice( "%s", CG_Argv( 1 ) );
+	Log::Notice( CG_Argv( 1 ) );
 }
 
 /*
@@ -1284,12 +1279,12 @@ CG_PrintTR_f
 */
 static void CG_PrintTR_f()
 {
-	Log::Notice( "%s", TranslateText_Internal( false, 1 ) );
+	Log::Notice( TranslateText_Internal( false, 1 ) );
 }
 
 static void CG_PrintTR_plural_f()
 {
-	Log::Notice("%s", TranslateText_Internal( true, 1 ) );
+	Log::Notice( TranslateText_Internal( true, 1 ) );
 }
 
 /*

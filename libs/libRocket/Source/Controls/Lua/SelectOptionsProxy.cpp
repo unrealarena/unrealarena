@@ -130,7 +130,7 @@ template<> void ExtraInit<Rocket::Controls::Lua::SelectOptionsProxy>(lua_State* 
 }
 
 using Rocket::Controls::Lua::SelectOptionsProxy;
-LUACONTROLSTYPEDEFINE(SelectOptionsProxy,false);
+LUACONTROLSTYPEDEFINE(SelectOptionsProxy,false)
 }
 }
 }

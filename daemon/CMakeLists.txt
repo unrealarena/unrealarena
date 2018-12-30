@@ -1,5 +1,5 @@
 # Daemon BSD Source Code
-# Copyright (c) 2015-2016, Unreal Arena
+# Copyright (c) 2015-2018, Unreal Arena
 # Copyright (c) 2013-2016, Daemon Developers
 # All rights reserved.
 #
@@ -72,14 +72,17 @@ if(NOT DAEMON_EXTERNAL_APP)
         set(BUILD_GAME_NACL_NEXE 0)
     endif()
     option(BUILD_TTY_CLIENT "Build Daemon headless client" 1)
-    option(BUILD_DUMMPY_APP "Build the dummy app for daemon" 0)
+    option(BUILD_DUMMY_APP "Build the dummy app for daemon" 0)
 
     set(NACL_RUNTIME_PATH "" CACHE STRING "Directory containing the NaCl binaries")
 
-    if (NOT APPLE AND NOT WIN32)
-	option(USE_CURSES "Compile with curses support" 1)
+    # Not supported on mac because the included version is too old
+    if(APPLE)
+        set(USE_CURSES OFF)
+    elseif(WIN32)
+        set(USE_CURSES ON)
     else()
-	option(USE_CURSES "Compile with curses support" 0)
+	option(USE_CURSES "Compile with curses support" 1)
     endif()
     cmake_dependent_option(USE_SMP "Compile with support for running the renderer in a separate thread" 1 BUILD_CLIENT 0)
     cmake_dependent_option(USE_GEOIP "Use libgeoip" 1 "BUILD_SERVER OR BUILD_CLIENT OR BUILD_TTY_CLIENT" 0)
@@ -95,6 +98,23 @@ option(USE_DEBUG_OPTIMIZE "Try to optimize the debug build" 0)
 option(USE_PRECOMPILED_HEADER "Improve build times by using a precompiled header" 1)
 option(USE_ADDRESS_SANITIZER "Try to use the address sanitizer" 0)
 option(BE_VERBOSE "Tell the compiler to report all warnings" 0)
+option(USE_STATIC_LIBS "Tries to use static libs where possible. Only works for Linux" 0)
+
+# Game VM modules are built with a recursive invocation of CMake, by which all the configuration
+# options are lost, except ones we explicitly choose to pass.
+set(DEFAULT_NACL_VM_INHERITED_OPTIONS
+    BE_VERBOSE
+    BUILD_CGAME
+    BUILD_SGAME
+    CMAKE_BUILD_TYPE
+    USE_PEDANTIC
+    USE_PRECOMPILED_HEADER
+    USE_WERROR
+)
+set(NACL_VM_INHERITED_OPTIONS "${DEFAULT_NACL_VM_INHERITED_OPTIONS}" CACHE STRING
+    "Semicolon-separated list of options for which NaCl game VMs should use the same value as the other binaries")
+mark_as_advanced(NACL_VM_INHERITED_OPTIONS)
+
 if (BE_VERBOSE)
     set(WARNMODE "no-error=")
 else()
@@ -129,26 +149,27 @@ if (CMAKE_CFG_INTDIR STREQUAL ".")
 else()
     set(FULL_OUTPUT_DIR ${CMAKE_BINARY_DIR}/${CMAKE_CFG_INTDIR})
 endif()
+set(EXTERNAL_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps" CACHE STRING "Directory in which to store the downloaded dependencies.")
 if (MSVC)
     set(DEPS_EXT ".zip")
     if (ARCH STREQUAL "x86_64")
-        set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/msvc64-${DEPS_VERSION})
+        set(DEPS_DIR ${EXTERNAL_DEPS_DIR}/msvc64-${DEPS_VERSION})
     else()
-        set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/msvc32-${DEPS_VERSION})
+        set(DEPS_DIR ${EXTERNAL_DEPS_DIR}/msvc32-${DEPS_VERSION})
     endif()
 elseif (WIN32)
     set(DEPS_EXT ".zip")
     if (ARCH STREQUAL "x86_64")
-        set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/mingw64-${DEPS_VERSION})
+        set(DEPS_DIR ${EXTERNAL_DEPS_DIR}/mingw64-${DEPS_VERSION})
     else()
-        set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/mingw32-${DEPS_VERSION})
+        set(DEPS_DIR ${EXTERNAL_DEPS_DIR}/mingw32-${DEPS_VERSION})
     endif()
 elseif (APPLE)
     set(DEPS_EXT ".zip")
-    set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/osx-${DEPS_VERSION})
+    set(DEPS_DIR ${EXTERNAL_DEPS_DIR}/osx-${DEPS_VERSION})
 elseif (LINUX)
     set(DEPS_EXT ".zip")
-    set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/linux-${DEPS_VERSION})
+    set(DEPS_DIR ${EXTERNAL_DEPS_DIR}/linux-${DEPS_VERSION})
 endif()
 set(DEPS_DIR ${DEPS_DIR} PARENT_SCOPE)
 
@@ -189,6 +210,7 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../.git")
             COMMAND ${GIT_EXECUTABLE} describe --tags --long --match v* --dirty=+dirty
             OUTPUT_VARIABLE GIT_DESCRIBE_REPORT
             OUTPUT_STRIP_TRAILING_WHITESPACE
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
         message(STATUS "git reported ${GIT_DESCRIBE_REPORT}")
         # this may fail with annotated non-release tags
@@ -316,8 +338,10 @@ function(ADD_PRECOMPILED_HEADER Target)
             set_property(TARGET ${Target} APPEND PROPERTY COMPILE_OPTIONS "-include;${OBJ_DIR}/${Target}.h;-Winvalid-pch")
         endif()
     elseif (MSVC)
+        # /Fp sets the PCH path used by either of the /Yc and /Yu options.
+        # /Yc overrides /Yu.
         set_source_files_properties(${PCH_FILE} PROPERTIES COMPILE_FLAGS "/Yc${Header}")
-        set_property(TARGET ${Target} APPEND PROPERTY COMPILE_FLAGS "/Yu${Header} /Fp${OBJ_DIR}/stdafx.pch /FI${Header}")
+        target_compile_options(${Target} PRIVATE "/Yu${Header}" "/Fp${OBJ_DIR}/${Target}_$<CONFIG>.pch" "/FI${Header}")
     endif()
 endfunction()
 
@@ -336,6 +360,7 @@ include(src.cmake)
 if (DEPS_DIR)
     # Download them if they not available
     if (NOT EXISTS ${DEPS_DIR})
+        file(MAKE_DIRECTORY ${EXTERNAL_DEPS_DIR})
         get_filename_component(BASENAME ${DEPS_DIR} NAME)
         if (APPLE OR LINUX)
             string(REPLACE "-${DEPS_VERSION}" "" BASENAME ${BASENAME})
@@ -361,10 +386,9 @@ if (DEPS_DIR)
         message(STATUS "Download completed successfully")
 
         # Extract the downloaded archive
-        execute_process( COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/deps )
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E tar xzf ${OBJ_DIR}/${BASENAME}${DEPS_EXT}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps
+            WORKING_DIRECTORY ${EXTERNAL_DEPS_DIR}
             RESULT_VARIABLE EXTRACT_RESULT
         )
         if (NOT EXTRACT_RESULT EQUAL 0)
@@ -443,6 +467,21 @@ add_library(srclibs-minizip EXCLUDE_FROM_ALL ${MINIZIPLIST})
 set_target_properties(srclibs-minizip PROPERTIES POSITION_INDEPENDENT_CODE 1 FOLDER "libs")
 set(LIBS_BASE ${LIBS_BASE} srclibs-minizip)
 
+# Look for OpenGL here before we potentially switch to looking for static libs.
+if (BUILD_CLIENT)
+    find_package(OpenGL REQUIRED)
+    include_directories(${OPENGL_INCLUDE_DIR})
+    set(LIBS_CLIENT ${LIBS_CLIENT} ${OPENGL_LIBRARIES})
+endif()
+
+# Prefer static libs
+if ( USE_STATIC_LIBS )
+    if ( LINUX )
+        set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    endif()
+endif()
+
+
 # zlib
 if (NOT NACL)
     find_package(ZLIB REQUIRED)
@@ -458,8 +497,7 @@ include_directories(${ZLIB_INCLUDE_DIRS})
 set(LIBS_BASE ${LIBS_BASE} PARENT_SCOPE)
 
 # Curses, pdcurses on Windows and ncursesw on Unix
-# Not supported on mac because the included version is too old
-if (NOT NACL)
+if (USE_CURSES AND NOT NACL)
     if (WIN32)
         set(LIBS_ENGINE_BASE ${LIBS_ENGINE_BASE} gdi32 comdlg32)
 
@@ -468,7 +506,7 @@ if (NOT NACL)
         set_target_properties(srclibs-pdcurses PROPERTIES POSITION_INDEPENDENT_CODE 1 FOLDER "libs")
         set(LIBS_ENGINE_BASE ${LIBS_ENGINE_BASE} srclibs-pdcurses)
         include_directories(${LIB_DIR}/pdcurses)
-    elseif (NOT APPLE)
+    else ()
         add_definitions(-DUSE_CURSES)
         set(CURSES_NEED_NCURSES 1) # Tells FindCurses that ncurses is required
         find_package(CursesW REQUIRED)
@@ -495,6 +533,10 @@ if (BUILD_CLIENT OR BUILD_TTY_CLIENT OR BUILD_SERVER)
     # Detour
     add_library(srclibs-detour EXCLUDE_FROM_ALL ${DETOURLIST})
     set_target_properties(srclibs-detour PROPERTIES POSITION_INDEPENDENT_CODE 1 FOLDER "libs")
+    include_directories(${LIB_DIR}/recastnavigation/Detour/Include
+                        ${LIB_DIR}/recastnavigation/DetourTileCache/Include
+                        ${LIB_DIR}/recastnavigation/DebugUtils/Include
+                        ${LIB_DIR}/recastnavigation/DetourCrowd/Include)
     set(LIBS_ENGINE ${LIBS_ENGINE} srclibs-detour)
 
     # GeoIP
@@ -568,9 +610,7 @@ if (USE_BREAKPAD)
             # Breakpad library assumes wide char versions of Windows API functions
             target_compile_definitions(${breaklib} PRIVATE UNICODE)
 
-            if (CMAKE_BUILD_TYPE MATCHES Debug)
-                target_compile_definitions(${breaklib} PRIVATE _DEBUG)
-            endif()
+            target_compile_definitions(${breaklib} PRIVATE $<$<CONFIG:Debug>:_DEBUG>)
         endforeach(breaklib)
 
         # WIN32 option prevents a console from being created for the process
@@ -633,10 +673,6 @@ if (BUILD_CLIENT)
     include_directories(${GLEW_INCLUDE_DIR})
     set(LIBS_CLIENT ${LIBS_CLIENT} ${GLEW_LIBRARIES})
 
-    find_package(OpenGL REQUIRED)
-    include_directories(${OPENGL_INCLUDE_DIR})
-    set(LIBS_CLIENT ${LIBS_CLIENT} ${OPENGL_LIBRARIES})
-
     find_package(OpenAL REQUIRED)
     include_directories(${OPENAL_INCLUDE_DIR})
     set(LIBS_CLIENT ${LIBS_CLIENT} ${OPENAL_LIBRARY})
@@ -666,14 +702,14 @@ function(AddApplication)
 endfunction()
 
 if (NOT NACL)
-    add_library(engine-lib ${PCH_FILE} ${COMMONLIST} ${ENGINELIST})
+    add_library(engine-lib EXCLUDE_FROM_ALL ${PCH_FILE} ${COMMONLIST} ${ENGINELIST})
     target_link_libraries(engine-lib ${LIBS_BASE} ${LIBS_ENGINE_BASE})
     set_property(TARGET engine-lib APPEND PROPERTY COMPILE_DEFINITIONS BUILD_ENGINE)
     set_property(TARGET engine-lib APPEND PROPERTY INCLUDE_DIRECTORIES ${ENGINE_DIR} ${MOUNT_DIR} ${LIB_DIR})
     set_property(TARGET engine-lib APPEND PROPERTY COMPILE_OPTIONS ${WARNINGS})
     ADD_PRECOMPILED_HEADER(engine-lib)
 
-    if(BUILD_DUMMPY_APP)
+    if (BUILD_DUMMY_APP)
         AddApplication(
             Target dummyapp
             ExecutableName dummyapp
@@ -685,7 +721,7 @@ endif()
 
 if (BUILD_CLIENT)
     set(Definitions
-        BUILD_ENGINE BUILD_CLIENT
+        BUILD_ENGINE BUILD_GRAPHICAL_CLIENT
     )
     if (USE_SMP)
         list(APPEND Definitions USE_SMP)
@@ -698,6 +734,29 @@ if (BUILD_CLIENT)
         Files WIN32 ${WIN_RC} ${QCOMMONLIST} ${SERVERLIST} ${CLIENTBASELIST} ${CLIENTLIST}
         Libs ${LIBS_CLIENT} ${LIBS_CLIENTBASE} ${LIBS_ENGINE}
     )
+
+    # generate glsl include files
+    set(GLSL_INCLUDE_DIR ${ENGINE_DIR}/renderer/glsl)
+    set(GLSL_SOURCE_DIR ${ENGINE_DIR}/renderer/glsl_source)
+
+    add_executable(include-bin ${LIB_DIR}/include-bin/main.cpp)
+
+    # create the glsl include directory if it doesn't exist
+    add_custom_command(OUTPUT ${GLSL_INCLUDE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${GLSL_INCLUDE_DIR}
+    )
+
+    foreach(res ${GLSLSOURCELIST})
+        set(in ${res})
+        get_filename_component(filename ${in} NAME)
+        get_filename_component(filename_no_ext ${in} NAME_WE)
+        set(outpath ${GLSL_INCLUDE_DIR}/${filename_no_ext}.h)
+        add_custom_command(OUTPUT "${outpath}"
+            WORKING_DIRECTORY "${GLSL_SOURCE_DIR}"
+            COMMAND include-bin "${filename}" "${outpath}"
+            DEPENDS "${res}" "${GLSL_INCLUDE_DIR}"
+        )
+    endforeach()
 endif()
 
 if (BUILD_SERVER)

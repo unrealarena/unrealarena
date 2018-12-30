@@ -291,7 +291,7 @@ namespace Cmd {
     */
 
     void DefaultEnvironment::Print(Str::StringRef text) {
-        Log::CodeSourceNotice(text);
+        Log::CommandInteractionMessage(text);
     }
 
     void DefaultEnvironment::ExecuteAfter(Str::StringRef text, bool parseCvars) {
@@ -313,7 +313,7 @@ namespace Cmd {
             :StaticCmd(std::move(name), cmdFlags, std::move(description)), showCmdFlags(showCmdFlags) {
             }
 
-            void Run(const Cmd::Args& args) const OVERRIDE {
+            void Run(const Cmd::Args& args) const override {
                 CommandMap& commands = GetCommandMap();
 
                 std::vector<const commandRecord_t*> matches;
@@ -345,7 +345,7 @@ namespace Cmd {
                 Print("%zu commands", matches.size());
             }
 
-            Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const OVERRIDE {
+            Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const override {
                 Q_UNUSED(args);
 
                 if (argNum == 1) {
@@ -366,6 +366,6 @@ namespace Cmd {
     static ListCmdsCmd listAudioCmdsRegistration("listAudioCmds", BASE | AUDIO, "lists all the audio commands", AUDIO);
     static ListCmdsCmd listCGameCmdsRegistration("listCGameCmds", BASE | CGAME_VM, "lists all the client-side game commands", CGAME_VM);
     static ListCmdsCmd listGameCmdsRegistration("listSGameCmds", BASE | SGAME_VM, "lists all the server-side game commands", CGAME_VM);
-    static ListCmdsCmd listUICmdsRegistration("listUICmds", BASE | UI_VM, "lists all the UI commands", CGAME_VM);
+    static ListCmdsCmd listKeyCmdsRegistration("listKeyBindingCmds", BASE | KEY_BINDING, "lists all the key binding commands", KEY_BINDING);
     static ListCmdsCmd listOldStyleCmdsRegistration("listOldStyleCmds", BASE, "lists all the commands registered through the C interface", PROXY_FOR_OLD);
 }

@@ -79,15 +79,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #error "Implement BREAKPOINT on your platform"
 #endif
 
-// override and final keywords
-#if __clang__ || (__GNUC__ * 100 + __GNUC_MINOR__) >= 407
-#define OVERRIDE override
-#define FINAL final
-#else
-#define OVERRIDE
-#define FINAL
-#endif
-
 // noexcept keyword, this should be used on all move constructors and move
 // assignments so that containers move objects instead of copying them.
 #define NOEXCEPT noexcept
@@ -109,20 +100,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #else
 # define ATTRIBUTE_NO_SANITIZE_ADDRESS
 #endif
-
-// GCC 4.6 has incomplete support for C++11
-#if !defined(__clang__) && __GNUC__ * 100 + __GNUC_MINOR__ <= 407
-#define GCC_BROKEN_CXX11
-#endif
-#ifdef __cplusplus
-#include <new>
-#if defined(__GLIBCXX__) && (__GLIBCXX__ == 20110325 || __GLIBCXX__ == 20110627 || __GLIBCXX__ == 20111026 || __GLIBCXX__ == 20120301 || __GLIBCXX__ == 20130412)
-#define LIBSTDCXX_BROKEN_CXX11
-#endif
-#endif
-
-// Support for explicitly defaulted functions
-#define HAS_EXPLICIT_DEFAULT
 
 // Microsoft Visual C++
 #elif defined( _MSC_VER )
@@ -177,23 +154,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DLLEXPORT __declspec(dllexport)
 #define DLLIMPORT __declspec(dllimport)
 #define BREAKPOINT() __debugbreak()
-#define OVERRIDE override
-#define FINAL final
-// VS2015 supports this
-#if _MSC_VER >= 1900
 #define NOEXCEPT noexcept
 #define NOEXCEPT_IF(x) noexcept(x)
-#define NOEXCEPT_EXPR(x) false
-#define HAS_EXPLICIT_DEFAULT
-#else
-#define NOEXCEPT
-#define NOEXCEPT_IF(x)
-#define NOEXCEPT_EXPR(x) false
-#endif
-// Work around lack of C99 support
-#define __func__ __FUNCTION__
-// Work around lack of constexpr
-#define CONSTEXPR const
+#define NOEXCEPT_EXPR(x) noexcept(x)
+#define CONSTEXPR constexpr
 #define ATTRIBUTE_NO_SANITIZE_ADDRESS
 
 // Other compilers, unsupported
@@ -214,12 +178,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Compat macros
 #define QDECL
-#if defined(_MSC_VER) && !defined(__cplusplus)
-#define INLINE __inline
-#else
 #define INLINE inline
-#endif
-#define Q_EXPORT DLLEXPORT
 
 // Uses SD-6 Feature Test Recommendations
 #ifdef __cpp_constexpr
@@ -234,5 +193,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #   define CONSTEXPR_FUNCTION
 #   define CONSTEXPR_FUNCTION_RELAXED
 #endif
+
+// The new -Wimplicit-fallthrough warning...
+#if defined(__clang__) && __clang_major__ >= 6
+#   define DAEMON_FALLTHROUGH [[clang::fallthrough]]
+#elif __GNUC__ >= 7
+#   define DAEMON_FALLTHROUGH [[gnu::fallthrough]]
+#else
+#   define DAEMON_FALLTHROUGH
+#endif
+
+/* Compiler can be fooled when calling ASSERT_UNREACHABLE() macro at end of non-void function.
+ * In this case, compiler is complaining because control reaches end of non-void function,
+ * even if the execution flow is expected to be taken down by assert before.
+ *
+ * That's why we use these compiler specific unreachable builtin on modern compilers,
+ * ASSERT_UNREACHABLE() macro makes use of this UNREACHABLE() macro, preventing useless warnings.
+ * Unsupported compilers will raise "control reaches end of non-void function" warnings but
+ * that's not a big issue and that's likely to never happen (these compilers would be too old and
+ * would lack too much features to compile Daemon anyway).
+ *
+ * See http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0627r0.pdf
+*/
+#if defined(_MSC_VER) //UNREACHABLE
+	#define UNREACHABLE() __assume(0)
+// All of gcc, clang and icc define __GNUC__
+#elif defined(__GNUC__)
+	#define UNREACHABLE() __builtin_unreachable()
+#else // UNREACHABLE
+	#define UNREACHABLE()
+#endif // UNREACHABLE
 
 #endif // COMMON_COMPILER_H_

@@ -58,7 +58,7 @@ class qVec
 	float v[ 3 ];
 
 public:
-	qVec( ) { }
+	qVec( ) = default;
 	qVec( float x, float y, float z );
 	qVec( const float vec[ 3 ] );
 	qVec( rVec vec );
@@ -83,7 +83,7 @@ class rVec
 {
 	float v[ 3 ];
 public:
-	rVec() { }
+	rVec() = default;
 	rVec( float x, float y, float z );
 	rVec( const float vec[ 3 ] );
 	rVec( qVec vec );
@@ -133,7 +133,7 @@ struct botRouteTargetInternal
 	rVec pos;
 	rVec polyExtents;
 
-	botRouteTargetInternal() { }
+	botRouteTargetInternal() = default;
 	botRouteTargetInternal( const botRouteTarget_t &target );
 };
 

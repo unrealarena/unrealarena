@@ -1,23 +1,26 @@
 /*
 ===========================================================================
+
+Unvanquished GPL Source Code
 Copyright (C) 1999-2005 Id Software, Inc.
 Copyright (C) 2000-2009 Darklegion Development
 
-This file is part of Daemon.
+This file is part of the Unvanquished GPL Source Code (Unvanquished Source Code).
 
-Daemon is free software; you can redistribute it
+Unvanquished is free software; you can redistribute it
 and/or modify it under the terms of the GNU General Public License as
 published by the Free Software Foundation; either version 2 of the License,
 or (at your option) any later version.
 
-Daemon is distributed in the hope that it will be
+Unvanquished is distributed in the hope that it will be
 useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Daemon; if not, write to the Free Software
+along with Unvanquished; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
 ===========================================================================
 */
 
@@ -125,14 +128,14 @@ static void CG_LoadArenasFromFile( char *filename )
 
 	if ( !f )
 	{
-		Log::Warn( "%sfile not found: %s", Color::CString( Color::Red ), filename );
+		Log::Warn( "%sfile not found: %s", Color::ToString( Color::Red ), filename );
 		return;
 	}
 
 	if ( len >= MAX_ARENAS_TEXT )
 	{
 		Log::Warn( "%sfile too large: %s is %i, max allowed is %i",
-			Color::CString( Color::Red ), filename, len, MAX_ARENAS_TEXT );
+			Color::ToString( Color::Red ), filename, len, MAX_ARENAS_TEXT );
 		trap_FS_FCloseFile( f );
 		return;
 	}

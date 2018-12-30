@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -46,6 +46,7 @@ static float CG_Rocket_GetOverallLoadProgress()
 #endif
 }
 
+#ifndef UNREALARENA
 static float CG_Rocket_GetBuildTimerProgress()
 {
 	static int misc = 0;
@@ -70,7 +71,6 @@ static float CG_Rocket_GetBuildTimerProgress()
 	return ( float ) misc / ( float ) max;
 }
 
-#ifndef UNREALARENA
 static float CG_Rocket_GetStaminaProgress()
 {
 	playerState_t *ps = &cg.snap->ps;
@@ -178,8 +178,8 @@ static const progressBarCmd_t progressBarCmdList[] =
 #else
 	{ "ammo", &CG_Rocket_GetPlayerAmmoProgress, ELEMENT_HUMANS },
 #endif
-	{ "btimer", &CG_Rocket_GetBuildTimerProgress, ELEMENT_BOTH },
 #ifndef UNREALARENA
+	{ "btimer", &CG_Rocket_GetBuildTimerProgress, ELEMENT_BOTH },
 	{ "buildables", &CG_Rocket_GetBuildableLoadProgress, ELEMENT_LOADING },
 #endif
 	{ "characters", &CG_Rocket_GetCharLoadProgress, ELEMENT_LOADING },

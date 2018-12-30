@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,13 +20,14 @@
 
 #include "sg_bot_ai.h"
 #include "sg_bot_util.h"
-#include "CBSE.h"
+#include "Entities.h"
 
 /*
- = *======================
- Scoring functions for logic
- =======================
- */
+=======================
+Scoring functions for logic
+=======================
+*/
+
 float BotGetBaseRushScore( gentity_t *ent )
 {
 
@@ -105,7 +106,7 @@ float BotGetHealScore( gentity_t *self )
 	}
 #endif
 
-	percentHealth = self->entity->Get<HealthComponent>()->HealthFraction();
+	percentHealth = Entities::HealthFraction(self);
 
 	distToHealer = std::max( std::min( MAX_HEAL_DIST, distToHealer ), MAX_HEAL_DIST * ( 3.0f / 4.0f ) );
 
@@ -431,11 +432,13 @@ void BotGetDesiredBuy( gentity_t *self, weapon_t *weapon, upgrade_t *upgrades, i
 		}
 	}
 }
+
 /*
- = *======================
- Entity Querys
- =======================
- */
+=======================
+Entity Querys
+=======================
+*/
+
 gentity_t* BotFindBuilding( gentity_t *self, int buildingType, int range )
 {
 	float minDistance = -1;
@@ -453,7 +456,7 @@ gentity_t* BotFindBuilding( gentity_t *self, int buildingType, int range )
 		}
 		if ( target->s.eType == entityType_t::ET_BUILDABLE && target->s.modelindex == buildingType &&
 		     ( target->buildableTeam == TEAM_ALIENS || ( target->powered && target->spawned ) ) &&
-		     G_Alive( target ) )
+		     Entities::IsAlive( target ) )
 		{
 			newDistance = DistanceSquared( self->s.origin, target->s.origin );
 			if ( range && newDistance > rangeSquared )
@@ -498,7 +501,7 @@ void BotFindClosestBuildings( gentity_t *self )
 		}
 
 		//ignore dead targets
-		if ( G_Dead( testEnt ) )
+		if ( Entities::IsDead( testEnt ) )
 		{
 			continue;
 		}
@@ -550,12 +553,12 @@ void BotFindDamagedFriendlyStructure( gentity_t *self )
 			continue;
 		}
 
-		if ( target->entity->Get<HealthComponent>()->FullHealth() )
+		if ( Entities::HasFullHealth(target) )
 		{
 			continue;
 		}
 
-		if ( G_Dead( target ) )
+		if ( Entities::IsDead( target ) )
 		{
 			continue;
 		}
@@ -594,8 +597,8 @@ gentity_t* BotFindBestEnemy( gentity_t *self )
 	gentity_t *bestInvisibleEnemy = nullptr;
 #endif
 	gentity_t *target;
-	team_t    team = BotGetEntityTeam( self );
 #ifndef UNREALARENA
+	team_t    team = BotGetEntityTeam( self );
 	bool  hasRadar = ( team == TEAM_ALIENS ) ||
 	                     ( team == TEAM_HUMANS && BG_InventoryContainsUpgrade( UP_RADAR, self->client->ps.stats ) );
 #endif
@@ -685,7 +688,7 @@ gentity_t* BotFindClosestEnemy( gentity_t *self )
 		}
 
 		// Only consider living targets.
-		if ( !G_Alive( target ) )
+		if ( !Entities::IsAlive( target ) )
 		{
 			continue;
 		}
@@ -803,11 +806,12 @@ botTarget_t BotGetRoamTarget( gentity_t *self )
 	BotSetTarget( &target, nullptr, targetPos );
 	return target;
 }
+
 /*
- = *=======================
- BotTarget Helpers
- ========================
- */
+========================
+BotTarget Helpers
+========================
+*/
 
 void BotSetTarget( botTarget_t *target, gentity_t *ent, vec3_t pos )
 {
@@ -1236,11 +1240,13 @@ bool BotTargetIsVisible( gentity_t *self, botTarget_t target, int mask )
 	}
 	return false;
 }
+
 /*
- = *=======================
- Bot Aiming
- ========================
- */
+========================
+Bot Aiming
+========================
+*/
+
 void BotGetIdealAimLocation( gentity_t *self, botTarget_t target, vec3_t aimLocation )
 {
 	//get the position of the target
@@ -1273,7 +1279,8 @@ void BotGetIdealAimLocation( gentity_t *self, botTarget_t target, vec3_t aimLoca
 
 int BotGetAimPredictionTime( gentity_t *self )
 {
-	return ( 10 - self->botMind->botSkill.level ) * 100 * std::max( ( ( float ) rand() ) / RAND_MAX, 0.5f );
+	auto time = ( 10 - self->botMind->botSkill.level ) * 100 * std::max( ( ( float ) rand() ) / RAND_MAX, 0.5f );
+	return std::max( 1, int(time) );
 }
 
 void BotPredictPosition( gentity_t *self, gentity_t *predict, vec3_t pos, int time )
@@ -1400,10 +1407,10 @@ float BotAimAngle( gentity_t *self, vec3_t pos )
 }
 
 /*
- = *=======================
- Bot Team Querys
- ========================
- */
+========================
+Bot Team Querys
+========================
+*/
 
 int FindBots( int *botEntityNumbers, int maxBots, team_t team )
 {
@@ -1510,10 +1517,11 @@ bool BotTeamateHasWeapon( gentity_t *self, int weapon )
 }
 
 /*
- = *=======================
- Misc Bot Stuff
- ========================
- */
+========================
+Misc Bot Stuff
+========================
+*/
+
 void BotFireWeapon( weaponMode_t mode, usercmd_t *botCmdBuffer )
 {
 	if ( mode == WPM_PRIMARY )
@@ -1795,7 +1803,7 @@ bool BotEvolveToClass( gentity_t *ent, class_t newClass )
 	int num;
 	gentity_t *other;
 
-	if ( G_Dead( ent ) )
+	if ( Entities::IsDead( ent ) )
 	{
 		return false;
 	}
@@ -1838,7 +1846,7 @@ bool BotEvolveToClass( gentity_t *ent, class_t newClass )
 			//...check we can evolve to that class
 			if ( numLevels >= 0 && BG_ClassUnlocked( newClass ) && !BG_ClassDisabled( newClass ) )
 			{
-				ent->client->pers.evolveHealthFraction = ent->entity->Get<HealthComponent>()->HealthFraction();
+				ent->client->pers.evolveHealthFraction = Entities::HealthFraction(ent);
 
 				if ( ent->client->pers.evolveHealthFraction < 0.0f )
 				{
@@ -2123,21 +2131,9 @@ void BotSellAll( gentity_t *self )
 void BotSetSkillLevel( gentity_t *self, int skill )
 {
 	self->botMind->botSkill.level = skill;
-	//different aim for different teams
-#ifdef UNREALARENA
-	if ( self->botMind->botTeam == TEAM_U )
-#else
-	if ( self->botMind->botTeam == TEAM_HUMANS )
-#endif
-	{
-		self->botMind->botSkill.aimSlowness = ( float ) skill / 10;
-		self->botMind->botSkill.aimShake = 10 - skill;
-	}
-	else
-	{
-		self->botMind->botSkill.aimSlowness = ( float ) skill / 10;
-		self->botMind->botSkill.aimShake = 10 - skill;
-	}
+	// TODO: different aim for different teams
+	self->botMind->botSkill.aimSlowness = ( float ) skill / 10;
+	self->botMind->botSkill.aimShake = 10 - skill;
 }
 
 void BotResetEnemyQueue( enemyQueue_t *queue )
@@ -2186,7 +2182,7 @@ bool BotEnemyIsValid( gentity_t *self, gentity_t *enemy )
 	}
 
 	// Only living targets are valid.
-	if ( !G_Alive( enemy ) )
+	if ( !Entities::IsAlive( enemy ) )
 	{
 		return false;
 	}
@@ -2250,4 +2246,22 @@ void BotSearchForEnemy( gentity_t *self )
 	{
 		self->botMind->bestEnemy.distance = INT_MAX;
 	}
+}
+
+void BotResetStuckTime( gentity_t *self )
+{
+	self->botMind->stuckTime = level.time;
+	VectorCopy( self->client->ps.origin, self->botMind->stuckPosition );
+}
+
+void BotCalculateStuckTime( gentity_t *self )
+{
+	// last think time condition to avoid stuck condition after respawn or /pause
+	bool dataValid = level.time - self->botMind->lastThink < 1000;
+	if ( !dataValid
+			|| DistanceSquared( self->botMind->stuckPosition, self->client->ps.origin ) >= Square( BOT_STUCK_RADIUS ) )
+	{
+		BotResetStuckTime( self );
+	}
+	self->botMind->lastThink = level.time;
 }

@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -22,12 +22,17 @@
 #ifndef CG_LOCAL_H
 #define CG_LOCAL_H
 
+#include <memory>
+#include <vector>
+
+#include "common/KeyIdentification.h"
 #include "engine/qcommon/q_shared.h"
 #include "engine/renderer/tr_types.h"
 #include "engine/client/cg_api.h"
 #include "shared/bg_public.h"
 #include "engine/client/keycodes.h"
 #include "cg_ui.h"
+#include "cg_skeleton_modifier.h"
 
 // The entire cgame module is unloaded and reloaded on each level change,
 // so there is no persistent data between levels on the client side.
@@ -53,8 +58,8 @@
 
 #define STAT_MINUS                     10 // num frame for '-' stats digit
 
-#define CHAR_WIDTH                     32
-#define CHAR_HEIGHT                    48
+#define CGAME_CHAR_WIDTH               32
+#define CGAME_CHAR_HEIGHT              48
 
 #define MAX_LOADING_LABEL_LENGTH       32
 
@@ -108,6 +113,8 @@ typedef struct
 
 	int           frame;
 	int           frameTime; // time when ->frame will be exactly on
+
+	bool          animationEnded;
 
 	float         backlerp;
 
@@ -869,7 +876,7 @@ typedef struct
 // this is regenerated each time a client's configstring changes,
 // usually as a result of a userinfo (name, model, etc) change
 #define MAX_CUSTOM_SOUNDS 32
-typedef struct
+struct clientInfo_t
 {
 	bool infoValid;
 
@@ -891,11 +898,11 @@ typedef struct
 	char        modelName[ MAX_QPATH ];
 	char        skinName[ MAX_QPATH ];
 
-	bool    newAnims; // true if using the new mission pack animations
+	bool    iqm; // true if model is an iqm model
 	bool    fixedlegs; // true if legs yaw is always the same as torso yaw
 	bool    fixedtorso; // true if torso never changes yaw
 	bool    nonsegmented; // true if model is Q2 style nonsegmented
-	bool    md5; // true if model is in the md5 model format
+	bool    skeletal; // true if model is a skeletal model
 
 	vec3_t      headOffset; // move head in icon views
 	footstep_t  footsteps;
@@ -924,23 +931,14 @@ typedef struct
 
 	vec_t       modelScale;
 
-	int         torsoControlBone;
-	int         leftShoulderBone;
-	int         rightShoulderBone;
-
-	int         legBones[ MAX_BONES ];
-	int         numLegBones;
-
-	int         weaponAdjusted; // bitmask of all weapons that have hand deltas
-	int         handBones[ MAX_BONES ];
-	int         numHandBones;
-
 	sfxHandle_t customFootsteps[ 4 ];
 	sfxHandle_t customMetalFootsteps[ 4 ];
 
 	char        voice[ MAX_VOICE_NAME_LEN ];
 	int         voiceTime;
-} clientInfo_t;
+	std::vector<std::shared_ptr<SkeletonModifier>> modifiers;
+
+};
 
 typedef struct weaponInfoMode_s
 {
@@ -1103,12 +1101,6 @@ typedef struct
 	vec3_t origin;
 	vec3_t vangles;
 } entityPos_t;
-
-typedef struct
-{
-	int time;
-	int length;
-} consoleLine_t;
 
 #define MAX_CONSOLE_TEXT  8192
 #define MAX_CONSOLE_LINES 32
@@ -1330,10 +1322,6 @@ typedef struct
 #endif
 	int                     lastEvolveAttempt;
 
-	char                    consoleText[ MAX_CONSOLE_TEXT ];
-	consoleLine_t           consoleLines[ MAX_CONSOLE_LINES ];
-	int                     numConsoleLines;
-
 	float                   painBlendValue;
 	float                   painBlendTarget;
 	int                     lastHealth;
@@ -1543,7 +1531,6 @@ typedef struct
 
 typedef struct
 {
-	qhandle_t charsetShader;
 	qhandle_t whiteShader;
 	qhandle_t outlineShader;
 
@@ -1565,8 +1552,6 @@ typedef struct
 	qhandle_t scannerBlipShader;
 	qhandle_t scannerBlipBldgShader;
 	qhandle_t scannerLineShader;
-
-	qhandle_t teamOverlayShader;
 
 	qhandle_t numberShaders[ 11 ];
 
@@ -1610,8 +1595,8 @@ typedef struct
 	sfxHandle_t turretSpinupSound;
 #endif
 
-	sfxHandle_t hardBounceSound1;
-	sfxHandle_t hardBounceSound2;
+	sfxHandle_t grenadeBounceSound0;
+	sfxHandle_t grenadeBounceSound1;
 
 	sfxHandle_t watrInSound;
 	sfxHandle_t watrOutSound;
@@ -1655,10 +1640,9 @@ typedef struct
 
 #ifndef UNREALARENA
 	qhandle_t   jetpackModel;
-	qhandle_t   jetpackFlashModel;
 	qhandle_t   radarModel;
 
-	sfxHandle_t repeaterUseSound;
+	sfxHandle_t itemFillSound;
 
 	sfxHandle_t buildableRepairSound;
 	sfxHandle_t buildableRepairedSound;
@@ -1689,7 +1673,7 @@ typedef struct
 	qhandle_t   floorFirePS;
 #endif
 
-	qhandle_t   teslaZapTS;
+	qhandle_t   reactorZapTS;
 
 	sfxHandle_t lCannonWarningSound;
 	sfxHandle_t lCannonWarningSound2;
@@ -1723,15 +1707,17 @@ typedef struct
 	qhandle_t   beaconTagScore;
 
 	sfxHandle_t timerBeaconExpiredSound;
+
+	qhandle_t   damageIndicatorFont;
+  sfxHandle_t killSound;
 } cgMedia_t;
 
+#ifndef UNREALARENA
 typedef struct
 {
 	qhandle_t frameShader;
 	qhandle_t overlayShader;
-#ifndef UNREALARENA
 	qhandle_t noPowerShader;
-#endif
 	qhandle_t markedShader;
 	Color::Color healthSevereColor;
 	Color::Color healthHighColor;
@@ -1749,6 +1735,7 @@ typedef struct
 	Color::Color backColor;
 	bool  loaded;
 } buildStat_t;
+#endif
 
 // The client game static (cgs) structure hold everything
 // loaded or calculated from the gamestate.  It will NOT
@@ -1769,11 +1756,17 @@ typedef struct
 	int      timelimit;
 	int      maxclients;
 	char     mapname[ MAX_QPATH ];
+
 #ifndef UNREALARENA
+	// TODO: Remove this one.
 	int      powerReactorRange;
-	int      powerRepeaterRange;
+
 	float    momentumHalfLife; // used for momentum bar (un)lock markers
 	float    unlockableMinTime;  // used for momentum bar (un)lock markers
+
+	float    buildPointBudgetPerMiner;
+	float    buildPointRecoveryInitialRate;
+	float    buildPointRecoveryRateHalfLife;
 #endif
 
 	int      voteTime[ NUM_TEAMS ];
@@ -2083,6 +2076,7 @@ extern vmCvar_t            rocket_menuFile;
 //
 // cg_main.c
 //
+void       CG_RegisterCvars();
 const char *CG_ConfigString( int index );
 const char *CG_Argv( int arg );
 const char *CG_Args();
@@ -2094,7 +2088,7 @@ void       CG_UpdateCvars();
 
 int        CG_CrosshairPlayer();
 void       CG_LoadMenus( const char *menuFile );
-void       CG_KeyEvent( int key, bool down );
+void       CG_KeyEvent( Keyboard::Key key, bool down );
 void       CG_MouseEvent( int dx, int dy );
 void       CG_MousePosEvent( int x, int y );
 void       CG_FocusEvent( bool focus );
@@ -2102,8 +2096,6 @@ bool   CG_ClientIsReady( int clientNum );
 void       CG_BuildSpectatorString();
 
 bool   CG_FileExists( const char *filename );
-void       CG_RemoveNotifyLine();
-void       CG_AddNotifyText();
 #ifndef UNREALARENA
 void       CG_UpdateBuildableRangeMarkerMask();
 #endif
@@ -2224,6 +2216,7 @@ bool CG_GetBuildableRangeMarkerProperties( buildable_t bType, rangeMarker_t *rmT
 //
 // cg_animation.c
 //
+int CG_AnimNumber( int anim );
 void CG_RunLerpFrame( lerpFrame_t *lf, float scale );
 void CG_RunMD5LerpFrame( lerpFrame_t *lf, float scale, bool animChanged );
 void CG_BlendLerpFrame( lerpFrame_t *lf );
@@ -2557,9 +2550,8 @@ void Rocket_AddUnitToHud( int weapon, const char *id );
 void Rocket_ShowHud( int weapon );
 void Rocket_ClearHud( unsigned weapon );
 void Rocket_InitKeys();
-keyNum_t Rocket_ToQuake( int key );
-void Rocket_ProcessKeyInput( int key, bool down );
-void Rocket_ProcessTextInput( int key );
+void Rocket_ProcessKeyInput( Keyboard::Key key, bool down );
+void Rocket_ProcessTextInput( int c );
 void Rocket_MouseMove( int x, int y );
 void Rocket_RegisterProperty( const char *name, const char *defaultValue, bool inherited, bool force_layout, const char *parseAs );
 void Rocket_ShowScoreboard( const char *name, bool show );
@@ -2568,5 +2560,17 @@ void Rocket_LoadFont( const char *font );
 void Rocket_Rocket_f( void );
 void Rocket_Lua_f( void );
 void Rocket_RocketDebug_f();
-#endif
 
+//
+// CombatFeedback.cpp
+//
+
+namespace CombatFeedback
+{
+  void Event(entityState_t *es);
+  void DrawDamageIndicators(void);
+}
+
+
+
+#endif

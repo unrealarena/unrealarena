@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -26,12 +26,9 @@
 // -----
 
 extern  level_locals_t level;
-#ifdef QVM_ABI
-extern  gentity_t      g_entities[ MAX_GENTITIES ];
-#else
+
 extern gentity_t *g_entities;
 extern gclient_t *g_clients;
-#endif
 
 // ---------
 // temporary, compatibility layer between legacy code and CBSE logic
@@ -98,11 +95,10 @@ extern  vmCvar_t g_teamForceBalance;
 extern  vmCvar_t g_smoothClients;
 
 #ifndef UNREALARENA
-extern  vmCvar_t g_initialMineRate;
-extern  vmCvar_t g_initialBuildPoints;
-extern  vmCvar_t g_mineRateHalfLife;
-extern  vmCvar_t g_minimumMineRate;
-extern  vmCvar_t g_buildPointLossFraction;
+extern  vmCvar_t g_buildPointInitialBudget;
+extern  vmCvar_t g_buildPointBudgetPerMiner;
+extern  vmCvar_t g_buildPointRecoveryInititalRate;
+extern  vmCvar_t g_buildPointRecoveryRateHalfLife;
 
 extern  vmCvar_t g_debugMomentum;
 extern  vmCvar_t g_momentumHalfLife;
@@ -116,13 +112,6 @@ extern  vmCvar_t g_momentumDestroyMod;
 
 extern  vmCvar_t g_humanAllowBuilding;
 extern  vmCvar_t g_alienAllowBuilding;
-
-extern  vmCvar_t g_powerCompetitionRange;
-extern  vmCvar_t g_powerBaseSupply;
-extern  vmCvar_t g_powerReactorSupply;
-extern  vmCvar_t g_powerReactorRange;
-extern  vmCvar_t g_powerRepeaterSupply;
-extern  vmCvar_t g_powerRepeaterRange;
 
 extern  vmCvar_t g_alienOffCreepRegenHalfLife;
 #endif

@@ -32,8 +32,6 @@ static void R_CullMDV( mdvModel_t *model, trRefEntity_t *ent )
 {
 	mdvFrame_t *oldFrame, *newFrame;
 	int        i;
-	vec3_t     v;
-	vec3_t     transformed;
 
 	// compute frame pointers
 	newFrame = model->frames + ent->e.frame;
@@ -49,19 +47,7 @@ static void R_CullMDV( mdvModel_t *model, trRefEntity_t *ent )
 	}
 
 	// setup world bounds for intersection tests
-	ClearBounds( ent->worldBounds[ 0 ], ent->worldBounds[ 1 ] );
-
-	for ( i = 0; i < 8; i++ )
-	{
-		v[ 0 ] = ent->localBounds[ i & 1 ][ 0 ];
-		v[ 1 ] = ent->localBounds[( i >> 1 ) & 1 ][ 1 ];
-		v[ 2 ] = ent->localBounds[( i >> 2 ) & 1 ][ 2 ];
-
-		// transform local bounds vertices into world space
-		R_LocalPointToWorld( v, transformed );
-
-		AddPointToBounds( transformed, ent->worldBounds[ 0 ], ent->worldBounds[ 1 ] );
-	}
+	R_SetupEntityWorldBounds(ent);
 
 	// cull bounding sphere ONLY if this is not an upscaled entity
 	if ( !ent->e.nonNormalizedAxes )
@@ -121,7 +107,7 @@ static void R_CullMDV( mdvModel_t *model, trRefEntity_t *ent )
 		}
 	}
 
-	switch ( R_CullLocalBox( ent->localBounds ) )
+	switch ( R_CullBox( ent->worldBounds ) )
 	{
 		case cullResult_t::CULL_IN:
 			tr.pc.c_box_cull_mdv_in++;
@@ -216,7 +202,7 @@ int R_ComputeLOD( trRefEntity_t *ent )
 
 static shader_t *GetMDVSurfaceShader( const trRefEntity_t *ent, mdvSurface_t *mdvSurface )
 {
-	shader_t *shader = 0;
+	shader_t *shader = nullptr;
 
 	if ( ent->e.customShader )
 	{
@@ -267,15 +253,16 @@ R_AddMDVSurfaces
 void R_AddMDVSurfaces( trRefEntity_t *ent )
 {
 	int          i;
-	mdvModel_t   *model = 0;
-	mdvSurface_t *mdvSurface = 0;
-	shader_t     *shader = 0;
+	mdvModel_t   *model = nullptr;
+	mdvSurface_t *mdvSurface = nullptr;
+	shader_t     *shader = nullptr;
 	int          lod;
 	bool     personalModel;
 	int          fogNum;
 
 	// don't add third_person objects if not in a portal
-	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) && !tr.viewParms.isPortal;
+	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) &&
+	  tr.viewParms.portalLevel == 0;
 
 	if ( ent->e.renderfx & RF_WRAP_FRAMES )
 	{
@@ -372,9 +359,9 @@ R_AddMDVInteractions
 void R_AddMDVInteractions( trRefEntity_t *ent, trRefLight_t *light, interactionType_t iaType )
 {
 	int               i;
-	mdvModel_t        *model = 0;
-	mdvSurface_t      *mdvSurface = 0;
-	shader_t          *shader = 0;
+	mdvModel_t        *model = nullptr;
+	mdvSurface_t      *mdvSurface = nullptr;
+	shader_t          *shader = nullptr;
 	int               lod;
 	bool          personalModel;
 	byte              cubeSideBits;
@@ -412,7 +399,8 @@ void R_AddMDVInteractions( trRefEntity_t *ent, trRefLight_t *light, interactionT
 #endif
 
 	// don't add third_person objects if not in a portal
-	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) && !tr.viewParms.isPortal;
+	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) &&
+	  tr.viewParms.portalLevel == 0;
 
 	// compute LOD
 	lod = R_ComputeLOD( ent );

@@ -548,247 +548,6 @@ static void ResampleTexture( unsigned *in, int inwidth, int inheight, unsigned *
 }
 
 /*
-================
-R_MipMap2
-
-Operates in place, quartering the size of the texture
-Proper linear filter
-================
-*/
-static void R_MipMap2( unsigned *in, int inWidth, int inHeight )
-{
-	int      i, j, k;
-	byte     *outpix;
-	int      inWidthMask, inHeightMask;
-	int      outWidth, outHeight;
-	unsigned *temp;
-	byte     *row[ 4 ];
-
-	outWidth = inWidth >> 1;
-	outHeight = inHeight >> 1;
-	temp = (unsigned int*) ri.Hunk_AllocateTempMemory( outWidth * outHeight * 4 );
-	outpix = (byte *) temp;
-
-	inWidthMask = ( inWidth << 2 ) - 1; // applied to row indices
-	inHeightMask = inHeight - 1; // applied to in indices
-
-	row[ 1 ] = (byte *) &in[( -1 & inHeightMask ) * inWidth ];
-	row[ 2 ] = (byte *) &in[   0                            ];
-	row[ 3 ] = (byte *) &in[(  1 & inHeightMask ) * inWidth ];
-
-	for ( i = 0; i < inHeight; i += 2 ) // count source, row pairs
-	{
-		row[ 0 ] = row[ 1 ];
-		row[ 1 ] = row[ 2 ];
-		row[ 2 ] = row[ 3 ];
-		row[ 3 ] = (byte *) &in[ ( ( i + 2 ) & inHeightMask ) * inWidth ];
-
-		for ( j = 0; j < inWidth * 4; j += 8 ) // count source, bytes comprising texel pairs
-		{
-			for ( k = j; k < j + 4; k++ )
-			{
-				const int km1 = ( k - 4 ) & inWidthMask;
-				const int kp1 = ( k + 4 ) & inWidthMask;
-				const int kp2 = ( k + 8 ) & inWidthMask;
-
-				*outpix++ = ( 1 * row[ 0 ][ km1 ] + 2 * row[ 0 ][ k   ] + 2 * row[ 0 ][ kp1 ] + 1 * row[ 0 ][ kp2 ] +
-						2 * row[ 1 ][ km1 ] + 4 * row[ 1 ][ k   ] + 4 * row[ 1 ][ kp1 ] + 2 * row[ 1 ][ kp2 ] +
-						2 * row[ 2 ][ km1 ] + 4 * row[ 2 ][ k   ] + 4 * row[ 2 ][ kp1 ] + 2 * row[ 2 ][ kp2 ] +
-						1 * row[ 3 ][ km1 ] + 2 * row[ 3 ][ k   ] + 2 * row[ 3 ][ kp1 ] + 1 * row[ 3 ][ kp2 ] ) / 36;
-			}
-		}
-	}
-
-	Com_Memcpy( in, temp, outWidth * outHeight * 4 );
-	ri.Hunk_FreeTempMemory( temp );
-}
-
-/*
-================
-R_MipMap
-
-Operates in place, quartering the size of the texture
-================
-*/
-static void R_MipMap( byte *in, int width, int height )
-{
-	int  i, j;
-	byte *out;
-	int  row;
-
-	if ( !r_simpleMipMaps->integer )
-	{
-		R_MipMap2( ( unsigned * ) in, width, height );
-		return;
-	}
-
-	if ( width == 1 && height == 1 )
-	{
-		return;
-	}
-
-	row = width * 4;
-	out = in;
-	width >>= 1;
-	height >>= 1;
-
-	if ( width == 0 || height == 0 )
-	{
-		width += height; // get largest
-
-		for ( i = 0; i < width; i++, out += 4, in += 8 )
-		{
-			out[ 0 ] = ( in[ 0 ] + in[ 4 ] ) >> 1;
-			out[ 1 ] = ( in[ 1 ] + in[ 5 ] ) >> 1;
-			out[ 2 ] = ( in[ 2 ] + in[ 6 ] ) >> 1;
-			out[ 3 ] = ( in[ 3 ] + in[ 7 ] ) >> 1;
-		}
-
-		return;
-	}
-
-	for ( i = 0; i < height; i++, in += row )
-	{
-		for ( j = 0; j < width; j++, out += 4, in += 8 )
-		{
-			out[ 0 ] = ( in[ 0 ] + in[ 4 ] + in[ row + 0 ] + in[ row + 4 ] ) >> 2;
-			out[ 1 ] = ( in[ 1 ] + in[ 5 ] + in[ row + 1 ] + in[ row + 5 ] ) >> 2;
-			out[ 2 ] = ( in[ 2 ] + in[ 6 ] + in[ row + 2 ] + in[ row + 6 ] ) >> 2;
-			out[ 3 ] = ( in[ 3 ] + in[ 7 ] + in[ row + 3 ] + in[ row + 7 ] ) >> 2;
-		}
-	}
-}
-
-/*
-================
-R_MipNormalMap
-
-Operates in place, quartering the size of the texture
-================
-*/
-// *INDENT-OFF*
-static void R_MipNormalMap( byte *in, int width, int height )
-{
-	int    i, j;
-	byte   *out;
-	vec4_t n;
-	vec_t  length;
-
-	if ( width == 1 && height == 1 )
-	{
-		return;
-	}
-
-	out = in;
-	width <<= 2;
-	height >>= 1;
-
-	for ( i = 0; i < height; i++, in += width )
-	{
-		for ( j = 0; j < width; j += 8, out += 4, in += 8 )
-		{
-			// these calculations were centred on 127.5: (p / 255.0 - 0.5) * 2.0
-			n[ 0 ] = Tex_ByteToFloat( in[ 0 ] ) +
-			         Tex_ByteToFloat( in[ 4 ] ) +
-			         Tex_ByteToFloat( in[ width + 0 ] ) +
-			         Tex_ByteToFloat( in[ width + 4 ] );
-
-			n[ 1 ] = Tex_ByteToFloat( in[ 1 ] ) +
-			         Tex_ByteToFloat( in[ 5 ] ) +
-			         Tex_ByteToFloat( in[ width + 1 ] ) +
-			         Tex_ByteToFloat( in[ width + 5 ] );
-
-			n[ 2 ] = Tex_ByteToFloat( in[ 2 ] ) +
-			         Tex_ByteToFloat( in[ 6 ] ) +
-			         Tex_ByteToFloat( in[ width + 2 ] ) +
-			         Tex_ByteToFloat( in[ width + 6 ] );
-
-			n[ 3 ] = ( in[ 3 ] + in[ 7 ] + in[ width + 3 ] +  in[ width + 7 ] ) / 255.0f;
-
-			length = VectorLength( n );
-
-			if ( length )
-			{
-				n[ 0 ] /= length;
-				n[ 1 ] /= length;
-				n[ 2 ] /= length;
-			}
-			else
-			{
-				VectorSet( n, 0.0, 0.0, 1.0 );
-			}
-
-			out[ 0 ] = Tex_FloatToByte( n[ 0 ] );
-			out[ 1 ] = Tex_FloatToByte( n[ 1 ] );
-			out[ 2 ] = Tex_FloatToByte( n[ 2 ] );
-			out[ 3 ] = ( byte )( n[ 3 ] * 255.0 / 4.0 );
-		}
-	}
-}
-
-/*
-==================
-R_BlendOverTexture
-
-Apply a color blend over a set of pixels
-==================
-*/
-static void R_BlendOverTexture( byte *data, int pixelCount, const byte blend[ 4 ] )
-{
-	int i;
-	int inverseAlpha;
-	int premult[ 3 ];
-
-	inverseAlpha = 255 - blend[ 3 ];
-	premult[ 0 ] = blend[ 0 ] * blend[ 3 ];
-	premult[ 1 ] = blend[ 1 ] * blend[ 3 ];
-	premult[ 2 ] = blend[ 2 ] * blend[ 3 ];
-
-	for ( i = 0; i < pixelCount; i++, data += 4 )
-	{
-		data[ 0 ] = ( data[ 0 ] * inverseAlpha + premult[ 0 ] ) >> 9;
-		data[ 1 ] = ( data[ 1 ] * inverseAlpha + premult[ 1 ] ) >> 9;
-		data[ 2 ] = ( data[ 2 ] * inverseAlpha + premult[ 2 ] ) >> 9;
-	}
-}
-
-static const byte mipBlendColors[ 16 ][ 4 ] =
-{
-	{ 0,   0,   0,   0   }
-	,
-	{ 255, 0,   0,   128 }
-	,
-	{ 0,   255, 0,   128 }
-	,
-	{ 0,   0,   255, 128 }
-	,
-	{ 255, 0,   0,   128 }
-	,
-	{ 0,   255, 0,   128 }
-	,
-	{ 0,   0,   255, 128 }
-	,
-	{ 255, 0,   0,   128 }
-	,
-	{ 0,   255, 0,   128 }
-	,
-	{ 0,   0,   255, 128 }
-	,
-	{ 255, 0,   0,   128 }
-	,
-	{ 0,   255, 0,   128 }
-	,
-	{ 0,   0,   255, 128 }
-	,
-	{ 255, 0,   0,   128 }
-	,
-	{ 0,   255, 0,   128 }
-	,
-	{ 0,   0,   255, 128 }
-	,
-};
-
-/*
 ==================
 R_UnpackDXT5A
 ==================
@@ -1128,8 +887,8 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 	}
 	else if ( image->bits & ( IF_PACKED_DEPTH24_STENCIL8 ) )
 	{
-		format = GL_DEPTH_STENCIL_EXT;
-		internalFormat = GL_DEPTH24_STENCIL8_EXT;
+		format = GL_DEPTH_STENCIL;
+		internalFormat = GL_DEPTH24_STENCIL8;
 	}
 	else if ( image->bits & ( IF_RGBA16F | IF_RGBA32F | IF_RGBA16 | IF_TWOCOMP16F | IF_TWOCOMP32F | IF_ONECOMP16F | IF_ONECOMP32F ) )
 	{
@@ -1189,6 +948,11 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 			format = GL_NONE;
 			internalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
 			blockSize = 8;
+		}
+		else if ( image->bits & IF_BC2 ) {
+			format = GL_NONE;
+			internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+			blockSize = 16;
 		}
 		else if ( image->bits & IF_BC3 ) {
 			format = GL_NONE;
@@ -1279,14 +1043,7 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 		// select proper internal format
 		if ( samples == 3 )
 		{
-			if ( glConfig.textureCompression == textureCompression_t::TC_S3TC && !(image->bits & IF_NOCOMPRESSION ) )
-			{
-				internalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-			}
-			else
-			{
-				internalFormat = GL_RGB8;
-			}
+			internalFormat = GL_RGB8;
 		}
 		else if ( samples == 4 )
 		{
@@ -1296,25 +1053,7 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 			}
 			else
 			{
-				if ( glConfig.textureCompression == textureCompression_t::TC_S3TC && !( image->bits & IF_NOCOMPRESSION ) )
-				{
-					if ( image->bits & IF_DISPLACEMAP )
-					{
-						internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-					}
-					else if ( image->bits & IF_ALPHATEST )
-					{
-						internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-					}
-					else
-					{
-						internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-					}
-				}
-				else
-				{
-					internalFormat = GL_RGBA8;
-				}
+				internalFormat = GL_RGBA8;
 			}
 		}
 	}
@@ -1363,19 +1102,19 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 
 				if( image->bits & IF_NORMALMAP ) {
 					c = scaledWidth * scaledHeight;
-					for ( i = 0; i < c; i++ )
+					for ( int j = 0; j < c; j++ )
 					{
 						vec3_t n;
 
-						n[ 0 ] = Tex_ByteToFloat( scaledBuffer[ i * 4 + 0 ] );
-						n[ 1 ] = Tex_ByteToFloat( scaledBuffer[ i * 4 + 1 ] );
-						n[ 2 ] = Tex_ByteToFloat( scaledBuffer[ i * 4 + 2 ] );
+						n[ 0 ] = Tex_ByteToFloat( scaledBuffer[ j * 4 + 0 ] );
+						n[ 1 ] = Tex_ByteToFloat( scaledBuffer[ j * 4 + 1 ] );
+						n[ 2 ] = Tex_ByteToFloat( scaledBuffer[ j * 4 + 2 ] );
 
 						VectorNormalize( n );
 
-						scaledBuffer[ i * 4 + 0 ] = Tex_FloatToByte( n[ 0 ] );
-						scaledBuffer[ i * 4 + 1 ] = Tex_FloatToByte( n[ 1 ] );
-						scaledBuffer[ i * 4 + 2 ] = Tex_FloatToByte( n[ 2 ] );
+						scaledBuffer[ j * 4 + 0 ] = Tex_FloatToByte( n[ 0 ] );
+						scaledBuffer[ j * 4 + 1 ] = Tex_FloatToByte( n[ 1 ] );
+						scaledBuffer[ j * 4 + 2 ] = Tex_FloatToByte( n[ 2 ] );
 					}
 				}
 			}
@@ -1402,7 +1141,7 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 			default:
 				if ( image->bits & IF_PACKED_DEPTH24_STENCIL8 )
 				{
-					glTexImage2D( target, 0, internalFormat, scaledWidth, scaledHeight, 0, format, GL_UNSIGNED_INT_24_8_EXT, nullptr );
+					glTexImage2D( target, 0, internalFormat, scaledWidth, scaledHeight, 0, format, GL_UNSIGNED_INT_24_8, nullptr );
 				}
 				else
 				{
@@ -1617,7 +1356,7 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 
 	GL_CheckErrors();
 
-	if ( scaledBuffer != 0 )
+	if ( scaledBuffer != nullptr )
 	{
 		ri.Hunk_FreeTempMemory( scaledBuffer );
 	}
@@ -1919,6 +1658,7 @@ static void R_LoadImage( const char **buffer, byte **pic, int *width, int *heigh
 
 	ext = COM_GetExtension( filename );
 
+	// the Daemon's default strategy is to use the hardcoded path if exists
 	if ( *ext )
 	{
 		// look for the correct loader and use it
@@ -1926,8 +1666,17 @@ static void R_LoadImage( const char **buffer, byte **pic, int *width, int *heigh
 		{
 			if ( !Q_stricmp( ext, imageLoaders[ i ].ext ) )
 			{
-				// load
-				imageLoaders[ i ].ImageLoader( filename, pic, width, height, numLayers, numMips, bits, alphaByte );
+				// do not complain on missing file if extension is hardcoded to a wrong one
+				// since file can exist with another extension and it will tested right after
+				// that, and by the way if there is no alternative an error will be raised
+				// because of missing texture so we don't have to let the ImageLoader says
+				// it failed to read the file using this filename
+				if (FS_FileExists( filename ))
+				{
+					// load
+					imageLoaders[ i ].ImageLoader( filename, pic, width, height, numLayers, numMips, bits, alphaByte );
+				}
+				// we still have to break because a loader was found, so we can strip the extension
 				break;
 			}
 		}
@@ -1951,6 +1700,20 @@ static void R_LoadImage( const char **buffer, byte **pic, int *width, int *heigh
 
 	int bestLoader = -1;
 	const FS::PakInfo* bestPak = nullptr;
+
+	// Darkplaces or Doom3 packages can ship alternative texture path in the form of
+	//   dds/<path without ext>.dds
+	std::string altName = Str::Format("dds/%s.dds", filename);
+	bestPak = FS::PakPath::LocateFile(altName);
+
+	// If this alternative path exists, it's expected to be loaded as the best one
+	// except when it goes against Daemon's rule to load the hardcoded one if exists
+	// because this dds alternative is only supported for compatibility with
+	// third-party content
+	if ( bestPak != nullptr ) {
+		LoadDDS( altName.c_str(), pic, width, height, numLayers, numMips, bits, alphaByte );
+		return;
+	}
 
 	// try and find a suitable match using all the image formats supported
 	// prioritize with the pak priority
@@ -2045,8 +1808,6 @@ image_t        *R_FindImageFile( const char *imageName, int bits, filterType_t f
 	if ( bits & IF_LIGHTMAP )
 	{
 		R_ProcessLightmap( pic[ 0 ], 4, width, height, bits, pic[ 0 ] );
-
-		bits |= IF_NOCOMPRESSION;
 	}
 
 	image = R_CreateImage( ( char * ) buffer, (const byte **)pic,
@@ -2594,7 +2355,7 @@ static void R_CreateContrastRenderFBOImage()
 	width = glConfig.vidWidth * 0.25f;
 	height = glConfig.vidHeight * 0.25f;
 
-	tr.contrastRenderFBOImage = R_CreateImage( "_contrastRenderFBO", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP );
+	tr.contrastRenderFBOImage = R_CreateImage( "_contrastRenderFBO", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP );
 }
 
 static void R_CreateBloomRenderFBOImage()
@@ -2607,7 +2368,7 @@ static void R_CreateBloomRenderFBOImage()
 
 	for ( i = 0; i < 2; i++ )
 	{
-		tr.bloomRenderFBOImage[ i ] = R_CreateImage( va( "_bloomRenderFBO%d", i ), nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP );
+		tr.bloomRenderFBOImage[ i ] = R_CreateImage( va( "_bloomRenderFBO%d", i ), nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP );
 	}
 }
 
@@ -2618,9 +2379,9 @@ static void R_CreateCurrentRenderImage()
 	width = glConfig.vidWidth;
 	height = glConfig.vidHeight;
 
-	tr.currentRenderImage[0] = R_CreateImage( "_currentRender[0]", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-	tr.currentRenderImage[1] = R_CreateImage( "_currentRender[1]", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-	tr.currentDepthImage = R_CreateImage( "_currentDepth", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION | IF_DEPTH24, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	tr.currentRenderImage[0] = R_CreateImage( "_currentRender[0]", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	tr.currentRenderImage[1] = R_CreateImage( "_currentRender[1]", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	tr.currentDepthImage = R_CreateImage( "_currentDepth", nullptr, width, height, 1, IF_NOPICMIP | IF_PACKED_DEPTH24_STENCIL8, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
 }
 
 static void R_CreateDepthRenderImage()
@@ -2657,19 +2418,7 @@ static void R_CreatePortalRenderImage()
 	width = glConfig.vidWidth;
 	height = glConfig.vidHeight;
 
-	tr.portalRenderImage = R_CreateImage( "_portalRender", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-}
-
-static void R_CreateOcclusionRenderFBOImage()
-{
-	int  width, height;
-
-	width = glConfig.vidWidth;
-	height = glConfig.vidHeight;
-
-	{
-		tr.occlusionRenderFBOImage = R_CreateImage( "_occlusionFBORender", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-	}
+	tr.portalRenderImage = R_CreateImage( "_portalRender", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
 }
 
 static void R_CreateDepthToColorFBOImages()
@@ -2680,8 +2429,8 @@ static void R_CreateDepthToColorFBOImages()
 	height = glConfig.vidHeight;
 
 	{
-		tr.depthToColorBackFacesFBOImage = R_CreateImage( "_depthToColorBackFacesFBORender", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-		tr.depthToColorFrontFacesFBOImage = R_CreateImage( "_depthToColorFrontFacesFBORender", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+		tr.depthToColorBackFacesFBOImage = R_CreateImage( "_depthToColorBackFacesFBORender", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+		tr.depthToColorFrontFacesFBOImage = R_CreateImage( "_depthToColorFrontFacesFBORender", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
 	}
 }
 
@@ -2693,11 +2442,11 @@ static void R_CreateDownScaleFBOImages()
 	width = glConfig.vidWidth * 0.25f;
 	height = glConfig.vidHeight * 0.25f;
 
-	tr.downScaleFBOImage_quarter = R_CreateImage( "_downScaleFBOImage_quarter", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	tr.downScaleFBOImage_quarter = R_CreateImage( "_downScaleFBOImage_quarter", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
 
 	width = height = 64;
 
-	tr.downScaleFBOImage_64x64 = R_CreateImage( "_downScaleFBOImage_64x64", nullptr, width, height, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	tr.downScaleFBOImage_64x64 = R_CreateImage( "_downScaleFBOImage_64x64", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
 }
 
 // *INDENT-OFF*
@@ -2918,7 +2667,7 @@ static void R_CreateColorGradeImage()
 					      REF_COLORGRADEMAP_SIZE,
 					      REF_COLORGRADEMAP_SIZE,
 					      REF_COLORGRADE_SLOTS * REF_COLORGRADEMAP_SIZE,
-					      IF_NOPICMIP | IF_NOCOMPRESSION | IF_NOLIGHTSCALE,
+					      IF_NOPICMIP | IF_NOLIGHTSCALE,
 					      filterType_t::FT_LINEAR,
 						  wrapTypeEnum_t::WT_EDGE_CLAMP );
 
@@ -2986,7 +2735,7 @@ void R_CreateBuiltinImages()
 	{
 		out[ 0 ] = out[ 1 ] = 128;
 		out[ 2 ] = 255;
-		out[ 3 ] = 0;
+		out[ 3 ] = 255;
 	}
 
 	tr.flatImage = R_CreateImage( "_flat", ( const byte ** ) &dataPtr,
@@ -3022,7 +2771,7 @@ void R_CreateBuiltinImages()
 
 	tr.quadraticImage =
 		R_CreateImage( "_quadratic", ( const byte ** ) &dataPtr,
-			       DEFAULT_SIZE, DEFAULT_SIZE, 1, IF_NOPICMIP | IF_NOCOMPRESSION, filterType_t::FT_LINEAR,
+			       DEFAULT_SIZE, DEFAULT_SIZE, 1, IF_NOPICMIP, filterType_t::FT_LINEAR,
 					   wrapTypeEnum_t::WT_CLAMP );
 
 	R_CreateRandomNormalsImage();
@@ -3034,7 +2783,6 @@ void R_CreateBuiltinImages()
 	R_CreateCurrentRenderImage();
 	R_CreateDepthRenderImage();
 	R_CreatePortalRenderImage();
-	R_CreateOcclusionRenderFBOImage();
 	R_CreateDepthToColorFBOImages();
 	R_CreateDownScaleFBOImages();
 	R_CreateShadowMapFBOImage();
@@ -3051,8 +2799,6 @@ R_InitImages
 */
 void R_InitImages()
 {
-	const char *charsetImage = "gfx/2d/consolechars";
-
 	Log::Debug("------- R_InitImages -------" );
 
 	Com_Memset( r_imageHashTable, 0, sizeof( r_imageHashTable ) );
@@ -3069,12 +2815,14 @@ void R_InitImages()
 	// create default texture and white texture
 	R_CreateBuiltinImages();
 
-	tr.charsetImage = R_FindImageFile( charsetImage, IF_NOCOMPRESSION | IF_NOPICMIP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP );
-
-	if ( !tr.charsetImage )
-	{
-		ri.Error( errorParm_t::ERR_FATAL, "R_InitImages: could not load '%s'", charsetImage );
-	}
+#if defined( REFBONE_NAMES )
+	char fileName [ MAX_QPATH ];
+	char strippedName [ MAX_QPATH ];
+	char* fontname = Cvar_VariableString ( "cl_consoleFont" );
+	COM_StripExtension2( fontname, strippedName, sizeof( strippedName ) );
+	Com_sprintf( fileName, sizeof( fileName ), "%s_%i_%i_%i.png", strippedName, 0, 0, 16 );
+	tr.charsetImageHash = GenerateImageHashValue ( fileName );
+#endif
 }
 
 /*
@@ -3123,7 +2871,7 @@ void RE_GetTextureSize( int textureID, int *width, int *height )
 	if ( !baseImage )
 	{
 		Log::Debug( "%sRE_GetTextureSize: shader %s is missing base image",
-			Color::CString( Color::Yellow ),
+			Color::ToString( Color::Yellow ),
 			shader->name );
 		return;
 	}
@@ -3144,5 +2892,5 @@ qhandle_t RE_GenerateTexture( const byte *pic, int width, int height )
 {
 	const char *name = va( "rocket%d", numTextures++ );
 	R_SyncRenderThread();
-	return RE_RegisterShaderFromImage( name, R_CreateImage( name, &pic, width, height, 1, IF_NOCOMPRESSION | IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP ) );
+	return RE_RegisterShaderFromImage( name, R_CreateImage( name, &pic, width, height, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP ) );
 }

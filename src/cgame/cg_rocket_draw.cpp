@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -32,10 +32,12 @@ static void CG_GetRocketElementColor( Color::Color& color )
 	Rocket_GetProperty( "color", &color, sizeof(Color::Color), rocketVarType_t::ROCKET_COLOR );
 }
 
+#ifndef UNREALARENA
 static void CG_GetRocketElementBGColor( Color::Color& bgColor )
 {
 	Rocket_GetProperty( "background-color", &bgColor, sizeof(Color::Color), rocketVarType_t::ROCKET_COLOR );
 }
+#endif
 
 static void CG_GetRocketElementRect( rectDef_t *rect )
 {
@@ -197,8 +199,18 @@ public:
 	AmmoHudElement( const Rocket::Core::String& tag ) :
 			TextHudElement( tag, ELEMENT_BOTH ),
 			showTotalAmmo( false ),
-			value( 0 ),
-			valueMarked( 0 ) {}
+#ifndef UNREALARENA
+			builder( false ),
+#endif
+#ifdef UNREALARENA
+			ammo( 0 ) {}
+#else
+			ammo( 0 ),
+			spentBudget( 0 ),
+			markedBudget( 0 ),
+			totalBudget( 0 ),
+			queuedBudget( 0 ) {}
+#endif
 
 	void OnAttributeChange( const Rocket::Core::AttributeNameList& changed_attributes )
 	{
@@ -212,8 +224,8 @@ public:
 
 	void DoOnRender()
 	{
-		bool bp = false;
 		weapon_t weapon = BG_PrimaryWeapon( cg.snap->ps.stats );
+
 		switch ( weapon )
 		{
 			case WP_NONE:
@@ -223,66 +235,97 @@ public:
 			case WP_ABUILD:
 			case WP_ABUILD2:
 			case WP_HBUILD:
-				if ( cg.snap->ps.persistant[ PERS_BP ] == value &&
-					cg.snap->ps.persistant[ PERS_MARKEDBP ] == valueMarked )
+#ifndef UNREALARENA
+				if ( builder &&
+				     spentBudget  == cg.snap->ps.persistant[ PERS_SPENTBUDGET ] &&
+				     markedBudget == cg.snap->ps.persistant[ PERS_MARKEDBUDGET ] &&
+				     totalBudget  == cg.snap->ps.persistant[ PERS_TOTALBUDGET ] &&
+				     queuedBudget == cg.snap->ps.persistant[ PERS_QUEUEDBUDGET ] )
 				{
 					return;
 				}
-				value = cg.snap->ps.persistant[ PERS_BP ];
-				valueMarked = cg.snap->ps.persistant[ PERS_MARKEDBP ];
-				bp = true;
+
+				spentBudget  = cg.snap->ps.persistant[ PERS_SPENTBUDGET ];
+				markedBudget = cg.snap->ps.persistant[ PERS_MARKEDBUDGET ];
+				totalBudget  = cg.snap->ps.persistant[ PERS_TOTALBUDGET ];
+				queuedBudget = cg.snap->ps.persistant[ PERS_QUEUEDBUDGET ];
+				builder      = true;
+#endif
+
 				break;
 
 			default:
 				if ( showTotalAmmo )
 				{
 					int maxAmmo = BG_Weapon( weapon )->maxAmmo;
-					if ( value == cg.snap->ps.ammo + ( cg.snap->ps.clips * maxAmmo ) )
+#ifdef UNREALARENA
+					if ( ammo == cg.snap->ps.ammo + ( cg.snap->ps.clips * maxAmmo ) )
+#else
+					if ( !builder &&
+					     ammo == cg.snap->ps.ammo + ( cg.snap->ps.clips * maxAmmo ) )
+#endif
 					{
 						return;
 					}
-					value = cg.snap->ps.ammo + ( cg.snap->ps.clips * maxAmmo );
+
+					ammo = cg.snap->ps.ammo + ( cg.snap->ps.clips * maxAmmo );
 				}
 				else
 				{
-					if ( value == cg.snap->ps.ammo )
+#ifdef UNREALARENA
+					if ( ammo == cg.snap->ps.ammo )
+#else
+					if ( !builder &&
+					     ammo == cg.snap->ps.ammo )
+#endif
 					{
 						return;
 					}
-					value = cg.snap->ps.ammo;
+
+					ammo = cg.snap->ps.ammo;
 				}
+
+#ifndef UNREALARENA
+				builder = false;
+#endif
 
 				break;
 		}
 
-		if ( value > 999 )
+#ifndef UNREALARENA
+		if ( builder )
 		{
-			value = 999;
-		}
+			int freeBudget = totalBudget - (spentBudget + queuedBudget);
+			int available  = freeBudget + markedBudget;
 
-		if ( valueMarked > 999 )
-		{
-			valueMarked = 999;
-		}
-
-		if ( !bp )
-		{
-			SetText( va( "%d", value ) );
-		}
-		else if ( valueMarked > 0 )
-		{
-			SetText( va( "%d+%d", value, valueMarked ) );
+			if ( markedBudget != 0 )
+			{
+				SetText( va( "%d+%d = %d", freeBudget, markedBudget, available ) );
+			}
+			else
+			{
+				SetText( va( "%d", freeBudget ) );
+			}
 		}
 		else
+#endif
 		{
-			SetText( va( "%d", value ) );
+			SetText( va( "%d", ammo ) );
 		}
 	}
 
 private:
-    bool showTotalAmmo;
-	int value;
-	int valueMarked;
+	bool showTotalAmmo;
+#ifndef UNREALARENA
+	bool builder;
+#endif
+	int  ammo;
+#ifndef UNREALARENA
+	int  spentBudget;
+	int  markedBudget;
+	int  totalBudget;
+	int  queuedBudget;
+#endif
 };
 
 
@@ -1038,7 +1081,7 @@ public:
 			cg.predictedPlayerState.persistant[ PERS_TEAM ] == BG_Buildable( es->modelindex )->team )
 		{
 			//hack to prevent showing the usable buildable when you aren't carrying an energy weapon
-			if ( ( es->modelindex == BA_H_REACTOR || es->modelindex == BA_H_REPEATER ) &&
+			if ( es->modelindex == BA_H_REACTOR &&
 				( !BG_Weapon( cg.snap->ps.weapon )->usesEnergy ||
 				BG_Weapon( cg.snap->ps.weapon )->infiniteAmmo ) )
 			{
@@ -1268,18 +1311,18 @@ static void CG_Rocket_DrawDisconnect()
 	x = 640 - 48;
 	y = 480 - 48;
 
-	CG_DrawPic( x, y, 48, 48, trap_R_RegisterShader( "gfx/2d/net",
+	CG_DrawPic( x, y, 48, 48, trap_R_RegisterShader( "gfx/feedback/net",
 				RSF_DEFAULT ) );
 }
 
 #define MAX_LAGOMETER_PING  900
 #define MAX_LAGOMETER_RANGE 300
 
-class LagometerElement : public TextHudElement
+class LagometerElement : public HudElement
 {
 public:
 	LagometerElement( const Rocket::Core::String& tag ) :
-			TextHudElement( tag, ELEMENT_GAME, true ),
+			HudElement( tag, ELEMENT_GAME, true ),
 			shouldDrawLagometer( true ),
 			adjustedColor( Color::White )
 	{
@@ -1429,24 +1472,39 @@ public:
 		CG_Rocket_DrawDisconnect();
 	}
 
+private:
+	bool shouldDrawLagometer;
+	Color::Color adjustedColor;
+
+};
+
+class PingElement : public TextHudElement
+{
+public:
+	PingElement( const Rocket::Core::String& tag ) :
+				 TextHudElement( tag, ELEMENT_GAME, true ),
+				 shouldDrawPing( true )
+	{
+	}
+
 	void DoOnUpdate()
 	{
 		const char* ping;
 
 		if ( ( cg.snap && cg.snap->ps.pm_type == PM_INTERMISSION )
-			|| !cg_lagometer.integer
 			|| cg.demoPlayback )
 		{
-			if ( shouldDrawLagometer )
+			if ( shouldDrawPing )
 			{
 				SetText( "" );
-				shouldDrawLagometer = false;
+				ping_ = "";
+				shouldDrawPing = false;
 			}
 			return;
 		}
-		else if ( !shouldDrawLagometer )
+		else if ( !shouldDrawPing )
 		{
-			shouldDrawLagometer = true;
+			shouldDrawPing = true;
 		}
 
 		if ( cg_nopredict.integer || cg.pmoveParams.synchronous )
@@ -1465,12 +1523,9 @@ public:
 			ping_ = ping;
 		}
 	}
-
 private:
-	bool shouldDrawLagometer;
-	Color::Color adjustedColor;
+	bool shouldDrawPing;
 	Rocket::Core::String ping_;
-
 };
 
 /*
@@ -2114,8 +2169,10 @@ public:
 												   Rocket::Core::Property::KEYWORD));
 				SetInnerRML( "" );
 				shouldBeVisible = false;
+
 				// Pick impossible value
-				lastDelta = -999;
+				lastDeltaEfficiencyPct = -999;
+				lastDeltaBudget        = -999;
 			}
 		}
 		else
@@ -2133,45 +2190,68 @@ public:
 	{
 		if ( shouldBeVisible )
 		{
-			playerState_t  *ps = &cg.snap->ps;
-			buildable_t   buildable = ( buildable_t )( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
+			playerState_t *ps = &cg.snap->ps;
+			buildable_t buildable = ( buildable_t )( ps->stats[ STAT_BUILDABLE ] & SB_BUILDABLE_MASK );
 			const char *msg = nullptr;
 			Color::Color color;
-			int  delta = ps->stats[ STAT_PREDICTION ];
 
-			if ( lastDelta != delta )
+			// The efficiency and budget deltas are signed values that are encode as the least and
+			// most significant byte of the de-facto short ps->stats[STAT_PREDICTION], respectively.
+			// The efficiency delta is a value between -1 and 1, the budget delta is an integer
+			// between -128 and 127.
+			float deltaEfficiency    = (float)(signed char)(ps->stats[STAT_PREDICTION] & 0xff) / (float)0x7f;
+			int   deltaBudget        = (int)(signed char)(ps->stats[STAT_PREDICTION] >> 8);
+
+			int   deltaEfficiencyPct = (int)(deltaEfficiency * 100.0f);
+
+			if ( deltaEfficiencyPct != lastDeltaEfficiencyPct ||
+			     deltaBudget        != lastDeltaBudget )
 			{
-				if ( delta < 0 )
-				{
+				if        ( deltaBudget < 0 ) {
 					color = Color::Red;
-					// Error sign
-					msg = va( "<span class='material-icon error'>&#xE000;</span> You are losing efficiency. Build the %s%s further apart for more efficiency.", BG_Buildable( buildable )->humanName, pluralSuffix[ buildable ].c_str() );
-				}
-				else if ( delta < 10 )
-				{
+					msg = va( "<span class='material-icon error'>&#xE000;</span> You are losing build points!"
+					          " Build the %s%s further apart for greater efficiency.",
+					          BG_Buildable( buildable )->humanName, pluralSuffix[ buildable ].c_str() );
+				} else if ( deltaBudget < cgs.buildPointBudgetPerMiner / 10 ) {
 					color = Color::Orange;
-					// Warning sign
-					msg = va( "<span class='material-icon warning'>&#xE002;</span> Minimal efficency gain. Build the %s%s further apart for more efficiency.", BG_Buildable( buildable )->humanName, pluralSuffix[ buildable ].c_str() );
-				}
-				else if ( delta < 50 )
-				{
+					msg = va( "<span class='material-icon warning'>&#xE002;</span> Minimal build point gain."
+					          " Build the %s%s further apart for greater efficiency.",
+					          BG_Buildable( buildable )->humanName, pluralSuffix[ buildable ].c_str() );
+				} else if ( deltaBudget < cgs.buildPointBudgetPerMiner / 2 ) {
 					color = Color::Yellow;
-					msg = va( "<span class='material-icon warning'>&#xE002;</span> Average efficency gain. Build the %s%s further apart for more efficiency.", BG_Buildable( buildable )->humanName, pluralSuffix[ buildable ].c_str() );
-				}
-				else
-				{
+					msg = va( "<span class='material-icon warning'>&#xE002;</span> Subpar build point gain."
+					          " Build the %s%s further apart for greater efficiency.",
+					          BG_Buildable( buildable )->humanName, pluralSuffix[ buildable ].c_str() );
+				} else {
 					color = Color::Green;
 				}
 
-				SetInnerRML( va("EFFICIENCY: %s%s%s", CG_Rocket_QuakeToRML( va( "%s%+d%%", Color::CString(color), delta ) ), msg ? "<br/>" : "", msg ? msg : "" ) );
-				lastDelta = delta;
+				char deltaEfficiencyPctStr[64];
+				char deltaBudgetStr[64];
+
+				Q_strncpyz(deltaEfficiencyPctStr, CG_Rocket_QuakeToRML(va(
+					"%s%+d%%", Color::ToString(color).c_str(), deltaEfficiencyPct
+				)), 64);
+
+				Q_strncpyz(deltaBudgetStr, CG_Rocket_QuakeToRML(va(
+					"%s%+d", Color::ToString(color).c_str(), deltaBudget
+				)), 64);
+
+				SetInnerRML(va(
+					"%s EFFICIENCY<br/>%s BUILD POINTS%s%s",
+					deltaEfficiencyPctStr, deltaBudgetStr, msg ? "<br/>" : "", msg ? msg : ""
+				));
+
+				lastDeltaEfficiencyPct = deltaEfficiencyPct;
+				lastDeltaBudget        = deltaBudget;
 			}
 		}
 	}
 private:
 	bool shouldBeVisible;
-	int display;
-	int lastDelta;
+	int  display;
+	int  lastDeltaEfficiencyPct;
+	int  lastDeltaBudget;
 	std::unordered_map<int, std::string> pluralSuffix;
 };
 
@@ -3082,40 +3162,25 @@ static void CG_Rocket_DrawPlayerMomentumBar()
 	}
 
 	trap_R_ClearColor();
-
 }
-#endif
 
 void CG_Rocket_DrawMineRate()
 {
-	float levelRate, rate;
-	int efficiency;
+	int totalBudget  = cg.snap->ps.persistant[ PERS_TOTALBUDGET ];
+	int queuedBudget = cg.snap->ps.persistant[ PERS_QUEUEDBUDGET ];
 
-	// check if builder
-	switch ( BG_GetPlayerWeapon( &cg.snap->ps ) )
-	{
-		case WP_ABUILD:
-		case WP_ABUILD2:
-		case WP_HBUILD:
-			break;
-
-		default:
-			Rocket_SetInnerRML( "", 0 );
-			return;
+	if (queuedBudget != 0) {
+		float matchTime = (float)(cg.time - cgs.levelStartTime);
+		float rate = cgs.buildPointRecoveryInitialRate /
+		             std::pow(2.0f, matchTime / (60000.0f * cgs.buildPointRecoveryRateHalfLife));
+		Rocket_SetInnerRML( va( "Recovering %d / %d BP @ %.1f BP/min.",
+		                        queuedBudget, totalBudget, rate), 0 );
+	} else {
+		Rocket_SetInnerRML( va( "The full budget of %d BP is available.",
+		                        totalBudget), 0 );
 	}
-
-	levelRate  = cg.predictedPlayerState.persistant[ PERS_MINERATE ] / 10.0f;
-	efficiency = cg.predictedPlayerState.persistant[ PERS_RGS_EFFICIENCY ];
-	rate       = ( ( efficiency / 100.0f ) * levelRate );
-
-#ifdef UNREALARENA
-	Rocket_SetInnerRML( va( _( "%.1f BP/min (%d%% * %.1f)" ), rate, efficiency, levelRate ), 0 );
-#else
-	Rocket_SetInnerRML( va( _( "%.1f BP/min (%d%% × %.1f)" ), rate, efficiency, levelRate ), 0 );
-#endif
 }
 
-#ifndef UNREALARENA
 static INLINE qhandle_t CG_GetUnlockableIcon( int num )
 {
 	int index = BG_UnlockableTypeIndex( num );
@@ -3619,7 +3684,9 @@ static const elementRenderCmd_t elementRenderCmdList[] =
 	{ "jetpack", &CG_Rocket_HaveJetpck, ELEMENT_HUMANS },
 #endif
 	{ "levelname", &CG_Rocket_DrawLevelName, ELEMENT_ALL },
+#ifndef UNREALARENA
 	{ "mine_rate", &CG_Rocket_DrawMineRate, ELEMENT_BOTH },
+#endif
 	{ "minimap", &CG_Rocket_DrawMinimap, ELEMENT_ALL },
 #ifndef UNREALARENA
 	{ "momentum_bar", &CG_Rocket_DrawPlayerMomentumBar, ELEMENT_BOTH },
@@ -3694,6 +3761,7 @@ void CG_Rocket_RegisterElements()
 	REGISTER_ELEMENT( "location", LocationElement )
 	REGISTER_ELEMENT( "timer", TimerElement )
 	REGISTER_ELEMENT( "lagometer", LagometerElement )
+	REGISTER_ELEMENT( "ping", PingElement )
 	REGISTER_ELEMENT( "crosshair_name", CrosshairNamesElement )
 #ifndef UNREALARENA
 	REGISTER_ELEMENT( "momentum", MomentumElement )

@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
@@ -30,7 +30,7 @@ void InitEnvAFXEntity( gentity_t *self, bool link )
 	}
 
 	trap_SetBrushModel( self, self->model );
-	self->r.contents = CONTENTS_SENSOR; // replaces the -1 from trap_SetBrushModel
+	self->r.contents = CONTENTS_TRIGGER; // replaces the -1 from trap_SetBrushModel
 	self->r.svFlags = SVF_NOCLIENT;
 
 	if( link )
@@ -221,7 +221,7 @@ void env_afx_hurt_touch( gentity_t *self, gentity_t *other, trace_t* )
 void SP_env_afx_hurt( gentity_t *self )
 {
 
-	self->soundIndex = G_SoundIndex( "sound/misc/electro.wav" );
+	self->soundIndex = G_SoundIndex( "sound/misc/electro" );
 	self->touch = env_afx_hurt_touch;
 
 	G_ResetIntField(&self->damage, true, self->config.damage, self->eclass->config.damage, 5);

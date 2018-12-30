@@ -1,6 +1,6 @@
 /*
- * CBSE Source Code
- * Copyright (C) 2016  Unreal Arena
+ * CBSE GPL Source Code
+ * Copyright (C) 2016-2018  Unreal Arena
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ void KnockbackComponent::HandleDamage(float amount, gentity_t* source, Util::opt
 	if (client->sess.spectatorState != SPECTATOR_NOT) return;
 
 #ifdef UNREALARENA
-	int knockback = std::min(amount, (const int)KNOCKBACK_NORMAL_MASS);
+	int knockback = std::min(amount, (int)KNOCKBACK_NORMAL_MASS);
 	int strength = knockback * DAMAGE_TO_KNOCKBACK;
 #else
 	float mass = (float)BG_Class(client->ps.stats[ STAT_CLASS ])->mass;

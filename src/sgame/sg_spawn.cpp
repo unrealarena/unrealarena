@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
@@ -644,9 +644,9 @@ bool G_CallSpawnFunction( gentity_t *spawnedEntity )
 		if (!Q_stricmp(S_WORLDSPAWN, spawnedEntity->classname))
 		{
 #ifdef UNREALARENA
-			Log::Warn("a ^5" S_WORLDSPAWN "^7 class was misplaced into position ^5#%i^* of the spawn string - Ignoring", spawnedEntity->s.number );
+			Log::Warn("a ^5" S_WORLDSPAWN "^* class was misplaced into position ^5#%i^* of the spawn string - Ignoring", spawnedEntity->s.number );
 #else
-			Log::Warn("a ^5" S_WORLDSPAWN "^7 class was misplaced into position ^5#%i^* of the spawn string – Ignoring", spawnedEntity->s.number );
+			Log::Warn("a ^5" S_WORLDSPAWN "^* class was misplaced into position ^5#%i^* of the spawn string – Ignoring", spawnedEntity->s.number );
 #endif
 		}
 		else
@@ -946,8 +946,7 @@ bool G_WarnAboutDeprecatedEntityField( gentity_t *entity, const char *expectedFi
 
 	if ( g_debugEntities.integer >= 0 ) //dont't warn about anything with -1 or lower
 	{
-		if( typeOfDeprecation < ENT_V_TMPORARY
-		|| ( g_debugEntities.integer >= 1 && typeOfDeprecation >= ENT_V_TMPORARY) )
+		if ( typeOfDeprecation < ENT_V_TMPORARY || g_debugEntities.integer >= 1 )
 		{
 #ifdef UNREALARENA
 			Log::Warn("Entity ^5#%i^* contains deprecated field ^5%s^* - use ^5%s^* instead", entity->s.number, actualFieldname, expectedFieldname );
@@ -1063,11 +1062,10 @@ Every map should have exactly one.
 
 === KEYS ===
 ; message: Text to print during connection process. Used for the name of level.
-; music: path/name of looping .wav file used for level's music (eg. music/sonic5.wav).
+; music: path/name of looping sound file used for level's music (eg. music/sonic5).
 ; gravity: level gravity [g_gravity (800)]
 
 ; humanBuildPoints: maximum amount of power the humans can use. [g_humanBuildPoints]
-; humanRepeaterBuildPoints: maximum amount of power the humans can use around each repeater. [g_humanRepeaterBuildPoints]
 ; alienBuildPoints: maximum amount of sentience available to the overmind. [g_alienBuildPoints]
 
 ; disabledEquipment: A comma delimited list of human weapons or upgrades to disable for this map. [g_disabledEquipment ()]
@@ -1118,7 +1116,6 @@ void SP_worldspawn()
 
 #ifndef UNREALARENA
 	G_SpawnStringIntoCVarIfSet( "humanBuildPoints", "g_humanBuildPoints" );
-	G_SpawnStringIntoCVarIfSet( "humanRepeaterBuildPoints", "g_humanRepeaterBuildPoints" );
 	G_SpawnStringIntoCVarIfSet( "alienBuildPoints", "g_alienBuildPoints" );
 #endif
 

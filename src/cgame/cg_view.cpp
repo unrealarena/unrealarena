@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -298,7 +298,7 @@ void CG_OffsetThirdPersonView()
 		{
 			vec3_t lookDirection;
 
-			if ( cg.wasDeadLastFrame == false || !cg_staticDeathCam.integer )
+			if ( !cg.wasDeadLastFrame || !cg_staticDeathCam.integer )
 			{
 				VectorCopy( cg_entities[ killerEntNum ].lerpOrigin, killerPos );
 				cg.wasDeadLastFrame = true;
@@ -2003,12 +2003,6 @@ void CG_DrawActiveFrame( int serverTime, bool demoPlayback )
 
 	cg.refdef.time = cg.time;
 	memcpy( cg.refdef.areamask, cg.snap->areamask, sizeof( cg.refdef.areamask ) );
-
-	//remove expired console lines
-	if ( cg.consoleLines[ 0 ].time + cg_consoleLatency.integer < cg.time && cg_consoleLatency.integer > 0 )
-	{
-		CG_RemoveNotifyLine();
-	}
 
 	// update audio positions
 	if (cg_thirdPerson.value) {

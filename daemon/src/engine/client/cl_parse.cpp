@@ -46,7 +46,6 @@ static const char *const svc_strings[ 256 ] =
 	"svc_serverCommand",
 	"svc_download",
 	"svc_snapshot",
-	"svc_voip",
 	"svc_EOF"
 };
 
@@ -176,7 +175,6 @@ void CL_ParseSnapshot( msg_t *msg )
 {
 	int          len;
 	clSnapshot_t *old;
-	clSnapshot_t newSnap;
 	int          deltaNum;
 	int          oldMessageNum;
 	int          i, packetNum;
@@ -187,7 +185,7 @@ void CL_ParseSnapshot( msg_t *msg )
 
 	// read in the new snapshot to a temporary buffer
 	// we will only copy to cl.snap if it is valid
-	Com_Memset( &newSnap, 0, sizeof( newSnap ) );
+	clSnapshot_t newSnap{};
 
 	// we will have read any new server commands in this
 	// message before we got to svc_snapshot
@@ -197,7 +195,7 @@ void CL_ParseSnapshot( msg_t *msg )
 
 	// if we were just unpaused, we can only *now* really let the
 	// change come into effect or the client hangs.
-	cl_paused->modified = 0;
+	cl_paused->modified = false;
 
 	newSnap.messageNum = clc.serverMessageSequence;
 
@@ -226,51 +224,12 @@ void CL_ParseSnapshot( msg_t *msg )
 		if ( clc.demorecording )
 		{
 			clc.demowaiting = false; // we can start recording now
-//          if(cl_autorecord->integer) {
-//              Cvar_Set( "g_synchronousClients", "0" );
-//          }
 		}
 		else
 		{
-			if ( cl_autorecord->integer /*&& Cvar_VariableValue( "g_synchronousClients") */ )
+			if ( cl_autorecord->integer )
 			{
-				char    name[ 256 ];
-				char    mapname[ MAX_QPATH ];
-				char    *period;
-				qtime_t time;
-
-				Com_RealTime( &time );
-
-				Q_strncpyz( mapname, cl.mapname, MAX_QPATH );
-
-				for ( period = mapname; *period; period++ )
-				{
-					if ( *period == '.' )
-					{
-						*period = '\0';
-						break;
-					}
-				}
-
-				for ( period = mapname; *period; period++ )
-				{
-					if ( *period == '/' )
-					{
-						break;
-					}
-				}
-
-				if ( *period )
-				{
-					period++;
-				}
-
-				Com_sprintf( name, sizeof( name ), "demos/%s_%04i-%02i-%02i_%02i%02i%02i.dm_%d", period,
-				             1900 + time.tm_year, time.tm_mon + 1, time.tm_mday,
-				             time.tm_hour, time.tm_min, time.tm_sec,
-				             PROTOCOL_VERSION );
-
-				CL_Record( name );
+				CL_Record("");
 			}
 		}
 	}
@@ -454,7 +413,7 @@ void CL_ParseGamestate( msg_t *msg )
 	clc.serverCommandSequence = MSG_ReadLong( msg );
 
 	// parse all the configstrings and baselines
-	while ( 1 )
+	while (true)
 	{
 		cmd = MSG_ReadByte( msg );
 
@@ -728,6 +687,21 @@ void CL_ParseCommandString( msg_t *msg )
 
 /*
 =====================
+CL_ParseBinaryMessage
+=====================
+*/
+void CL_ParseBinaryMessage(msg_t *msg)
+{
+	MSG_BeginReadingUncompressed(msg);
+	int ssize = msg->cursize - msg->readcount;
+	if (ssize <= 0 || ssize > MAX_BINARY_MESSAGE) {
+		return;
+	}
+	CL_CGameBinaryMessageReceived(msg->data + msg->readcount, size_t(ssize), cl.snap.serverTime);
+}
+
+/*
+=====================
 CL_ParseServerMessage
 =====================
 */
@@ -761,7 +735,7 @@ void CL_ParseServerMessage( msg_t *msg )
 	//
 	// parse the message
 	//
-	while ( 1 )
+	while (true)
 	{
 		if ( msg->readcount > msg->cursize )
 		{
@@ -814,5 +788,5 @@ void CL_ParseServerMessage( msg_t *msg )
 				break;
 		}
 	}
-
+	CL_ParseBinaryMessage( msg );
 }

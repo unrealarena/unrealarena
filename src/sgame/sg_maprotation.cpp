@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -789,13 +789,13 @@ void G_PrintCurrentRotation( gentity_t *ent )
 
 	if ( mapRotation == nullptr )
 	{
-		trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("^3listrotation: ^7there is no active map rotation on this server\n") "\"" );
+		trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("^3listrotation:^* there is no active map rotation on this server\n") "\"" );
 		return;
 	}
 
 	if ( mapRotation->numNodes == 0 )
 	{
-		trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("^3listrotation: ^7there are no maps in the active map rotation\n") "\"" );
+		trap_SendServerCommand( ent - g_entities, "print_tr \"" N_("^3listrotation:^* there are no maps in the active map rotation\n") "\"" );
 		return;
 	}
 

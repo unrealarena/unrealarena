@@ -518,6 +518,14 @@ qhandle_t RE_RegisterAnimation( const char *name )
 	// make sure the render thread is stopped
 	R_SyncRenderThread();
 
+	// do not try to load file for iqm animation name in the form of
+	//   models/players/level0/level0.iqm:stand
+	// since we know it's not a file and it's already loaded
+	if ( Q_stristr( name, ".iqm:" ) )
+	{
+		return 0;
+	}
+
 	// load and parse the .md5anim file
 	int bufferLen = ri.FS_ReadFile( name, ( void ** ) &buffer );
 
@@ -526,7 +534,7 @@ qhandle_t RE_RegisterAnimation( const char *name )
 		return 0;
 	}
 
-	if ( !Q_strnicmp( ( const char * ) buffer, "MD5Version", 10 ) )
+	if ( bufferLen >= 10 && !Q_strnicmp( ( const char * ) buffer, "MD5Version", 10 ) )
 	{
 		loaded = R_LoadMD5Anim( anim, buffer, name );
 	}
@@ -616,7 +624,9 @@ static void R_CullMD5( trRefEntity_t *ent )
 		}
 	}
 
-	switch ( R_CullLocalBox( ent->localBounds ) )
+	R_SetupEntityWorldBounds(ent);
+
+	switch ( R_CullBox( ent->worldBounds ) )
 	{
 		case cullResult_t::CULL_IN:
 			tr.pc.c_box_cull_md5_in++;
@@ -645,7 +655,6 @@ void R_AddMD5Surfaces( trRefEntity_t *ent )
 {
 	md5Model_t   *model;
 	md5Surface_t *surface;
-	shader_t     *shader;
 	int          i;
 	bool     personalModel;
 	int          fogNum;
@@ -653,7 +662,8 @@ void R_AddMD5Surfaces( trRefEntity_t *ent )
 	model = tr.currentModel->md5;
 
 	// don't add third_person objects if not in a portal
-	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) && !tr.viewParms.isPortal;
+	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) &&
+	  tr.viewParms.portalLevel == 0;
 
 	// cull the entire model if merged bounding box of both frames
 	// is outside the view frustum
@@ -663,9 +673,6 @@ void R_AddMD5Surfaces( trRefEntity_t *ent )
 	{
 		return;
 	}
-
-	// set up world bounds for light intersection tests
-	R_SetupEntityWorldBounds( ent );
 
 	// set up lighting now that we know we aren't culled
 	if ( !personalModel || r_shadows->integer > Util::ordinal(shadowingMode_t::SHADOWING_BLOB))
@@ -679,6 +686,8 @@ void R_AddMD5Surfaces( trRefEntity_t *ent )
 	if ( !r_vboModels->integer || !model->numVBOSurfaces ||
 	     ( !glConfig2.vboVertexSkinningAvailable && ent->e.skeleton.type == refSkeletonType_t::SK_ABSOLUTE ) )
 	{
+		shader_t *shader;
+
 		// finally add surfaces
 		for ( i = 0, surface = model->surfaces; i < model->numSurfaces; i++, surface++ )
 		{
@@ -792,7 +801,7 @@ void R_AddIQMInteractions( trRefEntity_t *ent, trRefLight_t *light, interactionT
 	int               i;
 	IQModel_t         *model;
 	srfIQModel_t      *surface;
-	shader_t          *shader = 0;
+	shader_t          *shader = nullptr;
 	bool          personalModel;
 	byte              cubeSideBits = CUBESIDE_CLIPALL;
 
@@ -828,7 +837,8 @@ void R_AddIQMInteractions( trRefEntity_t *ent, trRefLight_t *light, interactionT
 #endif
 
 	// don't add third_person objects if not in a portal
-	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) && !tr.viewParms.isPortal;
+	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) &&
+	  tr.viewParms.portalLevel == 0;
 
 	model = tr.currentModel->iqm;
 
@@ -914,7 +924,6 @@ void R_AddMD5Interactions( trRefEntity_t *ent, trRefLight_t *light, interactionT
 	int               i;
 	md5Model_t        *model;
 	md5Surface_t      *surface;
-	shader_t          *shader = 0;
 	bool          personalModel;
 	byte              cubeSideBits = CUBESIDE_CLIPALL;
 
@@ -951,7 +960,8 @@ void R_AddMD5Interactions( trRefEntity_t *ent, trRefLight_t *light, interactionT
 #endif
 
 	// don't add third_person objects if not in a portal
-	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) && !tr.viewParms.isPortal;
+	personalModel = ( ent->e.renderfx & RF_THIRD_PERSON ) &&
+	  tr.viewParms.portalLevel == 0;
 
 	model = tr.currentModel->md5;
 
@@ -977,6 +987,8 @@ void R_AddMD5Interactions( trRefEntity_t *ent, trRefLight_t *light, interactionT
 	if ( !r_vboModels->integer || !model->numVBOSurfaces ||
 	     ( !glConfig2.vboVertexSkinningAvailable && ent->e.skeleton.type == refSkeletonType_t::SK_ABSOLUTE ) )
 	{
+		shader_t *shader = nullptr;
+
 		// generate interactions with all surfaces
 		for ( i = 0, surface = model->surfaces; i < model->numSurfaces; i++, surface++ )
 		{

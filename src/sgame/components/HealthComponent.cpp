@@ -1,6 +1,6 @@
 /*
- * CBSE Source Code
- * Copyright (C) 2016  Unreal Arena
+ * CBSE GPL Source Code
+ * Copyright (C) 2016-2018  Unreal Arena
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -179,7 +179,7 @@ Util::optional<Vec3> direction, int flags, meansOfDeath_t meansOfDeath) {
 		// TODO: Use DAMAGE_NO_PROTECTION flag instead of listing means of death here.
 		if (entity.oldEnt->s.eType == entityType_t::ET_BUILDABLE && source->client &&
 		    meansOfDeath != MOD_DECONSTRUCT && meansOfDeath != MOD_SUICIDE &&
-		    meansOfDeath != MOD_REPLACE     && meansOfDeath != MOD_NOCREEP) {
+		    meansOfDeath != MOD_REPLACE) {
 			if (G_OnSameTeam(entity.oldEnt, source) && !g_friendlyBuildableFire.integer) {
 				return;
 			}
@@ -290,9 +290,6 @@ Util::optional<Vec3> direction, int flags, meansOfDeath_t meansOfDeath) {
 			entity.oldEnt->credits[source->client->ps.clientNum].time = level.time;
 			entity.oldEnt->credits[source->client->ps.clientNum].team = (team_t)source->client->pers.team;
 #endif
-
-			// Notify the attacker of a hit.
-			SpawnHitNotification(source);
 		}
 	}
 
@@ -320,6 +317,11 @@ Util::optional<Vec3> direction, int flags, meansOfDeath_t meansOfDeath) {
 		if(!client) G_EventFireEntity(entity.oldEnt, source, ON_DIE);
 	} else if (entity.oldEnt->pain) {
 		entity.oldEnt->pain(entity.oldEnt, source, (int)std::ceil(take));
+	}
+
+	if (entity.oldEnt != source && source->client) {
+		bool lethal = (health <= 0);
+		CombatFeedback::HitNotify(source, entity.oldEnt, location, take, meansOfDeath, lethal);
 	}
 }
 
@@ -379,13 +381,3 @@ void HealthComponent::ScaleDamageAccounts(float healthRestored) {
 	}
 }
 #endif
-
-// TODO: Replace this with a call to a proper event factory.
-void HealthComponent::SpawnHitNotification(gentity_t *attacker)
-{
-	if (!attacker->client) return;
-
-	gentity_t *event = G_NewTempEntity(attacker->s.origin, EV_HIT);
-	event->r.svFlags = SVF_SINGLECLIENT;
-	event->r.singleClient = attacker->client->ps.clientNum;
-}

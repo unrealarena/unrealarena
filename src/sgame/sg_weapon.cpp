@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -23,6 +23,7 @@
 // perform the server side effects of a weapon firing
 
 #include "sg_local.h"
+#include "Entities.h"
 #include "CBSE.h"
 
 static vec3_t forward, right, up;
@@ -235,7 +236,7 @@ bool G_FindAmmo( gentity_t *self )
 	{
 		// only friendly, living and powered buildables provide ammo
 		if ( neighbor->s.eType != entityType_t::ET_BUILDABLE || !G_OnSameTeam( self, neighbor ) ||
-		     !neighbor->spawned || !neighbor->powered || G_Dead( neighbor ) )
+		     !neighbor->spawned || !neighbor->powered || Entities::IsDead( neighbor ) )
 		{
 			continue;
 		}
@@ -247,7 +248,6 @@ bool G_FindAmmo( gentity_t *self )
 				break;
 
 			case BA_H_REACTOR:
-			case BA_H_REPEATER:
 				if ( BG_Weapon( self->client->ps.stats[ STAT_WEAPON ] )->usesEnergy )
 				{
 					foundSource = true;
@@ -285,7 +285,7 @@ bool G_FindFuel( gentity_t *self )
 	{
 		// only friendly, living and powered buildables provide fuel
 		if ( neighbor->s.eType != entityType_t::ET_BUILDABLE || !G_OnSameTeam( self, neighbor ) ||
-		     !neighbor->spawned || !neighbor->powered || G_Dead( neighbor ) )
+		     !neighbor->spawned || !neighbor->powered || Entities::IsDead( neighbor ) )
 		{
 			continue;
 		}
@@ -513,7 +513,7 @@ static gentity_t *FireMelee( gentity_t *self, float range, float width, float he
 
 	G_WideTrace( &tr, self, range, width, height, &traceEnt );
 
-	if ( !G_Alive( traceEnt ) )
+	if ( !Entities::IsAlive( traceEnt ) )
 	{
 		return nullptr;
 	}
@@ -553,7 +553,7 @@ MACHINEGUN
 ======================================================================
 */
 
-static void FireBullet( gentity_t *self, float spread, int damage, int mod )
+static void FireBullet( gentity_t *self, float spread, float damage, int mod )
 {
 	// TODO: Merge this with other *Fire functions
 
@@ -741,7 +741,7 @@ static void HiveMissileThink( gentity_t *self )
 
 		self->think = G_ExplodeMissile;
 		self->nextthink = level.time + 50;
-		self->parent->active = false; //allow the parent to start again
+		self->parent->hiveInsectsActive = false; //allow the parent to start again
 		return;
 	}
 
@@ -755,7 +755,7 @@ static void HiveMissileThink( gentity_t *self )
 		if ( !ent->inuse ) continue;
 		if ( ent->flags & FL_NOTARGET ) continue;
 
-		if ( ent->client && G_Alive( ent ) && ent->client->pers.team == TEAM_HUMANS &&
+		if ( ent->client && Entities::IsAlive( ent ) && ent->client->pers.team == TEAM_HUMANS &&
 		     nearest > ( d = DistanceSquared( ent->r.currentOrigin, self->r.currentOrigin ) ) )
 		{
 			trap_Trace( &tr, self->r.currentOrigin, self->r.mins, self->r.maxs,
@@ -836,9 +836,12 @@ static void RocketThink( gentity_t *self )
 	                         Math::Clamp( rotAngle, -ROCKET_TURN_ANGLE, ROCKET_TURN_ANGLE ) );
 
 	// Check if new direction is safe. Turn anyway if old direction is unsafe, too.
-	if ( !G_RocketpodSafeShot( ENTITYNUM_NONE, self->r.currentOrigin, newDir ) &&
-	     G_RocketpodSafeShot( ENTITYNUM_NONE, self->r.currentOrigin, currentDir ) )
-	{
+	if (    !RocketpodComponent::SafeShot(
+			ENTITYNUM_NONE, Vec3::Load( self->r.currentOrigin ), Vec3::Load( newDir )
+		) && RocketpodComponent::SafeShot(
+			ENTITYNUM_NONE, Vec3::Load( self->r.currentOrigin ), Vec3::Load( currentDir )
+		)
+	) {
 		return;
 	}
 
@@ -853,25 +856,6 @@ static void FireRocket( gentity_t *self )
 {
 	G_SpawnMissile( MIS_ROCKET, self, muzzle, forward, self->target, RocketThink,
 	                level.time + ROCKET_TURN_PERIOD )->timestamp = level.time + ROCKET_LIFETIME;
-}
-
-bool G_RocketpodSafeShot( int passEntityNum, vec3_t origin, vec3_t dir )
-{
-	trace_t tr;
-	vec3_t mins, maxs, end;
-	float  size;
-	const missileAttributes_t *attr = BG_Missile( MIS_ROCKET );
-
-	size = attr->size;
-
-	VectorSet( mins, -size, -size, -size);
-	VectorSet( maxs, size, size, size );
-	VectorMA( origin, 8192, dir, end );
-
-	trap_Trace( &tr, origin, mins, maxs, end, passEntityNum, MASK_SHOT, 0 );
-
-	return !G_RadiusDamage( tr.endpos, nullptr, attr->splashDamage, attr->splashRadius, nullptr,
-	                        0, MOD_ROCKETPOD, TEAM_HUMANS );
 }
 #endif
 
@@ -1047,7 +1031,7 @@ static void FirePainsaw( gentity_t *self )
 
 	G_WideTrace( &tr, self, PAINSAW_RANGE, PAINSAW_WIDTH, PAINSAW_HEIGHT, &target );
 
-	if ( !G_Alive( target ) )
+	if ( !Entities::IsAlive( target ) )
 	{
 		return;
 	}
@@ -1280,16 +1264,23 @@ bool G_CheckVenomAttack( gentity_t *self )
 
 	G_WideTrace( &tr, self, LEVEL0_BITE_RANGE, LEVEL0_BITE_WIDTH, LEVEL0_BITE_WIDTH, &traceEnt );
 
-	if ( !G_Alive( traceEnt ) || G_OnSameTeam( self, traceEnt ) )
+	if ( !Entities::IsAlive( traceEnt ) || G_OnSameTeam( self, traceEnt ) )
 	{
 		return false;
 	}
 
 #ifndef UNREALARENA
-	// only allow bites to work against buildables in construction
+	// only allow bites to work against buildables in construction and turrets and rocket pods.
 	if ( traceEnt->s.eType == entityType_t::ET_BUILDABLE && traceEnt->spawned )
 	{
-		return false;
+		switch ( traceEnt->s.modelindex )
+		{
+			case BA_H_MGTURRET:
+			case BA_H_ROCKETPOD:
+				break;
+			default:
+				return false;
+		}
 	}
 #endif
 
@@ -1352,14 +1343,14 @@ static void FindZapChainTargets( zap_t *zap )
 #ifdef UNREALARENA
 		if ( enemy->client &&
 		     enemy->client->pers.team == TEAM_U &&
-		     G_Alive( enemy ) &&
+		     Entities::IsAlive( enemy ) &&
 		     distance <= LEVEL2_AREAZAP_CHAIN_RANGE )
 #else
 		if ( ( ( enemy->client &&
 		         enemy->client->pers.team == TEAM_HUMANS ) ||
 		       ( enemy->s.eType == entityType_t::ET_BUILDABLE &&
 		         BG_Buildable( enemy->s.modelindex )->team == TEAM_HUMANS ) ) &&
-		     G_Alive( enemy ) &&
+		     Entities::IsAlive( enemy ) &&
 		     distance <= LEVEL2_AREAZAP_CHAIN_RANGE )
 #endif
 		{
@@ -1602,7 +1593,7 @@ bool G_CheckPounceAttack( gentity_t *self )
 	G_WideTrace( &tr, self, pounceRange, LEVEL3_POUNCE_WIDTH,
 	             LEVEL3_POUNCE_WIDTH, &traceEnt );
 
-	if ( !G_Alive( traceEnt ) )
+	if ( !Entities::IsAlive( traceEnt ) )
 	{
 		return false;
 	}
@@ -1653,7 +1644,7 @@ void G_ChargeAttack( gentity_t *self, gentity_t *victim )
 		return;
 	}
 
-	if ( !G_Alive( victim ) )
+	if ( !Entities::IsAlive( victim ) )
 	{
 		return;
 	}
@@ -1922,7 +1913,7 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_MACHINEGUN:
-					FireBullet( self, RIFLE_SPREAD, RIFLE_DMG, MOD_MACHINEGUN );
+					FireBullet( self, RIFLE_SPREAD, (float)RIFLE_DMG, MOD_MACHINEGUN );
 					break;
 
 				case WP_SHOTGUN:
@@ -1930,7 +1921,7 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_CHAINGUN:
-					FireBullet( self, CHAINGUN_SPREAD, CHAINGUN_DMG, MOD_CHAINGUN );
+					FireBullet( self, CHAINGUN_SPREAD, (float)CHAINGUN_DMG, MOD_CHAINGUN );
 					break;
 
 				case WP_FLAMER:

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -60,7 +60,6 @@ static const buildableName_t bg_buildableNameList[] =
 	{ BA_H_MEDISTAT,  "medistat",  "team_human_medistat"  },
  	{ BA_H_DRILL,     "drill",     "team_human_drill"     },
 	{ BA_H_REACTOR,   "reactor",   "team_human_reactor"   },
-	{ BA_H_REPEATER,  "repeater",  "team_human_repeater"  }
 };
 
 static const size_t bg_numBuildables = ARRAY_LEN( bg_buildableNameList );
@@ -633,29 +632,29 @@ BG_InitClassModelConfigs
 */
 void BG_InitClassModelConfigs()
 {
-	int           i;
-	classModelConfig_t *cc;
-
 #ifdef UNREALARENA
-	for ( i = TEAM_NONE; i < NUM_TEAMS; i++ )
-#else
-	for ( i = PCL_NONE; i < PCL_NUM_CLASSES; i++ )
-#endif
+	for ( int i = TEAM_NONE; i < NUM_TEAMS; i++ )
 	{
-#ifdef UNREALARENA
-		cc = BG_ClassModelConfig( ( team_t ) i );
+		classModelConfig_t *cc = BG_ClassModelConfig( ( team_t ) i );
 
 		BG_ParseClassModelFile( va( "configs/classes/%s.model.cfg",
 		                       BG_Class( ( team_t ) i )->name ), cc );
+
+		// HACK: For now, all alien models are nonseg while humans are segmented. Remove this.
+		cc->segmented = cc->modelName[0] && BG_Class( ( team_t ) i )->team == TEAM_Q;
+	}
 #else
-		cc = BG_ClassModelConfig( i );
+	for ( int i = PCL_NONE; i < PCL_NUM_CLASSES; i++ )
+	{
+		classModelConfig_t *cc = BG_ClassModelConfig( i );
 
 		BG_ParseClassModelFile( va( "configs/classes/%s.model.cfg",
 		                       BG_Class( i )->name ), cc );
-#endif
 
-		cc->segmented = cc->modelName[0] ? BG_NonSegModel( va( "models/players/%s/animation.cfg", cc->modelName ) ) : false;
+		// HACK: For now, all alien models are nonseg while humans are segmented. Remove this.
+		cc->segmented = cc->modelName[0] && BG_Class( i )->team == TEAM_ALIENS;
 	}
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1013,8 +1012,7 @@ static const meansOfDeathData_t bg_meansOfDeathData[] =
 	{ MOD_SPIKER, "MOD_SPIKER" },
 	{ MOD_OVERMIND, "MOD_OVERMIND" },
 	{ MOD_DECONSTRUCT, "MOD_DECONSTRUCT" },
-	{ MOD_REPLACE, "MOD_REPLACE" },
-	{ MOD_NOCREEP, "MOD_NOCREEP" }
+	{ MOD_REPLACE, "MOD_REPLACE" }
 #endif
 };
 
@@ -3016,6 +3014,32 @@ const char *BG_TeamNamePlural( int team )
 #endif
 
 	return "<team>";
+}
+
+// Matches a playable team i.e. humans or aliens
+// Return of TEAM_NONE means no match rather than spectator
+team_t BG_PlayableTeamFromString( const char* s )
+{
+#ifdef UNREALARENA
+	if ( !Q_stricmp( s, "q" ) )
+	{
+		return team_t::TEAM_Q;
+	}
+	if ( !Q_stricmp( s, "u" ) )
+	{
+		return team_t::TEAM_U;
+	}
+#else
+	if ( !Q_stricmp( s, "a" ) || !Q_stricmp( s, "aliens" ) )
+	{
+		return team_t::TEAM_ALIENS;
+	}
+	if ( !Q_stricmp( s, "h" ) || !Q_stricmp( s, "humans" ) )
+	{
+		return team_t::TEAM_HUMANS;
+	}
+#endif
+	return team_t::TEAM_NONE;
 }
 
 int cmdcmp( const void *a, const void *b )

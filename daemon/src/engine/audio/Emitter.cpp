@@ -41,7 +41,7 @@ namespace Audio {
     static entityData_t entities[MAX_GENTITIES];
     static int listenerEntity = -1;
 
-    // Keep Entitymitters in an array because there is at most one per entity.
+    // Keep entity Emitters in an array because there is at most one per entity.
     static std::shared_ptr<Emitter> entityEmitters[MAX_GENTITIES];
 
     // Position Emitters can be reused so we keep the list of all of them
@@ -258,11 +258,9 @@ namespace Audio {
 
     // Implementation for Emitter
 
-    Emitter::Emitter() {
-    }
+    Emitter::Emitter() = default;
 
-    Emitter::~Emitter() {
-    }
+    Emitter::~Emitter() = default;
 
     void Emitter::SetupSound(Sound& sound) {
         sound.GetSource().SetReferenceDistance(120.0f);
@@ -275,8 +273,7 @@ namespace Audio {
     EntityEmitter::EntityEmitter(int entityNum): entityNum(entityNum) {
     }
 
-    EntityEmitter::~EntityEmitter(){
-    }
+    EntityEmitter::~EntityEmitter() = default;
 
     void EntityEmitter::Update() {
         // TODO
@@ -304,8 +301,7 @@ namespace Audio {
         VectorCopy(position, this->position);
     }
 
-    PositionEmitter::~PositionEmitter() {
-    }
+    PositionEmitter::~PositionEmitter() = default;
 
     void PositionEmitter::Update() {
         //TODO
@@ -329,11 +325,9 @@ namespace Audio {
 
     // Implementation of LocalEmitter
 
-    LocalEmitter::LocalEmitter() {
-    }
+    LocalEmitter::LocalEmitter() = default;
 
-    LocalEmitter::~LocalEmitter() {
-    }
+    LocalEmitter::~LocalEmitter() = default;
 
     void LocalEmitter::Update() {
     }
@@ -352,7 +346,7 @@ namespace Audio {
             TestReverbCmd(): StaticCmd("testReverb", Cmd::AUDIO, "Tests a reverb preset.") {
             }
 
-            virtual void Run(const Cmd::Args& args) const OVERRIDE {
+            virtual void Run(const Cmd::Args& args) const override {
                 if (args.Argc() != 2) {
                     PrintUsage(args, "stop", "stop the test");
                     PrintUsage(args, "[preset name]", "tests the reverb preset.");
@@ -366,7 +360,7 @@ namespace Audio {
                 }
             }
 
-            Cmd::CompletionResult Complete(int argNum, const Cmd::Args&, Str::StringRef prefix) const OVERRIDE {
+            Cmd::CompletionResult Complete(int argNum, const Cmd::Args&, Str::StringRef prefix) const override {
                 if (argNum != 1) {
                     return {};
                 }

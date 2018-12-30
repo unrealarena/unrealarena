@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -28,6 +28,7 @@
 CG_Obituary
 =============
 */
+// end on WHITE instead of ESC for player names following the tags
 #ifdef UNREALARENA
 static const char teamTag[][8] = { "^2*^7", "^1*^7", "^4*^7" };
 #else
@@ -236,7 +237,7 @@ static void CG_Obituary( entityState_t *ent )
 			{
 				if ( meansOfDeath[ mod ].showAssist && assistantInfo )
 				{
-					Log::Notice( "%s (+ %s%s^7) %s %s%s", teamTag[ attackerTeam ], teamTag[ assistantTeam ], assistantName, meansOfDeath[ mod ].icon, teamTag[ ci->team ], targetName );
+					Log::Notice( "%s (+ %s%s^*) %s %s%s", teamTag[ attackerTeam ], teamTag[ assistantTeam ], assistantName, meansOfDeath[ mod ].icon, teamTag[ ci->team ], targetName );
 				}
 				else
 				{
@@ -251,17 +252,17 @@ static void CG_Obituary( entityState_t *ent )
 			{
 				if ( meansOfDeath[ mod ].showAssist && assistantInfo )
 				{
-					Log::Notice( "%s%s^7 (+ %s%s^7) %s %s%s", teamTag[ attackerTeam ], attackerName, teamTag[ assistantTeam ], assistantName, meansOfDeath[ mod ].icon, teamTag[ ci->team ], targetName );
+					Log::Notice( "%s%s^* (+ %s%s^*) %s %s%s", teamTag[ attackerTeam ], attackerName, teamTag[ assistantTeam ], assistantName, meansOfDeath[ mod ].icon, teamTag[ ci->team ], targetName );
 				}
 				else
 				{
-					Log::Notice( "%s%s^7 %s %s%s", teamTag[ attackerTeam ], attackerName, meansOfDeath[ mod ].icon, teamTag[ ci->team ], targetName );
+					Log::Notice( "%s%s^* %s %s%s", teamTag[ attackerTeam ], attackerName, meansOfDeath[ mod ].icon, teamTag[ ci->team ], targetName );
 				}
 
 				// nice big message for teamkills
 				if ( attackerTeam == ci->team && attacker == cg.clientNum )
 				{
-					CG_CenterPrint( va( _("You killed ^1TEAMMATE^7 %s"), targetName ),
+					CG_CenterPrint( va( _("You killed ^1TEAMMATE^* %s"), targetName ),
 							SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 				}
 			}
@@ -277,88 +278,88 @@ static void CG_Obituary( entityState_t *ent )
 			// Environmental kills
 
 			case MOD_FALLING:
-				message = G_( "%s%s ^7fell to death" );
+				message = G_( "%s%s ^*fell to death" );
 				break;
 
 			case MOD_CRUSH:
-				message = G_( "%s%s ^7was crushed to death" );
+				message = G_( "%s%s ^*was crushed to death" );
 				break;
 
 			case MOD_WATER:
-				message = G_( "%s%s ^7drowned" );
+				message = G_( "%s%s ^*drowned" );
 				break;
 
 			case MOD_SLIME:
-				message = G_( "%s%s ^7melted" );
+				message = G_( "%s%s ^*melted" );
 				break;
 
 			case MOD_LAVA:
-				message = G_( "%s%s ^7took a dip in some lava" );
+				message = G_( "%s%s ^*took a dip in some lava" );
 				break;
 
 			case MOD_TRIGGER_HURT:
-				message = G_( "%s%s ^7was in the wrong place" );
+				message = G_( "%s%s ^*was in the wrong place" );
 				break;
 
 #ifndef UNREALARENA
 			// Building explosions
 
 			case MOD_HSPAWN:
-				message = G_( "%s%s ^7was caught in the explosion" );
+				message = G_( "%s%s ^*was caught in the explosion" );
 				break;
 
 			case MOD_ASPAWN:
-				message = G_( "%s%s ^7was caught in the acid" );
+				message = G_( "%s%s ^*was caught in the acid" );
 				break;
 
 			// Attacked by a building
 
 			case MOD_MGTURRET:
-				message = G_( "%s%s ^7was gunned down by a turret" );
-				messageAssisted = G_( "%s%s ^7was gunned down by a turret; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was gunned down by a turret" );
+				messageAssisted = G_( "%s%s ^*was gunned down by a turret; %s%s^* assisted" );
 				break;
 
 			case MOD_ROCKETPOD:
-				message = G_( "%s%s ^7caught a rocket" );
-				messageAssisted = G_( "%s%s ^7caught a rocket; %s%s^7 assisted" );
+				message = G_( "%s%s ^*caught a rocket" );
+				messageAssisted = G_( "%s%s ^*caught a rocket; %s%s^* assisted" );
 				break;
 
 			case MOD_ATUBE:
-				message = G_( "%s%s ^7was melted by an acid tube" );
-				messageAssisted = G_( "%s%s ^7was melted by an acid tube; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was melted by an acid tube" );
+				messageAssisted = G_( "%s%s ^*was melted by an acid tube; %s%s^* assisted" );
 				break;
 
 			case MOD_SPIKER:
-				message = G_( "%s%s ^7was flechetted by a spiker" );
-				messageAssisted = G_( "%s%s ^7was flechetted by a spiker; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was flechetted by a spiker" );
+				messageAssisted = G_( "%s%s ^*was flechetted by a spiker; %s%s^* assisted" );
 				break;
 
 			case MOD_OVERMIND:
-				message = G_( "%s%s ^7was whipped by the overmind" );
-				messageAssisted = G_( "%s%s ^7was whipped by the overmind; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was whipped by the overmind" );
+				messageAssisted = G_( "%s%s ^*was whipped by the overmind; %s%s^* assisted" );
 				break;
 
 			case MOD_REACTOR:
-				message = G_( "%s%s ^7was fried by the reactor" );
-				messageAssisted = G_( "%s%s ^7was fried by the reactor; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was fried by the reactor" );
+				messageAssisted = G_( "%s%s ^*was fried by the reactor; %s%s^* assisted" );
 				break;
 
 			case MOD_SLOWBLOB:
-				message = G_( "%s%s ^7couldn't avoid the granger" );
-				messageAssisted = G_( "%s%s ^7couldn't avoid the granger; %s%s^7 assisted" );
+				message = G_( "%s%s ^*couldn't avoid the granger" );
+				messageAssisted = G_( "%s%s ^*couldn't avoid the granger; %s%s^* assisted" );
 				break;
 
 			case MOD_SWARM:
-				message = G_( "%s%s ^7was consumed by the swarm" );
-				messageAssisted = G_( "%s%s ^7was consumed by the swarm; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was consumed by the swarm" );
+				messageAssisted = G_( "%s%s ^*was consumed by the swarm; %s%s^* assisted" );
 				break;
 #endif
 
 			// Shouldn't happen
 
 			case MOD_TARGET_LASER:
-				message = G_( "%s%s ^7saw the light" );
-				messageAssisted = G_( "%s%s ^7saw the light; %s%s^7 assisted" );
+				message = G_( "%s%s ^*saw the light" );
+				messageAssisted = G_( "%s%s ^*saw the light; %s%s^* assisted" );
 				break;
 
 			default:
@@ -384,140 +385,140 @@ static void CG_Obituary( entityState_t *ent )
 		switch ( mod )
 		{
 			case MOD_PAINSAW:
-				message = G_( "%s%s ^7was sawn by %s%s" );
-				messageAssisted = G_( "%s%s ^7was sawn by %s%s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was sawn by %s%s" );
+				messageAssisted = G_( "%s%s ^*was sawn by %s%s^*; %s%s^* assisted" );
 				break;
 
 			case MOD_BLASTER:
-				message = G_( "%s%s ^7was blasted by %s%s" );
-				messageAssisted = G_( "%s%s ^7was blasted by %s%s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was blasted by %s%s" );
+				messageAssisted = G_( "%s%s ^*was blasted by %s%s^*; %s%s^* assisted" );
 				break;
 
 			case MOD_MACHINEGUN:
-				message = G_( "%s%s ^7was machinegunned by %s%s" );
-				messageAssisted = G_( "%s%s ^7was machinegunned by %s%s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was machinegunned by %s%s" );
+				messageAssisted = G_( "%s%s ^*was machinegunned by %s%s^*; %s%s^* assisted" );
 				break;
 
 			case MOD_CHAINGUN:
-				message = G_( "%s%s ^7was mowed down by %s%s" );
-				messageAssisted = G_( "%s%s ^7was mowed down by %s%s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was mowed down by %s%s" );
+				messageAssisted = G_( "%s%s ^*was mowed down by %s%s^*; %s%s^* assisted" );
 				break;
 
 			case MOD_SHOTGUN:
-				message = G_( "%s%s ^7was gunned down by %s%s" );
-				messageAssisted = G_( "%s%s ^7was gunned down by %s%s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was gunned down by %s%s" );
+				messageAssisted = G_( "%s%s ^*was gunned down by %s%s^*; %s%s^* assisted" );
 				break;
 
 			case MOD_PRIFLE:
-				message = G_( "%s%s ^7was seared by %s%s^7's pulse blast" );
-				messageAssisted = G_( "%s%s ^7was seared by %s%s^7's pulse blast; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was seared by %s%s^*'s pulse blast" );
+				messageAssisted = G_( "%s%s ^*was seared by %s%s^*'s pulse blast; %s%s^* assisted" );
 				break;
 
 			case MOD_MDRIVER:
-				message = G_( "%s%s ^7was sniped by %s%s" );
-				messageAssisted = G_( "%s%s ^7was sniped by %s%s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was sniped by %s%s" );
+				messageAssisted = G_( "%s%s ^*was sniped by %s%s^*; %s%s^* assisted" );
 				break;
 
 			case MOD_LASGUN:
-				message = G_( "%s%s ^7was lasered by %s%s" );
-				messageAssisted = G_( "%s%s ^7was lasered by %s%s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was lasered by %s%s" );
+				messageAssisted = G_( "%s%s ^*was lasered by %s%s^*; %s%s^* assisted" );
 				break;
 
 			case MOD_FLAMER:
 			case MOD_FLAMER_SPLASH:
-				message = G_( "%s%s ^7was grilled by %s%s^7's flame" );
-				messageAssisted = G_( "%s%s ^7was grilled by %s%s^7's flame; %s%s^7 assisted" );
-				messageSuicide = G_( "%s%s ^7was charred to a crisp" );
+				message = G_( "%s%s ^*was grilled by %s%s^*'s flame" );
+				messageAssisted = G_( "%s%s ^*was grilled by %s%s^*'s flame; %s%s^* assisted" );
+				messageSuicide = G_( "%s%s ^*was charred to a crisp" );
 				break;
 
 #ifndef UNREALARENA
 			case MOD_BURN:
-				message = G_( "%s%s ^7was burned by %s%s^7's fire" );
-				messageAssisted = G_( "%s%s ^7was burned by %s%s^7's fire; %s%s^7 assisted" );
-				messageSuicide = G_( "%s%s ^7was burned to death" );
+				message = G_( "%s%s ^*was burned by %s%s^*'s fire" );
+				messageAssisted = G_( "%s%s ^*was burned by %s%s^*'s fire; %s%s^* assisted" );
+				messageSuicide = G_( "%s%s ^*was burned to death" );
 				break;
 #endif
 
 			case MOD_LCANNON:
-				message = G_( "%s%s ^7was annihilated by %s%s^7's plasma blast" );
-				messageAssisted = G_( "%s%s ^7was annihilated by %s%s^7's plasma blast; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was annihilated by %s%s^*'s plasma blast" );
+				messageAssisted = G_( "%s%s ^*was annihilated by %s%s^*'s plasma blast; %s%s^* assisted" );
 				break;
 
 			case MOD_LCANNON_SPLASH:
-				message = G_( "%s%s ^7was irradiated by %s%s^7's plasma blast" );
-				messageAssisted = G_( "%s%s ^7was irradiated by %s%s^7's plasma blast; %s%s^7 assisted" );
-				messageSuicide = G_( "%s%s ^7was irradiated" );
+				message = G_( "%s%s ^*was irradiated by %s%s^*'s plasma blast" );
+				messageAssisted = G_( "%s%s ^*was irradiated by %s%s^*'s plasma blast; %s%s^* assisted" );
+				messageSuicide = G_( "%s%s ^*was irradiated" );
 				break;
 
 			case MOD_GRENADE:
-				message = G_( "%s%s ^7was blown up by %s%s^7's grenade" );
-				messageAssisted = G_( "%s%s ^7was blown up by %s%s^7's grenade; %s%s^7 assisted" );
-				messageSuicide = G_( "%s%s ^7was blown up" );
+				message = G_( "%s%s ^*was blown up by %s%s^*'s grenade" );
+				messageAssisted = G_( "%s%s ^*was blown up by %s%s^*'s grenade; %s%s^* assisted" );
+				messageSuicide = G_( "%s%s ^*was blown up" );
 				break;
 
 			case MOD_FIREBOMB:
-				message = G_( "%s%s ^7was incinerated by %s%s^7's firebomb" );
-				messageAssisted = G_( "%s%s ^7was incinerated by %s%s^7's firebomb; %s%s^7 assisted" );
-				messageSuicide = G_( "%s%s ^7was incinerated" );
+				message = G_( "%s%s ^*was incinerated by %s%s^*'s firebomb" );
+				messageAssisted = G_( "%s%s ^*was incinerated by %s%s^*'s firebomb; %s%s^* assisted" );
+				messageSuicide = G_( "%s%s ^*was incinerated" );
 				break;
 
 #ifndef UNREALARENA
 			case MOD_ABUILDER_CLAW:
-				message = G_( "%s%s ^7was gently nibbled by %s%s^7's granger" );
-				messageAssisted = G_( "%s%s ^7was gently nibbled by %s%s^7's granger; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was gently nibbled by %s%s^*'s granger" );
+				messageAssisted = G_( "%s%s ^*was gently nibbled by %s%s^*'s granger; %s%s^* assisted" );
 				break;
 
 			case MOD_LEVEL0_BITE:
-				message = G_( "%s%s ^7was bitten by %s%s" );
-				messageAssisted = G_( "%s%s ^7was bitten by %s%s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was bitten by %s%s" );
+				messageAssisted = G_( "%s%s ^*was bitten by %s%s^*; %s%s^* assisted" );
 				break;
 
 			case MOD_LEVEL1_CLAW:
-				message = G_( "%s%s ^7was sliced by %s%s^7's %s" );
-				messageAssisted = G_( "%s%s ^7was sliced by %s%s^7's %s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was sliced by %s%s^*'s %s" );
+				messageAssisted = G_( "%s%s ^*was sliced by %s%s^*'s %s^*; %s%s^* assisted" );
 				attackerClass = PCL_ALIEN_LEVEL1;
 				break;
 
 			case MOD_LEVEL2_CLAW:
-				message = G_( "%s%s ^7was shredded by %s%s^7's %s" );
-				messageAssisted = G_( "%s%s ^7was shredded by %s%s^7's %s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was shredded by %s%s^*'s %s" );
+				messageAssisted = G_( "%s%s ^*was shredded by %s%s^*'s %s^*; %s%s^* assisted" );
 				attackerClass = PCL_ALIEN_LEVEL2;
 				break;
 
 			case MOD_LEVEL2_ZAP:
-				message = G_( "%s%s ^7was electrocuted by %s%s^7's %s" );
-				messageAssisted = G_( "%s%s ^7was electrocuted by %s%s^7's %s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was electrocuted by %s%s^*'s %s" );
+				messageAssisted = G_( "%s%s ^*was electrocuted by %s%s^*'s %s^*; %s%s^* assisted" );
 				attackerClass = PCL_ALIEN_LEVEL2;
 				break;
 
 			case MOD_LEVEL3_CLAW:
-				message = G_( "%s%s ^7was chomped by %s%s^7's %s" );
-				messageAssisted = G_( "%s%s ^7was chomped by %s%s^7's %s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was eviscerated by %s%s^*'s %s" );
+				messageAssisted = G_( "%s%s ^*was eviscerated by %s%s^*'s %s^*; %s%s^* assisted" );
 				attackerClass = PCL_ALIEN_LEVEL3;
 				break;
 
 			case MOD_LEVEL3_POUNCE:
-				message = G_( "%s%s ^7was pounced upon by %s%s^7's %s" );
-				messageAssisted = G_( "%s%s ^7was pounced upon by %s%s^7's %s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was pounced upon by %s%s^*'s %s" );
+				messageAssisted = G_( "%s%s ^*was pounced upon by %s%s^*'s %s^*; %s%s^* assisted" );
 				attackerClass = PCL_ALIEN_LEVEL3;
 				break;
 
 			case MOD_LEVEL3_BOUNCEBALL:
-				message = G_( "%s%s ^7was barbed by %s%s^7's %s" );
-				messageAssisted = G_( "%s%s ^7was barbed by %s%s^7's %s^7; %s%s^7 assisted" );
-				messageSuicide = G_( "%s%s ^7was barbed" );
+				message = G_( "%s%s ^*was barbed by %s%s^*'s %s" );
+				messageAssisted = G_( "%s%s ^*was barbed by %s%s^*'s %s^*; %s%s^* assisted" );
+				messageSuicide = G_( "%s%s ^*was barbed" );
 				attackerClass = PCL_ALIEN_LEVEL3;
 				break;
 
 			case MOD_LEVEL4_CLAW:
-				message = G_( "%s%s ^7was mauled by %s%s^7's %s" );
-				messageAssisted = G_( "%s%s ^7was mauled by %s%s^7's %s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was mauled by %s%s^*'s %s" );
+				messageAssisted = G_( "%s%s ^*was mauled by %s%s^*'s %s^*; %s%s^* assisted" );
 				attackerClass = PCL_ALIEN_LEVEL4;
 				break;
 
 			case MOD_LEVEL4_TRAMPLE:
-				message = G_( "%s%s ^7should have gotten out of the way of %s%s^7's %s" );
-				messageAssisted = G_( "%s%s ^7should have gotten out of the way of %s%s^7's %s^7; %s%s^7 assisted" );
+				message = G_( "%s%s ^*should have gotten out of the way of %s%s^*'s %s" );
+				messageAssisted = G_( "%s%s ^*should have gotten out of the way of %s%s^*'s %s^*; %s%s^* assisted" );
 				attackerClass = PCL_ALIEN_LEVEL4;
 				break;
 #endif
@@ -528,25 +529,25 @@ static void CG_Obituary( entityState_t *ent )
 			case MOD_WEIGHT_H:
 			case MOD_WEIGHT_A:
 #endif
-				message = G_( "%s%s ^7was crushed under %s%s^7's weight" );
-				messageAssisted = G_( "%s%s ^7was crushed under %s%s^7's weight; %s%s^7 assisted" );
+				message = G_( "%s%s ^*was crushed under %s%s^*'s weight" );
+				messageAssisted = G_( "%s%s ^*was crushed under %s%s^*'s weight; %s%s^* assisted" );
 				break;
 
 #ifndef UNREALARENA
 			case MOD_POISON:
-				message = G_( "%s%s ^7should have used a medkit against %s%s^7's poison" );
-				messageAssisted = G_( "%s%s ^7should have used a medkit against %s%s^7's poison; %s%s^7 assisted" );
+				message = G_( "%s%s ^*should have used a medkit against %s%s^*'s poison" );
+				messageAssisted = G_( "%s%s ^*should have used a medkit against %s%s^*'s poison; %s%s^* assisted" );
 				break;
 #endif
 
 			case MOD_TELEFRAG:
-				message = G_( "%s%s ^7tried to invade %s%s^7's personal space" );
+				message = G_( "%s%s ^*tried to invade %s%s^*'s personal space" );
 				break;
 
 			default:
-				message = G_( "%s%s ^7was killed by %s%s" );
-				messageAssisted = G_( "%s%s ^7was killed by %s%s^7 and %s%s" );
-				messageSuicide = G_( "%s%s ^7committed suicide" );
+				message = G_( "%s%s ^*was killed by %s%s" );
+				messageAssisted = G_( "%s%s ^*was killed by %s%s^* and %s%s" );
+				messageSuicide = G_( "%s%s ^*committed suicide" );
 				break;
 		}
 
@@ -587,7 +588,7 @@ static void CG_Obituary( entityState_t *ent )
 
 			if ( attackerTeam == ci->team && attacker == cg.clientNum && attacker != target )
 			{
-				CG_CenterPrint( va( _("You killed ^1TEAMMATE^7 %s"), targetName ),
+				CG_CenterPrint( va( _("You killed ^1TEAMMATE^* %s"), targetName ),
 						SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 			}
 
@@ -595,7 +596,7 @@ static void CG_Obituary( entityState_t *ent )
 		}
 
 		// we don't know what it was
-		Log::Notice( G_( "%s%s^7 died" ), teamTag[ ci->team ], targetName );
+		Log::Notice( G_( "%s%s^* died" ), teamTag[ ci->team ], targetName );
 	}
 }
 
@@ -620,19 +621,19 @@ void CG_PainEvent( centity_t *cent, int health )
 
 	if ( health < 25 )
 	{
-		snd = "*pain25_1.wav";
+		snd = "*pain25_1";
 	}
 	else if ( health < 50 )
 	{
-		snd = "*pain50_1.wav";
+		snd = "*pain50_1";
 	}
 	else if ( health < 75 )
 	{
-		snd = "*pain75_1.wav";
+		snd = "*pain75_1";
 	}
 	else
 	{
-		snd = "*pain100_1.wav";
+		snd = "*pain100_1";
 	}
 
 	trap_S_StartSound( nullptr, cent->currentState.number, soundChannel_t::CHAN_VOICE,
@@ -875,7 +876,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 		case EV_FALL_MEDIUM:
 			// use a general pain sound
-			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_VOICE, CG_CustomSound( es->number, "*pain100_1.wav" ) );
+			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_VOICE, CG_CustomSound( es->number, "*pain100_1" ) );
 
 			if ( clientNum == cg.predictedPlayerState.clientNum )
 			{
@@ -887,7 +888,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			break;
 
 		case EV_FALL_FAR:
-			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, CG_CustomSound( es->number, "*fall1.wav" ) );
+			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, CG_CustomSound( es->number, "*fall1" ) );
 			cent->pe.painTime = cg.time; // don't play a pain sound right after this
 
 			if ( clientNum == cg.predictedPlayerState.clientNum )
@@ -900,7 +901,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			break;
 
 		case EV_FALLING:
-			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, CG_CustomSound( es->number, "*falling1.wav" ) );
+			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, CG_CustomSound( es->number, "*falling1" ) );
 			break;
 
 		case EV_STEP_4:
@@ -966,7 +967,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			}
 
 		case EV_JUMP:
-			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_VOICE, CG_CustomSound( es->number, "*jump1.wav" ) );
+			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_VOICE, CG_CustomSound( es->number, "*jump1" ) );
 
 #ifndef UNREALARENA
 			if ( BG_ClassHasAbility( cg.predictedPlayerState.stats[ STAT_CLASS ], SCA_WALLJUMPER ) )
@@ -1013,7 +1014,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 		case EV_TAUNT:
 			if ( !cg_noTaunt.integer )
 			{
-				trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_VOICE, CG_CustomSound( es->number, "*taunt.wav" ) );
+				trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_VOICE, CG_CustomSound( es->number, "*taunt" ) );
 			}
 
 			break;
@@ -1031,7 +1032,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			break;
 
 		case EV_WATER_CLEAR:
-			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, CG_CustomSound( es->number, "*gasp.wav" ) );
+			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, CG_CustomSound( es->number, "*gasp" ) );
 			break;
 
 #ifndef UNREALARENA
@@ -1104,18 +1105,18 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 #ifndef UNREALARENA
 		case EV_FUEL_REFILL:
 			// TODO: Add different sounds for EV_AMMO_REFILL, EV_CLIPS_REFILL, EV_FUEL_REFILL
-			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, cgs.media.repeaterUseSound );
+			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, cgs.media.itemFillSound );
 #endif
 			break;
 
 		case EV_GRENADE_BOUNCE:
 			if ( rand() & 1 )
 			{
-				trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, cgs.media.hardBounceSound1 );
+				trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, cgs.media.grenadeBounceSound0 );
 			}
 			else
 			{
-				trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, cgs.media.hardBounceSound2 );
+				trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, cgs.media.grenadeBounceSound1 );
 			}
 			break;
 
@@ -1157,6 +1158,8 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			break;
 #endif
 
+		// TODO: Allow multiple tesla trails for any one source.
+		//       This is necessary as the reactor attacks all adjacent targets.
 		case EV_TESLATRAIL:
 			{
 				centity_t *source = &cg_entities[ es->generic1 ];
@@ -1164,7 +1167,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 				if ( !CG_IsTrailSystemValid( &source->muzzleTS ) )
 				{
-					source->muzzleTS = CG_SpawnNewTrailSystem( cgs.media.teslaZapTS );
+					source->muzzleTS = CG_SpawnNewTrailSystem( cgs.media.reactorZapTS );
 
 					if ( CG_IsTrailSystemValid( &source->muzzleTS ) )
 					{
@@ -1219,7 +1222,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 		case EV_DEATH2:
 		case EV_DEATH3:
 			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_VOICE,
-			                   CG_CustomSound( es->number, va( "*death%i.wav", event - EV_DEATH1 + 1 ) ) );
+			                   CG_CustomSound( es->number, va( "*death%i", event - EV_DEATH1 + 1 ) ) );
 			break;
 
 		case EV_OBITUARY:
@@ -1253,51 +1256,62 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, cgs.media.buildableRepairedSound );
 			break;
 
-		case EV_OVERMIND_ATTACK_1:
-		case EV_OVERMIND_ATTACK_2:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+		case EV_MAIN_UNDER_ATTACK:
+			// Sanity check the warn level: Must be between 1 and 3.
+			if (es->eventParm < 1 || es->eventParm > 3)
 			{
-				trap_S_StartLocalSound( cgs.media.alienOvermindAttack, soundChannel_t::CHAN_ANNOUNCER );
-				CG_CenterPrint( va( "^%c%s", "31"[ event - EV_OVERMIND_ATTACK_1 ], _( "The Overmind is under attack!" ) ), 200, GIANTCHAR_WIDTH * 4 );
+				break;
+			}
+
+			switch ( cg.predictedPlayerState.persistant[ PERS_TEAM ] )
+			{
+				case TEAM_ALIENS:
+					trap_S_StartLocalSound( cgs.media.alienOvermindAttack, soundChannel_t::CHAN_ANNOUNCER );
+					CG_CenterPrint( va( "^%c%s", "381"[ es->eventParm - 1 ], _( "The Overmind is under attack!" ) ),
+									200, GIANTCHAR_WIDTH * 4 );
+					break;
+
+				case TEAM_HUMANS:
+					// TODO: Add a "reactor is under attack" sound.
+					//trap_S_StartLocalSound( cgs.media.humanReactorAttack, soundChannel_t::CHAN_ANNOUNCER );
+					CG_CenterPrint( va( "^%c%s", "381"[ es->eventParm - 1 ], _( "The reactor is under attack!" ) ),
+									200, GIANTCHAR_WIDTH * 4 );
+					break;
+
+				default:
+					break;
 			}
 
 			break;
 
-		case EV_OVERMIND_DYING:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+		case EV_MAIN_DYING:
+			switch ( cg.predictedPlayerState.persistant[ PERS_TEAM ] )
 			{
-				trap_S_StartLocalSound( cgs.media.alienOvermindDying, soundChannel_t::CHAN_ANNOUNCER );
-				CG_CenterPrint( _( "^1The Overmind is dying!" ), 200, GIANTCHAR_WIDTH * 4 );
-			}
+				case TEAM_ALIENS:
+					trap_S_StartLocalSound( cgs.media.alienOvermindDying, soundChannel_t::CHAN_ANNOUNCER );
+					CG_CenterPrint( _( "^1The Overmind is dying!" ), 200, GIANTCHAR_WIDTH * 4 );
+					break;
 
-			break;
+				case TEAM_HUMANS:
+					// TODO: Add a "reactor is going down" sound.
+					//trap_S_StartLocalSound( cgs.media.humanReactorDying, soundChannel_t::CHAN_ANNOUNCER );
+					CG_CenterPrint( _( "^1The reactor is going down!" ), 200, GIANTCHAR_WIDTH * 4 );
+					break;
 
-		case EV_REACTOR_ATTACK_1:
-		case EV_REACTOR_ATTACK_2:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_HUMANS )
-			{
-				CG_CenterPrint( va( "^%c%s", "31"[ event - EV_REACTOR_ATTACK_1 ], _( "The reactor is under attack!" ) ), 200, GIANTCHAR_WIDTH * 4 );
-			}
-
-			break;
-
-		case EV_REACTOR_DYING:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_HUMANS )
-			{
-				CG_CenterPrint( _( "^1The reactor is about to explode!" ), 200, GIANTCHAR_WIDTH * 4 );
+				default:
+					break;
 			}
 
 			break;
 
 		case EV_WARN_ATTACK:
-			// if eventParm is non-zero, this is for humans and there's a nearby reactor or repeater, otherwise it's for aliens
+			// if eventParm is non-zero, this is for humans and there's a nearby reactor, otherwise it's for aliens
 			if ( es->eventParm >= MAX_CLIENTS && es->eventParm < MAX_GENTITIES )
 			{
 				const char *location;
-				bool    base = cg_entities[ es->eventParm ].currentState.modelindex == BA_H_REACTOR;
 				centity_t  *locent = CG_GetLocation( cg_entities[ es->eventParm ].currentState.origin );
 
-				CG_CenterPrint( base ? _( "Our base is under attack!" ) : _( "A forward base is under attack!" ), 200, GIANTCHAR_WIDTH * 4 );
+				CG_CenterPrint( _( "Our base is under attack!" ), 200, GIANTCHAR_WIDTH * 4 );
 
 				if ( locent )
 				{
@@ -1310,11 +1324,11 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 				if ( location && *location )
 				{
-					Log::Notice( _( "%s Under attack – %s" ), base ? "[reactor]" : "[repeater]", location );
+					Log::Notice( _( "[reactor] Under attack – %s" ), location );
 				}
 				else
 				{
-					Log::Notice( _( "%s Under attack" ), base ? "[reactor]" : "[repeater]" );
+					Log::Notice( _( "[reactor] Under attack" ) );
 				}
 			}
 			else // this is for aliens, and the overmind is in range
@@ -1328,11 +1342,21 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 			trap_S_StartSound( nullptr, es->number, soundChannel_t::CHAN_AUTO, cgs.media.turretSpinupSound );
 			break;
 
-		case EV_OVERMIND_SPAWNS:
-			if ( cg.predictedPlayerState.persistant[ PERS_TEAM ] == TEAM_ALIENS )
+		case EV_NO_SPAWNS:
+			switch ( cg.predictedPlayerState.persistant[ PERS_TEAM ] )
 			{
-				trap_S_StartLocalSound( cgs.media.alienOvermindSpawns, soundChannel_t::CHAN_ANNOUNCER );
-				CG_CenterPrint( "The Overmind needs spawns!", 200, GIANTCHAR_WIDTH * 4 );
+				case TEAM_ALIENS:
+					trap_S_StartLocalSound( cgs.media.alienOvermindSpawns, soundChannel_t::CHAN_ANNOUNCER );
+					CG_CenterPrint( "The Overmind needs spawns!", 200, GIANTCHAR_WIDTH * 4 );
+					break;
+
+				case TEAM_HUMANS:
+					// TODO: Add a sound.
+					CG_CenterPrint( "There are no telenodes left!", 200, GIANTCHAR_WIDTH * 4 );
+					break;
+
+				default:
+					break;
 			}
 
 			break;
@@ -1408,15 +1432,15 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 
 			break;
 
-		case EV_HIT:
-			cg.hitTime = cg.time;
-			break;
-
 #ifndef UNREALARENA
 		case EV_MOMENTUM:
 			CG_Momentum( es );
 			break;
 #endif
+
+		case EV_HIT:
+			CombatFeedback::Event(es);
+			break;
 
 		default:
 			Com_Error(errorParm_t::ERR_DROP,  "Unknown event: %i", event );

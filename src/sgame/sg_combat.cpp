@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -20,6 +20,7 @@
 
 
 #include "sg_local.h"
+#include "Entities.h"
 #include "CBSE.h"
 
 // damage region data
@@ -95,8 +96,7 @@ static const char *const modNames[] =
 	"MOD_SPIKER",
 	"MOD_OVERMIND",
 	"MOD_DECONSTRUCT",
-	"MOD_REPLACE",
-	"MOD_NOCREEP"
+	"MOD_REPLACE"
 #endif
 };
 
@@ -233,9 +233,19 @@ void G_RewardAttackers( gentity_t *self )
 	{
 		ownTeam   = (team_t) self->buildableTeam;
 		maxHealth = self->entity->Get<HealthComponent>()->MaxHealth();
-		value     = BG_IsMainStructure( &self->s )
-		            ? MAIN_STRUCTURE_MOMENTUM_VALUE
-		            : BG_Buildable( self->s.modelindex )->buildPoints;
+
+		if ( self->entity->Get<MainBuildableComponent>() )
+		{
+			value = MAIN_STRUCTURE_MOMENTUM_VALUE;
+		}
+		else if ( self->entity->Get<MiningComponent>() )
+		{
+			value = MINER_MOMENTUM_VALUE;
+		}
+		else
+		{
+			value = BG_Buildable( self->s.modelindex )->buildPoints;
+		}
 
 		// Give partial credits for buildables in construction
 		if ( !self->spawned )
@@ -452,7 +462,7 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 		else if ( g_showKillerHP.integer )
 #endif
 		{
-			trap_SendServerCommand( self - g_entities, va( "print_tr %s %s %3i", QQ( N_("Your killer, $1$^7, had $2$ HP.\n") ),
+			trap_SendServerCommand( self - g_entities, va( "print_tr %s %s %3i", QQ( N_("Your killer, $1$^*, had $2$ HP.\n") ),
 			                        Quote( killerName ),
 			                        (int)std::ceil(attacker->entity->Get<HealthComponent>()->Health()) ) );
 		}
@@ -1037,7 +1047,7 @@ bool G_RadiusDamage( vec3_t origin, gentity_t *attacker, float damage,
 				hitSomething = ent->entity->Damage(points, attacker, Vec3::Load(origin), Vec3::Load(dir),
 				                                   (DAMAGE_NO_LOCDAMAGE | dflags), (meansOfDeath_t)mod);
 			}
-			else if ( G_Team( ent ) == testHit && G_Alive( ent ) )
+			else if ( G_Team( ent ) == testHit && Entities::IsAlive( ent ) )
 			{
 				return true;
 			}
@@ -1066,10 +1076,6 @@ void G_LogDestruction( gentity_t *self, gentity_t *actor, int mod )
 
 		case MOD_REPLACE:
 			fate = BF_REPLACE;
-			break;
-
-		case MOD_NOCREEP:
-			fate = ( actor->client ) ? BF_UNPOWER : BF_AUTO;
 			break;
 
 		default:
@@ -1110,20 +1116,12 @@ void G_LogDestruction( gentity_t *self, gentity_t *actor, int mod )
 	             mod == MOD_DECONSTRUCT ? "deconstructed" : "destroyed",
 	             actor->client ? actor->client->pers.netname : "<world>" );
 
-	// No-power deaths for humans come after some minutes and it's confusing
-	//  when the messages appear attributed to the deconner. Just don't print them.
-	if ( mod == MOD_NOCREEP && actor->client &&
-	     actor->client->pers.team == TEAM_HUMANS )
-	{
-		return;
-	}
-
 	if ( actor->client && actor->client->pers.team ==
 	     BG_Buildable( self->s.modelindex )->team )
 	{
 		G_TeamCommand( (team_t) actor->client->pers.team,
-		               va( "print_tr %s %s %s", mod == MOD_DECONSTRUCT ? QQ( N_("$1$ ^3DECONSTRUCTED^7 by $2$\n") ) :
-						   QQ( N_("$1$ ^3DESTROYED^7 by $2$\n") ),
+		               va( "print_tr %s %s %s", mod == MOD_DECONSTRUCT ? QQ( N_("$1$ ^3DECONSTRUCTED^* by $2$\n") ) :
+						   QQ( N_("$1$ ^3DESTROYED^* by $2$\n") ),
 		                   Quote( BG_Buildable( self->s.modelindex )->humanName ),
 		                   Quote( actor->client->pers.netname ) ) );
 	}

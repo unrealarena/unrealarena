@@ -1,22 +1,36 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+===========================================================================
 
+Daemon GPL Source Code
+Copyright (C) 1999-2010 id Software LLC, a ZeniMax Media company.
+
+This file is part of the Daemon GPL Source Code (Daemon Source Code).
+
+Daemon Source Code is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Daemon Source Code is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Daemon Source Code.  If not, see <http://www.gnu.org/licenses/>.
+
+In addition, the Daemon Source Code is also subject to certain additional terms.
+You should have received a copy of these additional terms immediately following the
+terms and conditions of the GNU General Public License which accompanied the Daemon
+Source Code.  If not, please request a copy in writing from id Software at the address
+below.
+
+If you have questions concerning this license or the applicable additional terms, you
+may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville,
+Maryland 20850 USA.
+
+===========================================================================
+*/
 
 // qcommon.h -- definitions common between client and server, but not game.or ref modules
 #ifndef QCOMMON_H_
@@ -24,24 +38,14 @@
 
 #include "common/cm/cm_public.h"
 #include "cvar.h"
+#include "common/Defs.h"
+#include "net_types.h"
 
 //============================================================================
 
 //
 // msg.c
 //
-struct msg_t
-{
-    bool allowoverflow; // if false, do a Com_Error
-    bool overflowed; // set to true if the buffer size failed (with allowoverflow set)
-    bool oob; // set to true if the buffer size failed (with allowoverflow set)
-    byte     *data;
-    int      maxsize;
-    int      cursize;
-    int      uncompsize; // NERVE - SMF - net debugging
-    int      readcount;
-    int      bit; // for bitwise reads and writes
-};
 
 void MSG_Init( msg_t *buf, byte *data, int length );
 void MSG_InitOOB( msg_t *buf, byte *data, int length );
@@ -131,8 +135,6 @@ NET
 
 #define PORT_ANY            0
 
-#define MAX_MASTER_SERVERS  5
-
 // RF, increased this, seems to keep causing problems when set to 64, especially when loading
 // a savegame, which is hard to fix on that side, since we can't really spread out a loadgame
 // among several frames
@@ -140,43 +142,12 @@ NET
 //#define   MAX_RELIABLE_COMMANDS   128         // max string commands buffered for restransmit
 #define MAX_RELIABLE_COMMANDS 256 // bigger!
 
-enum class netadrtype_t : int
-{
-  NA_BOT,
-  NA_BAD, // an address lookup failed
-  NA_LOOPBACK,
-  NA_BROADCAST,
-  NA_IP,
-  NA_IP6,
-  NA_IP_DUAL,
-  NA_MULTICAST6,
-  NA_UNSPEC
-};
-
-enum class netsrc_t
-{
-  NS_CLIENT,
-  NS_SERVER
-};
-
 // maximum length of an IPv6 address string including trailing '\0'
 #define NET_ADDR_STR_MAX_LEN 48
 
 // maximum length of an formatted IPv6 address string including port and trailing '\0'
 // format [%s]:%hu - 48 for %s (address), 3 for []: and 5 for %hu (port number, max value 65535)
 #define NET_ADDR_W_PORT_STR_MAX_LEN ( NET_ADDR_STR_MAX_LEN + 3 + 5 )
-
-struct netadr_t
-{
-    netadrtype_t   type;
-
-    byte           ip[ 4 ];
-    byte           ip6[ 16 ];
-
-    unsigned short port; // port which is in use
-    unsigned short port4, port6; // ports to choose from
-    unsigned long  scope_id; // Needed for IPv6 link-local addresses
-};
 
 extern cvar_t       *net_enabled;
 
@@ -268,32 +239,12 @@ The server you are attempting to join is running an incompatible version of the 
 The server you attempted to join is running an incompatible version of the game.\n\
 You or the server may be running older versions of the game."
 
-#define GAMENAME_STRING        "unv"
-
 #define PROTOCOL_VERSION       86
 
 #define URI_SCHEME             GAMENAME_STRING "://"
 #define URI_SCHEME_LENGTH      ( ARRAY_LEN( URI_SCHEME ) - 1 )
 
-// NERVE - SMF - wolf multiplayer master servers
-#ifndef MASTER_SERVER_NAME
-#ifdef UNREALARENA
-# define MASTER_SERVER_NAME    "master.example.com"
-#else
-# define MASTER_SERVER_NAME    "master.unvanquished.net"
-#endif
-#endif
-
-#ifndef MOTD_SERVER_NAME
-#ifdef UNREALARENA
-# define MOTD_SERVER_NAME      "master.example.com"
-#else
-# define MOTD_SERVER_NAME      "master.unvanquished.net"
-#endif
-#endif
-
 #define PORT_MASTER             27950
-#define PORT_MOTD               27950
 #define PORT_SERVER             27960
 #define NUM_SERVER_PORTS        4 // broadcast scan this many ports after
 // PORT_SERVER so a single machine can
@@ -312,7 +263,6 @@ enum svc_ops_e
   svc_serverCommand, // [string] to be executed by client game module
   svc_download, // [short] size [size bytes]
   svc_snapshot,
-  svc_voip, // not wrapped in USE_VOIP, so this value is reserved.
   svc_EOF,
 };
 
@@ -326,7 +276,6 @@ enum clc_ops_e
   clc_move, // [usercmd_t]
   clc_moveNoDelta, // [usercmd_t]
   clc_clientCommand, // [string] message
-  clc_voip, // not wrapped in USE_VOIP, so this value is reserved.
   clc_EOF,
 };
 
@@ -513,7 +462,7 @@ int FS_Seek( fileHandle_t f, long offset, fsOrigin_t origin );
 
 const char* FS_LoadedPaks();
 
-// Returns a space separated string containing all loaded pk3 files.
+// Returns a space separated string containing all loaded dpk/pk3 files.
 
 bool     FS_LoadPak( const char *name );
 void     FS_LoadBasePak();
@@ -542,6 +491,7 @@ void IN_Shutdown();
 bool IN_IsNumLockDown();
 void IN_DropInputsForFrame();
 void IN_CenterMouse();
+bool IN_IsKeyboardLayoutInfoAvailable();
 
 /*
 ==============================================================
@@ -585,14 +535,6 @@ struct field_t
     int  widthInChars;
     char buffer[ MAX_EDIT_LINE ];
 };
-
-// Field_Complete{Key,Team}name
-#define FIELD_TEAM            1
-#define FIELD_TEAM_SPECTATORS 2
-#define FIELD_TEAM_DEFAULT    4
-
-void Field_CompleteKeyname( int flags );
-void Field_CompleteTeamname( int flags );
 
 // code point count <-> UTF-8 byte count
 int Field_CursorToOffset( field_t *edit );
@@ -657,6 +599,8 @@ extern cvar_t       *sv_paused;
 
 extern cvar_t       *cl_packetdelay;
 extern cvar_t       *sv_packetdelay;
+
+extern cvar_t       *sv_master[ MAX_MASTER_SERVERS ];
 
 // com_speeds times
 extern int          time_game;
@@ -760,18 +704,19 @@ void     CL_Disconnect( bool showMainMenu );
 void     CL_SendDisconnect();
 void     CL_Shutdown();
 void     CL_Frame( int msec );
-void     CL_KeyEvent( int key, bool down, unsigned time );
+namespace Keyboard { class Key; }
+void     CL_KeyEvent( const Keyboard::Key& key, bool down, unsigned time );
 
 void     CL_CharEvent( int c );
 
 // char events are for field typing, not game control
 
-void CL_MouseEvent( int dx, int dy, int time );
+void CL_MouseEvent( int dx, int dy );
 void CL_MousePosEvent( int dx, int dy);
 void CL_FocusEvent( bool focus );
 
 
-void CL_JoystickEvent( int axis, int value, int time );
+void CL_JoystickEvent( int axis, int value );
 
 void CL_PacketEvent( netadr_t from, msg_t *msg );
 
@@ -801,14 +746,6 @@ void CL_FlushMemory();
 void CL_StartHunkUsers();
 
 // start all the client stuff using the hunk
-
-void Key_KeynameCompletion( void ( *callback )( const char *s ) );
-
-// for keyname autocompletion
-
-void Key_WriteBindings( fileHandle_t f );
-
-// for writing the config files
 
 void S_ClearSoundBuffer();
 
@@ -857,27 +794,11 @@ enum class sysEventType_t
   SE_FOCUS, // evValue is a boolean indicating whether the game has focus
 };
 
-struct sysEvent_t
-{
-    int            evTime;
-    sysEventType_t evType;
-    int            evValue, evValue2;
-    int            evPtrLength; // bytes of data pointed to by evPtr, for journaling
-    void           *evPtr; // this must be manually freed if not nullptr
-};
-
-void       Com_QueueEvent( int time, sysEventType_t type, int value, int value2, int ptrLength, void *ptr );
-int        Com_EventLoop();
-
-void Sys_SendPacket(int length, const void *data, netadr_t to);
-bool Sys_GetPacket(netadr_t *net_from, msg_t *net_message);
-
-bool Sys_StringToAdr(const char *s, netadr_t *a, netadrtype_t family);
-
-bool Sys_IsLANAddress(netadr_t adr);
-void Sys_ShowIP();
-
-int Sys_Milliseconds();
+namespace Sys {
+    class EventBase;
+}
+void       Com_QueueEvent( std::unique_ptr<Sys::EventBase> event );
+void       Com_EventLoop();
 
 // Curses Console
 void         CON_Shutdown();
@@ -885,10 +806,6 @@ void         CON_Init();
 void         CON_Init_TTY();
 char         *CON_Input();
 void         CON_Print( const char *message );
-
-// Console - other
-unsigned int CON_LogSize();
-unsigned int CON_LogWrite( const char *in );
 
 /* This is based on the Adaptive Huffman algorithm described in Sayood's Data
  * Compression book.  The ranks are not actually stored, but implicitly defined

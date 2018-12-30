@@ -38,7 +38,7 @@ function(GAMEMODULE)
     cmake_parse_arguments(GAMEMODULE "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     if (NOT NACL)
         if (BUILD_GAME_NATIVE_DLL)
-            add_library(${GAMEMODULE_NAME}-native-dll MODULE ${PCH_FILE} ${GAMEMODULE_FILES} ${SHAREDLIST} ${COMMONLIST})
+            add_library(${GAMEMODULE_NAME}-native-dll MODULE ${PCH_FILE} ${GAMEMODULE_FILES} ${SHAREDLIST_${GAMEMODULE_NAME}} ${SHAREDLIST} ${COMMONLIST})
             target_link_libraries(${GAMEMODULE_NAME}-native-dll ${GAMEMODULE_LIBS} ${LIBS_BASE})
             set_target_properties(${GAMEMODULE_NAME}-native-dll PROPERTIES
                 PREFIX ""
@@ -50,7 +50,7 @@ function(GAMEMODULE)
         endif()
 
         if (BUILD_GAME_NATIVE_EXE)
-            add_executable(${GAMEMODULE_NAME}-native-exe ${PCH_FILE} ${GAMEMODULE_FILES} ${SHAREDLIST} ${COMMONLIST})
+            add_executable(${GAMEMODULE_NAME}-native-exe ${PCH_FILE} ${GAMEMODULE_FILES} ${SHAREDLIST_${GAMEMODULE_NAME}} ${SHAREDLIST} ${COMMONLIST})
             target_link_libraries(${GAMEMODULE_NAME}-native-exe ${GAMEMODULE_LIBS} ${LIBS_BASE})
             set_target_properties(${GAMEMODULE_NAME}-native-exe PROPERTIES
                 COMPILE_DEFINITIONS "VM_NAME=${GAMEMODULE_NAME};${GAMEMODULE_DEFINITIONS};BUILD_VM"
@@ -69,17 +69,20 @@ function(GAMEMODULE)
             set(FORK 1 PARENT_SCOPE)
             include(ExternalProject)
             set(vm nacl-vms)
+            set(inherited_option_args)
+            foreach(inherited_option ${NACL_VM_INHERITED_OPTIONS})
+                set(inherited_option_args ${inherited_option_args}
+                    "-D${inherited_option}=${${inherited_option}}")
+            endforeach(inherited_option)
             ExternalProject_Add(${vm}
-                SOURCE_DIR ${CMAKE_SOURCE_DIR}
-                BINARY_DIR ${CMAKE_BINARY_DIR}/${vm}
+                SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}
+                BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/${vm}
                 CMAKE_GENERATOR ${VM_GENERATOR}
                 CMAKE_ARGS
                     -DFORK=2
                     -DCMAKE_TOOLCHAIN_FILE=${Daemon_SOURCE_DIR}/cmake/toolchain-pnacl.cmake
-                    -DCMAKE_BUILD_TYPE=$<CONFIG>
+                    -DDAEMON_DIR=${Daemon_SOURCE_DIR}
                     -DDEPS_DIR=${DEPS_DIR}
-                    -DBUILD_CGAME=${BUILD_CGAME}
-                    -DBUILD_SGAME=${BUILD_SGAME}
                     -DBUILD_GAME_NACL_NEXE=${BUILD_GAME_NACL_NEXE}
                     -DBUILD_GAME_NACL=1
                     -DBUILD_GAME_NATIVE_DLL=0
@@ -87,6 +90,7 @@ function(GAMEMODULE)
                     -DBUILD_CLIENT=0
                     -DBUILD_TTY_CLIENT=0
                     -DBUILD_SERVER=0
+                    ${inherited_option_args}
                 INSTALL_COMMAND ""
             )
             ExternalProject_Add_Step(${vm} forcebuild
@@ -104,7 +108,7 @@ function(GAMEMODULE)
             set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/..)
         endif()
 
-        add_executable(${GAMEMODULE_NAME}-nacl ${PCH_FILE} ${GAMEMODULE_FILES} ${SHAREDLIST} ${COMMONLIST})
+        add_executable(${GAMEMODULE_NAME}-nacl ${PCH_FILE} ${GAMEMODULE_FILES} ${SHAREDLIST_${GAMEMODULE_NAME}} ${SHAREDLIST} ${COMMONLIST})
         target_link_libraries(${GAMEMODULE_NAME}-nacl ${GAMEMODULE_LIBS} ${LIBS_BASE})
         set_target_properties(${GAMEMODULE_NAME}-nacl PROPERTIES
             OUTPUT_NAME ${GAMEMODULE_NAME}.pexe

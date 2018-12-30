@@ -1,23 +1,26 @@
 /*
 ===========================================================================
+
+Unvanquished GPL Source Code
 Copyright (C) 1999-2005 Id Software, Inc.
 Copyright (C) 2000-2009 Darklegion Development
 
-This file is part of Daemon.
+This file is part of the Unvanquished GPL Source Code (Unvanquished Source Code).
 
-Daemon is free software; you can redistribute it
+Unvanquished is free software; you can redistribute it
 and/or modify it under the terms of the GNU General Public License as
 published by the Free Software Foundation; either version 2 of the License,
 or (at your option) any later version.
 
-Daemon is distributed in the hope that it will be
+Unvanquished is distributed in the hope that it will be
 useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Daemon; if not, write to the Free Software
+along with Unvanquished; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
 ===========================================================================
 */
 
@@ -187,37 +190,27 @@ static void CG_TransitionSnapshot()
 	cg.nextSnap = nullptr;
 
 	// check for playerstate transition events
-	if ( oldFrame )
-	{
-		playerState_t *ops, *ps;
+	playerState_t *ops = &oldFrame->ps, *ps = &cg.snap->ps;
 
-		ops = &oldFrame->ps;
-		ps = &cg.snap->ps;
+	// teleporting checks are irrespective of prediction
+	if ((ps->eFlags ^ ops->eFlags) & EF_TELEPORT_BIT) {
+		cg.thisFrameTeleport = true; // will be cleared by prediction code
+	}
 
-		// teleporting checks are irrespective of prediction
-		if ( ( ps->eFlags ^ ops->eFlags ) & EF_TELEPORT_BIT )
-		{
-			cg.thisFrameTeleport = true; // will be cleared by prediction code
-		}
+	// if we are not doing client side movement prediction for any
+	// reason, then the client events and view changes will be issued now
+	if (cg.demoPlayback || (cg.snap->ps.pm_flags & PMF_FOLLOW) ||
+			cg_nopredict.integer || cg.pmoveParams.synchronous) {
+		CG_TransitionPlayerState(ps, ops);
+	}
 
-		// if we are not doing client side movement prediction for any
-		// reason, then the client events and view changes will be issued now
-		if ( cg.demoPlayback || ( cg.snap->ps.pm_flags & PMF_FOLLOW ) ||
-		     cg_nopredict.integer || cg.pmoveParams.synchronous )
-		{
-			CG_TransitionPlayerState( ps, ops );
-		}
+	// Callbacks for changes in playerState like weapon/class/team
+	if (oldWeapon != ps->weapon) {
+		CG_OnPlayerWeaponChange();
+	}
 
-		// Callbacks for changes in playerState like weapon/class/team
-		if ( oldWeapon != ps->weapon )
-		{
-			CG_OnPlayerWeaponChange();
-		}
-
-		if ( ops->stats[ STAT_ITEMS ] != ps->stats[ STAT_ITEMS ] )
-		{
-			CG_OnPlayerUpgradeChange();
-		}
+	if (ops->stats[STAT_ITEMS] != ps->stats[STAT_ITEMS]) {
+		CG_OnPlayerUpgradeChange();
 	}
 }
 

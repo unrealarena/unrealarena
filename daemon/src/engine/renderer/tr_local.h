@@ -236,7 +236,6 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	struct screenRect_t
 	{
 		int                 coords[ 4 ];
-		screenRect_t *next;
 	};
 
 	enum frustumBits_t
@@ -486,8 +485,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 
 		cullResult_t cull;
 		vec3_t       localBounds[ 2 ];
-		vec3_t       worldBounds[ 2 ]; // only set when not completely culled. use them for light interactions
-		vec3_t       worldCorners[ 8 ];
+		vec3_t       worldBounds[ 2 ];
 	};
 
 	struct orientationr_t
@@ -514,26 +512,26 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	{
 	  IF_NONE,
 	  IF_NOPICMIP = BIT( 0 ),
-	  IF_NOCOMPRESSION = BIT( 1 ),
-	  IF_ALPHA = BIT( 2 ),
-	  IF_NORMALMAP = BIT( 3 ),
-	  IF_RGBA16F = BIT( 4 ),
-	  IF_RGBA32F = BIT( 5 ),
-	  IF_TWOCOMP16F = BIT( 6 ),
-	  IF_TWOCOMP32F = BIT( 7 ),
-	  IF_ONECOMP16F = BIT( 8 ),
-	  IF_ONECOMP32F = BIT( 9 ),
-	  IF_DEPTH16 = BIT( 10 ),
-	  IF_DEPTH24 = BIT( 11 ),
-	  IF_DEPTH32 = BIT( 12 ),
-	  IF_PACKED_DEPTH24_STENCIL8 = BIT( 13 ),
-	  IF_LIGHTMAP = BIT( 14 ),
-	  IF_RGBA16 = BIT( 15 ),
-	  IF_RGBE = BIT( 16 ),
-	  IF_ALPHATEST = BIT( 17 ),
-	  IF_DISPLACEMAP = BIT( 18 ),
-	  IF_NOLIGHTSCALE = BIT( 19 ),
-	  IF_BC1 = BIT( 20 ),
+	  IF_ALPHA = BIT( 1 ),
+	  IF_NORMALMAP = BIT( 2 ),
+	  IF_RGBA16F = BIT( 3 ),
+	  IF_RGBA32F = BIT( 4 ),
+	  IF_TWOCOMP16F = BIT( 5 ),
+	  IF_TWOCOMP32F = BIT( 6 ),
+	  IF_ONECOMP16F = BIT( 7 ),
+	  IF_ONECOMP32F = BIT( 8 ),
+	  IF_DEPTH16 = BIT( 9 ),
+	  IF_DEPTH24 = BIT( 10 ),
+	  IF_DEPTH32 = BIT( 11 ),
+	  IF_PACKED_DEPTH24_STENCIL8 = BIT( 12 ),
+	  IF_LIGHTMAP = BIT( 13 ),
+	  IF_RGBA16 = BIT( 14 ),
+	  IF_RGBE = BIT( 15 ),
+	  IF_ALPHATEST = BIT( 16 ),
+	  IF_DISPLACEMAP = BIT( 17 ),
+	  IF_NOLIGHTSCALE = BIT( 18 ),
+	  IF_BC1 = BIT( 19 ),
+	  IF_BC2 = BIT( 20 ),
 	  IF_BC3 = BIT( 21 ),
 	  IF_BC4 = BIT( 22 ),
 	  IF_BC5 = BIT( 23 ),
@@ -561,7 +559,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	{
 		wrapTypeEnum_t s, t;
 
-		wrapType_t() : s(wrapTypeEnum_t::WT_CLAMP), t(wrapTypeEnum_t::WT_CLAMP) {}
+		wrapType_t() = default;
 		wrapType_t( wrapTypeEnum_t w ) : s(w), t(w) {}
 		wrapType_t( wrapTypeEnum_t s, wrapTypeEnum_t t ) : s(s), t(t) {}
 
@@ -597,7 +595,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		image_t *next;
 	};
 
-	inline bool IsImageCompressed(int bits) { return bits & (IF_BC1 | IF_BC3 | IF_BC4 | IF_BC5); }
+	inline bool IsImageCompressed(int bits) { return bits & (IF_BC1 | IF_BC2 | IF_BC3 | IF_BC4 | IF_BC5); }
 
 	struct FBO_t
 	{
@@ -1112,7 +1110,6 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		bool        overrideWrapType;
 		wrapType_t      wrapType;
 
-		bool        uncompressed;
 		bool        highQuality;
 		bool        forceHighQuality;
 
@@ -1232,7 +1229,6 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		bool       polygonOffset; // set for decals and other items that must be offset
 		float          polygonOffsetValue;
 
-		bool       uncompressed;
 		bool       noPicMip; // for images that must always be full resolution
 		filterType_t   filterType; // for console fonts, 2D elements, etc.
 		wrapType_t     wrapType;
@@ -1333,8 +1329,6 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	                       | GLS_GREENMASK_FALSE
 	                       | GLS_BLUEMASK_FALSE
 	                       | GLS_ALPHAMASK_FALSE,
-
-	  GLS_STENCILTEST_ENABLE = ( 1 << 30 ),
 
 	  GLS_DEFAULT = GLS_DEPTHMASK_TRUE
 	};
@@ -1486,14 +1480,15 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 
 		vec3_t         pvsOrigin; // may be different than or.origin for portals
 
-		bool       isPortal; // true if this view is through a portal
-		bool       isMirror; // the portal is a mirror, invert the face culling
+		int            portalLevel; // number of portals this view is through
+		bool           isMirror; // the portal is a mirror, invert the face culling
 
 		int            frameSceneNum; // copied from tr.frameSceneNum
 		int            frameCount; // copied from tr.frameCount
 		int            viewCount; // copied from tr.viewCount
 
-		cplane_t       portalPlane; // clip anything behind this if mirroring
+		frustum_t      portalFrustum; // view space frustum bounding the portal surface, clip anything behind near plane for proper rendering. FAR plane is unused
+		int            scissorX, scissorY, scissorWidth, scissorHeight;
 		int            viewportX, viewportY, viewportWidth, viewportHeight;
 		vec4_t         viewportVerts[ 4 ]; // for immediate 2D quad rendering
 		vec4_t         gradingWeights;
@@ -1610,6 +1605,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	{
 		trRefEntity_t *entity;
 		surfaceType_t *surface; // any of surface*_t
+		shader_t      *shader;
 		uint64_t      sort;
 
 		inline int index() const {
@@ -1687,6 +1683,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 
 		trRefEntity_t        *entity;
 		surfaceType_t        *surface; // any of surface*_t
+		shader_t             *shader;
 		int                  shaderNum;
 
 		byte                 cubeSideBits;
@@ -2466,6 +2463,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		bool        finishCalled;
 		cullType_t      faceCulling; // FIXME redundant cullFace
 		uint32_t        glStateBits;
+		uint32_t        glStateBitsMask; // GLS_ bits set to 1 will not be changed in GL_State
 		uint32_t        vertexAttribsState;
 		uint32_t        vertexAttribPointersSet;
 		float           vertexAttribsInterpolation; // 0 = no interpolation, 1 = final position
@@ -2640,7 +2638,6 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		image_t    *lighttileRenderImage;
 		image_t    *portalRenderImage;
 
-		image_t    *occlusionRenderFBOImage;
 		image_t    *depthToColorBackFacesFBOImage;
 		image_t    *depthToColorFrontFacesFBOImage;
 		image_t    *downScaleFBOImage_quarter;
@@ -2653,7 +2650,9 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		image_t *sunShadowClipMapFBOImage[ MAX_SHADOWMAPS * 2 ];
 
 		// external images
-		image_t *charsetImage;
+#if defined( REFBONE_NAMES )
+		int      charsetImageHash;
+#endif
 		image_t *colorGradeImage;
 		GLuint   colorGradePBO;
 
@@ -2663,7 +2662,6 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		FBO_t *depthtile2FBO;
 		FBO_t *lighttileFBO;
 		FBO_t *portalRenderFBO; // holds a copy of the last currentRender that was rendered into a FBO
-		FBO_t *occlusionRenderFBO; // used for overlapping visibility determination
 		FBO_t *downScaleFBO_quarter;
 		FBO_t *downScaleFBO_64x64;
 		FBO_t *contrastRenderFBO;
@@ -2843,9 +2841,6 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	extern cvar_t *r_dynamicLightCastShadows;
 	extern cvar_t *r_precomputedLighting;
 	extern cvar_t *r_vertexLighting;
-	extern cvar_t *r_compressDiffuseMaps;
-	extern cvar_t *r_compressSpecularMaps;
-	extern cvar_t *r_compressNormalMaps;
 	extern cvar_t *r_exportTextures;
 	extern cvar_t *r_heatHaze;
 	extern cvar_t *r_noMarksOnTrisurfs;
@@ -2878,13 +2873,13 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	extern cvar_t *r_ext_texture_integer;
 	extern cvar_t *r_ext_texture_rg;
 	extern cvar_t *r_ext_texture_filter_anisotropic;
-	extern cvar_t *r_ext_packed_depth_stencil;
 	extern cvar_t *r_ext_gpu_shader4;
 	extern cvar_t *r_arb_buffer_storage;
 	extern cvar_t *r_arb_map_buffer_range;
 	extern cvar_t *r_arb_sync;
 	extern cvar_t *r_arb_uniform_buffer_object;
 	extern cvar_t *r_arb_texture_gather;
+	extern cvar_t *r_arb_gpu_shader5;
 
 	extern cvar_t *r_nobind; // turns off binding to appropriate textures
 	extern cvar_t *r_collapseStages;
@@ -2955,6 +2950,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	extern cvar_t *r_noportals;
 	extern cvar_t *r_portalOnly;
 	extern cvar_t *r_portalSky;
+	extern cvar_t *r_max_portal_levels;
 
 	extern cvar_t *r_subdivisions;
 	extern cvar_t *r_stitchCurves;
@@ -2989,6 +2985,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	extern cvar_t *r_showLightScissors;
 	extern cvar_t *r_showLightBatches;
 	extern cvar_t *r_showLightGrid;
+	extern cvar_t *r_showLightTiles;
 	extern cvar_t *r_showBatches;
 	extern cvar_t *r_showLightMaps; // render lightmaps only
 	extern cvar_t *r_showDeluxeMaps;
@@ -3038,6 +3035,7 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 	void           R_SwapBuffers( int );
 
 	void           R_RenderView( viewParms_t *parms );
+	void           R_RenderPostProcess();
 
 	void           R_AddMDVSurfaces( trRefEntity_t *e );
 	void           R_AddMDVInteractions( trRefEntity_t *e, trRefLight_t *light, interactionType_t iaType );
@@ -3730,90 +3728,62 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		int  used;
 	};
 
-	enum class renderCommand_t : int
-	{
-		RC_END_OF_LIST,
-		RC_SET_COLORGRADING,
-		RC_SET_COLOR,
-		RC_STRETCH_PIC,
-		RC_2DPOLYS,
-		RC_2DPOLYSINDEXED,
-		RC_SCISSORSET,
-		RC_ROTATED_PIC,
-		RC_STRETCH_PIC_GRADIENT, // (SA) added
-		RC_SETUP_LIGHTS,
-		RC_DRAW_VIEW,
-		RC_DRAW_BUFFER,
-		RC_SWAP_BUFFERS,
-		RC_SCREENSHOT,
-		RC_VIDEOFRAME,
-		RC_FINISH //bani
+	struct RenderCommand {
+		virtual ~RenderCommand() = default;
+
+		// returns address of next command or nullptr
+		virtual const RenderCommand *ExecuteSelf() const = 0;
 	};
 
-	struct setColorCommand_t
-	{
-		renderCommand_t commandId;
+	struct SetColorCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
+
 		Color::Color color;
 	};
+	struct SetColorGradingCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct setColorGradingCommand_t
-	{
-		renderCommand_t commandId;
 		image_t *image;
 		int     slot;
 	};
+	struct DrawBufferCommand : public RenderCommand	{
+		const RenderCommand *ExecuteSelf() const;
 
-	struct drawBufferCommand_t
-	{
-		renderCommand_t commandId;
 		int buffer;
 	};
-
-	struct subImageCommand_t
-	{
-		int     commandId;
-		image_t *image;
-		int     width;
-		int     height;
-		void    *data;
+	struct SwapBuffersCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 	};
+	struct StretchPicCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct swapBuffersCommand_t
-	{
-		renderCommand_t commandId;
-	};
-
-	struct endFrameCommand_t
-	{
-		int commandId;
-		int buffer;
-	};
-
-	struct stretchPicCommand_t
-	{
-		renderCommand_t commandId;
 		shader_t *shader;
 		float    x, y;
 		float    w, h;
 		float    s1, t1;
 		float    s2, t2;
+	};
+	struct RotatedPicCommand : public StretchPicCommand {
+		const RenderCommand *ExecuteSelf() const;
+
+		float    angle;
+	};
+	struct GradientPicCommand : public StretchPicCommand {
+		const RenderCommand *ExecuteSelf() const;
 
 		Color::Color32Bit gradientColor; // color values 0-255
-		int      gradientType; //----(SA)  added
-		float    angle; // NERVE - SMF
+		int               gradientType;
 	};
+	struct Poly2dCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct poly2dCommand_t
-	{
-		renderCommand_t commandId;
 		polyVert_t *verts;
 		int        numverts;
 		shader_t   *shader;
 	};
+	struct Poly2dIndexedCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct poly2dIndexedCommand_t
-	{
-		renderCommand_t commandId;
 		polyVert_t *verts;
 		int        numverts;
 		int        *indexes;
@@ -3821,46 +3791,35 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		shader_t   *shader;
 		int         translation[2];
 	};
+	struct ScissorSetCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct scissorSetCommand_t
-	{
-		renderCommand_t commandId;
 		int       x;
 		int       y;
 		int       w;
 		int       h;
 	};
+	struct DrawViewCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct drawViewCommand_t
-	{
-		renderCommand_t commandId;
 		trRefdef_t  refdef;
 		viewParms_t viewParms;
+		bool        depthPass;
 	};
+	struct SetupLightsCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct setupLightsCommand_t
-	{
-		renderCommand_t commandId;
 		trRefdef_t  refdef;
 	};
-
-	struct runVisTestsCommand_t
-	{
-		renderCommand_t commandId;
-		trRefdef_t  refdef;
-		viewParms_t viewParms;
-	};
-
 	enum class ssFormat_t
 	{
 	  SSF_TGA,
 	  SSF_JPEG,
 	  SSF_PNG
 	};
+	struct ScreenshotCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct screenshotCommand_t
-	{
-		renderCommand_t commandId;
 		int        x;
 		int        y;
 		int        width;
@@ -3868,20 +3827,46 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 		char       *fileName;
 		ssFormat_t format;
 	};
+	struct VideoFrameCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct videoFrameCommand_t
-	{
-		renderCommand_t commandId;
 		int      width;
 		int      height;
 		byte     *captureBuffer;
 		byte     *encodeBuffer;
 		bool motionJpeg;
 	};
+	struct RenderFinishCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
+	};
+	struct RenderPostProcessCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 
-	struct renderFinishCommand_t
-	{
-		renderCommand_t commandId;
+		trRefdef_t      refdef;
+		viewParms_t     viewParms;
+	};
+	struct ClearBufferCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
+
+		trRefdef_t      refdef;
+		viewParms_t     viewParms;
+	};
+	struct PreparePortalCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
+
+		trRefdef_t      refdef;
+		viewParms_t     viewParms;
+		drawSurf_t     *surface;
+	};
+	struct FinalisePortalCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
+
+		trRefdef_t      refdef;
+		viewParms_t     viewParms;
+		drawSurf_t     *surface;
+	};
+	struct EndOfListCommand : public RenderCommand {
+		const RenderCommand *ExecuteSelf() const;
 	};
 
 // ydnar: max decal projectors per frame, each can generate lots of polys
@@ -3924,13 +3909,18 @@ static inline void halfToFloat( const f16vec4_t in, vec4_t out )
 
 	extern volatile bool            renderThreadActive;
 
-	void                                *R_GetCommandBuffer( unsigned bytes );
+	void *                              R_GetCommandBuffer( size_t bytes );
+	template <class T> T *              R_GetRenderCommand() { return new (R_GetCommandBuffer(sizeof(T))) T; }
 	void                                RB_ExecuteRenderCommands( const void *data );
 
 	void                                R_SyncRenderThread();
 
 	void                                R_AddSetupLightsCmd();
-	void                                R_AddDrawViewCmd();
+	void                                R_AddDrawViewCmd( bool depthPass );
+	void                                R_AddClearBufferCmd();
+	void                                R_AddPreparePortalCmd( drawSurf_t *surf );
+	void                                R_AddFinalisePortalCmd( drawSurf_t *surf );
+	void                                R_AddPostProcessCmd();
 
 	void                                RE_SetColor( const Color::Color& rgba );
 	void                                RE_SetClipRegion( const float *region );

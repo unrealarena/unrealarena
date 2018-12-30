@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2014  Unvanquished Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -142,4 +142,24 @@ void BG_MoveOriginToBBOXCenter( vec3_t point, const vec3_t mins, const vec3_t ma
 	point[ 0 ] = point[ 0 ] + ( maxs[ 0 ] + mins[ 0 ] ) * 0.5f;
 	point[ 1 ] = point[ 1 ] + ( maxs[ 1 ] + mins[ 1 ] ) * 0.5f;
 	point[ 2 ] = point[ 2 ] + ( maxs[ 2 ] + mins[ 2 ] ) * 0.5f;
+}
+
+void ModifyFlag(int &flags, int flag, bool value) {
+	if (value) {
+		flags |= flag;
+	} else {
+		flags &= ~flag;
+	}
+}
+
+void AddFlag(int &flags, int flag) {
+	ModifyFlag(flags, flag, true);
+}
+
+void RemoveFlag(int &flags, int flag) {
+	ModifyFlag(flags, flag, true);
+}
+
+void ToggleFlag(int &flags, int flag) {
+	flags ^= flag;
 }

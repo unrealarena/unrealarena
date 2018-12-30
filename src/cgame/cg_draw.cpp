@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -40,12 +40,12 @@ void CG_DrawField( float x, float y, int width, float cw, float ch, int value )
 
 	if ( !( charWidth = cw ) )
 	{
-		charWidth = CHAR_WIDTH;
+		charWidth = CGAME_CHAR_WIDTH;
 	}
 
 	if ( !( charHeight = ch ) )
 	{
-		charHeight = CHAR_HEIGHT;
+		charHeight = CGAME_CHAR_HEIGHT;
 	}
 
 	if ( width < 1 )
@@ -124,21 +124,21 @@ void CG_MousePosEvent( int x, int y )
 	}
 	else if ( ( cg.predictedPlayerState.pm_type == PM_NORMAL ||
 	       cg.predictedPlayerState.pm_type == PM_SPECTATOR ) &&
-	     cg.showScores == false )
+	     !cg.showScores )
 	{
 		CG_SetKeyCatcher( 0 );
 	}
 }
 
-void CG_KeyEvent( int key, bool down )
+void CG_KeyEvent( Keyboard::Key key, bool down )
 {
 	if ( rocketInfo.keyCatcher & KEYCATCH_UI )
 	{
-		Rocket_ProcessKeyInput( key, down);
+		Rocket_ProcessKeyInput( key, down );
 	}
 	else if ( cg.predictedPlayerState.pm_type == PM_NORMAL ||
 	     ( cg.predictedPlayerState.pm_type == PM_SPECTATOR &&
-	       cg.showScores == false ) )
+	       !cg.showScores ) )
 	{
 		CG_SetKeyCatcher( 0 );
 	}
@@ -340,6 +340,8 @@ static void CG_Draw2D()
 	// draw beacons on HUD
 	for( i = 0; i < cg.beaconCount; i++ )
 		CG_DrawBeacon( cg.beacons[ i ] );
+
+	CombatFeedback::DrawDamageIndicators();
 
 	if ( cg.zoomed )
 	{

@@ -71,8 +71,9 @@ bool PropertyParserNumber::ParseValue(Property& property, const String& value, c
 		}
 	}
 
-	float float_value;
-	if (sscanf(value.CString(), "%f", &float_value) == 1)
+	char* endptr;
+	float float_value = strtof(value.CString(), &endptr);
+	if (endptr != value.CString())
 	{
 		property.value = Variant(float_value);
 		return true;

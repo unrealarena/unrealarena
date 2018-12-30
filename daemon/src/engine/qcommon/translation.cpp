@@ -58,9 +58,6 @@ cvar_t            *trans_debug;
 cvar_t            *trans_encodings;
 cvar_t            *trans_languages;
 
-#ifndef BUILD_SERVER
-extern cvar_t *cl_consoleKeys; // should really #include client.h
-#endif
 
 /*
 ====================
@@ -127,7 +124,7 @@ Uses the engine's File I/O functions for this purpose
 class DaemonFileSystem : public FileSystem
 {
 public:
-	DaemonFileSystem() {}
+	DaemonFileSystem() = default;
 
 	std::vector<std::string> open_directory( const std::string& pathname )
 	{
@@ -160,14 +157,14 @@ Logging functions used by tinygettext
 
 void Trans_Error( const std::string& str )
 {
-	LOG.Notice( "^1%s^7", str.c_str() );
+	LOG.Notice( "^1%s", str.c_str() );
 }
 
 void Trans_Warning( const std::string& str )
 {
 	if( trans_debug->integer != 0 )
 	{
-		LOG.Notice( "^3%s^7", str.c_str() );
+		LOG.Notice( "^3%s", str.c_str() );
 	}
 }
 
@@ -175,7 +172,7 @@ void Trans_Info( const std::string& str )
 {
 	if( trans_debug->integer != 0 )
 	{
-		LOG.Notice( "%s", str.c_str() );
+		LOG.Notice( str.c_str() );
 	}
 }
 
@@ -228,12 +225,6 @@ void Trans_SetLanguage( const char* lang )
 void Trans_UpdateLanguage_f()
 {
 	Trans_SetLanguage( language->string );
-
-#ifndef BUILD_SERVER
-	// update the default console keys string
-	Z_Free( cl_consoleKeys->resetString );
-	cl_consoleKeys->resetString = CopyString( _("~ ` 0x7e 0x60") );
-#endif
 }
 
 /*

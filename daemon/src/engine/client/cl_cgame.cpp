@@ -1,47 +1,60 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2016  Unreal Arena
- * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+===========================================================================
 
+Daemon GPL Source Code
+Copyright (C) 1999-2010 id Software LLC, a ZeniMax Media company.
+
+This file is part of the Daemon GPL Source Code (Daemon Source Code).
+
+Daemon Source Code is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Daemon Source Code is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Daemon Source Code.  If not, see <http://www.gnu.org/licenses/>.
+
+In addition, the Daemon Source Code is also subject to certain additional terms.
+You should have received a copy of these additional terms immediately following the
+terms and conditions of the GNU General Public License which accompanied the Daemon
+Source Code.  If not, please request a copy in writing from id Software at the address
+below.
+
+If you have questions concerning this license or the applicable additional terms, you
+may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville,
+Maryland 20850 USA.
+
+===========================================================================
+*/
 
 // cl_cgame.c  -- client system interaction with client game
 
 #include "client.h"
 #include "cg_msgdef.h"
 
+#include "key_identification.h"
 #include "mumblelink/libmumblelink.h"
 #include "qcommon/crypto.h"
+#include "qcommon/sys.h"
 
 #include "framework/CommonVMServices.h"
 #include "framework/CommandSystem.h"
 #include "framework/CvarSystem.h"
 
+// Suppress warnings for unused [this] lambda captures.
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
+
 #define __(x) Trans_GettextGame(x)
 #define C__(x, y) Trans_PgettextGame(x, y)
 #define P__(x, y, c) Trans_GettextGamePlural(x, y, c)
 
-// NERVE - SMF
-void                   Key_GetBindingBuf( int keynum, int team, char *buf, int buflen );
-void                   Key_KeynumToStringBuf( int keynum, char *buf, int buflen );
-
-// -NERVE - SMF
-
-// ydnar: can we put this in a header, pls?
-void Key_GetBindingByString( const char *binding, int team, int *key1, int *key2 );
 
 /*
 ====================
@@ -200,7 +213,7 @@ bool CL_HandleServerCommand(Str::StringRef text, std::string& newText) {
 		mpz_t        message;
 
 		if (argc == 1) {
-			Log::Notice("%s", "^3Server sent a pubkey_decrypt command, but sent nothing to decrypt!\n");
+			Log::Notice("^3Server sent a pubkey_decrypt command, but sent nothing to decrypt!\n");
 			return false;
 		}
 
@@ -302,7 +315,6 @@ CL_ShutdownCGame
 */
 void CL_ShutdownCGame()
 {
-	cls.keyCatchers &= ~KEYCATCH_CGAME;
 	cls.cgameStarted = false;
 
 	if ( !cgvm.IsActive() )
@@ -312,30 +324,6 @@ void CL_ShutdownCGame()
 
 	cgvm.CGameShutdown();
 	cgvm.Free();
-}
-
-//
-// libRocket UI stuff
-//
-
-/*
- * ====================
- * GetNews
- * ====================
- */
-bool GetNews( bool begin )
-{
-	if ( begin ) // if not already using curl, start the download
-	{
-		CL_RequestMotd();
-#ifdef UNREALARENA
-		Cvar_Set( "cl_newsString", "Retrieving..." );
-#else
-		Cvar_Set( "cl_newsString", "Retrieving…" );
-#endif
-	}
-
-	return Cvar_VariableString( "cl_newsString" ) [ 0 ] == 'R';
 }
 
 /*
@@ -594,11 +582,7 @@ static int LAN_ServerIsVisible( int source, int n )
 				return cls.localServers[ n ].visible;
 			}
 
-		if ( Cmd_Argc() == 1 )
-		{
-			Log::Warn("Server sent a pubkey_decrypt command, but sent nothing to decrypt!" );
-			return false;
-		}
+			break;
 
 		case AS_GLOBAL:
 			if ( n >= 0 && n < MAX_GLOBAL_SERVERS )
@@ -618,27 +602,6 @@ static int LAN_ServerIsVisible( int source, int n )
 	}
 
 	return false;
-}
-
-/*
- * ====================
- * Key_GetBindingBuf
- * ====================
- */
-void Key_GetBindingBuf( int keynum, int team, char *buf, int buflen )
-{
-	const char *value;
-
-	value = Key_GetBinding( keynum, team );
-
-	if ( value )
-	{
-		Q_strncpyz( buf, value, buflen );
-	}
-	else
-	{
-		*buf = 0;
-	}
 }
 
 /*
@@ -861,7 +824,7 @@ void CL_FirstSnapshot()
 	if ( ( cl_useMumble->integer ) && !mumble_islinked() )
 	{
 		int ret = mumble_link( CLIENT_WINDOW_TITLE );
-		Log::Notice("%s", ret == 0 ? "Mumble: Linking to Mumble application okay\n" : "Mumble: Linking to Mumble application failed\n" );
+		Log::Notice(ret == 0 ? "Mumble: Linking to Mumble application okay" : "Mumble: Linking to Mumble application failed" );
 	}
 
 	// resend userinfo upon entering the game, as some cvars may
@@ -937,48 +900,39 @@ void CL_SetCGameTime()
 
 	cl.oldFrameServerTime = cl.snap.serverTime;
 
-	// get our current view of time
+    // cl_timeNudge is a user adjustable cvar that allows more
+    // or less latency to be added in the interest of better
+    // smoothness or better responsiveness.
+    int tn;
 
-	if ( clc.demoplaying && cl_freezeDemo->integer )
-	{
-		// cl_freezeDemo is used to lock a demo in place for single frame advances
-	}
-	else
-	{
-		// cl_timeNudge is a user adjustable cvar that allows more
-		// or less latency to be added in the interest of better
-		// smoothness or better responsiveness.
-		int tn;
+    tn = cl_timeNudge->integer;
 
-		tn = cl_timeNudge->integer;
+    if ( tn < -30 )
+    {
+        tn = -30;
+    }
+    else if ( tn > 30 )
+    {
+        tn = 30;
+    }
 
-		if ( tn < -30 )
-		{
-			tn = -30;
-		}
-		else if ( tn > 30 )
-		{
-			tn = 30;
-		}
+    cl.serverTime = cls.realtime + cl.serverTimeDelta - tn;
 
-		cl.serverTime = cls.realtime + cl.serverTimeDelta - tn;
+    // guarantee that time will never flow backwards, even if
+    // serverTimeDelta made an adjustment or cl_timeNudge was changed
+    if ( cl.serverTime < cl.oldServerTime )
+    {
+        cl.serverTime = cl.oldServerTime;
+    }
 
-		// guarantee that time will never flow backwards, even if
-		// serverTimeDelta made an adjustment or cl_timeNudge was changed
-		if ( cl.serverTime < cl.oldServerTime )
-		{
-			cl.serverTime = cl.oldServerTime;
-		}
+    cl.oldServerTime = cl.serverTime;
 
-		cl.oldServerTime = cl.serverTime;
-
-		// note if we are almost past the latest frame (without timeNudge),
-		// so we will try and adjust back a bit when the next snapshot arrives
-		if ( cls.realtime + cl.serverTimeDelta >= cl.snap.serverTime - 5 )
-		{
-			cl.extrapolatedSnapshot = true;
-		}
-	}
+    // note if we are almost past the latest frame (without timeNudge),
+    // so we will try and adjust back a bit when the next snapshot arrives
+    if ( cls.realtime + cl.serverTimeDelta >= cl.snap.serverTime - 5 )
+    {
+        cl.extrapolatedSnapshot = true;
+    }
 
 	// if we have gotten new snapshots, drift serverTimeDelta
 	// don't do this every frame, or a period of packet loss would
@@ -999,7 +953,7 @@ void CL_SetCGameTime()
 
 	// a timedemo will always use a deterministic set of time samples
 	// no matter what speed machine it is run on
-	if ( cl_timedemo->integer )
+	if ( cvar_demo_timedemo.Get() )
 	{
 		if ( !clc.timeDemoStart )
 		{
@@ -1024,6 +978,44 @@ void CL_SetCGameTime()
 	}
 }
 
+
+/*
+====================
+CL_SendBinaryMessage
+====================
+*/
+static void CL_SendBinaryMessage(std::vector<uint8_t> message)
+{
+	if (message.size() > MAX_BINARY_MESSAGE) {
+		Com_Error(errorParm_t::ERR_DROP, "CL_SendBinaryMessage: bad length %zi", message.size());
+	}
+
+	memcpy(clc.binaryMessage, message.data(), clc.binaryMessageLength = message.size());
+}
+
+/*
+====================
+CL_BinaryMessageStatus
+====================
+*/
+static messageStatus_t CL_BinaryMessageStatus()
+{
+	if (clc.binaryMessageLength == 0) {
+		return messageStatus_t::MESSAGE_EMPTY;
+	}
+	if (clc.binaryMessageOverflowed) {
+		return messageStatus_t::MESSAGE_WAITING_OVERFLOW;
+	}
+	return messageStatus_t::MESSAGE_WAITING;
+}
+
+void CL_CGameBinaryMessageReceived(const uint8_t *buf, size_t size, int serverTime)
+{
+	static auto shm = IPC::SharedMemory::Create(MAX_BINARY_MESSAGE);
+	memcpy(shm.GetBase(), buf, size);
+	cgvm.SendMsg<CGameRecvMessageMsg>(shm, size, serverTime);
+}
+
 /**
  * is notified by teamchanges.
  * while most notifications will come from the cgame, due to game semantics,
@@ -1040,7 +1032,7 @@ void  CL_OnTeamChanged( int newTeam )
 	Cvar_SetValue( p_team->name, newTeam );
 
 	/* set all team specific teambindinds */
-	Key_SetTeam( newTeam );
+	Keyboard::SetTeam( newTeam );
 
 	/*
 	 * execute a possibly team aware config each time the team was changed.
@@ -1096,7 +1088,7 @@ int CGameVM::CGameCrosshairPlayer()
 	return player;
 }
 
-void CGameVM::CGameKeyEvent(int key, bool down)
+void CGameVM::CGameKeyEvent(Keyboard::Key key, bool down)
 {
 	this->SendMsg<CGameKeyEventMsg>(key, down);
 }
@@ -1119,7 +1111,7 @@ void CGameVM::CGameFocusEvent(bool focus)
 
 void CGameVM::CGameTextInputEvent(int c)
 {
-	this->SendMsg<CGameTextInptEvent>(c);
+	this->SendMsg<CGameCharacterInputMsg>(c);
 }
 
 void CGameVM::CGameRocketInit()
@@ -1224,8 +1216,9 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 		case CG_GET_ENTITY_TOKEN:
 			IPC::HandleMsg<GetEntityTokenMsg>(channel, std::move(reader), [this] (int len, bool& res, std::string& token) {
 				std::unique_ptr<char[]> buffer(new char[len]);
+				buffer[0] = '\0';
 				res = re.GetEntityToken(buffer.get(), len);
-				token.assign(buffer.get(), len);
+				token.assign(buffer.get());
 			});
 			break;
 
@@ -1237,19 +1230,17 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 
 		case CG_GETCLIPBOARDDATA:
 			IPC::HandleMsg<GetClipboardDataMsg>(channel, std::move(reader), [this] (int len, std::string& data) {
-				if (cl_allowPaste->integer) {
-					std::unique_ptr<char[]> buffer(new char[len]);
-					CL_GetClipboardData(buffer.get(), len);
-					data.assign(buffer.get(), len);
-				}
+				// TODO(slipher): Remove GetClipboardDataMsg.
+				data = "";
 			});
 			break;
 
 		case CG_QUOTESTRING:
 			IPC::HandleMsg<QuoteStringMsg>(channel, std::move(reader), [this] (int len, const std::string& input, std::string& output) {
 				std::unique_ptr<char[]> buffer(new char[len]);
+				buffer[0] = '\0';
 				Cmd_QuoteStringBuffer(input.c_str(), buffer.get(), len);
-				output.assign(buffer.get(), len);
+				output.assign(buffer.get());
 			});
 			break;
 
@@ -1257,7 +1248,7 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 			IPC::HandleMsg<GettextMsg>(channel, std::move(reader), [this] (int len, const std::string& input, std::string& output) {
 				std::unique_ptr<char[]> buffer(new char[len]);
 				Q_strncpyz(buffer.get(), __(input.c_str()), len);
-				output.assign(buffer.get(), len);
+				output.assign(buffer.get());
 			});
 			break;
 
@@ -1265,7 +1256,7 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 			IPC::HandleMsg<PGettextMsg>(channel, std::move(reader), [this] (int len, const std::string& context, const std::string& input, std::string& output) {
 				std::unique_ptr<char[]> buffer(new char[len]);
 				Q_strncpyz(buffer.get(), C__(context.c_str(), input.c_str()), len);
-				output.assign(buffer.get(), len);
+				output.assign(buffer.get());
 			});
 			break;
 
@@ -1273,7 +1264,7 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 			IPC::HandleMsg<GettextPluralMsg>(channel, std::move(reader), [this] (int len, const std::string& input1, const std::string& input2, int number, std::string& output) {
 				std::unique_ptr<char[]> buffer(new char[len]);
 				Q_strncpyz(buffer.get(), P__(input1.c_str(), input2.c_str(), number), len);
-				output.assign(buffer.get(), len);
+				output.assign(buffer.get());
 			});
 			break;
 
@@ -1286,12 +1277,6 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 		case CG_PREPAREKEYUP:
 			IPC::HandleMsg<PrepareKeyUpMsg>(channel, std::move(reader), [this] {
 				IN_PrepareKeyUp();
-			});
-			break;
-
-		case CG_GETNEWS:
-			IPC::HandleMsg<GetNewsMsg>(channel, std::move(reader), [this] (bool force, bool& res) {
-				res = GetNews(force);
 			});
 			break;
 
@@ -1441,75 +1426,69 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 		// All keys
 
 		case CG_KEY_GETCATCHER:
-			IPC::HandleMsg<Key::GetCatcherMsg>(channel, std::move(reader), [this] (int& catcher) {
+			IPC::HandleMsg<Keyboard::GetCatcherMsg>(channel, std::move(reader), [this] (int& catcher) {
 				catcher = Key_GetCatcher();
 			});
 			break;
 
 		case CG_KEY_SETCATCHER:
-			IPC::HandleMsg<Key::SetCatcherMsg>(channel, std::move(reader), [this] (int catcher) {
+			IPC::HandleMsg<Keyboard::SetCatcherMsg>(channel, std::move(reader), [this] (int catcher) {
 				Key_SetCatcher(catcher);
 			});
 			break;
 
-		case CG_KEY_GETKEYNUMFORBINDS:
-			IPC::HandleMsg<Key::GetKeynumForBindsMsg>(channel, std::move(reader), [this] (int team, const std::vector<std::string>& binds, std::vector<std::vector<int>>& result) {
-                for (const auto& bind : binds) {
-                    result.push_back({});
-                    for (int i = 0; i < Util::ordinal(keyNum_t::MAX_KEYS); i++) {
-                        char buffer[MAX_STRING_CHARS];
-
-                        Key_GetBindingBuf(i, team, buffer, MAX_STRING_CHARS);
-                        if (bind == buffer) {
-                            result.back().push_back(i);
-                            continue;
-                        }
-                        Key_GetBindingBuf(0, team, buffer, MAX_STRING_CHARS);
-                        if (bind == buffer) {
-                            result.back().push_back(i);
-                            continue;
-                        }
-                    }
-                }
+		case CG_KEY_GETKEYSFORBINDS:
+			IPC::HandleMsg<Keyboard::GetKeysForBindsMsg>(channel, std::move(reader), [this] (int team, const std::vector<std::string>& binds, std::vector<std::vector<Keyboard::Key>>& result) {
+				for (const auto& bind : binds) {
+					result.push_back(Keyboard::GetKeysBoundTo(team, bind));
+				}
 			});
 			break;
 
-		case CG_KEY_KEYNUMTOSTRINGBUF:
-			IPC::HandleMsg<Key::KeyNumToStringMsg>(channel, std::move(reader), [this] (int keynum, std::string& result) {
-				result = Key_KeynumToString(keynum);
+		case CG_KEY_GETCHARFORSCANCODE:
+			IPC::HandleMsg<Keyboard::GetCharForScancodeMsg>(channel, std::move(reader), [this] (int scancode, int& result) {
+				result = Keyboard::GetCharForScancode(scancode);
+				if (!result) {
+					// Not sure if this fallback is ever useful. Usually SDL falls back on QWERTY itself.
+					result = Keyboard::ScancodeToAscii(scancode);
+				}
 			});
 			break;
 
 		case CG_KEY_SETBINDING:
-			IPC::HandleMsg<Key::SetBindingMsg>(channel, std::move(reader), [this] (int keyNum, int team, std::string cmd) {
-				Key_SetBinding(keyNum, team, cmd.c_str());
+			IPC::HandleMsg<Keyboard::SetBindingMsg>(channel, std::move(reader), [this] (Keyboard::Key key, int team, std::string cmd) {
+				if (key.IsBindable()) {
+					Keyboard::SetBinding(key, team, std::move(cmd));
+				} else {
+					Log::Warn("Invalid key in SetBindingMsg");
+				}
 			});
 			break;
 
 		case CG_KEY_CLEARCMDBUTTONS:
-			IPC::HandleMsg<Key::ClearCmdButtonsMsg>(channel, std::move(reader), [this] {
+			IPC::HandleMsg<Keyboard::ClearCmdButtonsMsg>(channel, std::move(reader), [this] {
 				CL_ClearCmdButtons();
 			});
 			break;
 
 		case CG_KEY_CLEARSTATES:
-			IPC::HandleMsg<Key::ClearStatesMsg>(channel, std::move(reader), [this] {
+			IPC::HandleMsg<Keyboard::ClearStatesMsg>(channel, std::move(reader), [this] {
 				Key_ClearStates();
 			});
 			break;
 
 		case CG_KEY_KEYSDOWN:
-			IPC::HandleMsg<Key::KeysDownMsg>(channel, std::move(reader), [this] (std::vector<int> keys, std::vector<int>& list) {
+			IPC::HandleMsg<Keyboard::KeysDownMsg>(channel, std::move(reader), [this] (std::vector<Keyboard::Key> keys, std::vector<bool>& list) {
 				list.reserve(keys.size());
-				for (unsigned i = 0; i < keys.size(); ++i)
+				for (Keyboard::Key key : keys)
 				{
-					if (keys[i] == Util::ordinal(keyNum_t::K_KP_NUMLOCK))
+					if (key == Keyboard::Key(keyNum_t::K_KP_NUMLOCK))
 					{
 						list.push_back(IN_IsNumLockDown());
 					}
 					else
 					{
-						list.push_back(Key_IsDown( keys[i] ));
+						list.push_back(Keyboard::IsDown(key));
 					}
 				}
 			});
@@ -1532,8 +1511,9 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 		case CG_LAN_GETSERVERINFO:
 			IPC::HandleMsg<LAN::GetServerInfoMsg>(channel, std::move(reader), [this] (int source, int n, int len, std::string& info) {
 				std::unique_ptr<char[]> buffer(new char[len]);
+				buffer[0] = '\0';
 				LAN_GetServerInfo(source, n, buffer.get(), len);
-				info.assign(buffer.get(), len);
+				info.assign(buffer.get());
 			});
 			break;
 
@@ -1570,14 +1550,27 @@ void CGameVM::QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel)
 		case CG_LAN_SERVERSTATUS:
 			IPC::HandleMsg<LAN::ServerStatusMsg>(channel, std::move(reader), [this] (const std::string& serverAddress, int len, std::string& status, int& res) {
 				std::unique_ptr<char[]> buffer(new char[len]);
+				buffer[0] = '\0';
 				res = CL_ServerStatus(serverAddress.c_str(), buffer.get(), len);
-				status.assign(buffer.get(), len);
+				status.assign(buffer.get());
 			});
 			break;
 
 		case CG_LAN_RESETSERVERSTATUS:
 			IPC::HandleMsg<LAN::ResetServerStatusMsg>(channel, std::move(reader), [this] {
 				CL_ServerStatus(nullptr, nullptr, 0);
+			});
+			break;
+
+		case CG_SEND_MESSAGE:
+			IPC::HandleMsg<SendMessageMsg>(channel, std::move(reader), [this](std::vector<uint8_t> message) {
+				CL_SendBinaryMessage(std::move(message));
+			});
+			break;
+
+		case CG_MESSAGE_STATUS:
+			IPC::HandleMsg<MessageStatusMsg>(channel, std::move(reader), [this](messageStatus_t& status) {
+				status = CL_BinaryMessageStatus();
 			});
 			break;
 

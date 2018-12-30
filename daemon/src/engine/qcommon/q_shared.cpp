@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -594,7 +594,7 @@ char *COM_ParseExt( const char **data_p, bool allowLineBreaks )
 	// RF, backup the session data so we can unget easily
 	COM_BackupParseSession( data_p );
 
-	while ( 1 )
+	while (true)
 	{
 		// skip whitespace
 		data = SkipWhitespace( data, &hasNewLines );
@@ -656,7 +656,7 @@ char *COM_ParseExt( const char **data_p, bool allowLineBreaks )
 	{
 		data++;
 
-		while ( 1 )
+		while (true)
 		{
 			c = *data++;
 
@@ -671,7 +671,7 @@ char *COM_ParseExt( const char **data_p, bool allowLineBreaks )
 
 				data++;
 
-				while ( 1 )
+				while (true)
 				{
 					c = *data++;
 
@@ -782,7 +782,7 @@ char           *COM_ParseExt2( const char **data_p, bool allowLineBreaks )
 	COM_BackupParseSession( data_p );
 
 	// skip whitespace
-	while ( 1 )
+	while (true)
 	{
 		data = SkipWhitespace( data, &hasNewLines );
 
@@ -837,7 +837,7 @@ char           *COM_ParseExt2( const char **data_p, bool allowLineBreaks )
 	{
 		data++;
 
-		while ( 1 )
+		while (true)
 		{
 			c = *data++;
 
@@ -1144,7 +1144,7 @@ int Com_ParseInfos( const char *buf, int max, char infos[][ MAX_INFO_STRING ] )
 
 	count = 0;
 
-	while ( 1 )
+	while (true)
 	{
 		token = COM_Parse( &buf );
 
@@ -1167,7 +1167,7 @@ int Com_ParseInfos( const char *buf, int max, char infos[][ MAX_INFO_STRING ] )
 
 		infos[ count ][ 0 ] = 0;
 
-		while ( 1 )
+		while (true)
 		{
 			token = COM_Parse( &buf );
 
@@ -1294,9 +1294,9 @@ const char *Com_ClearForeignCharacters( const char *str )
 			// width is in the range 1..4
 			switch ( width )
 			{
-			case 4: clean[ j++ ] = str[ i++ ];
-			case 3: clean[ j++ ] = str[ i++ ];
-			case 2: clean[ j++ ] = str[ i++ ];
+			case 4: clean[ j++ ] = str[ i++ ]; DAEMON_FALLTHROUGH;
+			case 3: clean[ j++ ] = str[ i++ ]; DAEMON_FALLTHROUGH;
+			case 2: clean[ j++ ] = str[ i++ ]; DAEMON_FALLTHROUGH;
 			case 1: clean[ j++ ] = str[ i ];
 			}
 		}
@@ -1431,7 +1431,20 @@ int Q_strncmp( const char *s1, const char *s2, int n )
 
 int Q_stricmp( const char *s1, const char *s2 )
 {
-	return Q_strnicmp( s1, s2, 99999 );
+	if (!s1 || !s2) {
+		return Q_strnicmp(s1, s2, 0);
+	}
+	while (*s1) {
+		if (*s1 != *s2) {
+			int uc1 = Str::ctoupper(*s1);
+			int uc2 = Str::ctoupper(*s2);
+			if (uc1 < uc2) return -1;
+			if (uc1 > uc2) return 1;
+		}
+		s1++;
+		s2++;
+	}
+	return *s2 == '\0' ? 0 : -1;
 }
 
 char *Q_strlwr( char *s1 )
@@ -1948,7 +1961,7 @@ const char *Info_ValueForKey( const char *s, const char *key )
 		s++;
 	}
 
-	while ( 1 )
+	while (true)
 	{
 		o = pkey;
 
@@ -2065,7 +2078,7 @@ void Info_RemoveKey( char *s, const char *key, bool big )
 		return;
 	}
 
-	while ( 1 )
+	while (true)
 	{
 		start = s;
 

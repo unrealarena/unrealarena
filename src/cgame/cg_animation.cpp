@@ -1,27 +1,42 @@
 /*
 ===========================================================================
+
+Unvanquished GPL Source Code
 Copyright (C) 1999-2005 Id Software, Inc.
 Copyright (C) 2000-2009 Darklegion Development
 
-This file is part of Daemon.
+This file is part of the Unvanquished GPL Source Code (Unvanquished Source Code).
 
-Daemon is free software; you can redistribute it
+Unvanquished is free software; you can redistribute it
 and/or modify it under the terms of the GNU General Public License as
 published by the Free Software Foundation; either version 2 of the License,
 or (at your option) any later version.
 
-Daemon is distributed in the hope that it will be
+Unvanquished is distributed in the hope that it will be
 useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Daemon; if not, write to the Free Software
+along with Unvanquished; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
 ===========================================================================
 */
 
 #include "cg_local.h"
+
+/*
+===============
+CG_AnimNumber
+
+Gives the raw animation number removing the togglebit and forcebit if they are present.
+===============
+*/
+int CG_AnimNumber( int anim )
+{
+	return anim & ~( ANIM_TOGGLEBIT | ANIM_FORCEBIT );
+}
 
 /*
 ===============
@@ -38,6 +53,7 @@ void CG_RunLerpFrame( lerpFrame_t *lf, float scale )
 		lf->oldFrame = lf->frame = lf->backlerp = 0;
 		return;
 	}
+	lf->animationEnded = false;
 
 	// if we have passed the current frame, move it to
 	// oldFrame and calculate a new frame
@@ -75,6 +91,7 @@ void CG_RunLerpFrame( lerpFrame_t *lf, float scale )
 					// the animation is stuck at the end, so it
 					// can immediately transition to another sequence
 					lf->frameTime = cg.time;
+					lf->animationEnded = true;
 				}
 			}
 			else

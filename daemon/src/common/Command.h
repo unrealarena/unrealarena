@@ -49,7 +49,7 @@ namespace Cmd {
         AUDIO            = BIT(5),
         SGAME_VM         = BIT(6),
         CGAME_VM         = BIT(7),
-        UI_VM            = BIT(8),
+        KEY_BINDING      = BIT(8),
         PROXY_FOR_OLD    = BIT(31) // OLD: The command has been registered through the proxy function in cmd.c
     };
 
@@ -120,6 +120,8 @@ namespace Cmd {
      */
     class CmdBase {
         public:
+            virtual ~CmdBase() = default;
+
             // Called when the command is run with the command line args
             virtual void Run(const Args& args) const = 0;
             // Called when the user wants to autocomplete a call to this command.
@@ -181,8 +183,8 @@ namespace Cmd {
             LambdaCmd(std::string name, std::string description, RunFn run, CompleteFn complete = NoopComplete);
             LambdaCmd(std::string name, int flags, std::string description, RunFn run, CompleteFn complete = NoopComplete);
 
-            void Run(const Args& args) const OVERRIDE;
-            CompletionResult Complete(int argNum, const Args& args, Str::StringRef prefix) const OVERRIDE;
+            void Run(const Args& args) const override;
+            CompletionResult Complete(int argNum, const Args& args, Str::StringRef prefix) const override;
 
         private:
             RunFn run;
@@ -202,6 +204,8 @@ namespace Cmd {
      */
     class Environment {
         public:
+            virtual ~Environment() = default;
+
             virtual void Print(Str::StringRef text) = 0;
             virtual void ExecuteAfter(Str::StringRef text, bool parseCvars = false) = 0;
     };

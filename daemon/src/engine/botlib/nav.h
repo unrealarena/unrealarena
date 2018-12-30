@@ -172,7 +172,7 @@ struct FastLZCompressor : public dtTileCacheCompressor
 							   unsigned char *compressed, const int /*maxCompressedSize*/, int *compressedSize )
 	{
 
-		*compressedSize = fastlz_compress( ( const void *const ) buffer, bufferSize, compressed );
+		*compressedSize = fastlz_compress( ( const void * ) buffer, bufferSize, compressed );
 		return DT_SUCCESS;
 	}
 
@@ -221,21 +221,21 @@ struct MeshProcess : public dtTileCacheMeshProcess
 struct LinearAllocator : public dtTileCacheAlloc
 {
 	unsigned char* buffer;
-	int capacity;
-	int top;
-	int high;
+	size_t capacity;
+	size_t top;
+	size_t high;
 
-	LinearAllocator( const int cap ) : buffer(0), capacity(0), top(0), high(0)
+	LinearAllocator( const size_t cap ) : buffer(nullptr), capacity(0), top(0), high(0)
 	{
 		resize(cap);
 	}
 
-	~LinearAllocator()
+	~LinearAllocator() override
 	{
 		free( buffer );
 	}
 
-	void resize( const int cap )
+	void resize( const size_t cap )
 	{
 		if ( buffer )
 		{
@@ -246,22 +246,22 @@ struct LinearAllocator : public dtTileCacheAlloc
 		capacity = cap;
 	}
 
-	virtual void reset()
+	void reset() override
 	{
 		high = dtMax( high, top );
 		top = 0;
 	}
 
-	virtual void* alloc( const int size )
+	void* alloc( const size_t size ) override
 	{
 		if ( !buffer )
 		{
-			return 0;
+			return nullptr;
 		}
 
 		if ( top + size > capacity )
 		{
-			return 0;
+			return nullptr;
 		}
 
 		unsigned char* mem = &buffer[ top ];
@@ -269,8 +269,8 @@ struct LinearAllocator : public dtTileCacheAlloc
 		return mem;
 	}
 
-	virtual void free( void* /*ptr*/ ) { }
-	int getHighSize() { return high; }
+	void free( void* /*ptr*/ ) override { }
+	size_t getHighSize() { return high; }
 };
 #endif
 

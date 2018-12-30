@@ -8,6 +8,16 @@ set(SHAREDLIST
     PARENT_SCOPE
 )
 
+set(SHAREDLIST_cgame
+    ${MOUNT_DIR}/shared/client/cg_api.cpp ${MOUNT_DIR}/shared/client/cg_api.h
+    PARENT_SCOPE
+)
+
+set(SHAREDLIST_sgame
+    ${MOUNT_DIR}/shared/server/sg_api.cpp ${MOUNT_DIR}/shared/server/sg_api.h
+    PARENT_SCOPE
+)
+
 set(COMMONLIST
     ${COMMON_DIR}/Color.h
     ${COMMON_DIR}/Color.cpp
@@ -18,6 +28,7 @@ set(COMMONLIST
     ${COMMON_DIR}/Cvar.cpp
     ${COMMON_DIR}/Cvar.h
     ${COMMON_DIR}/Debugger.cpp
+    ${COMMON_DIR}/Defs.h
     ${COMMON_DIR}/DisjointSets.h
     ${COMMON_DIR}/Endian.h
     ${COMMON_DIR}/FileSystem.cpp
@@ -29,6 +40,8 @@ set(COMMONLIST
     ${COMMON_DIR}/IPC/CommonSyscalls.h
     ${COMMON_DIR}/IPC/Primitives.cpp
     ${COMMON_DIR}/IPC/Primitives.h
+    ${COMMON_DIR}/KeyIdentification.cpp
+    ${COMMON_DIR}/KeyIdentification.h
     ${COMMON_DIR}/LineEditData.cpp
     ${COMMON_DIR}/LineEditData.h
     ${COMMON_DIR}/Log.cpp
@@ -116,6 +129,85 @@ set(RENDERERLIST
     ${ENGINE_DIR}/sys/sdl_icon.h
 )
 
+set(GLSLSOURCELIST
+    ${ENGINE_DIR}/renderer/glsl_source/skybox_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/ssao_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/ssao_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/vertexAnimation_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/vertexLighting_DBS_entity_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/vertexLighting_DBS_entity_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/vertexLighting_DBS_world_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/vertexLighting_DBS_world_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/vertexSimple_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/vertexSkinning_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/vertexSprite_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/volumetricFog_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/volumetricFog_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/blurX_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/blurX_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/blurY_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/blurY_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/cameraEffects_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/cameraEffects_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/contrast_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/contrast_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/debugShadowMap_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/debugShadowMap_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/deformVertexes_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/depthtile1_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/depthtile1_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/depthtile2_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/depthtile2_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/depthToColor_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/depthToColor_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/dispersion_C_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/dispersion_C_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/fogGlobal_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/fogGlobal_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/fogQuake3_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/fogQuake3_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/forwardLighting_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/forwardLighting_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/fxaa_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/fxaa_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/fxaa3_11_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/generic_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/generic_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/heatHaze_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/heatHaze_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/lightMapping_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/lightMapping_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/lighttile_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/lighttile_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/lightVolume_omni_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/lightVolume_omni_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/liquid_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/liquid_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/motionblur_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/motionblur_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/portal_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/portal_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/reflection_CB_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/reflection_CB_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/refraction_C_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/refraction_C_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/reliefMapping_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/screen_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/screen_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/shadowFill_fp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/shadowFill_vp.glsl
+    ${ENGINE_DIR}/renderer/glsl_source/skybox_fp.glsl
+)
+
+set(GLSLINCLUDELIST "")
+foreach(res ${GLSLSOURCELIST})
+    set(in ${res})
+    set(working_dir ${ENGINE_DIR}/renderer/glsl)
+    get_filename_component(filename_no_ext ${in} NAME_WE)
+    set(outpath ${working_dir}/${filename_no_ext}.h)
+    list(APPEND GLSLINCLUDELIST ${outpath})
+endforeach()
+
 set(SERVERLIST
     ${ENGINE_DIR}/botlib/bot_api.h
     ${ENGINE_DIR}/botlib/bot_convert.cpp
@@ -175,7 +267,7 @@ set(ENGINELIST
     ${ENGINE_DIR}/qcommon/md5.cpp
     ${ENGINE_DIR}/sys/con_common.h
     ${ENGINE_DIR}/sys/con_common.cpp
-    ${ENGINE_DIR}/sys/con_log.cpp
+    ${ENGINE_DIR}/sys/sys_events.h
 )
 
 if (WIN32)
@@ -200,18 +292,17 @@ set(QCOMMONLIST
     ${ENGINE_DIR}/qcommon/msg.cpp
     ${ENGINE_DIR}/qcommon/net_chan.cpp
     ${ENGINE_DIR}/qcommon/net_ip.cpp
+    ${ENGINE_DIR}/qcommon/net_types.h
     ${ENGINE_DIR}/qcommon/parse.cpp
     ${ENGINE_DIR}/qcommon/print_translated.h
     ${ENGINE_DIR}/qcommon/qcommon.h
     ${ENGINE_DIR}/qcommon/qfiles.h
     ${ENGINE_DIR}/qcommon/surfaceflags.h
+    ${ENGINE_DIR}/qcommon/sys.h
     ${ENGINE_DIR}/qcommon/translation.cpp
-    ${ENGINE_DIR}/sys/con_log.cpp
-    ${ENGINE_DIR}/sys/con_common.h
-    ${ENGINE_DIR}/sys/con_common.cpp
 )
 
-if (NOT APPLE)
+if (USE_CURSES)
     set(ENGINELIST ${ENGINELIST}
         ${ENGINE_DIR}/sys/con_curses.cpp
     )
@@ -230,11 +321,11 @@ set(CLIENTBASELIST
     ${ENGINE_DIR}/client/cl_console.cpp
     ${ENGINE_DIR}/client/cl_input.cpp
     ${ENGINE_DIR}/client/cl_irc.cpp
-    ${ENGINE_DIR}/client/cl_keys.cpp
     ${ENGINE_DIR}/client/cl_main.cpp
     ${ENGINE_DIR}/client/cl_parse.cpp
     ${ENGINE_DIR}/client/cl_scrn.cpp
     ${ENGINE_DIR}/client/dl_main.cpp
+    ${ENGINE_DIR}/client/key_identification.h
     ${ENGINE_DIR}/client/keycodes.h
     ${ENGINE_DIR}/client/keys.h
     ${ENGINE_DIR}/client/ClientApplication.cpp
@@ -258,17 +349,23 @@ set(CLIENTLIST
     ${ENGINE_DIR}/audio/SoundCodec.cpp
     ${ENGINE_DIR}/audio/SoundCodec.h
     ${ENGINE_DIR}/audio/WavCodec.cpp
+    ${ENGINE_DIR}/client/cl_keys.cpp
+    ${ENGINE_DIR}/client/key_binding.cpp
+    ${ENGINE_DIR}/client/key_identification.cpp
     ${ENGINE_DIR}/sys/sdl_input.cpp
     ${RENDERERLIST}
+    ${GLSLINCLUDELIST}
 )
 
 set(TTYCLIENTLIST
     ${ENGINE_DIR}/null/NullAudio.cpp
+    ${ENGINE_DIR}/null/NullKeyboard.cpp
     ${ENGINE_DIR}/null/null_input.cpp
     ${ENGINE_DIR}/null/null_renderer.cpp
 )
 
 set(DEDSERVERLIST
+    ${ENGINE_DIR}/null/NullKeyboard.cpp
     ${ENGINE_DIR}/null/null_client.cpp
     ${ENGINE_DIR}/null/null_input.cpp
     ${ENGINE_DIR}/server/ServerApplication.cpp

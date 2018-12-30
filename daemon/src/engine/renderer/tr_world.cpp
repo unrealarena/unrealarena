@@ -318,8 +318,6 @@ void R_AddBSPModelSurfaces( trRefEntity_t *ent )
 	bspModel_t *bspModel;
 	model_t    *pModel;
 	unsigned int i;
-	vec3_t     v;
-	vec3_t     transformed;
 	vec3_t     boundsCenter;
 	int        fogNum;
 
@@ -333,20 +331,7 @@ void R_AddBSPModelSurfaces( trRefEntity_t *ent )
 		ent->localBounds[ 1 ][ i ] = bspModel->bounds[ 1 ][ i ];
 	}
 
-	// setup world bounds for intersection tests
-	ClearBounds( ent->worldBounds[ 0 ], ent->worldBounds[ 1 ] );
-
-	for ( i = 0; i < 8; i++ )
-	{
-		v[ 0 ] = ent->localBounds[ i & 1 ][ 0 ];
-		v[ 1 ] = ent->localBounds[( i >> 1 ) & 1 ][ 1 ];
-		v[ 2 ] = ent->localBounds[( i >> 2 ) & 1 ][ 2 ];
-
-		// transform local bounds vertices into world space
-		R_LocalPointToWorld( v, transformed );
-
-		AddPointToBounds( transformed, ent->worldBounds[ 0 ], ent->worldBounds[ 1 ] );
-	}
+	R_SetupEntityWorldBounds(ent);
 
 	VectorAdd( ent->worldBounds[ 0 ], ent->worldBounds[ 1 ], boundsCenter );
 	VectorScale( boundsCenter, 0.5f, boundsCenter );
@@ -510,13 +495,17 @@ static void R_RecursiveWorldNode( bspNode_t *node, int planeBits, int decalBits 
 			break;
 		}
 
+		float d = DotProduct(tr.viewParms.orientation.viewOrigin, node->plane->normal) - node->plane->dist;
+
+		uint32_t side = d <= 0;
+
 		// recurse down the children, front side first
-		R_RecursiveWorldNode( node->children[ 0 ], planeBits, decalBits );
+		R_RecursiveWorldNode( node->children[ side ], planeBits, decalBits );
 
 		// tail recurse
-		node = node->children[ 1 ];
+		node = node->children[ side ^ 1 ];
 	}
-	while ( 1 );
+	while ( true );
 
 	if ( node->numMarkSurfaces )
 	{
@@ -607,7 +596,7 @@ static void R_RecursiveInteractionNode( bspNode_t *node, trRefLight_t *light, in
 				break;
 		}
 	}
-	while ( 1 );
+	while ( true );
 
 	{
 		// leaf node, so add mark surfaces
@@ -647,7 +636,7 @@ static bspNode_t *R_PointInLeaf( const vec3_t p )
 
 	node = tr.world->nodes;
 
-	while ( 1 )
+	while ( true )
 	{
 		if ( node->contents != -1 )
 		{
@@ -777,7 +766,7 @@ static void R_MarkLeaves()
 		for ( i = 0; i < MAX_VISCOUNTS; i++ ) {
 			tr.visClusters[ i ] = -1;
 		}
-		tr.visIndex = 1;
+		tr.visIndex = 0;
 	} else {
 		for ( i = 0; i < MAX_VISCOUNTS; i++ ) {
 			if ( tr.visClusters[ i ] == cluster ) {

@@ -129,7 +129,7 @@ float R_ProcessLightmap( byte *pic, int in_padding, int width, int height, int b
 		{
 			R_ColorShiftLightingBytesCompressed( &pic[ j * 8 ], &pic_out[ j * 8 ] );
 		}
-	} else if( bits & IF_BC3 ) {
+	} else if( bits & (IF_BC2 | IF_BC3) ) {
 		for ( j = 0; j < ((width + 3) >> 2) * ((height + 3) >> 2); j++ )
 		{
 			R_ColorShiftLightingBytesCompressed( &pic[ j * 16 ], &pic_out[ j * 16 ] );
@@ -479,7 +479,7 @@ static void R_LoadLightmaps( lump_t *l, const char *bspName )
 				width = height = 0;
 				LoadRGBEToBytes( va( "%s/%s", mapName, lightmapFiles[ i ] ), &ldrImage, &width, &height );
 
-				auto image = R_CreateImage( va( "%s/%s", mapName, lightmapFiles[ i ] ), (const byte **)&ldrImage, width, height, 1, IF_NOPICMIP | IF_LIGHTMAP | IF_NOCOMPRESSION, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP );
+				auto image = R_CreateImage( va( "%s/%s", mapName, lightmapFiles[ i ] ), (const byte **)&ldrImage, width, height, 1, IF_NOPICMIP | IF_LIGHTMAP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP );
 
 				Com_AddToGrowList( &tr.lightmaps, image );
 
@@ -498,7 +498,7 @@ static void R_LoadLightmaps( lump_t *l, const char *bspName )
 
 				for (int i = 0; i < numLightmaps; i++) {
 					Log::Debug("...loading external lightmap '%s/%s'", mapName, lightmapFiles[i]);
-					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_NORMALMAP | IF_NOCOMPRESSION, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP);
+					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_NORMALMAP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP);
 					Com_AddToGrowList(&tr.deluxemaps, image);
 				}
 			}
@@ -521,10 +521,10 @@ static void R_LoadLightmaps( lump_t *l, const char *bspName )
 				Log::Debug("...loading external lightmap '%s/%s'", mapName, lightmapFiles[i]);
 
 				if (!tr.worldDeluxeMapping || i % 2 == 0) {
-					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_LIGHTMAP | IF_NOCOMPRESSION, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP);
+					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_LIGHTMAP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP);
 					Com_AddToGrowList(&tr.lightmaps, image);
 				} else {
-					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_NORMALMAP | IF_NOCOMPRESSION, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP);
+					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_NORMALMAP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP);
 					Com_AddToGrowList(&tr.deluxemaps, image);
 				}
 			}
@@ -607,7 +607,7 @@ static void R_LoadLightmaps( lump_t *l, const char *bspName )
 
 		tr.fatLightmap = R_CreateImage( va( "_fatlightmap%d", 0 ), (const byte **)&fatbuffer,
 						tr.fatLightmapSize, tr.fatLightmapSize, 1,
-						IF_LIGHTMAP | IF_NOCOMPRESSION, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP );
+						IF_LIGHTMAP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP );
 		Com_AddToGrowList( &tr.lightmaps, tr.fatLightmap );
 
 		ri.Hunk_FreeTempMemory( fatbuffer );
@@ -2764,7 +2764,7 @@ static int LeafSurfaceCompare( const void *a, const void *b )
 		return 1;
 	}
 
-	// sort by leaf marksurfaces index
+	// sort by leaf marksurfaces index to increase the likelihood of multidraw merging in the backend
 	if ( aa->lightCount < bb->lightCount )
 	{
 		return -1;
@@ -3939,11 +3939,11 @@ void R_LoadLightGrid( lump_t *l )
 
 		tr.lightGrid1Image = R_Create3DImage("<lightGrid1>", (const byte *)w->lightGridData1,
 						     w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ],
-						     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE | IF_NOCOMPRESSION,
+						     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE,
 						     filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
 		tr.lightGrid2Image = R_Create3DImage("<lightGrid2>", (const byte *)w->lightGridData2,
 						     w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ],
-						     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE | IF_NOCOMPRESSION,
+						     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE,
 						     filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
 
 		return;
@@ -4103,11 +4103,11 @@ void R_LoadLightGrid( lump_t *l )
 
 	tr.lightGrid1Image = R_Create3DImage("<lightGrid1>", (const byte *)w->lightGridData1,
 					     w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ],
-					     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE | IF_NOCOMPRESSION,
+					     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE,
 					     filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
 	tr.lightGrid2Image = R_Create3DImage("<lightGrid2>", (const byte *)w->lightGridData2,
 					     w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ],
-					     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE | IF_NOCOMPRESSION,
+					     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE,
 					     filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
 
 	Log::Debug("%i light grid points created", w->numLightGridPoints );
@@ -4150,7 +4150,7 @@ void R_LoadEntities( lump_t *l )
 	p = w->entityString;
 
 	// only parse the world spawn
-	while ( 1 )
+	while ( true )
 	{
 		// parse key
 		token = COM_ParseExt2( &p, true );
@@ -4285,7 +4285,7 @@ void R_LoadEntities( lump_t *l )
 	numEntities = 1; // parsed worldspawn so far
 
 	// count lights
-	while ( 1 )
+	while ( true )
 	{
 		// parse {
 		token = COM_ParseExt2( &p, true );
@@ -4306,7 +4306,7 @@ void R_LoadEntities( lump_t *l )
 		isLight = false;
 
 		// parse epairs
-		while ( 1 )
+		while ( true )
 		{
 			// parse key
 			token = COM_ParseExt2( &p, true );
@@ -4398,7 +4398,7 @@ void R_LoadEntities( lump_t *l )
 	numEntities = 1;
 	light = &s_worldData.lights[ 0 ];
 
-	while ( 1 )
+	while ( true )
 	{
 		// parse {
 		token = COM_ParseExt2( &p, true );
@@ -4419,7 +4419,7 @@ void R_LoadEntities( lump_t *l )
 		isLight = false;
 
 		// parse epairs
-		while ( 1 )
+		while ( true )
 		{
 			// parse key
 			token = COM_ParseExt2( &p, true );
@@ -4759,7 +4759,7 @@ static void R_RecursivePrecacheInteractionNode( bspNode_t *node, trRefLight_t *l
 				break;
 		}
 	}
-	while ( 1 );
+	while ( true );
 
 	{
 		// leaf node, so add mark surfaces

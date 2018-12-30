@@ -32,14 +32,21 @@ Maryland 20850 USA.
 ===========================================================================
 */
 
+#include "common/Common.h"
+
 #include <SDL.h>
 #include "client/client.h"
+#include "client/key_identification.h"
 #include "qcommon/q_unicode.h"
+#include "qcommon/qcommon.h"
+#include "qcommon/sys.h"
 #include "framework/CommandSystem.h"
+#include "sys/sys_events.h"
 
 static cvar_t       *in_keyboardDebug = nullptr;
 
 static SDL_Joystick *stick = nullptr;
+static SDL_GameController *gamepad = nullptr;
 
 static bool     mouseAvailable = false;
 
@@ -52,23 +59,21 @@ static cvar_t       *in_joystickDebug = nullptr;
 static cvar_t       *in_joystickThreshold = nullptr;
 static cvar_t       *in_joystickNo = nullptr;
 static cvar_t       *in_joystickUseAnalog = nullptr;
+static cvar_t       *in_gameControllerTriggerDeadzone = nullptr;
 
-//static cvar_t  *in_fullscreen = nullptr;
-
-static cvar_t *in_xbox360Controller = nullptr;
-static cvar_t *in_xbox360ControllerAvailable = nullptr;
-static cvar_t *in_xbox360ControllerDebug = nullptr;
-
-#define CTRL(a) (( a ) - 'a' + 1 )
+static cvar_t *in_gameController = nullptr;
+static cvar_t *in_gameControllerAvailable = nullptr;
+static cvar_t *in_gameControllerDebug = nullptr;
 
 static SDL_Window *window = nullptr;
+
 
 /*
 ===============
 IN_PrintKey
 ===============
 */
-static void IN_PrintKey( const SDL_Keysym *keysym, keyNum_t key, bool down )
+static void IN_PrintKey( const SDL_Keysym *keysym, Keyboard::Key key, bool down )
 {
 	if ( keysym->mod & KMOD_LSHIFT ) { Log::Notice( " KMOD_LSHIFT" ); }
 
@@ -94,451 +99,316 @@ static void IN_PrintKey( const SDL_Keysym *keysym, keyNum_t key, bool down )
 
 	if ( keysym->mod & KMOD_RESERVED ) { Log::Notice( " KMOD_RESERVED" ); }
 
-	Log::Notice( "%c 0x%02x \"%s\" Q:0x%02x(%s)\n", down ? '+' : ' ', keysym->scancode,
-		    SDL_GetKeyName( keysym->sym ), key, Key_KeynumToString( key ) );
+	Log::Notice( "%c scancode = 0x%03x \"%s\" engine keycode name = %s\n", down ? '+' : '-',
+	    keysym->scancode, SDL_GetKeyName( keysym->sym ), KeyToString( key ) );
 }
 
-static const int MAX_CONSOLE_KEYS = 16;
+static Cvar::Modified<Cvar::Cvar<std::string>> cl_consoleKeys("cl_consoleKeys", "Keys to open or close the console", 0, "hw:`");
 
 /*
 ===============
 IN_IsConsoleKey
 
-TODO: If the SDL_Scancode situation improves, use it instead of
-      both of these methods
 ===============
 */
-static bool IN_IsConsoleKey( keyNum_t key, const unsigned char character )
+static bool IN_IsConsoleKey( Keyboard::Key key )
 {
-	struct consoleKey_t
-	{
-		enum
-		{
-		  KEY,
-		  CHARACTER
-		} type;
-
-		union
-		{
-			keyNum_t      key;
-			int           character;
-		} u;
-	};
-
-	static const struct {
-		char name[8];
-		int  key;
-	} modMap[] = {
-		{ "shift", K_SHIFT },
-		{ "ctrl",  K_CTRL  },
-		{ "alt",   K_ALT   },
-		{ "super", K_SUPER },
-	};
-
-	static consoleKey_t consoleKeys[ MAX_CONSOLE_KEYS ];
-	static int          numConsoleKeys = 0;
-	static int          ifMod, unlessMod = 0;
+	static std::vector<Keyboard::Key> consoleKeys;
 
 	// Only parse the variable when it changes
-	if ( cl_consoleKeys->modified )
+	Util::optional<std::string> modifiedString = cl_consoleKeys.GetModifiedValue();
+	if ( modifiedString )
 	{
-		const char *text_p, *token;
-
-		cl_consoleKeys->modified = false;
-		text_p = cl_consoleKeys->string;
-		numConsoleKeys = 0;
-		ifMod = unlessMod = 0;
-
-		while ( numConsoleKeys < MAX_CONSOLE_KEYS )
+		const char* text_p = modifiedString.value().c_str();
+		consoleKeys.clear();
+		while ( true )
 		{
-			consoleKey_t *c = &consoleKeys[ numConsoleKeys ];
-			int          charCode = 0;
-
-			token = COM_Parse( &text_p );
-
+			const char* token = COM_Parse( &text_p );
 			if ( !token[ 0 ] )
 			{
 				break;
 			}
-
-			if ( token[ 0 ] == '+' && token[ 1 ] )
-			{
-				for (unsigned i = 0; i < ARRAY_LEN( modMap ); ++i )
-				{
-					if ( !Q_stricmp( token + 1, modMap[i].name ) )
-					{
-						ifMod |= 1 << i;
-					}
-				}
-			}
-			else if ( token[ 0 ] == '-' && token[ 1 ] )
-			{
-				for (unsigned i = 0; i < ARRAY_LEN( modMap ); ++i )
-				{
-					if ( !Q_stricmp( token + 1, modMap[i].name ) )
-					{
-						unlessMod |= 1 << i;
-					}
-				}
-			}
-			else if ( strlen( token ) == 4 )
-			{
-				charCode = Com_HexStrToInt( token );
-			}
-
-			if ( charCode > 0 )
-			{
-				c->type = consoleKey_t::CHARACTER;
-				c->u.character = charCode;
-			}
-			else
-			{
-				c->type = consoleKey_t::KEY;
-				c->u.key = (keyNum_t) Key_StringToKeynum( token );
-
-				// 0 isn't a key
-				if ( c->u.key <= 0 )
-				{
-					continue;
-				}
-			}
-
-			numConsoleKeys++;
-		}
-
-		// if MOD is requested pressed and released, clear released
-		unlessMod &= ~ifMod;
-	}
-
-	// require a +MOD, if there are any, to be pressed
-	if ( ifMod )
-	{
-		bool flag = false;
-
-		for (unsigned i = 0; i < ARRAY_LEN( modMap ); ++i )
-		{
-			if ( ( ifMod & 1 << i ) && keys[ modMap[i].key ].down )
-			{
-				flag = true;
-				break;
-			}
-		}
-
-		if ( !flag )
-		{
-			return false;
-		}
-	}
-
-	// require all -MOD not to be pressed
-	if ( unlessMod )
-	{
-		for (unsigned i = 0; i < ARRAY_LEN( modMap ); ++i )
-		{
-			if ( ( unlessMod & 1 << i ) && keys[ modMap[i].key ].down )
-			{
-				return false;
+			Keyboard::Key k = Keyboard::StringToKey(token);
+			if (k.IsBindable()) {
+				consoleKeys.push_back(k);
 			}
 		}
 	}
 
-	// If the character is the same as the key, prefer the character
-	if ( key == character )
+	for (Keyboard::Key k : consoleKeys)
 	{
-		key = (keyNum_t) 0;
-	}
-
-	for (int i = 0; i < numConsoleKeys; i++ )
-	{
-		consoleKey_t *c = &consoleKeys[ i ];
-
-		switch ( c->type )
-		{
-            case consoleKey_t::KEY:
-				if ( key && c->u.key == key )
-				{
-					return true;
-				}
-
-				break;
-
-            case consoleKey_t::CHARACTER:
-				if ( c->u.character == character )
-				{
-					return true;
-				}
-
-				break;
+		if (k == key) {
+			return true;
 		}
 	}
 
 	return false;
 }
 
-/*
-===============
-IN_TranslateSDLToQ3Key
-===============
-*/
-static keyNum_t IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, bool down )
+// Translates based on keycode, not scancode.
+static Keyboard::Key IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, bool down )
 {
-	keyNum_t key = (keyNum_t) 0;
+	using Keyboard::Key;
+	Key key;
 
-	if ( keysym->sym >= SDLK_SPACE && keysym->sym < SDLK_DELETE )
+	if ( keysym->sym == SDLK_DELETE ) // SDLK_DELETE is anomalously located in the Unicode range.
 	{
-		// These happen to match the ASCII chars
-		key = ( keyNum_t ) keysym->sym;
+		key = Key(K_DEL);
+	}
+	else if ( keysym->sym >= SDLK_SPACE && keysym->sym < UNICODE_MAX_CODE_POINT )
+	{
+		key = Key::FromCharacter(keysym->sym);
 	}
 	else
 	{
 		switch ( keysym->sym )
 		{
 			case SDLK_PAGEUP:
-				key = K_PGUP;
+				key = Key(K_PGUP);
 				break;
 
 			case SDLK_KP_9:
-				key = K_KP_PGUP;
+				key = Key(K_KP_PGUP);
 				break;
 
 			case SDLK_PAGEDOWN:
-				key = K_PGDN;
+				key = Key(K_PGDN);
 				break;
 
 			case SDLK_KP_3:
-				key = K_KP_PGDN;
+				key = Key(K_KP_PGDN);
 				break;
 
 			case SDLK_KP_7:
-				key = K_KP_HOME;
+				key = Key(K_KP_HOME);
 				break;
 
 			case SDLK_HOME:
-				key = K_HOME;
+				key = Key(K_HOME);
 				break;
 
 			case SDLK_KP_1:
-				key = K_KP_END;
+				key = Key(K_KP_END);
 				break;
 
 			case SDLK_END:
-				key = K_END;
+				key = Key(K_END);
 				break;
 
 			case SDLK_KP_4:
-				key = K_KP_LEFTARROW;
+				key = Key(K_KP_LEFTARROW);
 				break;
 
 			case SDLK_LEFT:
-				key = K_LEFTARROW;
+				key = Key(K_LEFTARROW);
 				break;
 
 			case SDLK_KP_6:
-				key = K_KP_RIGHTARROW;
+				key = Key(K_KP_RIGHTARROW);
 				break;
 
 			case SDLK_RIGHT:
-				key = K_RIGHTARROW;
+				key = Key(K_RIGHTARROW);
 				break;
 
 			case SDLK_KP_2:
-				key = K_KP_DOWNARROW;
+				key = Key(K_KP_DOWNARROW);
 				break;
 
 			case SDLK_DOWN:
-				key = K_DOWNARROW;
+				key = Key(K_DOWNARROW);
 				break;
 
 			case SDLK_KP_8:
-				key = K_KP_UPARROW;
+				key = Key(K_KP_UPARROW);
 				break;
 
 			case SDLK_UP:
-				key = K_UPARROW;
+				key = Key(K_UPARROW);
 				break;
 
 			case SDLK_ESCAPE:
-				key = K_ESCAPE;
+				key = Key(K_ESCAPE);
 				break;
 
 			case SDLK_KP_ENTER:
-				key = K_KP_ENTER;
+				key = Key(K_KP_ENTER);
 				break;
 
 			case SDLK_RETURN:
-				key = K_ENTER;
+				key = Key(K_ENTER);
 				break;
 
 			case SDLK_TAB:
-				key = K_TAB;
+				key = Key(K_TAB);
 				break;
 
 			case SDLK_F1:
-				key = K_F1;
+				key = Key(K_F1);
 				break;
 
 			case SDLK_F2:
-				key = K_F2;
+				key = Key(K_F2);
 				break;
 
 			case SDLK_F3:
-				key = K_F3;
+				key = Key(K_F3);
 				break;
 
 			case SDLK_F4:
-				key = K_F4;
+				key = Key(K_F4);
 				break;
 
 			case SDLK_F5:
-				key = K_F5;
+				key = Key(K_F5);
 				break;
 
 			case SDLK_F6:
-				key = K_F6;
+				key = Key(K_F6);
 				break;
 
 			case SDLK_F7:
-				key = K_F7;
+				key = Key(K_F7);
 				break;
 
 			case SDLK_F8:
-				key = K_F8;
+				key = Key(K_F8);
 				break;
 
 			case SDLK_F9:
-				key = K_F9;
+				key = Key(K_F9);
 				break;
 
 			case SDLK_F10:
-				key = K_F10;
+				key = Key(K_F10);
 				break;
 
 			case SDLK_F11:
-				key = K_F11;
+				key = Key(K_F11);
 				break;
 
 			case SDLK_F12:
-				key = K_F12;
+				key = Key(K_F12);
 				break;
 
 			case SDLK_F13:
-				key = K_F13;
+				key = Key(K_F13);
 				break;
 
 			case SDLK_F14:
-				key = K_F14;
+				key = Key(K_F14);
 				break;
 
 			case SDLK_F15:
-				key = K_F15;
+				key = Key(K_F15);
 				break;
 
 			case SDLK_BACKSPACE:
-				key = K_BACKSPACE;
+				key = Key(K_BACKSPACE);
 				break;
 
 			case SDLK_KP_PERIOD:
-				key = K_KP_DEL;
+				key = Key(K_KP_DEL);
 				break;
 
 			case SDLK_DELETE:
-				key = K_DEL;
+				key = Key(K_DEL);
 				break;
 
 			case SDLK_PAUSE:
-				key = K_PAUSE;
+				key = Key(K_PAUSE);
 				break;
 
 			case SDLK_LSHIFT:
 			case SDLK_RSHIFT:
-				key = K_SHIFT;
+				key = Key(K_SHIFT);
 				break;
 
 			case SDLK_LCTRL:
 			case SDLK_RCTRL:
-				key = K_CTRL;
+				key = Key(K_CTRL);
 				break;
 
 			case SDLK_RGUI:
 			case SDLK_LGUI:
-				key = K_COMMAND;
+				key = Key(K_COMMAND);
 				break;
 
 			case SDLK_RALT:
 			case SDLK_LALT:
-				key = K_ALT;
+				key = Key(K_ALT);
 				break;
 
 			case SDLK_KP_5:
-				key = K_KP_5;
+				key = Key(K_KP_5);
 				break;
 
 			case SDLK_INSERT:
-				key = K_INS;
+				key = Key(K_INS);
 				break;
 
 			case SDLK_KP_0:
-				key = K_KP_INS;
+				key = Key(K_KP_INS);
 				break;
 
 			case SDLK_KP_MULTIPLY:
-				key = K_KP_STAR;
+				key = Key(K_KP_STAR);
 				break;
 
 			case SDLK_KP_PLUS:
-				key = K_KP_PLUS;
+				key = Key(K_KP_PLUS);
 				break;
 
 			case SDLK_KP_MINUS:
-				key = K_KP_MINUS;
+				key = Key(K_KP_MINUS);
 				break;
 
 			case SDLK_KP_DIVIDE:
-				key = K_KP_SLASH;
+				key = Key(K_KP_SLASH);
 				break;
 
 			case SDLK_MODE:
-				key = K_MODE;
+				key = Key(K_MODE);
 				break;
 
 			case SDLK_HELP:
-				key = K_HELP;
+				key = Key(K_HELP);
 				break;
 
 			case SDLK_PRINTSCREEN:
-				key = K_PRINT;
+				key = Key(K_PRINT);
 				break;
 
 			case SDLK_SYSREQ:
-				key = K_SYSREQ;
+				key = Key(K_SYSREQ);
 				break;
 
 			case SDLK_MENU:
-				key = K_MENU;
+				key = Key(K_MENU);
 				break;
 
 			case SDLK_APPLICATION:
-				key = K_COMPOSE;
+				key = Key(K_COMPOSE);
 				break;
 
 			case SDLK_POWER:
-				key = K_POWER;
+				key = Key(K_POWER);
 				break;
 
 			case SDLK_UNDO:
-				key = K_UNDO;
+				key = Key(K_UNDO);
 				break;
 
 			case SDLK_SCROLLLOCK:
-				key = K_SCROLLOCK;
+				key = Key(K_SCROLLLOCK);
 				break;
 
 			case SDLK_NUMLOCKCLEAR:
-				key = K_KP_NUMLOCK;
+				key = Key(K_KP_NUMLOCK);
 				break;
 
 			case SDLK_CAPSLOCK:
-				key = K_CAPSLOCK;
+				key = Key(K_CAPSLOCK);
 				break;
 
 			default:
@@ -549,13 +419,6 @@ static keyNum_t IN_TranslateSDLToQ3Key( SDL_Keysym *keysym, bool down )
 	if ( in_keyboardDebug->integer )
 	{
 		IN_PrintKey( keysym, key, down );
-	}
-
-	if ( IN_IsConsoleKey( key, 0 ) && !keys[ K_ALT ].down)
-	{
-		// Console keys can't be bound or generate characters
-		// (but allow Alt+key for text input)
-		key = K_CONSOLE;
 	}
 
 	return key;
@@ -609,7 +472,7 @@ static void IN_SetFocus(bool hasFocus)
 
 	in_focus = hasFocus;
 
-	Com_QueueEvent( 0, sysEventType_t::SE_FOCUS, in_focus, 0, 0, nullptr );
+	Com_QueueEvent( Util::make_unique<Sys::FocusEvent>(hasFocus) );
 
 }
 
@@ -624,7 +487,7 @@ void IN_CenterMouse()
 }
 
 // We translate axes movement into keypresses
-static int joy_keys[ 16 ] =
+static keyNum_t joy_keys[ 16 ] =
 {
 	K_LEFTARROW, K_RIGHTARROW,
 	K_UPARROW,   K_DOWNARROW,
@@ -639,7 +502,7 @@ static int joy_keys[ 16 ] =
 
 // translate hat events into keypresses
 // the 4 highest buttons are used for the first hat ...
-static int hat_keys[ 16 ] =
+static keyNum_t hat_keys[ 16 ] =
 {
 	K_JOY29, K_JOY30,
 	K_JOY31, K_JOY32,
@@ -659,6 +522,12 @@ struct
 	unsigned int oldhats;
 } stick_state;
 
+static const char* JoystickNameForIndex(int index)
+{
+    const char* name = SDL_JoystickNameForIndex(index);
+    return name ? name : "<no name found>";
+}
+
 /*
 ===============
 IN_InitJoystick
@@ -677,14 +546,13 @@ static void IN_InitJoystick()
 	stick = nullptr;
 	memset( &stick_state, '\0', sizeof( stick_state ) );
 
-	if ( !in_joystick->integer && !in_xbox360Controller->integer )
+	if ( !in_joystick->integer )
 	{
 		Log::Debug( "Joystick is not active." );
 
-		if ( !in_xbox360Controller->integer )
+		if ( !gamepad )
 		{
 			Log::Debug( "Gamepad is not active." );
-			Cvar_Set( "in_xbox360ControllerAvailable", "0" );
 		}
 
 		return;
@@ -708,7 +576,7 @@ static void IN_InitJoystick()
 
 	for ( i = 0; i < total; i++ )
 	{
-		Log::Debug( "[%d] %s", i, SDL_JoystickNameForIndex( i ) );
+		Log::Debug( "[%d] %s", i, JoystickNameForIndex( i ) );
 	}
 
 	in_joystickNo = Cvar_Get( "in_joystickNo", "0", 0 );
@@ -728,25 +596,26 @@ static void IN_InitJoystick()
 		return;
 	}
 
+	if ( SDL_IsGameController( in_joystickNo->integer ) )
+	{
+		gamepad = SDL_GameControllerOpen( in_joystickNo->integer );
+		if ( gamepad )
+		{
+			Cvar_Set( "in_gameControllerAvailable", "1" );
+			SDL_GameControllerEventState( SDL_QUERY );
+		}
+	}
+
 	Log::Debug( "Joystick %d opened", in_joystickNo->integer );
-	Log::Debug( "Name:    %s", SDL_JoystickNameForIndex( in_joystickNo->integer ) );
+	Log::Debug( "Name:    %s", JoystickNameForIndex( in_joystickNo->integer ) );
 	Log::Debug( "Axes:    %d", SDL_JoystickNumAxes( stick ) );
 	Log::Debug( "Hats:    %d", SDL_JoystickNumHats( stick ) );
 	Log::Debug( "Buttons: %d", SDL_JoystickNumButtons( stick ) );
 	Log::Debug( "Balls: %d", SDL_JoystickNumBalls( stick ) );
 	Log::Debug( "Use Analog: %s", in_joystickUseAnalog->integer ? "Yes" : "No" );
+	Log::Debug( "Use SDL2 GameController mappings: %s", gamepad ? "Yes" : "No" );
 
 	SDL_JoystickEventState( SDL_QUERY );
-
-	// XBox 360 controller support
-	if ( !Q_stricmp( SDL_JoystickNameForIndex( in_joystickNo->integer ), "Microsoft X-Box 360 pad" ) )
-	{
-		Cvar_Set( "in_xbox360ControllerAvailable", "1" );
-	}
-	else
-	{
-		Cvar_Set( "in_xbox360ControllerAvailable", "0" );
-	}
 }
 
 /*
@@ -756,6 +625,11 @@ IN_ShutdownJoystick
 */
 static void IN_ShutdownJoystick()
 {
+	if ( gamepad )
+	{
+		SDL_GameControllerClose( gamepad );
+		gamepad = nullptr;
+	}
 	if ( stick )
 	{
 		SDL_JoystickClose( stick );
@@ -765,6 +639,17 @@ static void IN_ShutdownJoystick()
 	SDL_QuitSubSystem( SDL_INIT_JOYSTICK );
 }
 
+static void QueueKeyEvent(Keyboard::Key key, bool down)
+{
+	if (!key.IsValid()) {
+		return;
+	}
+	Com_QueueEvent( Util::make_unique<Sys::KeyEvent>(key, down, Sys_Milliseconds()) );
+}
+static void QueueKeyEvent(keyNum_t key, bool down) {
+	QueueKeyEvent(Keyboard::Key(key), down);
+}
+
 /*
 ===============
 IN_JoyMove
@@ -772,7 +657,6 @@ IN_JoyMove
 */
 static void IN_JoyMove()
 {
-	bool     joy_pressed[ ARRAY_LEN( joy_keys ) ];
 	unsigned int axes = 0;
 	unsigned int hats = 0;
 	int          total = 0;
@@ -783,14 +667,7 @@ static void IN_JoyMove()
 		return;
 	}
 
-	if ( !in_joystick->integer )
-	{
-		return;
-	}
-
 	SDL_JoystickUpdate();
-
-	memset( joy_pressed, '\0', sizeof( joy_pressed ) );
 
 	// update the ball state.
 	total = SDL_JoystickNumBalls( stick );
@@ -823,7 +700,7 @@ static void IN_JoyMove()
 				balldy *= 2;
 			}
 
-			Com_QueueEvent( 0, sysEventType_t::SE_MOUSE, balldx, balldy, 0, nullptr );
+			Com_QueueEvent( Util::make_unique<Sys::MouseEvent>(balldx, balldy) );
 		}
 	}
 
@@ -843,17 +720,7 @@ static void IN_JoyMove()
 
 			if ( pressed != stick_state.buttons[ i ] )
 			{
-				if ( in_xbox360ControllerAvailable->integer )
-				{
-					if ( i == 0 )
-					{
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_A, pressed, 0, nullptr );
-					}
-				}
-				else
-				{
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_JOY1 + i, pressed, 0, nullptr );
-				}
+				QueueKeyEvent( Util::enum_cast<keyNum_t>(K_JOY1 + i), pressed );
 
 				stick_state.buttons[ i ] = pressed;
 			}
@@ -884,39 +751,39 @@ static void IN_JoyMove()
 				switch ( ( ( Uint8 * ) &stick_state.oldhats ) [ i ] )
 				{
 					case SDL_HAT_UP:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 0 ], false, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 0 ], false );
 						break;
 
 					case SDL_HAT_RIGHT:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 1 ], false, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 1 ], false );
 						break;
 
 					case SDL_HAT_DOWN:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 2 ], false, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 2 ], false );
 						break;
 
 					case SDL_HAT_LEFT:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 3 ], false, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 3 ], false );
 						break;
 
 					case SDL_HAT_RIGHTUP:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 0 ], false, 0, nullptr );
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 1 ], false, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 0 ], false );
+						QueueKeyEvent( hat_keys[ 4 * i + 1 ], false );
 						break;
 
 					case SDL_HAT_RIGHTDOWN:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 2 ], false, 0, nullptr );
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 1 ], false, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 2 ], false );
+						QueueKeyEvent( hat_keys[ 4 * i + 1 ], false );
 						break;
 
 					case SDL_HAT_LEFTUP:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 0 ], false, 0, nullptr );
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 3 ], false, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 0 ], false );
+						QueueKeyEvent( hat_keys[ 4 * i + 3 ], false );
 						break;
 
 					case SDL_HAT_LEFTDOWN:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 2 ], false, 0, nullptr );
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 3 ], false, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 2 ], false );
+						QueueKeyEvent( hat_keys[ 4 * i + 3 ], false );
 						break;
 
 					default:
@@ -927,39 +794,39 @@ static void IN_JoyMove()
 				switch ( ( ( Uint8 * ) &hats ) [ i ] )
 				{
 					case SDL_HAT_UP:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 0 ], true, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 0 ], true );
 						break;
 
 					case SDL_HAT_RIGHT:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 1 ], true, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 1 ], true );
 						break;
 
 					case SDL_HAT_DOWN:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 2 ], true, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 2 ], true );
 						break;
 
 					case SDL_HAT_LEFT:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 3 ], true, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 3 ], true );
 						break;
 
 					case SDL_HAT_RIGHTUP:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 0 ], true, 0, nullptr );
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 1 ], true, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 0 ], true );
+						QueueKeyEvent( hat_keys[ 4 * i + 1 ], true );
 						break;
 
 					case SDL_HAT_RIGHTDOWN:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 2 ], true, 0, nullptr );
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 1 ], true, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 2 ], true );
+						QueueKeyEvent( hat_keys[ 4 * i + 1 ], true );
 						break;
 
 					case SDL_HAT_LEFTUP:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 0 ], true, 0, nullptr );
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 3 ], true, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 0 ], true );
+						QueueKeyEvent( hat_keys[ 4 * i + 3 ], true );
 						break;
 
 					case SDL_HAT_LEFTDOWN:
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 2 ], true, 0, nullptr );
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, hat_keys[ 4 * i + 3 ], true, 0, nullptr );
+						QueueKeyEvent( hat_keys[ 4 * i + 2 ], true );
+						QueueKeyEvent( hat_keys[ 4 * i + 3 ], true );
 						break;
 
 					default:
@@ -1004,7 +871,7 @@ static void IN_JoyMove()
 
 				if ( axis != stick_state.oldaaxes[ i ] )
 				{
-					Com_QueueEvent( 0, sysEventType_t::SE_JOYSTICK_AXIS, i, axis, 0, nullptr );
+					Com_QueueEvent( Util::make_unique<Sys::JoystickEvent>(i, axis) );
 
 					stick_state.oldaaxes[ i ] = axis;
 				}
@@ -1019,12 +886,12 @@ static void IN_JoyMove()
 		{
 			if ( ( axes & ( 1 << i ) ) && !( stick_state.oldaxes & ( 1 << i ) ) )
 			{
-				Com_QueueEvent( 0, sysEventType_t::SE_KEY, joy_keys[ i ], true, 0, nullptr );
+				QueueKeyEvent( joy_keys[ i ], true );
 			}
 
 			if ( !( axes & ( 1 << i ) ) && ( stick_state.oldaxes & ( 1 << i ) ) )
 			{
-				Com_QueueEvent( 0, sysEventType_t::SE_KEY, joy_keys[ i ], false, 0, nullptr );
+				QueueKeyEvent( joy_keys[ i ], false );
 			}
 		}
 	}
@@ -1033,66 +900,58 @@ static void IN_JoyMove()
 	stick_state.oldaxes = axes;
 }
 
-static void IN_XBox360Axis( int controllerAxis, joystickAxis_t gameAxis, float scale )
+static void IN_GameControllerAxis( SDL_GameControllerAxis controllerAxis, joystickAxis_t gameAxis, float scale )
 {
-	Sint16 axis = SDL_JoystickGetAxis( stick, controllerAxis );
+	Sint16 axis = SDL_GameControllerGetAxis( gamepad, controllerAxis );
 	float  f = ( ( float ) axis ) / 32767.0f;
 
 	if ( f > -in_joystickThreshold->value && f < in_joystickThreshold->value )
 	{
-		Com_QueueEvent( 0, sysEventType_t::SE_JOYSTICK_AXIS, Util::ordinal(gameAxis), 0, 0, nullptr );
+		Com_QueueEvent( Util::make_unique<Sys::JoystickEvent>(Util::ordinal(gameAxis), 0) );
 	}
 	else
 	{
-		if ( in_xbox360ControllerDebug->integer )
+		if ( in_gameControllerDebug->integer )
 		{
-			Log::Notice( "xbox axis %i = %f\n", controllerAxis, f );
+			Log::Notice( "GameController axis %i = %f\n", controllerAxis, f );
 		}
 
-		Com_QueueEvent( 0, sysEventType_t::SE_JOYSTICK_AXIS, Util::ordinal(gameAxis), f * scale, 0, nullptr );
+		Com_QueueEvent( Util::make_unique<Sys::JoystickEvent>(Util::ordinal(gameAxis), static_cast<int>(f * scale)) );
 	}
 }
 
-static int IN_XBox360AxisToButton( int controllerAxis, int key, float expectedStartValue, float threshold )
+static int IN_GameControllerAxisToButton( SDL_GameControllerAxis controllerAxis, keyNum_t key )
 {
+	using Keyboard::Key;
 	unsigned int axes = 0;
 
-	Sint16       axis = SDL_JoystickGetAxis( stick, controllerAxis );
+	Sint16       axis = SDL_GameControllerGetAxis( gamepad, controllerAxis );
 	float        f = ( ( float ) axis ) / 32767.0f;
 
-	/*
-	if(f < -in_joystickThreshold->value)
-	{
-	        axes |= (1 << (controllerAxis * 2));
-	}
-	else if(f > in_joystickThreshold->value)
-	{
-	        axes |= (1 << ((controllerAxis * 2) + 1));
-	}
-	*/
-
-	if ( f > ( expectedStartValue + threshold + in_joystickThreshold->value ) )
+	if ( f > in_gameControllerTriggerDeadzone->value )
 	{
 		axes |= ( 1 << ( controllerAxis ) );
 	}
 
 	if ( ( axes & ( 1 << controllerAxis ) ) && !( stick_state.oldaxes & ( 1 << controllerAxis ) ) )
 	{
-		Com_QueueEvent( 0, sysEventType_t::SE_KEY, key, true, 0, nullptr );
-
-		if ( in_xbox360ControllerDebug->integer )
+		QueueKeyEvent( key, true );
+		if ( in_gameControllerDebug->integer )
 		{
-			Log::Notice( "xbox axis = %i to key = Q:0x%02x(%s), value = %f\n", controllerAxis, key, Key_KeynumToString( key ), f );
+			Log::Notice( "GameController axis = %s to key = Q:0x%02x(%s), value = %f\n",
+						 SDL_GameControllerGetStringForAxis( controllerAxis ), key,
+						 Keyboard::KeyToString( Key(key) ), f );
 		}
 	}
 
 	if ( !( axes & ( 1 << controllerAxis ) ) && ( stick_state.oldaxes & ( 1 << controllerAxis ) ) )
 	{
-		Com_QueueEvent( 0, sysEventType_t::SE_KEY, key, false, 0, nullptr );
-
-		if ( in_xbox360ControllerDebug->integer )
+		QueueKeyEvent( key, false );
+		if ( in_gameControllerDebug->integer )
 		{
-			Log::Notice( "xbox axis = %i to key = Q:0x%02x(%s), value = %f\n", controllerAxis, key, Key_KeynumToString( key ), f );
+			Log::Notice( "GameController axis = %s to key = Q:0x%02x(%s), value = %f\n",
+						 SDL_GameControllerGetStringForAxis( controllerAxis ), key,
+						 Keyboard::KeyToString( Key(key) ), f );
 		}
 	}
 
@@ -1101,232 +960,58 @@ static int IN_XBox360AxisToButton( int controllerAxis, int key, float expectedSt
 
 /*
 ===============
-IN_Xbox360ControllerMove
+IN_GameControllerMove
 ===============
 */
-static void IN_Xbox360ControllerMove()
+static void IN_GameControllerMove()
 {
-	bool     joy_pressed[ ARRAY_LEN( joy_keys ) ];
+	using Keyboard::Key;
 	unsigned int axes = 0;
-	unsigned int hat = 0;
-	int          total = 0;
 	int          i = 0;
 
-	if ( !stick )
+	if ( !gamepad )
 	{
 		return;
 	}
 
-	if ( !in_joystick->integer )
+	SDL_GameControllerUpdate();
+
+	for ( i = 0; i < SDL_CONTROLLER_BUTTON_MAX; i++ )
 	{
-		return;
-	}
+		bool pressed = SDL_GameControllerGetButton( gamepad, Util::enum_cast<SDL_GameControllerButton>(i) );
 
-	SDL_JoystickUpdate();
-
-	memset( joy_pressed, '\0', sizeof( joy_pressed ) );
-
-	// query the stick buttons...
-	total = SDL_JoystickNumButtons( stick );
-
-	if ( total > 0 )
-	{
-		if ( total > (int) ARRAY_LEN( stick_state.buttons ) )
+		if ( pressed != stick_state.buttons[ i ] )
 		{
-			total = ARRAY_LEN( stick_state.buttons );
-		}
+			QueueKeyEvent( Util::enum_cast<keyNum_t>(K_CONTROLLER_A + i), pressed );
 
-		for ( i = 0; i < total; i++ )
-		{
-			bool pressed = ( SDL_JoystickGetButton( stick, i ) != 0 );
-
-			if ( pressed != stick_state.buttons[ i ] )
+			if ( in_gameControllerDebug->integer )
 			{
-				Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_A + i, pressed, 0, nullptr );
-
-				if ( in_xbox360ControllerDebug->integer )
-				{
-					Log::Notice( "xbox button = %i to key = Q:0x%02x(%s)\n", i, K_XBOX360_A + i, Key_KeynumToString( K_XBOX360_A + i ) );
-				}
-
-				stick_state.buttons[ i ] = pressed;
+				Log::Notice( "GameController button %s = %s\n",
+							 SDL_GameControllerGetStringForButton( Util::enum_cast<SDL_GameControllerButton>(i) ),
+							 pressed ? "Pressed" : "Released" );
 			}
+
+			stick_state.buttons[ i ] = pressed;
 		}
 	}
 
-	// look at the hats...
-	total = SDL_JoystickNumHats( stick );
-	hat = SDL_JoystickGetHat( stick, 0 );
-
-	// update hat state
-	if ( hat != stick_state.oldhats )
-	{
-		if ( hat != stick_state.oldhats )
-		{
-			int       key;
-
-			const int allHatDirections = ( SDL_HAT_UP |
-			                               SDL_HAT_RIGHT |
-			                               SDL_HAT_DOWN |
-			                               SDL_HAT_LEFT );
-
-			if ( in_xbox360ControllerDebug->integer )
-			{
-				switch ( hat & allHatDirections )
-				{
-					case SDL_HAT_UP:
-						key = K_XBOX360_DPAD_UP;
-						break;
-
-					case SDL_HAT_RIGHT:
-						key = K_XBOX360_DPAD_RIGHT;
-						break;
-
-					case SDL_HAT_DOWN:
-						key = K_XBOX360_DPAD_DOWN;
-						break;
-
-					case SDL_HAT_LEFT:
-						key = K_XBOX360_DPAD_LEFT;
-						break;
-
-					case SDL_HAT_RIGHTUP:
-						key = K_XBOX360_DPAD_RIGHTUP;
-						break;
-
-					case SDL_HAT_RIGHTDOWN:
-						key = K_XBOX360_DPAD_RIGHTDOWN;
-						break;
-
-					case SDL_HAT_LEFTUP:
-						key = K_XBOX360_DPAD_LEFTUP;
-						break;
-
-					case SDL_HAT_LEFTDOWN:
-						key = K_XBOX360_DPAD_LEFTDOWN;
-						break;
-
-					default:
-						key = 0;
-						break;
-				}
-
-				if ( hat != SDL_HAT_CENTERED )
-				{
-					Log::Notice( "xbox hat bits = %i to key = Q:0x%02x(%s)\n", hat, key, Key_KeynumToString( key ) );
-				}
-			}
-
-			// release event
-			switch ( stick_state.oldhats & allHatDirections )
-			{
-				case SDL_HAT_UP:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_UP, false, 0, nullptr );
-					break;
-
-				case SDL_HAT_RIGHT:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_RIGHT, false, 0, nullptr );
-					break;
-
-				case SDL_HAT_DOWN:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_DOWN, false, 0, nullptr );
-					break;
-
-				case SDL_HAT_LEFT:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_LEFT, false, 0, nullptr );
-					break;
-
-				case SDL_HAT_RIGHTUP:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_RIGHTUP, false, 0, nullptr );
-					break;
-
-				case SDL_HAT_RIGHTDOWN:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_RIGHTDOWN, false, 0, nullptr );
-					break;
-
-				case SDL_HAT_LEFTUP:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_LEFTUP, false, 0, nullptr );
-					break;
-
-				case SDL_HAT_LEFTDOWN:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_LEFTDOWN, false, 0, nullptr );
-					break;
-
-				default:
-					break;
-			}
-
-			// press event
-			switch ( hat & allHatDirections )
-			{
-				case SDL_HAT_UP:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_UP, true, 0, nullptr );
-					break;
-
-				case SDL_HAT_RIGHT:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_RIGHT, true, 0, nullptr );
-					break;
-
-				case SDL_HAT_DOWN:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_DOWN, true, 0, nullptr );
-					break;
-
-				case SDL_HAT_LEFT:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_LEFT, true, 0, nullptr );
-					break;
-
-				case SDL_HAT_RIGHTUP:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_RIGHTUP, true, 0, nullptr );
-					break;
-
-				case SDL_HAT_RIGHTDOWN:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_RIGHTDOWN, true, 0, nullptr );
-					break;
-
-				case SDL_HAT_LEFTUP:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_LEFTUP, true, 0, nullptr );
-					break;
-
-				case SDL_HAT_LEFTDOWN:
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_XBOX360_DPAD_LEFTDOWN, true, 0, nullptr );
-					break;
-
-				default:
-					break;
-			}
-		}
-	}
-
-	// save hat state
-	stick_state.oldhats = hat;
-
-#if defined( WIN32 )
 	// use left stick for strafing
-	IN_XBox360Axis( 0, joystickAxis_t::AXIS_SIDE, 127 );
-	IN_XBox360Axis( 1, joystickAxis_t::AXIS_FORWARD, -127 );
+	IN_GameControllerAxis( SDL_CONTROLLER_AXIS_LEFTX, joystickAxis_t::AXIS_SIDE, 127 );
+	IN_GameControllerAxis( SDL_CONTROLLER_AXIS_LEFTY, joystickAxis_t::AXIS_FORWARD, -127 );
 
 	// use right stick for viewing
-	IN_XBox360Axis( 4, joystickAxis_t::AXIS_YAW, -127 );
-	IN_XBox360Axis( 3, joystickAxis_t::AXIS_PITCH, 127 );
+	IN_GameControllerAxis( SDL_CONTROLLER_AXIS_RIGHTX, joystickAxis_t::AXIS_YAW, -127 );
+	IN_GameControllerAxis( SDL_CONTROLLER_AXIS_RIGHTY, joystickAxis_t::AXIS_PITCH, 127 );
 
-	axes |= IN_XBox360AxisToButton( 2, K_XBOX360_LT, -1, 0 );
-	axes |= IN_XBox360AxisToButton( 5, K_XBOX360_RT, -1, 0 );
-#else
-	// use left stick for strafing
-	IN_XBox360Axis( 0, joystickAxis_t::AXIS_SIDE, 127 );
-	IN_XBox360Axis( 1, joystickAxis_t::AXIS_FORWARD, -127 );
-
-	// use right stick for viewing
-	IN_XBox360Axis( 3, joystickAxis_t::AXIS_YAW, -127 );
-	IN_XBox360Axis( 4, joystickAxis_t::AXIS_PITCH, 127 );
-
-	axes |= IN_XBox360AxisToButton( 2, K_XBOX360_LT, -1, 0 );
-	axes |= IN_XBox360AxisToButton( 5, K_XBOX360_RT, -1, 0 );
-#endif
+	axes |= IN_GameControllerAxisToButton( SDL_CONTROLLER_AXIS_TRIGGERLEFT, K_CONTROLLER_LT );
+	axes |= IN_GameControllerAxisToButton( SDL_CONTROLLER_AXIS_TRIGGERRIGHT, K_CONTROLLER_RT );
 
 	/* Save for future generations. */
 	stick_state.oldaxes = axes;
 }
+
+
+static std::unordered_map<int, Keyboard::Key> downKeys;
 
 /*
 ===============
@@ -1335,15 +1020,17 @@ IN_ProcessEvents
 */
 static void IN_ProcessEvents( bool dropInput )
 {
-	SDL_Event  e;
-	keyNum_t   key = (keyNum_t) 0;
-	static keyNum_t lastKeyDown = (keyNum_t) 0;
-
+	using Keyboard::Key;
 	if ( !SDL_WasInit( SDL_INIT_VIDEO ) )
 	{
 		return;
 	}
 
+	// HACK: ignore a text event if this is true, to avoid text in the console being generated by
+	//       pressing the key to open it.
+	bool lastEventWasConsoleKeyDown = false;
+
+	SDL_Event e;
 	while ( SDL_PollEvent( &e ) )
 	{
 		switch ( e.type )
@@ -1351,42 +1038,47 @@ static void IN_ProcessEvents( bool dropInput )
 			case SDL_KEYDOWN:
 				if ( !dropInput && ( !e.key.repeat || cls.keyCatchers ) )
 				{
-					key = IN_TranslateSDLToQ3Key( &e.key.keysym, true );
-
-					if ( key )
-					{
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, key, true, 0, nullptr );
+					// Send events for both scancode- and keycode-based Keys
+					Key kScan = Keyboard::Key::FromScancode( e.key.keysym.scancode );
+					Key kKeycode = IN_TranslateSDLToQ3Key( &e.key.keysym, true );
+					bool consoleFound = false;
+					for (Key k: {kScan, kKeycode} ) {
+						if ( IN_IsConsoleKey( k ) && !keys[ Key(K_ALT) ].down) {
+							// Console keys can't be bound or generate characters
+							// (but allow Alt+key for text input)
+							QueueKeyEvent( Key::CONSOLE, true );
+							consoleFound = true;
+							break;
+						}
 					}
-
-					lastKeyDown = key;
+					if ( consoleFound ) {
+						lastEventWasConsoleKeyDown = true;
+						continue;
+					}
+					for (Key k: {kKeycode, kScan} ) {
+						QueueKeyEvent( k, true );
+					}
 				}
-
 				break;
 
 			case SDL_KEYUP:
 				if ( !dropInput )
 				{
-					key = IN_TranslateSDLToQ3Key( &e.key.keysym, false );
-
-					if ( key )
-					{
-						Com_QueueEvent( 0, sysEventType_t::SE_KEY, key, false, 0, nullptr );
-					}
-
-					lastKeyDown = (keyNum_t) 0;
+					QueueKeyEvent( Keyboard::Key::FromScancode( e.key.keysym.scancode ), false );
+					Key k = IN_TranslateSDLToQ3Key( &e.key.keysym, false );
+					QueueKeyEvent( k, false );
 				}
 
 				break;
 			case SDL_TEXTINPUT:
-				if ( lastKeyDown != K_CONSOLE )
+				if ( !lastEventWasConsoleKeyDown )
 				{
 					char *c = e.text.text;
 
 					while ( *c )
 					{
 						int width = Q_UTF8_Width( c );
-						int sc = Q_UTF8_Store( c );
-						Com_QueueEvent( 0, sysEventType_t::SE_CHAR, sc, 0, 0, nullptr );
+						Com_QueueEvent( Util::make_unique<Sys::CharEvent>( Q_UTF8_CodePoint( c ) ) );
 						c += width;
 					}
 				}
@@ -1396,11 +1088,11 @@ static void IN_ProcessEvents( bool dropInput )
 				{
 					if ( mouse_mode != MouseMode::Deltas )
 					{
-						Com_QueueEvent( 0, sysEventType_t::SE_MOUSE_POS, e.motion.x, e.motion.y, 0, nullptr );
+						Com_QueueEvent( Util::make_unique<Sys::MousePosEvent>(e.motion.x, e.motion.y) );
 					}
 					else
 					{
-						Com_QueueEvent( 0, sysEventType_t::SE_MOUSE, e.motion.xrel, e.motion.yrel, 0, nullptr );
+						Com_QueueEvent( Util::make_unique<Sys::MouseEvent>(e.motion.xrel, e.motion.yrel) );
 #if defined( __linux__ ) || defined( __BSD__ )
 						if ( !in_nograb->integer )
 						{
@@ -1418,7 +1110,7 @@ static void IN_ProcessEvents( bool dropInput )
 			case SDL_MOUSEBUTTONUP:
 				if ( !dropInput )
 				{
-					unsigned char b;
+					keyNum_t b;
 
 					switch ( e.button.button )
 					{
@@ -1442,25 +1134,23 @@ static void IN_ProcessEvents( bool dropInput )
 							break;
 
 						default:
-							b = K_AUX1 + ( e.button.button - ( SDL_BUTTON_X2 + 1 ) ) % 16;
+							b = Util::enum_cast<keyNum_t>(K_AUX1 + ( e.button.button - ( SDL_BUTTON_X2 + 1 ) ) % 16);
 							break;
 					}
-
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, b,
-					                ( e.type == SDL_MOUSEBUTTONDOWN ? true : false ), 0, nullptr );
+					QueueKeyEvent( b, e.type == SDL_MOUSEBUTTONDOWN );
 				}
 				break;
 			case SDL_MOUSEWHEEL:
 				// FIXME: mouse wheel support shouldn't use keys!
 				if ( e.wheel.y > 0 )
 				{
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_MWHEELUP, true, 0, nullptr );
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_MWHEELUP, false, 0, nullptr );
+					QueueKeyEvent( K_MWHEELUP, true );
+					QueueKeyEvent( K_MWHEELUP, false );
 				}
 				else
 				{
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_MWHEELDOWN, true, 0, nullptr );
-					Com_QueueEvent( 0, sysEventType_t::SE_KEY, K_MWHEELDOWN, false, 0, nullptr );
+					QueueKeyEvent( K_MWHEELDOWN, true );
+					QueueKeyEvent( K_MWHEELDOWN, false );
 				}
 				break;
 
@@ -1490,7 +1180,8 @@ static void IN_ProcessEvents( bool dropInput )
 				break;
 			default:
 				break;
-		}
+		} // switch
+		lastEventWasConsoleKeyDown = false;
 	}
 }
 
@@ -1512,9 +1203,9 @@ static bool dropInput = false;
 
 void IN_Frame()
 {
-	if ( in_xbox360ControllerAvailable->integer )
+	if ( gamepad )
 	{
-		IN_Xbox360ControllerMove();
+		IN_GameControllerMove();
 	}
 	else
 	{
@@ -1582,10 +1273,11 @@ void IN_Init( void *windowData )
 	in_joystick = Cvar_Get( "in_joystick", "0",  CVAR_LATCH );
 	in_joystickDebug = Cvar_Get( "in_joystickDebug", "0", CVAR_TEMP );
 	in_joystickThreshold = Cvar_Get( "in_joystickThreshold", "0.15", 0 );
+	in_gameControllerTriggerDeadzone = Cvar_Get( "in_gameControllerTriggerDeadzone", "0.5", 0);
 
-	in_xbox360Controller = Cvar_Get( "in_xbox360Controller", "1", CVAR_TEMP );
-	in_xbox360ControllerAvailable = Cvar_Get( "in_xbox360ControllerAvailable", "0", CVAR_ROM );
-	in_xbox360ControllerDebug = Cvar_Get( "in_xbox360ControllerDebug", "0", CVAR_TEMP );
+	in_gameController = Cvar_Get( "in_gameController", "1", CVAR_TEMP );
+	in_gameControllerAvailable = Cvar_Get( "in_gameControllerAvailable", "0", CVAR_ROM );
+	in_gameControllerDebug = Cvar_Get( "in_gameControllerDebug", "0", CVAR_TEMP );
 	SDL_StartTextInput();
 	mouseAvailable = ( in_mouse->value != 0 );
 	IN_SetMouseMode( MouseMode::CustomCursor );
@@ -1595,6 +1287,12 @@ void IN_Init( void *windowData )
 	Cvar_SetValue( "com_minimized", ( appState & SDL_WINDOW_MINIMIZED ) );
 	IN_InitJoystick();
 	Log::Debug( "------------------------------------" );
+}
+
+// SDL_GetScancodeFromKey won't work before initialization
+bool IN_IsKeyboardLayoutInfoAvailable()
+{
+	return SDL_WasInit(SDL_INIT_VIDEO) == SDL_INIT_VIDEO;
 }
 
 /*

@@ -1,5 +1,5 @@
 # Unvanquished BSD Source Code
-# Copyright (c) 2015-2016, Unreal Arena
+# Copyright (c) 2015-2018, Unreal Arena
 # Copyright (c) 2013-2014, Unvanquished Developers
 # All rights reserved.
 #
@@ -35,8 +35,22 @@ if (UNREALARENA)
     add_definitions(-DUNREALARENA)
 endif()
 
+# When we build in the source dir, the daemon executable cannot be create
+# as there is already a daemon directory, so we disallow building in the
+# source dir.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+    message(FATAL_ERROR "Building in the source directory is not supported, try building in a 'build' directory. You may have to delete the CMakeCache.txt file and CMakeFiles directory that are next to the CMakeLists.txt.")
+endif()
+
+set(DAEMON_DIR_STRING "Path to the Daemon Engine source.")
+if(NOT DAEMON_DIR)
+  set(DAEMON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/daemon" CACHE STRING "${DAEMON_DIR_STRING}")
+else()
+  set(DAEMON_DIR "${DAEMON_DIR}" CACHE STRING "${DAEMON_DIR_STRING}")
+endif()
+
 set(Daemon_OUT ${CMAKE_CURRENT_BINARY_DIR})
-add_subdirectory(daemon daemon_build)
+add_subdirectory("${DAEMON_DIR}" daemon_build)
 include(DaemonGame)
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs)

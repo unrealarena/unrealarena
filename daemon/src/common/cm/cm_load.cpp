@@ -176,7 +176,7 @@ void CMod_LoadSubmodels(const byte *const cmod_base, lump_t *l)
 		// make a "leaf" just to hold the model's brushes and surfaces
 		out->leaf.numLeafBrushes = LittleLong( in->numBrushes );
 		indexes = ( int * ) CM_Alloc( out->leaf.numLeafBrushes * 4 );
-		out->leaf.firstLeafBrush = indexes - cm.leafbrushes;
+		out->leaf.firstLeafBrush = indexes;
 
 		for ( j = 0; j < out->leaf.numLeafBrushes; j++ )
 		{
@@ -185,7 +185,7 @@ void CMod_LoadSubmodels(const byte *const cmod_base, lump_t *l)
 
 		out->leaf.numLeafSurfaces = LittleLong( in->numSurfaces );
 		indexes = ( int * ) CM_Alloc( out->leaf.numLeafSurfaces * 4 );
-		out->leaf.firstLeafSurface = indexes - cm.leafsurfaces;
+		out->leaf.firstLeafSurface = indexes;
 
 		for ( j = 0; j < out->leaf.numLeafSurfaces; j++ )
 		{
@@ -336,9 +336,9 @@ void CMod_LoadLeafs(const byte *const cmod_base, lump_t *l)
 	{
 		out->cluster = LittleLong( in->cluster );
 		out->area = LittleLong( in->area );
-		out->firstLeafBrush = LittleLong( in->firstLeafBrush );
+		out->firstLeafBrush = cm.leafbrushes + LittleLong( in->firstLeafBrush );
 		out->numLeafBrushes = LittleLong( in->numLeafBrushes );
-		out->firstLeafSurface = LittleLong( in->firstLeafSurface );
+		out->firstLeafSurface = cm.leafsurfaces + LittleLong( in->firstLeafSurface );
 		out->numLeafSurfaces = LittleLong( in->numLeafSurfaces );
 
 		if ( out->cluster >= cm.numClusters )
@@ -681,7 +681,7 @@ void CMod_LoadEntityString(const byte *const cmod_base, lump_t *l)
 	p = cm.entityString;
 
 	// only parse the world spawn
-	while ( 1 )
+	while (true)
 	{
 		// parse key
 		token = COM_ParseExt2( &p, true );
@@ -771,7 +771,7 @@ void CMod_LoadSurfaces(const byte *const cmod_base, lump_t *surfs, lump_t *verts
 	drawVert_t    *dv, *dv_p;
 	dsurface_t    *in;
 	int           count;
-	int           i, j;
+	int           i;
 	cSurface_t    *surface;
 	int           numVertexes;
 	static vec3_t vertexes[ SHADER_MAX_VERTEXES ];
@@ -811,8 +811,6 @@ void CMod_LoadSurfaces(const byte *const cmod_base, lump_t *surfs, lump_t *verts
 	{
 		if ( LittleLong( in->surfaceType ) == mapSurfaceType_t::MST_PATCH )
 		{
-			int j = 0;
-
 			// FIXME: check for non-colliding patches
 			cm.surfaces[ i ] = surface = ( cSurface_t * ) CM_Alloc( sizeof( *surface ) );
 			surface->type = mapSurfaceType_t::MST_PATCH;
@@ -829,7 +827,7 @@ void CMod_LoadSurfaces(const byte *const cmod_base, lump_t *surfs, lump_t *verts
 
 			dv_p = dv + LittleLong( in->firstVert );
 
-			for ( j = 0; j < numVertexes; j++, dv_p++ )
+			for ( int j = 0; j < numVertexes; j++, dv_p++ )
 			{
 				vertexes[ j ][ 0 ] = LittleFloat( dv_p->xyz[ 0 ] );
 				vertexes[ j ][ 1 ] = LittleFloat( dv_p->xyz[ 1 ] );
@@ -860,7 +858,7 @@ void CMod_LoadSurfaces(const byte *const cmod_base, lump_t *surfs, lump_t *verts
 
 			dv_p = dv + LittleLong( in->firstVert );
 
-			for ( j = 0; j < numVertexes; j++, dv_p++ )
+			for ( int j = 0; j < numVertexes; j++, dv_p++ )
 			{
 				vertexes[ j ][ 0 ] = LittleFloat( dv_p->xyz[ 0 ] );
 				vertexes[ j ][ 1 ] = LittleFloat( dv_p->xyz[ 1 ] );
@@ -876,7 +874,7 @@ void CMod_LoadSurfaces(const byte *const cmod_base, lump_t *surfs, lump_t *verts
 
 			index_p = index + LittleLong( in->firstIndex );
 
-			for ( j = 0; j < numIndexes; j++, index_p++ )
+			for ( int j = 0; j < numIndexes; j++, index_p++ )
 			{
 				indexes[ j ] = LittleLong( *index_p );
 
@@ -950,9 +948,9 @@ void CM_LoadMap(Str::StringRef name)
 
 	// load into heap
 	CMod_LoadShaders(cmod_base, &header.lumps[LUMP_SHADERS]);
-	CMod_LoadLeafs(cmod_base, &header.lumps[LUMP_LEAFS]);
 	CMod_LoadLeafBrushes(cmod_base, &header.lumps[LUMP_LEAFBRUSHES]);
 	CMod_LoadLeafSurfaces(cmod_base, &header.lumps[LUMP_LEAFSURFACES]);
+	CMod_LoadLeafs(cmod_base, &header.lumps[LUMP_LEAFS]);
 	CMod_LoadPlanes(cmod_base, &header.lumps[LUMP_PLANES]);
 	CMod_LoadBrushSides(cmod_base, &header.lumps[LUMP_BRUSHSIDES]);
 	CMod_LoadBrushes(cmod_base, &header.lumps[LUMP_BRUSHES]);
@@ -1080,8 +1078,7 @@ void CM_InitBoxHull()
 	box_brush->numEdges = 12;
 
 	box_model.leaf.numLeafBrushes = 1;
-//  box_model.leaf.firstLeafBrush = cm.numBrushes;
-	box_model.leaf.firstLeafBrush = cm.numLeafBrushes;
+	box_model.leaf.firstLeafBrush = cm.leafbrushes + cm.numLeafBrushes;
 	cm.leafbrushes[ cm.numLeafBrushes ] = cm.numBrushes;
 
 	for ( i = 0; i < 6; i++ )

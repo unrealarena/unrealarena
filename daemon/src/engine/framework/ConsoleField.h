@@ -28,10 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ===========================================================================
 */
 
-#include "ConsoleHistory.h"
-
 #ifndef FRAMEWORK_CONSOLE_FIELD_H_
 #define FRAMEWORK_CONSOLE_FIELD_H_
+
+#include "ConsoleHistory.h"
+#include "common/LineEditData.h"
+#include "common/String.h"
 
 namespace Console {
 

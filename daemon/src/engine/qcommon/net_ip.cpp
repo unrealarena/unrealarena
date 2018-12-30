@@ -1704,7 +1704,7 @@ NET_OpenIP
 static void NET_OpenIP()
 {
 	int i;
-	int err;
+	int err = 0;
 	int port = PORT_ANY;
 	int port6 = PORT_ANY;
 
@@ -1883,7 +1883,7 @@ void NET_Config( bool enableNetworking )
 
 	if ( !net_enabled->integer )
 	{
-		enableNetworking = 0;
+		enableNetworking = false;
 	}
 
 	// if enable state is the same and no cvars were modified, we have nothing to do
@@ -2021,8 +2021,15 @@ void NET_Init()
 #endif
 
 #ifdef HAVE_GEOIP
-	geoip_data_4 = NET_GeoIP_LoadData( GEOIP_COUNTRY_EDITION );
-	geoip_data_6 = NET_GeoIP_LoadData( GEOIP_COUNTRY_EDITION_V6 );
+	if (geoip_data_4 == nullptr)
+	{
+		geoip_data_4 = NET_GeoIP_LoadData( GEOIP_COUNTRY_EDITION );
+	}
+
+	if (geoip_data_6 == nullptr)
+	{
+		geoip_data_6 = NET_GeoIP_LoadData( GEOIP_COUNTRY_EDITION_V6 );
+	}
 	Log::Notice( "Loaded GeoIP data: ^%dIPv4 ^%dIPv6", geoip_data_4 ? 2 : 1, geoip_data_6 ? 2 : 1 );
 #endif
 
@@ -2044,6 +2051,22 @@ void NET_Shutdown()
 	}
 
 	NET_Config( false );
+
+#ifdef HAVE_GEOIP
+    if ( geoip_data_6 )
+	{
+		GeoIP_delete(geoip_data_6);
+		geoip_data_6 = nullptr;
+	}
+
+	if ( geoip_data_4 )
+	{
+		GeoIP_delete(geoip_data_4);
+		geoip_data_4 = nullptr;
+	}
+
+	GeoIP_cleanup();
+#endif
 
 #ifdef _WIN32
 	WSACleanup();

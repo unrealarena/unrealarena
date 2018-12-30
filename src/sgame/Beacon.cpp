@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2014  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 // handle the server-side beacon-related stuff
 
 #include "sg_local.h"
-#include "CBSE.h"
+#include "Entities.h"
 
 // entityState_t   | cbeacon_t    | description
 // ----------------+--------------+-------------
@@ -181,7 +181,9 @@ namespace Beacon //this should eventually become a class
 			{
 				ent->s.eFlags |= EF_BC_DYING;
 				ent->s.bc_etime = level.time + 1500;
+#ifndef UNREALARENA
 				BaseClustering::Remove( ent );
+#endif
 			}
 		}
 		else
@@ -616,7 +618,7 @@ namespace Beacon //this should eventually become a class
 		{
 #ifndef UNREALARENA
 			case entityType_t::ET_BUILDABLE:
-				if( G_Dead( ent ) )
+				if( Entities::IsDead( ent ) )
 					return false;
 				if( ent->buildableTeam == team )
 					return false;
@@ -757,7 +759,7 @@ namespace Beacon //this should eventually become a class
 			case entityType_t::ET_BUILDABLE:
 				targetTeam = ent->buildableTeam;
 				data       = ent->s.modelindex;
-				dead       = G_Dead( ent );
+				dead       = Entities::IsDead( ent );
 				player     = false;
 				BG_BuildableBoundingBox( ent->s.modelindex, mins, maxs );
 				break;
@@ -765,7 +767,7 @@ namespace Beacon //this should eventually become a class
 
 			case entityType_t::ET_PLAYER:
 				targetTeam = (team_t)ent->client->pers.team;
-				dead       = G_Dead( ent );
+				dead       = Entities::IsDead( ent );
 				player     = true;
 #ifdef UNREALARENA
 				BG_ClassBoundingBox( ent->client->pers.team, mins, maxs, nullptr, nullptr, nullptr );

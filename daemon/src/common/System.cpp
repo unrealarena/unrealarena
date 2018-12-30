@@ -1,4 +1,5 @@
 /*
+ * Daemon BSD Source Code
  * Copyright (c) 2018, Unreal Arena
  * Copyright (c) 2013-2016, Daemon Developers
  * All rights reserved.
@@ -26,6 +27,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
 #include "Common.h"
 #ifdef _WIN32
 #include <windows.h>
@@ -33,6 +35,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#ifdef __linux__
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+#include <sys/syscall.h>
+#include <linux/random.h>
+#define HAS_GETRANDOM_SYSCALL 1
+#endif
+#endif
 #ifdef __native_client__
 #include <nacl/nacl_exception.h>
 #ifdef UNREALARENA
@@ -43,10 +53,14 @@
 #include <nacl/nacl_minidump.h>
 #endif
 #include <nacl/nacl_random.h>
-#include "shared/CommonProxies.h"
 #else
 #include <dlfcn.h>
 #endif
+#endif
+#ifdef BUILD_VM
+#include "shared/CommonProxies.h"
+#else
+#include "qcommon/sys.h"
 #endif
 
 namespace Sys {
@@ -133,6 +147,15 @@ SteadyClock::time_point SleepUntil(SteadyClock::time_point time)
 	// current time as the base for the next frame. That way we ensure
 	// that the frame rate remains consistent.
 	return time;
+}
+
+int Milliseconds() {
+#ifdef BUILD_VM
+	return trap_Milliseconds();
+#else
+	static Sys::SteadyClock::time_point baseTime = Sys::SteadyClock::now();
+	return std::chrono::duration_cast<std::chrono::milliseconds>(Sys::SteadyClock::now() - baseTime).count();
+#endif
 }
 
 void Drop(Str::StringRef message)
@@ -372,13 +395,19 @@ void GenRandomBytes(void* dest, size_t size)
 	size_t bytes_written;
 	if (nacl_secure_random(dest, size, &bytes_written) != 0 || bytes_written != size)
 		Sys::Error("nacl_secure_random failed");
-#else
+#elif defined(__linux__) && defined(HAS_GETRANDOM_SYSCALL)
+	if (syscall(SYS_getrandom, dest, size, GRND_NONBLOCK) == -1)
+		Sys::Error("Failed getrandom syscall: %s", strerror(errno));
+#elif defined(__linux__)
 	int fd = open("/dev/urandom", O_RDONLY);
 	if (fd == -1)
 		Sys::Error("Failed to open /dev/urandom: %s", strerror(errno));
 	if (read(fd, dest, size) != (ssize_t) size)
 		Sys::Error("Failed to read from /dev/urandom: %s", strerror(errno));
 	close(fd);
+#else
+	arc4random_buf(dest, size);
+
 #endif
 }
 

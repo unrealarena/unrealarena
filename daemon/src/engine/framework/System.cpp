@@ -1,4 +1,5 @@
 /*
+ * Daemon BSD Source Code
  * Copyright (c) 2016, Unreal Arena
  * Copyright (c) 2013-2016, Daemon Developers
  * All rights reserved.
@@ -35,6 +36,7 @@
 #include "LogSystem.h"
 #include "System.h"
 #include "CrashDump.h"
+#include "CvarSystem.h"
 #include <common/FileSystem.h>
 #ifdef _WIN32
 #include <windows.h>
@@ -280,6 +282,10 @@ static void Shutdown(bool error, Str::StringRef message)
 
     Application::Shutdown(error, message);
 
+	if ( !error)
+	{
+		Cvar::Shutdown();
+	}
 	// Always run CON_Shutdown, because it restores the terminal to a usable state.
 	CON_Shutdown();
 }
@@ -296,7 +302,7 @@ class QuitCmd : public Cmd::StaticCmd {
         QuitCmd(): StaticCmd("quit", Cmd::BASE, "quits the program") {
         }
 
-        void Run(const Cmd::Args& args) const OVERRIDE {
+        void Run(const Cmd::Args& args) const override {
             Quit(args.ConcatArgs(1));
         }
 };
@@ -412,6 +418,7 @@ static void ParseCmdline(int argc, char** argv, cmdlineArgs_t& cmdlineArgs)
 #endif
 
 	bool foundCommands = false;
+	bool foundHomePathCommand = false;
 	for (int i = 1; i < argc; i++) {
 		// A + indicate the start of a command that should be run on startup
 		if (argv[i][0] == '+') {
@@ -429,25 +436,34 @@ static void ParseCmdline(int argc, char** argv, cmdlineArgs_t& cmdlineArgs)
 			continue;
 		}
 
-        // If a URI is given, save it so it can later be transformed into a
-        // /connect command. This only applies if no +commands have been given.
-        // Any arguments after the URI are discarded.
-		if (Str::IsIPrefix(URI_SCHEME, argv[i])) {
-			cmdlineArgs.uriText = argv[i];
-			if (i != argc - 1)
-				Log::Warn("Ignoring extraneous arguments after URI");
-			return;
+		// If a URI is given, save it so it can later be transformed into a
+		// /connect command. This only applies if no +commands have been given.
+		// Any arguments after the URI are discarded.
+		if (Str::IsIEqual("-connect", argv[i])) {
+			if (argc < i + 2) {
+				Log::Warn("Missing command line parameter for -connect");
+				break;
+			}
+			cmdlineArgs.uriText = argv[i + 1];
+			if (argc > i + 2) {
+				// It is necessary to ignore following arguments because the command line may have
+				// arbitrary unescaped text when the program is used as a protocol handler on Windows.
+				Log::Warn("Ignoring extraneous arguments after -connect URI");
+			}
+			break;
 		}
 
 		if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-help")) {
-            std::string helpUrl = Application::GetTraits().supportsUri ? " [" URI_SCHEME "ADDRESS[:PORT]]" : "";
-			printf("Usage: %s [-OPTION]...%s [+COMMAND]...\n",  argv[0], helpUrl.c_str());
+			std::string helpUrl = Application::GetTraits().supportsUri ? " | -connect " URI_SCHEME "ADDRESS[:PORT]" : "";
+			printf("Usage: %s [-OPTION]... [+COMMAND...%s]\n", argv[0], helpUrl.c_str());
 			printf("Possible options are:\n"
-			       "  -homepath <path>         set the path used for user-specific configuration files and downloaded pk3 files\n"
+			       "  -homepath <path>         set the path used for user-specific configuration files and downloaded dpk files\n"
 			       "  -libpath <path>          set the path containing additional executables and libraries\n"
-			       "  -pakpath <path>          add another path from which pk3 files are loaded\n"
+			       "  -pakpath <path>          add another path from which dpk files are loaded\n"
 			       "  -resetconfig             reset all cvars and keybindings to their default value\n"
+#ifdef USE_CURSES
 			       "  -curses                  activate the curses interface\n"
+#endif
 			       "  -set <variable> <value>  set the value of a cvar\n"
 			       "  +<command> <args>        execute an ingame command after startup\n"
 			);
@@ -485,16 +501,25 @@ static void ParseCmdline(int argc, char** argv, cmdlineArgs_t& cmdlineArgs)
 				Log::Warn("Missing argument for -homepath");
 				continue;
 			}
+			foundHomePathCommand = true;
 			cmdlineArgs.homePath = argv[i + 1];
 			i++;
 		} else if (!strcmp(argv[i], "-resetconfig")) {
 			cmdlineArgs.reset_config = true;
-		} else if (!strcmp(argv[i], "-curses")) {
+		}
+#ifdef USE_CURSES
+		else if (!strcmp(argv[i], "-curses")) {
 			cmdlineArgs.use_curses = true;
-		} else {
+		}
+#endif
+		else {
 			Log::Warn("Ignoring unrecognized parameter \"%s\"", argv[i]);
 			continue;
 		}
+	}
+
+	if (!foundHomePathCommand) {
+		FS::MigrateHomePath();
 	}
 }
 
@@ -571,7 +596,7 @@ static void Init(int argc, char** argv)
 	}
 
 	// Enable S3TC on Mesa even if libtxc-dxtn is not available
-	putenv((char *) "force_s3tc_enable=true");
+	setenv("force_s3tc_enable", "true", true);
 #endif
 
 	// Initialize the console
@@ -584,6 +609,7 @@ static void Init(int argc, char** argv)
 	// lowest priority, while the homepath is added last and has the highest.
 	cmdlineArgs.paths.insert(cmdlineArgs.paths.begin(), FS::Path::Build(FS::DefaultBasePath(), "pkg"));
 	cmdlineArgs.paths.push_back(FS::Path::Build(cmdlineArgs.homePath, "pkg"));
+	EarlyCvar("fs_legacypaks", cmdlineArgs);
 	FS::Initialize(cmdlineArgs.homePath, cmdlineArgs.libPath, cmdlineArgs.paths);
 
 	// Look for an existing instance of the engine running on the same homepath.

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Daemon GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2011  Dusan Jocic <dusanjocic@msn.com>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 
 #include "engine/qcommon/q_shared.h"
 #include "engine/renderer/tr_types.h"
+#include "common/KeyIdentification.h"
 #include "common/cm/cm_public.h"
 
 #define CGAME_API_VERSION 3
@@ -120,7 +121,7 @@ enum class MouseMode
 	SystemCursor, // The input is sent as positions, the cursor should be rendered by the system
 };
 
-int             trap_Milliseconds();
+int             trap_Milliseconds(); // TODO: Rely on CommonProxies.h declaration instead of this one.
 void            trap_Cvar_Register( vmCvar_t *vmCvar, const char *varName, const char *defaultValue, int flags );
 void            trap_Cvar_Update( vmCvar_t *vmCvar );
 void            trap_Cvar_Set( const char *var_name, const char *value );
@@ -213,23 +214,25 @@ bool        trap_GetUserCmd( int cmdNumber, usercmd_t *ucmd );
 void            trap_SetUserCmdValue( int stateValue, int flags, float sensitivityScale );
 int             trap_Key_GetCatcher();
 void            trap_Key_SetCatcher( int catcher );
-void            trap_Key_SetBinding( int keyNum, int team, const char *cmd );
+void            trap_Key_SetBinding( Keyboard::Key key, int team, const char *cmd );
 void            trap_Key_ClearCmdButtons();
 void            trap_Key_ClearStates();
-std::vector<int> trap_Key_KeysDown( const std::vector<int>& keys );
+std::vector<bool> trap_Key_KeysDown( const std::vector<Keyboard::Key>& keys );
 void            trap_SetMouseMode( MouseMode mode );
 void            trap_S_StopBackgroundTrack();
 void            trap_R_RemapShader( const char *oldShader, const char *newShader, const char *timeOffset );
 bool        trap_GetEntityToken( char *buffer, int bufferSize );
+void 			trap_SendMessage(const std::vector<uint8_t>& message);
+messageStatus_t trap_MessageStatus();
 void            trap_UI_Popup( int arg0 );
 void            trap_UI_ClosePopup( const char *arg0 );
-std::vector<std::vector<int>> trap_Key_GetKeynumForBinds(int team, std::vector<std::string> binds);
+std::vector<std::vector<Keyboard::Key>> trap_Key_GetKeysForBinds(int team, const std::vector<std::string>& binds);
 int             trap_Parse_AddGlobalDefine( const char *define );
 int             trap_Parse_LoadSource( const char *filename );
 int             trap_Parse_FreeSource( int handle );
 bool             trap_Parse_ReadToken( int handle, pc_token_t *pc_token );
 int             trap_Parse_SourceFileAndLine( int handle, char *filename, int *line );
-void            trap_Key_KeynumToStringBuf( int keynum, char *buf, int buflen );
+int             trap_Key_GetCharForScancode( int scancode );
 void            trap_CG_TranslateString( const char *string, char *buf );
 bool        trap_R_inPVS( const vec3_t p1, const vec3_t p2 );
 bool        trap_R_inPVVS( const vec3_t p1, const vec3_t p2 );
@@ -272,7 +275,6 @@ bool        trap_LAN_UpdateVisiblePings( int source );
 void            trap_LAN_ResetPings( int n );
 int             trap_LAN_ServerStatus( const char *serverAddress, char *serverStatus, int maxLen );
 void            trap_LAN_ResetServerStatus();
-bool        trap_GetNews( bool force );
 void            trap_R_GetShaderNameFromHandle( const qhandle_t shader, char *out, int len );
 void            trap_PrepareKeyUp();
 void            trap_R_SetAltShaderTokens( const char * );

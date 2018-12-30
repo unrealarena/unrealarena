@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -45,7 +45,7 @@
 #endif
 
 // player teams
-typedef enum
+typedef enum team_e
 {
 #ifndef UNREALARENA
   TEAM_ALL = -1,
@@ -319,12 +319,10 @@ typedef enum
   IBE_NOOVERMIND,       // no overmind present
   IBE_ONEOVERMIND,      // may not build two overminds
   IBE_NOALIENBP,        // not enough build points (aliens)
-  IBE_NOCREEP,          // no creep in this area
 
   IBE_NOREACTOR,        // not enough power in this area and no reactor present
   IBE_ONEREACTOR,       // may not build two reactors
   IBE_NOHUMANBP,        // not enough build points (humans)
-  IBE_NOPOWERHERE,      // not enough power in this area even though a reactor is present
 
   IBE_NORMAL,           // surface is too steep
   IBE_NOROOM,           // no room
@@ -350,16 +348,18 @@ typedef enum
   PERS_SPECSTATE,
   PERS_SPAWN_COUNT,    // incremented every respawn
   PERS_TEAM,           // persistant team selection
-  PERS_RGS_EFFICIENCY, // summed efficiency of all friendly RGS
   PERS_STATE,
 #ifndef UNREALARENA
   PERS_CREDIT,         // human credit
   PERS_UNLOCKABLES,    // status of unlockable items of a team
 #endif
   PERS_NEWWEAPON,      // weapon to switch to
-  PERS_BP,
-  PERS_MARKEDBP,
-  PERS_MINERATE        // level wide base mine rate. TODO: calculate clientside
+#ifndef UNREALARENA
+  PERS_SPENTBUDGET,
+  PERS_MARKEDBUDGET,
+  PERS_TOTALBUDGET,
+  PERS_QUEUEDBUDGET
+#endif
   // netcode has space for 2 more. TODO: extend
 } persEnum_t;
 
@@ -391,9 +391,7 @@ typedef enum
 #endif
 
 // for players
-#ifndef UNREALARENA
-#define EF_POWER_AVAILABLE  0x0010
-#endif
+#define EF_UNUSED_1         0x0010 // UNUSED
 #define EF_WARN_CHARGE      0x0020 // Lucifer Cannon is about to overcharge
 #ifndef UNREALARENA
 #define EF_WALLCLIMB        0x0040 // wall walking
@@ -404,7 +402,7 @@ typedef enum
 #define EF_FIRING2          0x0400 // alt fire
 #define EF_FIRING3          0x0800 // third fire
 #define EF_MOVER_STOP       0x1000 // will push otherwise
-#define EF_UNUSED_1         0x2000 // UNUSED
+#define EF_UNUSED_2         0x2000 // UNUSED
 #define EF_CONNECTION       0x4000 // draw a connection trouble sprite
 #ifndef UNREALARENA
 #define EF_BLOBLOCKED       0x8000 // caught by a trapper
@@ -560,7 +558,6 @@ typedef enum
   BA_H_DRILL,
 
   BA_H_REACTOR,
-  BA_H_REPEATER,
 
   BA_NUM_BUILDABLES
 } buildable_t;
@@ -687,14 +684,9 @@ typedef enum
   EV_TAUNT,
 
 #ifndef UNREALARENA
-  EV_OVERMIND_ATTACK_1, // overmind under attack
-  EV_OVERMIND_ATTACK_2, // overmind under attack
-  EV_OVERMIND_DYING, // overmind close to death
-  EV_OVERMIND_SPAWNS, // overmind needs spawns
-
-  EV_REACTOR_ATTACK_1, // reactor under attack
-  EV_REACTOR_ATTACK_2, // reactor under attack
-  EV_REACTOR_DYING, // reactor destroyed
+  EV_NO_SPAWNS,
+  EV_MAIN_UNDER_ATTACK,
+  EV_MAIN_DYING,
 
   EV_WARN_ATTACK, // a building has been destroyed and the destruction noticed by a nearby om/rc/rrep
 
@@ -777,7 +769,6 @@ typedef enum
   //alien build
   MN_A_ONEOVERMIND,
   MN_A_NOBP,
-  MN_A_NOCREEP,
   MN_A_NOOVMND,
 
   //human stuff
@@ -796,7 +787,6 @@ typedef enum
   MN_H_UNKNOWNSPAWNITEM,
 
   //human buildables
-  MN_H_NOPOWERHERE,
   MN_H_NOREACTOR,
   MN_H_NOBP,
   MN_H_NOTPOWERED,
@@ -836,7 +826,6 @@ typedef enum
   TORSO_RAISE,
 
   TORSO_STAND,
-  TORSO_STAND_BLASTER,
 
   LEGS_WALKCR,
   LEGS_WALK,
@@ -1054,7 +1043,6 @@ typedef enum
   SAY_ADMINS,
   SAY_ADMINS_PUBLIC,
   SAY_RAW,
-  SAY_DEFAULT_DEPRECATED, // old - do not use
   SAY_ALL_ADMIN,
   SAY_ALL_ME,
   SAY_TEAM_ME,
@@ -1127,8 +1115,7 @@ typedef enum
   MOD_SPIKER,
   MOD_OVERMIND,
   MOD_DECONSTRUCT,
-  MOD_REPLACE,
-  MOD_NOCREEP
+  MOD_REPLACE
 #endif
 } meansOfDeath_t;
 
@@ -1299,7 +1286,6 @@ typedef struct
 	float       bounce;
 
 	int         buildPoints;
-	int         powerConsumption;
 	int         unlockThreshold;
 
 	int         health;
@@ -1473,6 +1459,10 @@ bool     BG_IsMainStructure( buildable_t buildable );
 bool     BG_IsMainStructure( entityState_t *es );
 #endif
 void     BG_MoveOriginToBBOXCenter( vec3_t point, const vec3_t mins, const vec3_t maxs );
+void     ModifyFlag(int &flags, int flag, bool value);
+void     AddFlag(int &flags, int flag);
+void     RemoveFlag(int &flags, int flag);
+void     ToggleFlag(int &flags, int flag);
 
 bool BG_WeaponIsFull(int weapon, int ammo, int clips );
 bool BG_InventoryContainsWeapon( int weapon, const int stats[] );
@@ -1744,6 +1734,8 @@ int  BG_LoadEmoticons( emoticon_t *emoticons, int num );
 const char *BG_TeamName( int team );
 const char *BG_TeamNamePlural( int team );
 
+team_t BG_PlayableTeamFromString( const char* s );
+
 typedef struct
 {
 	const char *name;
@@ -1755,6 +1747,19 @@ char *Substring( const char *in, int start, int count );
 char *BG_strdup( const char *string );
 
 const char *Trans_GenderContext( gender_t gender );
+
+namespace CombatFeedback
+{
+#ifndef UNREALARENA
+  static const int HIT_BUILDING = 1 << 0;
+#endif
+  static const int HIT_FRIENDLY = 1 << 1;
+  static const int HIT_LETHAL   = 1 << 2;
+
+  static const int INDICATOR_LIFETIME = 1000;
+}
+
+#include "Clustering.h"
 
 //==================================================================
 #endif /* BG_PUBLIC_H_ */

@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -20,6 +20,7 @@
 
 
 #include "sg_local.h"
+#include "Entities.h"
 #include "CBSE.h"
 #include "backend/CBSEBackend.h"
 
@@ -43,13 +44,8 @@ typedef struct
 	char      *explicit_;
 } cvarTable_t;
 
-#ifdef QVM_ABI
-gentity_t          g_entities[ MAX_GENTITIES ];
-gclient_t          g_clients[ MAX_GENTITIES ];
-#else
 gentity_t          *g_entities;
 gclient_t          *g_clients;
-#endif
 
 vmCvar_t           g_showHelpOnConnection;
 
@@ -109,11 +105,10 @@ vmCvar_t           g_minNameChangePeriod;
 vmCvar_t           g_maxNameChanges;
 
 #ifndef UNREALARENA
-vmCvar_t           g_initialBuildPoints;
-vmCvar_t           g_initialMineRate;
-vmCvar_t           g_mineRateHalfLife;
-vmCvar_t           g_minimumMineRate;
-vmCvar_t           g_buildPointLossFraction;
+vmCvar_t           g_buildPointInitialBudget;
+vmCvar_t           g_buildPointBudgetPerMiner;
+vmCvar_t           g_buildPointRecoveryInititalRate;
+vmCvar_t           g_buildPointRecoveryRateHalfLife;
 
 vmCvar_t           g_debugMomentum;
 vmCvar_t           g_momentumHalfLife;
@@ -127,13 +122,6 @@ vmCvar_t           g_momentumDestroyMod;
 
 vmCvar_t           g_humanAllowBuilding;
 vmCvar_t           g_alienAllowBuilding;
-
-vmCvar_t           g_powerCompetitionRange;
-vmCvar_t           g_powerBaseSupply;
-vmCvar_t           g_powerReactorSupply;
-vmCvar_t           g_powerReactorRange;
-vmCvar_t           g_powerRepeaterSupply;
-vmCvar_t           g_powerRepeaterRange;
 
 vmCvar_t           g_alienOffCreepRegenHalfLife;
 #endif
@@ -207,6 +195,8 @@ vmCvar_t           g_instantBuilding;
 #endif
 
 vmCvar_t           g_emptyTeamsSkipMapTime;
+
+Cvar::Cvar<bool>   g_neverEnd("g_neverEnd", "cheat to never end a game, helpful to load a map without spawn for testing purpose", Cvar::NONE, false);
 
 // <bot stuff>
 
@@ -384,11 +374,10 @@ static cvarTable_t gameCvarTable[] =
 
 #ifndef UNREALARENA
 	// gameplay: mining
-	{ &g_initialBuildPoints,          "g_initialBuildPoints",          DEFAULT_INITIAL_BUILD_POINTS,       0,                                               0, false    , nullptr       },
-	{ &g_initialMineRate,             "g_initialMineRate",             DEFAULT_INITIAL_MINE_RATE,          0,                                               0, false    , nullptr       },
-	{ &g_mineRateHalfLife,            "g_mineRateHalfLife",            DEFAULT_MINE_RATE_HALF_LIFE,        0,                                               0, false    , nullptr       },
-	{ &g_minimumMineRate,             "g_minimumMineRate",             DEFAULT_MINIMUM_MINE_RATE,          0,                                               0, false    , nullptr       },
-	{ &g_buildPointLossFraction,      "g_buildPointLossFraction",      DEFAULT_BP_LOSS_FRAC,               0,                                               0, false    , nullptr       },
+	{ &g_buildPointInitialBudget,        "g_BPInitialBudget",          DEFAULT_BP_INITIAL_BUDGET,          0,                                               0, false    , nullptr       },
+	{ &g_buildPointBudgetPerMiner,       "g_BPBudgetPerMiner",         DEFAULT_BP_BUDGET_PER_MINER,        CVAR_SERVERINFO,                                 0, false    , nullptr       },
+	{ &g_buildPointRecoveryInititalRate, "g_BPRecoveryInitialRate",    DEFAULT_BP_RECOVERY_INITIAL_RATE,   CVAR_SERVERINFO,                                 0, false    , nullptr       },
+	{ &g_buildPointRecoveryRateHalfLife, "g_BPRecoveryRateHalfLife",   DEFAULT_BP_RECOVERY_RATE_HALF_LIFE, CVAR_SERVERINFO,                                 0, false    , nullptr       },
 
 	// gameplay: momentum
 	{ &g_unlockableMinTime,           "g_unlockableMinTime",           DEFAULT_UNLOCKABLE_MIN_TIME,        CVAR_SERVERINFO,                                 0, false    , nullptr       },
@@ -399,14 +388,6 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_momentumBuildMod,            "g_momentumBuildMod",            DEFAULT_MOMENTUM_BUILD_MOD,         0,                                               0, false    , nullptr       },
 	{ &g_momentumDeconMod,            "g_momentumDeconMod",            DEFAULT_MOMENTUM_DECON_MOD,         0,                                               0, false    , nullptr       },
 	{ &g_momentumDestroyMod,          "g_momentumDestroyMod",          DEFAULT_MOMENTUM_DESTROY_MOD,       0,                                               0, false    , nullptr       },
-
-	// gameplay: buildable power
-	{ &g_powerCompetitionRange,       "g_powerCompetitionRange",       "320",                              0,                                               0, false    , nullptr       },
-	{ &g_powerBaseSupply,             "g_powerBaseSupply",             "20",                               0,                                               0, false    , nullptr       },
-	{ &g_powerReactorSupply,          "g_powerReactorSupply",          "30",                               0,                                               0, false    , nullptr       },
-	{ &g_powerReactorRange,           "g_powerReactorRange",           "1000",                             CVAR_SERVERINFO,                                 0, false    , nullptr       },
-	{ &g_powerRepeaterSupply,         "g_powerRepeaterSupply",         "20",                               0,                                               0, false    , nullptr       },
-	{ &g_powerRepeaterRange,          "g_powerRepeaterRange",          "500",                              CVAR_SERVERINFO,                                 0, false    , nullptr       },
 #endif
 
 	// gameplay: limits
@@ -489,9 +470,6 @@ static cvarTable_t gameCvarTable[] =
 static const size_t gameCvarTableSize = ARRAY_LEN( gameCvarTable );
 
 void               CheckExitRules();
-#ifndef UNREALARENA
-void               G_CountSpawns();
-#endif
 static void        G_LogGameplayStats( int state );
 
 // state field of G_LogGameplayStats
@@ -743,7 +721,7 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	level.time = levelTime;
 	level.inClient = inClient;
 	level.startTime = levelTime;
-	level.snd_fry = G_SoundIndex( "sound/misc/fry.wav" );  // FIXME standing in lava / slime
+	level.snd_fry = G_SoundIndex( "sound/misc/fry" );  // FIXME standing in lava / slime
 
 	// TODO: Move this in a seperate function
 	if ( g_logFile.string[ 0 ] )
@@ -838,6 +816,9 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	memset( g_entities, 0, MAX_GENTITIES * sizeof( g_entities[ 0 ] ) );
 	level.gentities = g_entities;
 
+	// entity used as drop-in for unmigrated entities
+	level.emptyEntity = new EmptyEntity({ nullptr });
+
 	// initilize special entities so they don't need to be special cased in the CBSE code later on
 	G_InitGentityMinimal( g_entities + ENTITYNUM_NONE );
 	G_InitGentityMinimal( g_entities + ENTITYNUM_WORLD );
@@ -863,7 +844,7 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	}
 
 	// let the server system know where the entites are
-	trap_LocateGameData( level.gentities, level.num_entities, sizeof( gentity_t ),
+	trap_LocateGameData( level.num_entities, sizeof( gentity_t ),
 	                     &level.clients[ 0 ].ps, sizeof( level.clients[ 0 ] ) );
 
 	level.emoticonCount = BG_LoadEmoticons( level.emoticons, MAX_EMOTICONS );
@@ -884,9 +865,9 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	// add any fake entities
 	G_SpawnFakeEntities();
 
+#ifndef UNREALARENA
 	BaseClustering::Init();
 
-#ifndef UNREALARENA
 	// load up a custom building layout if there is one
 	G_LayoutLoad();
 #endif
@@ -928,20 +909,13 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	BG_PrintVoices( level.voices, g_debugVoices.integer );
 
 #ifndef UNREALARENA
-	// Give both teams some build points to start out with.
+	// Spend build points for layout buildables.
 	for (team_t team = TEAM_NONE; (team = G_IterateTeams(team)); ) {
-		float startBP = (float)std::max(0, g_initialBuildPoints.integer - level.team[team].layoutBuildPoints);
-
-		G_ModifyBuildPoints(team, startBP);
+		G_SpendBudget(team, level.team[team].layoutBuildPoints);
 	}
 #endif
 
 	Log::Notice( "-----------------------------------" );
-
-#ifndef UNREALARENA
-	// So the server counts the spawns without a client attached
-	G_CountSpawns();
-#endif
 
 	G_UpdateTeamConfigStrings();
 
@@ -960,6 +934,11 @@ void G_InitGame( int levelTime, int randomSeed, bool inClient )
 	}
 
 	G_notify_sensor_start();
+
+#ifndef UNREALARENA
+	// Initialize build point counts for the intial layout.
+	G_UpdateBuildPointBudgets();
+#endif
 }
 
 /*
@@ -1011,7 +990,7 @@ static bool G_VotesRunning()
 G_ShutdownGame
 =================
 */
-void G_ShutdownGame( int restart )
+void G_ShutdownGame( int /* restart */ )
 {
 	// in case of a map_restart
 	G_ClearVotes( true );
@@ -1040,7 +1019,7 @@ void G_ShutdownGame( int restart )
 	G_WriteSessionData();
 
 	G_admin_cleanup();
-	G_BotCleanup( restart );
+	G_BotCleanup();
 	G_namelog_cleanup();
 
 	G_UnregisterCommands();
@@ -1051,6 +1030,19 @@ void G_ShutdownGame( int restart )
 	level.restarted = false;
 	level.surrenderTeam = TEAM_NONE;
 	trap_SetConfigstring( CS_WINNER, "" );
+
+	/*
+	 * delete cbse entities attached to gentities
+	 * note, that this does not deal with several gentities having the same Entity attached
+	 * (except for the EmptyEntity) as we'd otherwise be trying to delete dangling pointers
+	 */
+	for (int i = 0; i < level.num_entities; i++) {
+		Entity* entity = level.gentities[i].entity;
+		if (entity != level.emptyEntity)
+			delete entity;
+	}
+
+	delete level.emptyEntity;
 }
 
 //===================================================================
@@ -1433,44 +1425,6 @@ void G_SpawnClients( team_t team )
 	}
 }
 
-#ifndef UNREALARENA
-/*
-============
-G_CountSpawns
-
-Counts the number of spawns for each team
-============
-*/
-void G_CountSpawns()
-{
-	int       i;
-	gentity_t *ent;
-
-	//I guess this could be changed into one function call per team
-	level.team[ TEAM_ALIENS ].numSpawns = 0;
-	level.team[ TEAM_HUMANS ].numSpawns = 0;
-
-	for ( i = MAX_CLIENTS, ent = g_entities + i; i < level.num_entities; i++, ent++ )
-	{
-		if ( !ent->inuse || ent->s.eType != entityType_t::ET_BUILDABLE || G_Dead( ent ) )
-		{
-			continue;
-			// is it really useful? Seriously?
-		}
-
-		//TODO create a function to check if a building is a spawn
-		if( ent->s.modelindex == BA_A_SPAWN )
-		{
-			level.team[ TEAM_ALIENS ].numSpawns++;
-		}
-		else if ( ent->s.modelindex == BA_H_SPAWN )
-		{
-			level.team[ TEAM_HUMANS ].numSpawns++;
-		}
-	}
-}
-#endif
-
 /*
 ============
 G_CalculateAvgPlayers
@@ -1777,7 +1731,7 @@ void BeginIntermission()
 		}
 
 		// respawn if dead
-		if ( G_Dead( client ) )
+		if ( Entities::IsDead( client ) )
 		{
 			respawn( client );
 		}
@@ -1923,7 +1877,7 @@ void QDECL PRINTF_LIKE(1) G_LogPrintf( const char *fmt, ... )
 	if ( !level.inClient )
 	{
 		G_UnEscapeString( string, decolored, sizeof( decolored ) );
-		Log::Notice( "%s", decolored + 7 );
+		Log::Notice( decolored + 7 );
 	}
 
 	if ( !level.logFile )
@@ -2043,11 +1997,10 @@ static void G_LogGameplayStats( int state )
 			             "#\n"
 			             "# g_momentumHalfLife:        %4i\n"
 			             "# g_initialBuildPoints:      %4i\n"
-			             "# g_initialMineRate:         %4i\n"
-			             "# g_mineRateHalfLife:        %4i\n"
+			             "# g_budgetPerMiner:          %4i\n"
 			             "#\n"
 			             "#  1  2  3    4    5    6    7    8    9   10   11   12   13   14   15   16\n"
-			             "#  T #A #H AMom HMom  LMR  AME  HME  ABP  HBP ABRV HBRV ACre HCre AVal HVal\n"
+			             "#  T #A #H AMom HMom ---- ATBP HTBP AUBP HUBP ABRV HBRV ACre HCre AVal HVal\n"
 			             "# -------------------------------------------------------------------------\n",
 			             Q3_VERSION,
 			             mapname,
@@ -2055,9 +2008,8 @@ static void G_LogGameplayStats( int state )
 			             t.tm_hour, t.tm_min, t.tm_sec,
 			             LOG_GAMEPLAY_STATS_VERSION,
 			             g_momentumHalfLife.integer,
-			             g_initialBuildPoints.integer,
-			             g_initialMineRate.integer,
-			             g_mineRateHalfLife.integer );
+			             g_buildPointInitialBudget.integer,
+			             g_buildPointBudgetPerMiner.integer );
 #endif
 
 			break;
@@ -2066,14 +2018,14 @@ static void G_LogGameplayStats( int state )
 		{
 			int    time;
 #ifndef UNREALARENA
-			float  LMR;
+			int    XXX;
 #endif
 			int    team;
 			int    num[ NUM_TEAMS ];
 #ifndef UNREALARENA
 			int    Mom[ NUM_TEAMS ];
-			int    ME [ NUM_TEAMS ];
-			int    BP [ NUM_TEAMS ];
+			int    TBP[ NUM_TEAMS ];
+			int    UBP[ NUM_TEAMS ];
 			int    BRV[ NUM_TEAMS ];
 			int    Cre[ NUM_TEAMS ];
 			int    Val[ NUM_TEAMS ];
@@ -2086,7 +2038,7 @@ static void G_LogGameplayStats( int state )
 
 			time = level.matchTime / 1000;
 #ifndef UNREALARENA
-			LMR  = level.mineRate; // float
+			XXX  = 0;
 #endif
 
 			for( team = TEAM_NONE + 1; team < NUM_TEAMS; team++ )
@@ -2094,13 +2046,13 @@ static void G_LogGameplayStats( int state )
 				num[ team ] = level.team[ team ].numClients;
 #ifndef UNREALARENA
 				Mom[ team ] = ( int )level.team[ team ].momentum;
-				ME [ team ] = ( int )level.team[ team ].mineEfficiency;
-				BP [ team ] = G_GetBuildPointsInt( (team_t)team );
+				TBP[ team ] = ( int )level.team[ team ].totalBudget;
+				UBP[ team ] = ( int )G_GetFreeBudget( ( team_t )team );
 #endif
 			}
 
 #ifndef UNREALARENA
-			G_GetBuildableResourceValue( BRV );
+			G_GetTotalBuildableValues( BRV );
 			GetAverageCredits( Cre, Val );
 #endif
 
@@ -2110,9 +2062,9 @@ static void G_LogGameplayStats( int state )
 			             time, num[ TEAM_Q ], num[ TEAM_U ] );
 #else
 			Com_sprintf( logline, sizeof( logline ),
-			             "%4i %2i %2i %4i %4i %4.1f %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i\n",
+			             "%4i %2i %2i %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i %4i\n",
 			             time, num[ TEAM_ALIENS ], num[ TEAM_HUMANS ], Mom[ TEAM_ALIENS ], Mom[ TEAM_HUMANS ],
-			             LMR, ME[ TEAM_ALIENS ], ME[ TEAM_HUMANS ], BP[ TEAM_ALIENS ], BP[ TEAM_HUMANS ],
+			             XXX, TBP[ TEAM_ALIENS ], TBP[ TEAM_HUMANS ], UBP[ TEAM_ALIENS ], UBP[ TEAM_HUMANS ],
 			             BRV[ TEAM_ALIENS ], BRV[ TEAM_HUMANS ], Cre[ TEAM_ALIENS ], Cre[ TEAM_HUMANS ],
 			             Val[ TEAM_ALIENS ], Val[ TEAM_HUMANS ] );
 #endif
@@ -2202,147 +2154,6 @@ static void G_LogGameplayStats( int state )
 }
 
 /*
-=================
-G_SendGameStat
-=================
-*/
-void G_SendGameStat( team_t team )
-{
-	char      map[ MAX_STRING_CHARS ];
-	char      teamChar;
-	char      data[ BIG_INFO_STRING ];
-	char      entry[ MAX_STRING_CHARS ];
-	int       i, dataLength, entryLength;
-	gclient_t *cl;
-
-	// games with cheats enabled are not very good for balance statistics
-	if ( g_cheats.integer )
-	{
-		return;
-	}
-
-	trap_Cvar_VariableStringBuffer( "mapname", map, sizeof( map ) );
-
-	switch ( team )
-	{
-#ifdef UNREALARENA
-		case TEAM_Q:
-			teamChar = 'Q';
-			break;
-
-		case TEAM_U:
-			teamChar = 'U';
-			break;
-#else
-		case TEAM_ALIENS:
-			teamChar = 'A';
-			break;
-
-		case TEAM_HUMANS:
-			teamChar = 'H';
-			break;
-#endif
-
-		case TEAM_NONE:
-			teamChar = 'L';
-			break;
-
-		default:
-			return;
-	}
-
-#ifdef UNREALARENA
-	Com_sprintf( data, BIG_INFO_STRING,
-	             "%s %s T:%c Q:%f U:%f M:%s D:%d CL:%d",
-	             Q3_VERSION,
-	             g_tag.string,
-	             teamChar,
-	             level.team[ TEAM_Q ].averageNumClients,
-	             level.team[ TEAM_U ].averageNumClients,
-	             map,
-	             level.matchTime,
-	             level.numConnectedClients );
-#else
-	Com_sprintf( data, BIG_INFO_STRING,
-	             "%s %s T:%c A:%f H:%f M:%s D:%d CL:%d",
-	             Q3_VERSION,
-	             g_tag.string,
-	             teamChar,
-	             level.team[ TEAM_ALIENS ].averageNumClients,
-	             level.team[ TEAM_HUMANS ].averageNumClients,
-	             map,
-	             level.matchTime,
-	             level.numConnectedClients );
-#endif
-
-	dataLength = strlen( data );
-
-	for ( i = 0; i < level.numConnectedClients; i++ )
-	{
-		int ping;
-
-		cl = &level.clients[ level.sortedClients[ i ] ];
-
-		if ( cl->pers.connected == CON_CONNECTING )
-		{
-			ping = -1;
-		}
-		else
-		{
-			ping = cl->ps.ping < 999 ? cl->ps.ping : 999;
-		}
-
-		switch ( cl->pers.team )
-		{
-#ifdef UNREALARENA
-			case TEAM_Q:
-				teamChar = 'Q';
-				break;
-
-			case TEAM_U:
-				teamChar = 'U';
-				break;
-#else
-			case TEAM_ALIENS:
-				teamChar = 'A';
-				break;
-
-			case TEAM_HUMANS:
-				teamChar = 'H';
-				break;
-#endif
-
-			case TEAM_NONE:
-				teamChar = 'S';
-				break;
-
-			default:
-				return;
-		}
-
-		Com_sprintf( entry, MAX_STRING_CHARS,
-		             " \"%s\" %c %d %d %d",
-		             cl->pers.netname,
-		             teamChar,
-		             cl->ps.persistant[ PERS_SCORE ],
-		             ping,
-		             ( level.time - cl->pers.enterTime ) / 60000 );
-
-		entryLength = strlen( entry );
-
-		if ( dataLength + entryLength >= BIG_INFO_STRING )
-		{
-			break;
-		}
-
-		strcpy( data + dataLength, entry );
-		dataLength += entryLength;
-	}
-
-	trap_SendGameStat( data );
-}
-
-/*
 ================
 LogExit
 
@@ -2392,8 +2203,6 @@ void LogExit( const char *string )
 		             cl->ps.persistant[ PERS_SCORE ], ping, level.sortedClients[ i ],
 		             cl->pers.netname );
 	}
-
-	G_SendGameStat( level.lastWin );
 }
 
 /*
@@ -2529,6 +2338,10 @@ can see the last frag.
 */
 void CheckExitRules()
 {
+	if ( g_cheats.integer && g_neverEnd.Get() ) {
+		return;
+	}
+
 	// if at the intermission, wait for all non-bots to
 	// signal ready, then go to next level
 	if ( level.intermissiontime )
@@ -2918,9 +2731,9 @@ void G_RunThink( gentity_t *ent )
 	}
 
 	// Do CBSE style thinking.
-	ForEntities<ThinkingComponent>([] (Entity &entity, ThinkingComponent &thinkingComponent) {
-		thinkingComponent.Think();
-	});
+	if (auto* thinkingComponent = ent->entity->Get<ThinkingComponent>()) {
+		thinkingComponent->Think();
+	}
 #endif
 
 	// Do legacy thinking.
@@ -3116,9 +2929,7 @@ void G_RunFrame( int levelTime )
 		// calculate the acceleration of this entity
 		if ( ent->evaluateAcceleration ) G_EvaluateAcceleration( ent, msec );
 
-		if ( !ent->r.linked && ent->neverFree ) continue;
-
-		// think/run entitiy by type
+		// think/run entity by type
 		switch ( ent->s.eType )
 		{
 			case entityType_t::ET_MISSILE:
@@ -3167,6 +2978,19 @@ void G_RunFrame( int levelTime )
 		}
 	}
 
+#ifndef UNREALARENA
+	// ThinkingComponent should have been called already but who knows maybe we forgot some.
+	ForEntities<ThinkingComponent>([](Entity& entity, ThinkingComponent& thinkingComponent) {
+		// A newly created entity can randomly run things, or not, in the G_RunFrames loop over
+		// entities depending on whether it was added in a hole in g_entities or at the end, so
+		// ignore the entity if it was created this frame.
+		if (entity.oldEnt->creationTime != level.time && thinkingComponent.GetLastThinkTime() != level.time) {
+			Log::Warn("ThinkingComponent was not called");
+			thinkingComponent.Think();
+		}
+	});
+#endif
+
 	// perform final fixups on the players
 	ent = &g_entities[ 0 ];
 
@@ -3182,9 +3006,12 @@ void G_RunFrame( int levelTime )
 	G_UnlaggedStore();
 
 #ifndef UNREALARENA
-	G_CountSpawns();
-	G_SetHumanBuildablePowerState();
-	G_MineBuildPoints();
+	// Check if a build point can be removed from the queue.
+	G_RecoverBuildPoints();
+
+	// Power down buildables if there is a budget deficit.
+	G_UpdateBuildablePowerStates();
+
 	G_DecreaseMomentum();
 #endif
 	G_CalculateAvgPlayers();
@@ -3205,6 +3032,8 @@ void G_RunFrame( int levelTime )
 
 	// see if it is time to end the level
 	CheckExitRules();
+
+	G_BotFill( false );
 
 	// update to team status?
 	CheckTeamStatus();

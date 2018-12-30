@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -729,8 +729,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 
 			COM_StripExtension( token, token2 );
 
-			if ( cg_highPolyWeaponModels.integer &&
-			     CG_FileExists( va( "%s_view.iqm", token2 ) ) &&
+			if ( CG_FileExists( va( "%s_view.iqm", token2 ) ) &&
 			     ( wi->weaponModel = trap_R_RegisterModel( va( "%s_view.iqm", token2 ) ) ) )
 			{
 				wi->md5 = true;
@@ -755,10 +754,10 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 				switch( weapon )
 				{
 					case WP_MACHINEGUN:
+						DAEMON_FALLTHROUGH;
 					case WP_SHOTGUN:
 					case WP_MASS_DRIVER:
 					case WP_PULSE_RIFLE:
-
 						CG_RegisterWeaponAnimation( &wi->animations[ WANIM_RAISE ],
 													va( "%s_view.iqm:raise", token2 ), false, false, false );
 						CG_RegisterWeaponAnimation( &wi->animations[ WANIM_DROP ],
@@ -772,6 +771,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 					case WP_LUCIFER_CANNON:
 						CG_RegisterWeaponAnimation( &wi->animations[ WANIM_ATTACK2 ],
 													va( "%s_view.iqm:fire2", token2 ), false, false, false );
+						DAEMON_FALLTHROUGH;
 					case WP_BLASTER:
 					case WP_PAIN_SAW:
 					case WP_LAS_GUN:
@@ -788,6 +788,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 						break;
 
 					case WP_ALEVEL1:
+						DAEMON_FALLTHROUGH;
 					case WP_ALEVEL2:
 					case WP_ALEVEL4:
 						CG_RegisterWeaponAnimation( &wi->animations[ WANIM_ATTACK1 ],
@@ -821,8 +822,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 													va( "%s_view.iqm:fire7", token2 ), false, false, false );
 				}
 			}
-			else if ( cg_highPolyWeaponModels.integer &&
-			          CG_FileExists( va( "%s_view.md5mesh", token2 ) ) &&
+			else if ( CG_FileExists( va( "%s_view.md5mesh", token2 ) ) &&
 			          ( wi->weaponModel = trap_R_RegisterModel( va( "%s_view.md5mesh", token2 ) ) ) )
 			{
 				wi->md5 = true;
@@ -847,6 +847,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 				switch( weapon )
 				{
 					case WP_MACHINEGUN:
+						DAEMON_FALLTHROUGH;
 					case WP_SHOTGUN:
 					case WP_MASS_DRIVER:
 					case WP_PULSE_RIFLE:
@@ -864,6 +865,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 					case WP_LUCIFER_CANNON:
 						CG_RegisterWeaponAnimation( &wi->animations[ WANIM_ATTACK2 ],
 									    va( "%s_view_fire2.md5anim", token2 ), false, false, false );
+						DAEMON_FALLTHROUGH;
 					case WP_BLASTER:
 					case WP_PAIN_SAW:
 					case WP_LAS_GUN:
@@ -880,6 +882,7 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 						break;
 
 					case WP_ALEVEL1:
+						DAEMON_FALLTHROUGH;
 					case WP_ALEVEL2:
 					case WP_ALEVEL4:
 						CG_RegisterWeaponAnimation( &wi->animations[ WANIM_ATTACK1 ],
@@ -1079,14 +1082,6 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 		}
 		else if ( !Q_stricmp( token, "rotation" ) )
 		{
-			if ( !cg_highPolyWeaponModels.integer )
-			{
-				for ( i = 0; i < 3; i++ )
-				{
-					token = COM_ParseExt2( &text_p, false );
-				}
-				continue;
-			}
 
 			for ( i = 0; i < 3; i++ )
 			{
@@ -1104,14 +1099,6 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 		}
 		else if ( !Q_stricmp( token, "posOffs" ) )
 		{
-			if ( !cg_highPolyWeaponModels.integer )
-			{
-				for ( i = 0; i < 3; i++ )
-				{
-					token = COM_ParseExt2( &text_p, false );
-				}
-				continue;
-			}
 			for ( i = 0; i < 3; i++ )
 			{
 				token = COM_ParseExt2( &text_p, false );
@@ -1128,24 +1115,12 @@ static bool CG_ParseWeaponFile( const char *filename, int weapon, weaponInfo_t *
 		}
 		else if ( !Q_stricmp( token, "rotationBone" ) )
 		{
-			if ( !cg_highPolyWeaponModels.integer )
-			{
-				token = COM_Parse2( &text_p );
-				continue;
-			}
-
 			token = COM_Parse2( &text_p );
 			Q_strncpyz( wi->rotationBone, token, sizeof( wi->rotationBone ) );
 			continue;
 		}
 		else if ( !Q_stricmp( token, "modelScale" ) )
 		{
-			if ( !cg_highPolyWeaponModels.integer )
-			{
-				token = COM_ParseExt2( &text_p, false );
-				continue;
-			}
-
 			token = COM_ParseExt2( &text_p, false );
 
 			if ( token )
@@ -1238,7 +1213,7 @@ void CG_InitWeapons()
 		CG_RegisterWeapon( i );
 	}
 
-	cgs.media.level2ZapTS = CG_RegisterTrailSystem( "models/weapons/lev2zap/lightning" );
+	cgs.media.level2ZapTS = CG_RegisterTrailSystem( "trails/weapons/level2upg/lightning" );
 }
 
 /*
@@ -1263,7 +1238,7 @@ static void CG_SetWeaponLerpFrameAnimation( weapon_t weapon, lerpFrame_t *lf, in
 
 	lf->animationNumber = newAnimation;
 	toggle = newAnimation & ANIM_TOGGLEBIT;
-	newAnimation &= ~ANIM_TOGGLEBIT;
+	newAnimation = CG_AnimNumber( newAnimation );
 
 	if ( newAnimation < 0 || newAnimation >= MAX_WEAPON_ANIMATIONS )
 	{
@@ -1280,7 +1255,7 @@ static void CG_SetWeaponLerpFrameAnimation( weapon_t weapon, lerpFrame_t *lf, in
 		Log::Debug( "Anim: %i", newAnimation );
 	}
 
-	if ( /*&cg_weapons[ weapon ].md5 &&*/ !toggle && lf && lf->old_animation && lf->old_animation->handle )
+	if ( /*&cg_weapons[ weapon ].md5 &&*/ !toggle && lf->old_animation && lf->old_animation->handle )
 	{
 		if ( !trap_R_BuildSkeleton( &oldGunSkeleton, lf->old_animation->handle, lf->oldFrame, lf->frame, lf->backlerp, lf->old_animation->clearOrigin ) )
 		{
@@ -1330,42 +1305,18 @@ static int CG_MapTorsoToWeaponFrame( clientInfo_t *ci, int frame, int anim )
 {
 	if ( anim == -1 ) { return 0; }
 
-	if ( !cg_highPolyPlayerModels.integer )
+	// MD5 animations all start at 0, so there is no way to differentiate them with first frame alone
+
+	// change weapon
+	if ( anim == TORSO_DROP && frame < 9 )
 	{
-		// change weapon
-		if ( frame >= ci->animations[ TORSO_DROP ].firstFrame &&
-		     frame < ci->animations[ TORSO_DROP ].firstFrame + 9 )
-		{
-			return frame - ci->animations[ TORSO_DROP ].firstFrame + 6;
-		}
-
-		// stand attack
-		if ( frame >= ci->animations[ TORSO_ATTACK ].firstFrame &&
-		     frame < ci->animations[ TORSO_ATTACK ].firstFrame + 6 )
-		{
-			return 1 + frame - ci->animations[ TORSO_ATTACK ].firstFrame;
-		}
-
-		// stand attack 2
-		if ( frame >= ci->animations[ TORSO_ATTACK_BLASTER ].firstFrame &&
-		     frame < ci->animations[ TORSO_ATTACK_BLASTER ].firstFrame + 6 )
-		{
-			return 1 + frame - ci->animations[ TORSO_ATTACK_BLASTER ].firstFrame;
-		}
+		return frame - 6;
 	}
-	else // MD5 animations all start at 0, so there is no way to differentiate them with first frame alone
-	{
-		// change weapon
-		if ( anim == TORSO_DROP && frame < 9 )
-		{
-			return frame - 6;
-		}
 
-		// stand attack
-		else if ( ( anim == TORSO_ATTACK || anim == TORSO_ATTACK_BLASTER ) && frame < 6 )
-		{
-			return 1 + frame;
-		}
+	// stand attack
+	else if ( ( anim == TORSO_ATTACK || anim == TORSO_ATTACK_BLASTER ) && frame < 6 )
+	{
+		return 1 + frame;
 	}
 
 	return 0;
@@ -1666,7 +1617,6 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 				quat_t rotation;
 				matrix_t mat;
 				vec3_t   nBounds[ 2 ];
-				vec3_t   p1, p2;
 
 				if ( boneIndex < 0 )
 				{
@@ -1677,17 +1627,12 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 				}
 
 				QuatFromAngles( rotation, weapon->rotation[ 0 ], weapon->rotation[ 1 ], weapon->rotation[ 2 ] );
-				QuatMultiply0( gun.skeleton.bones[ boneIndex ].t.rot, rotation );
+				QuatMultiply2( gun.skeleton.bones[ boneIndex ].t.rot, rotation );
 
 				// Update bounds to reflect rotation
 				MatrixFromAngles( mat, weapon->rotation[ 0 ], weapon->rotation[ 1 ], weapon->rotation[ 2 ] );
 
-				MatrixTransformNormal( mat, gun.skeleton.bounds[ 0 ], p1 );
-				MatrixTransformNormal( mat, gun.skeleton.bounds[ 1 ], p2 );
-
-				ClearBounds( nBounds[ 0 ], nBounds[ 1 ] );
-				AddPointToBounds( p1, nBounds[ 0 ], nBounds[ 1 ] );
-				AddPointToBounds( p2, nBounds[ 0 ], nBounds[ 1 ] );
+				MatrixTransformBounds(mat, gun.skeleton.bounds[0], gun.skeleton.bounds[1], nBounds[0], nBounds[1]);
 
 				BoundsAdd( gun.skeleton.bounds[ 0 ], gun.skeleton.bounds[ 1 ], nBounds[ 0 ], nBounds[ 1 ] );
 			}
@@ -2003,8 +1948,8 @@ void CG_AddViewWeapon( playerState_t *ps )
 	{
 		// get clientinfo for animation map
 		ci = &cgs.clientinfo[ cent->currentState.clientNum ];
-		hand.frame = CG_MapTorsoToWeaponFrame( ci, cent->pe.torso.frame, !wi->md5 ? cent->pe.torso.animationNumber & ~ANIM_TOGGLEBIT : -1 );
-		hand.oldframe = CG_MapTorsoToWeaponFrame( ci, cent->pe.torso.oldFrame, !wi->md5 ? cent->pe.torso.animationNumber & ~ANIM_TOGGLEBIT : -1 );
+		hand.frame = CG_MapTorsoToWeaponFrame( ci, cent->pe.torso.frame, !wi->md5 ? CG_AnimNumber( cent->pe.torso.animationNumber ) : -1 );
+		hand.oldframe = CG_MapTorsoToWeaponFrame( ci, cent->pe.torso.oldFrame, !wi->md5 ? CG_AnimNumber( cent->pe.torso.animationNumber ) : -1 );
 		hand.backlerp = cent->pe.torso.backlerp;
 	}
 

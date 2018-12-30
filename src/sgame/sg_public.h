@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -65,36 +65,27 @@ namespace Beacon
 	void DeleteTags( gentity_t *ent );
 }
 
-// Utility.cpp
-namespace Utility
-{
-	void Kill(Entity& entity, Entity *source, meansOfDeath_t meansOfDeath);
-#ifndef UNREALARENA
-	bool AntiHumanRadiusDamage(Entity& entity, float amount, float range, meansOfDeath_t mod);
-	bool KnockbackRadiusDamage(Entity& entity, float amount, float range, meansOfDeath_t mod);
-#endif
-}
-
 #ifndef UNREALARENA
 // sg_buildable.c
-bool              G_IsWarnableMOD( int mod );
-gentity_t         *G_CheckSpawnPoint( int spawnNum, const vec3_t origin, const vec3_t normal, buildable_t spawn, vec3_t spawnOrigin );
-gentity_t         *G_Reactor();
-gentity_t         *G_AliveReactor();
-gentity_t         *G_ActiveReactor();
+bool              G_IsWarnableMOD(meansOfDeath_t mod);
 gentity_t         *G_Overmind();
 gentity_t         *G_AliveOvermind();
 gentity_t         *G_ActiveOvermind();
-float             G_DistanceToBase( gentity_t *self, bool ownBase );
-bool          G_InsideBase( gentity_t *self, bool ownBase );
-bool          G_FindCreep( gentity_t *self );
+gentity_t         *G_Reactor();
+gentity_t         *G_AliveReactor();
+gentity_t         *G_ActiveReactor();
+gentity_t         *G_MainBuildable(team_t team);
+gentity_t         *G_AliveMainBuildable(team_t team);
+gentity_t         *G_ActiveMainBuildable(team_t team);
+float             G_DistanceToBase(gentity_t *self);
+bool              G_InsideBase(gentity_t *self);
 gentity_t         *G_Build( gentity_t *builder, buildable_t buildable, const vec3_t origin, const vec3_t normal, const vec3_t angles, int groundEntityNum );
-bool          G_BuildableInRange( vec3_t origin, float radius, buildable_t buildable );
+bool              G_BuildableInRange( vec3_t origin, float radius, buildable_t buildable );
 void              G_Deconstruct( gentity_t *self, gentity_t *deconner, meansOfDeath_t deconType );
 itemBuildError_t  G_CanBuild( gentity_t *ent, buildable_t buildable, int distance, vec3_t origin, vec3_t normal, int *groundEntNum );
-bool          G_BuildIfValid( gentity_t *ent, buildable_t buildable );
-void              G_SetBuildableAnim( gentity_t *ent, buildableAnimNumber_t anim, bool force );
-void              G_SetIdleBuildableAnim( gentity_t *ent, buildableAnimNumber_t anim );
+bool              G_BuildIfValid( gentity_t *ent, buildable_t buildable );
+void              G_SetBuildableAnim(gentity_t *ent, buildableAnimNumber_t animation, bool force);
+void              G_SetIdleBuildableAnim(gentity_t *ent, buildableAnimNumber_t animation);
 void              G_SpawnBuildable(gentity_t *ent, buildable_t buildable);
 void              G_LayoutSave( const char *name );
 int               G_LayoutList( const char *map, char *list, int len );
@@ -105,7 +96,7 @@ buildLog_t        *G_BuildLogNew( gentity_t *actor, buildFate_t fate );
 void              G_BuildLogSet( buildLog_t *log, gentity_t *ent );
 void              G_BuildLogAuto( gentity_t *actor, gentity_t *buildable, buildFate_t fate );
 void              G_BuildLogRevert( int id );
-void              G_SetHumanBuildablePowerState();
+void              G_UpdateBuildablePowerStates();
 gentity_t         *G_NearestPowerSourceInRange( gentity_t *self );
 void              G_BuildableTouchTriggers( gentity_t *ent );
 
@@ -120,15 +111,18 @@ bool ASpiker_Fire( gentity_t *self );
 void HTurret_PreBlast( gentity_t *self );
 
 // sg_buildpoints
-float             G_RGSPredictEfficiency( vec3_t origin );
-float             G_RGSPredictEfficiencyDelta( vec3_t origin, team_t team );
-void              G_MineBuildPoints();
-int               G_GetBuildPointsInt( team_t team );
-int               G_GetMarkedBuildPointsInt( team_t team );
-bool              G_CanAffordBuildPoints( team_t team, float amount );
-void              G_GetBuildableResourceValue( int *teamValue );
-void              G_ModifyBuildPoints( team_t team, float amount );
-void              G_ModifyTotalBuildPointsAcquired( team_t team, float amount );
+float             G_RGSPredictOwnEfficiency(vec3_t origin);
+float             G_RGSPredictEfficiencyDelta(vec3_t origin, team_t team);
+void              G_UpdateBuildPointBudgets();
+void              G_RecoverBuildPoints();
+int               G_GetSpentBudget(team_t team);
+int               G_GetFreeBudget(team_t team);
+int               G_GetMarkedBudget(team_t team);
+int               G_GetSpendableBudget(team_t team);
+void              G_FreeBudget(team_t team, int immediateAmount , int queuedAmount);
+void              G_SpendBudget(team_t team, int amount);
+int               G_BuildableDeconValue(gentity_t *ent);
+void              G_GetTotalBuildableValues(int *buildableValuesByTeam);
 #endif
 
 // sg_client.c
@@ -160,6 +154,7 @@ void              ClientDisconnect( int clientNum );
 void              ClientBegin( int clientNum );
 void              ClientAdminChallenge( int clientNum );
 
+#ifndef UNREALARENA
 // sg_clustering.c
 namespace BaseClustering {
 	void Init();
@@ -167,6 +162,7 @@ namespace BaseClustering {
 	void Remove(gentity_t *beacon);
 	void Debug();
 }
+#endif
 
 // sg_cmds.c
 void              G_StopFollowing( gentity_t *ent );
@@ -275,6 +271,9 @@ bool          G_MapExists( const char *name );
 void              G_ExplodeMissile( gentity_t *ent );
 void              G_RunMissile( gentity_t *ent );
 gentity_t         *G_SpawnMissile( missile_t missile, gentity_t *parent, vec3_t start, vec3_t dir, gentity_t *target, void ( *think )( gentity_t *self ), int nextthink );
+#ifndef UNREALARENA
+gentity_t         *G_SpawnFire(vec3_t origin, vec3_t normal, gentity_t *fireStarter );
+#endif
 
 // sg_namelog.c
 void              G_namelog_connect( gclient_t *client );
@@ -305,7 +304,7 @@ team_t            G_Team( gentity_t *ent );
 bool          G_OnSameTeam( gentity_t *ent1, gentity_t *ent2 );
 void              G_LeaveTeam( gentity_t *self );
 void              G_ChangeTeam( gentity_t *ent, team_t newTeam );
-gentity_t         *Team_GetLocation( gentity_t *ent );
+gentity_t         *GetCloseLocationEntity( gentity_t *ent );
 void              TeamplayInfoMessage( gentity_t *ent );
 void              CheckTeamStatus();
 void              G_UpdateTeamConfigStrings();
@@ -339,7 +338,6 @@ void              G_ClientnumToMask( int clientNum, int *loMask, int *hiMask );
 void              G_TeamToClientmask( team_t team, int *loMask, int *hiMask );
 #ifndef UNREALARENA
 void              G_FireThink( gentity_t *self );
-gentity_t         *G_SpawnFire(vec3_t origin, vec3_t normal, gentity_t *fireStarter );
 #endif
 bool          G_LineOfSight( const gentity_t *from, const gentity_t *to, int mask, bool useTrajBase );
 bool          G_LineOfSight( const gentity_t *from, const gentity_t *to );
@@ -350,10 +348,6 @@ bool              G_IsPlayableTeam( int team );
 team_t            G_IterateTeams( team_t team );
 team_t            G_Enemy( team_t team );
 float             G_Distance( gentity_t *ent1, gentity_t *ent2 );
-bool              G_Alive(gentity_t *ent);
-bool              G_Dead(gentity_t *ent);
-void              G_Kill(gentity_t *ent, gentity_t *source, meansOfDeath_t meansOfDeath);
-void              G_Kill(gentity_t *ent, meansOfDeath_t meansOfDeath);
 
 // sg_weapon.c
 void              G_ForceWeaponChange( gentity_t *ent, weapon_t weapon );
@@ -382,10 +376,15 @@ void              G_UpdateZaps( int msec );
 void              G_ClearPlayerZapEffects( gentity_t *player );
 void              G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode );
 void              G_FireUpgrade( gentity_t *self, upgrade_t upgrade );
-#ifndef UNREALARENA
-bool              G_RocketpodSafeShot( int passEntityNum, vec3_t origin, vec3_t dir );
+
+// CombatFeedback.cpp
+namespace CombatFeedback
+{
+  void HitNotify(gentity_t *attacker, gentity_t *victim, Util::optional<Vec3> point, float damage, meansOfDeath_t mod, bool lethal);
+}
 
 // Components
+#ifndef UNREALARENA
 void G_IgnitableThink();
 #endif
 

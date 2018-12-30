@@ -157,8 +157,8 @@ public: \
 		return true; \
 	} \
 };
-STRING_FLOAT_CONVERTER(float);
-STRING_FLOAT_CONVERTER(double);
+STRING_FLOAT_CONVERTER(float)
+STRING_FLOAT_CONVERTER(double)
 
 template<>
 class TypeConverter< String, int >
@@ -273,8 +273,8 @@ public: \
 		return dest.FormatString(32, "%.4f", src) > 0; \
 	} \
 };
-FLOAT_STRING_CONVERTER(float);
-FLOAT_STRING_CONVERTER(double);
+FLOAT_STRING_CONVERTER(float)
+FLOAT_STRING_CONVERTER(double)
 
 template<>
 class TypeConverter< int, String >

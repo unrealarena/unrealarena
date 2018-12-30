@@ -39,9 +39,9 @@ int DataFormatternew(lua_State* L)
     DataFormatter* df;
     int ref = LUA_NOREF;
     int top = lua_gettop(L);
-    if(top == 0)
+    if(top < 1)
         df = new DataFormatter();
-    else if (top > 0) //at least one element means at least a name
+    else //at least one element means at least a name
     {
         if(top > 1) //if a function as well
         {

@@ -37,6 +37,8 @@ Maryland 20850 USA.
 #include "server.h"
 #include "CryptoChallenge.h"
 #include "framework/Network.h"
+#include "qcommon/sys.h"
+#include <common/FileSystem.h>
 
 static void SV_CloseDownload( client_t *cl );
 
@@ -139,28 +141,29 @@ void SV_DirectConnect( netadr_t from, const Cmd::Args& args )
 		// servers so we can play without having to kick people.
 		// check for privateClient password
 
-		int startIndex = 0;
+		auto allowed_clients_begin = clients_begin;
 		if ( userinfo["password"] != sv_privatePassword->string )
 		{
 			// skip past the reserved slots
-			startIndex = sv_privateClients->integer;
+			allowed_clients_begin += std::min(sv_privateClients.Get(), sv_maxclients->integer);
 		}
 
-		new_client = std::find_if(clients_begin, clients_end,
+		new_client = std::find_if(allowed_clients_begin, clients_end,
 			[](const client_t& client) {
 				return client.state == clientState_t::CS_FREE;
 		});
 
 		if ( new_client == clients_end )
 		{
-			if ( NET_IsLocalAddress( from ) )
+			// This is a bizarre special case, in which if you have a local address and EVERY
+			// non-private client is a bot (and there is at least 1), you can boot one of them off.
+			if ( NET_IsLocalAddress( from ) && sv_privateClients.Get() < sv_maxclients->integer )
 			{
-				int count = std::count_if(clients_begin+startIndex, clients_end,
+				bool all_bots = std::all_of(allowed_clients_begin, clients_end,
 					[](const client_t& client) { return SV_IsBot(&client); }
 				);
 
-				// if they're all bots
-				if ( count >= sv_maxclients->integer - startIndex )
+				if ( all_bots )
 				{
 					SV_DropClient( &svs.clients[ sv_maxclients->integer - 1 ], "only bots on server" );
 					new_client = &svs.clients[ sv_maxclients->integer - 1 ];
@@ -282,6 +285,8 @@ void SV_DropClient( client_t *drop, const char *reason )
 	{
 		return; // already dropped
 	}
+	bool isBot = SV_IsBot( drop );
+
 	Log::Debug( "Going to CS_ZOMBIE for %s", drop->name );
 	drop->state = clientState_t::CS_ZOMBIE; // become free in a few seconds
 
@@ -289,7 +294,7 @@ void SV_DropClient( client_t *drop, const char *reason )
 	// this will remove the body, among other things
 	gvm.GameClientDisconnect( drop - svs.clients );
 
-	if ( SV_IsBot(drop) )
+	if ( isBot )
 	{
 		SV_BotFreeClient( drop - svs.clients );
 	}
@@ -488,7 +493,7 @@ void SV_StopDownload_f( client_t *cl, const Cmd::Args& )
 {
 	if ( *cl->downloadName )
 	{
-		Log::Debug( "clientDownload: %d: file \"%s^7\" aborted", ( int )( cl - svs.clients ), cl->downloadName );
+		Log::Debug( "clientDownload: %d: file \"%s^*\" aborted", ( int )( cl - svs.clients ), cl->downloadName );
 	}
 
 	SV_CloseDownload( cl );
@@ -508,7 +513,7 @@ void SV_DoneDownload_f( client_t *cl, const Cmd::Args& )
 		return;
 	}
 
-	Log::Debug( "clientDownload: %s^7 Done", cl->name );
+	Log::Debug( "clientDownload: %s^* Done", cl->name );
 	// resend the game state to update any clients that entered during the download
 	SV_SendClientGameState( cl );
 }
@@ -707,6 +712,8 @@ void SV_WriteDownloadToClient( client_t *cl, msg_t *msg )
 	char     errorMessage[ 1024 ];
 	int      download_flag;
 
+	const FS::PakInfo* pak;
+	bool success;
 	bool bTellRate = false; // verbosity
 
 	if ( !*cl->downloadName )
@@ -764,9 +771,15 @@ void SV_WriteDownloadToClient( client_t *cl, msg_t *msg )
 			std::string name, version;
 			Util::optional<uint32_t> checksum;
 			int downloadSize = 0;
-			bool success = FS::ParsePakName(cl->downloadName, cl->downloadName + strlen(cl->downloadName), name, version, checksum);
+
+			success = FS::ParsePakName(cl->downloadName, cl->downloadName + strlen(cl->downloadName), name, version, checksum);
+
 			if (success) {
-				const FS::PakInfo* pak = checksum ? FS::FindPak(name, version) : FS::FindPak(name, version, *checksum);
+				// legacy pk3s have empty version but no checksum
+				// looking for that speical version ensures the client load the legacy pk3 if server is using it, even if client has non-legacy dpk
+				// dpks have version and can have checksum
+				pak = checksum ? FS::FindPak(name, version) : FS::FindPak(name, version, *checksum);
+
 				if (pak) {
 					try {
 						downloadSize = FS::RawPath::OpenRead(pak->path).Length();
@@ -776,7 +789,8 @@ void SV_WriteDownloadToClient( client_t *cl, msg_t *msg )
 				} else
 					success = false;
 			}
-			std::string pakName = name + "_" + version + ".pk3";
+
+			std::string pakName = FS::MakePakName(name, version);
 
 			if ( !cl->bFallback )
 			{
@@ -835,9 +849,15 @@ void SV_WriteDownloadToClient( client_t *cl, msg_t *msg )
 		cl->bWWWDl = false;
 		std::string name, version;
 		Util::optional<uint32_t> checksum;
-		bool success = FS::ParsePakName(cl->downloadName, cl->downloadName + strlen(cl->downloadName), name, version, checksum);
+
+		success = FS::ParsePakName(cl->downloadName, cl->downloadName + strlen(cl->downloadName), name, version, checksum);
+
 		if (success) {
-			const FS::PakInfo* pak = checksum ? FS::FindPak(name, version) : FS::FindPak(name, version, *checksum);
+			// legacy paks have empty version but no checksum
+			// looking for that speical version ensures the client load the legacy pk3 if server is using it, even if client has non-legacy dpk
+			// dpks have version and can have checksum
+			pak = checksum ? FS::FindPak(name, version) : FS::FindPak(name, version, *checksum);
+
 			if (pak) {
 				try {
 					cl->download = new FS::File(FS::RawPath::OpenRead(pak->path));
@@ -845,8 +865,9 @@ void SV_WriteDownloadToClient( client_t *cl, msg_t *msg )
 				} catch (std::system_error&) {
 					success = false;
 				}
-			} else
+			} else {
 				success = false;
+			}
 		}
 
 		if ( !success )
@@ -1184,7 +1205,7 @@ void SV_ExecuteClientCommand( client_t *cl, const char *s, bool clientOK, bool p
 	}
 	else if ( !bProcessed )
 	{
-		Log::Debug( "client text ignored for %s^7: %s", cl->name, args.Argv(0).c_str());
+		Log::Debug( "client text ignored for %s^*: %s", cl->name, args.Argv(0).c_str());
 	}
 }
 
@@ -1195,13 +1216,11 @@ SV_ClientCommand
 */
 static bool SV_ClientCommand( client_t *cl, msg_t *msg, bool premaprestart )
 {
-	int        seq;
-	const char *s;
 	bool   clientOk = true;
 	bool   floodprotect = true;
 
-	seq = MSG_ReadLong( msg );
-	s = MSG_ReadString( msg );
+	auto seq = MSG_ReadLong( msg );
+	auto s = MSG_ReadString( msg );
 
 	// see if we have already executed it
 	if ( cl->lastClientCommand >= seq )
@@ -1209,7 +1228,7 @@ static bool SV_ClientCommand( client_t *cl, msg_t *msg, bool premaprestart )
 		return true;
 	}
 
-	Log::Debug( "clientCommand: %s^7 : %i : %s", cl->name, seq, s );
+	Log::Debug( "clientCommand: %s^* : %i : %s", cl->name, seq, s );
 
 	// drop the connection if we have somehow lost commands
 	if ( seq > cl->lastClientCommand + 1 )
@@ -1374,20 +1393,15 @@ static void SV_UserMove( client_t *cl, msg_t *msg, bool delta )
 SV_ParseBinaryMessage
 =====================
 */
-static void SV_ParseBinaryMessage( client_t *cl, msg_t *msg )
+static void SV_ParseBinaryMessage(client_t *cl, msg_t *msg)
 {
-	int size;
-
-	MSG_BeginReadingUncompressed( msg );
-
-	size = msg->cursize - msg->readcount;
-
-	if ( size <= 0 || size > MAX_BINARY_MESSAGE )
-	{
+	MSG_BeginReadingUncompressed(msg);
+	int ssize = msg->cursize - msg->readcount;
+	if (ssize <= 0 || ssize > MAX_BINARY_MESSAGE) {
 		return;
 	}
-
-	SV_GameBinaryMessageReceived( cl - svs.clients, ( char * ) &msg->data[ msg->readcount ], size, cl->lastUsercmd.serverTime );
+	const auto client = int(cl - svs.clients);
+	SV_GameBinaryMessageReceived(client, msg->data + msg->readcount, size_t(ssize), cl->lastUsercmd.serverTime);
 }
 
 /*
@@ -1459,7 +1473,7 @@ void SV_ExecuteClientMessage( client_t *cl, msg_t *msg )
 		{
 			// TTimo - use a comparison here to catch multiple map_restart
 			// they just haven't caught the map_restart yet
-			Log::Debug( "%s^7: ignoring pre map_restart / outdated client message", cl->name );
+			Log::Debug( "%s^*: ignoring pre map_restart / outdated client message", cl->name );
 			return;
 		}
 
@@ -1467,7 +1481,7 @@ void SV_ExecuteClientMessage( client_t *cl, msg_t *msg )
 		// gamestate we sent them, resend it
 		if ( cl->messageAcknowledge > cl->gamestateMessageNum )
 		{
-			Log::Debug( "%s^7: dropped gamestate, resending", cl->name );
+			Log::Debug( "%s^*: dropped gamestate, resending", cl->name );
 			SV_SendClientGameState( cl );
 		}
 
@@ -1496,20 +1510,15 @@ void SV_ExecuteClientMessage( client_t *cl, msg_t *msg )
 				return; // disconnect command
 			}
 		}
-		while ( 1 );
+		while ( true );
 
 		return;
 	}
 
 	// read optional clientCommand strings
-	do
+	for (;;)
 	{
 		c = MSG_ReadByte( msg );
-
-		if ( c == clc_EOF )
-		{
-			break;
-		}
 
 		if ( c != clc_clientCommand )
 		{
@@ -1526,25 +1535,22 @@ void SV_ExecuteClientMessage( client_t *cl, msg_t *msg )
 			return; // disconnect command
 		}
 	}
-	while ( 1 );
 
 	// read the usercmd_t
-	if ( c == clc_move )
-	{
-		SV_UserMove( cl, msg, true );
+	if (c == clc_move) {
+		SV_UserMove(cl, msg, true);
+	} else if (c == clc_moveNoDelta) {
+		SV_UserMove(cl, msg, false);
+	} else if (c != clc_EOF) {
+		Log::Warn("bad command byte for client %i\n", (int) (cl - svs.clients));
 	}
-	else if ( c == clc_moveNoDelta )
-	{
-		SV_UserMove( cl, msg, false );
-	}
-	else if ( c != clc_EOF )
-	{
-		Log::Warn( "bad command byte for client %i\n", ( int )( cl - svs.clients ) );
+	if (c != clc_EOF && MSG_ReadByte(msg) != clc_EOF) {
+		Log::Warn("missing clc_EOF byte for client %i\n", (int) (cl - svs.clients));
 	}
 
 	SV_ParseBinaryMessage( cl, msg );
-
-//  if ( msg->readcount != msg->cursize ) {
-//      Log::Notice( "WARNING: Junk at end of packet for client %i\n", cl - svs.clients );
-//  }
+//  TODO: track bytes read
+//	if (msg->readcount != msg->cursize) {
+//		Log::Warn("Junk at end of packet for client %i (%i bytes), read %i of %i bytes", cl - svs.clients, msg->cursize - msg->readcount, msg->readcount, msg->cursize);
+//	}
 }

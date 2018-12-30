@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -20,7 +20,7 @@
 
 
 #include "sg_local.h"
-#include "CBSE.h"
+#include "Entities.h"
 
 /*
 ================
@@ -122,6 +122,7 @@ void G_AreaTeamCommand( gentity_t *ent, const char *cmd )
 	}
 }
 
+// TODO: Add a TeamComponent.
 team_t G_Team( gentity_t *ent )
 {
 	if ( ent->client )
@@ -231,6 +232,7 @@ void G_UpdateTeamConfigStrings()
 G_LeaveTeam
 ==================
 */
+
 void G_LeaveTeam( gentity_t *self )
 {
 	team_t    team = (team_t) self->client->pers.team;
@@ -303,6 +305,7 @@ void G_LeaveTeam( gentity_t *self )
 G_ChangeTeam
 =================
 */
+
 void G_ChangeTeam( gentity_t *ent, team_t newTeam )
 {
 	team_t oldTeam = (team_t) ent->client->pers.team;
@@ -369,14 +372,10 @@ void G_ChangeTeam( gentity_t *ent, team_t newTeam )
 	TeamplayInfoMessage( ent );
 }
 
-/*
-===========
-Team_GetLocation
-
-Report a location for the player. Uses placed nearby target_location entities
-============
-*/
-gentity_t *Team_GetLocation( gentity_t *ent )
+/**
+ * @todo Move out of sg_team.c as it is not team-specific.
+ */
+gentity_t *GetCloseLocationEntity( gentity_t *ent )
 {
 	gentity_t *eloc, *best;
 	float     bestlen, len;
@@ -509,7 +508,7 @@ void TeamplayInfoMessage( gentity_t *ent )
 			{
 				upgrade = UP_NONE;
 			}
-			health = static_cast<int>( std::ceil( player->entity->Get<HealthComponent>()->Health() ) );
+			health = static_cast<int>( std::ceil( Entities::HealthOf(player) ) );
 		}
 #ifdef UNREALARENA
 		else if ( cl->pers.team == TEAM_Q )
@@ -523,7 +522,7 @@ void TeamplayInfoMessage( gentity_t *ent )
 			curWeaponClass = cl->ps.stats[ STAT_CLASS ];
 #endif
 			upgrade = UP_NONE;
-			health = static_cast<int>( std::ceil( player->entity->Get<HealthComponent>()->Health() ) );
+			health = static_cast<int>( std::ceil( Entities::HealthOf(player) ) );
 		}
 
 #ifdef UNREALARENA
@@ -609,7 +608,7 @@ void CheckTeamStatus()
 			                     ent->client->pers.team == TEAM_ALIENS ) )
 #endif
 			{
-				loc = Team_GetLocation( ent );
+				loc = GetCloseLocationEntity( ent );
 
 				if ( loc )
 				{

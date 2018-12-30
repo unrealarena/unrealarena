@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
@@ -20,7 +20,7 @@
 
 #include "sg_local.h"
 #include "sg_spawn.h"
-#include "CBSE.h"
+#include "Entities.h"
 
 /*
 =================================================================================
@@ -145,7 +145,7 @@ void game_kill_act( gentity_t*, gentity_t*, gentity_t *activator )
 		return;
 	}
 
-	G_Kill(activator, MOD_TELEFRAG);
+	Entities::Kill(activator, MOD_TELEFRAG);
 }
 
 void SP_game_kill( gentity_t *self )

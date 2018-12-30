@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,16 +20,16 @@
 
 #include "sg_bot_parse.h"
 #include "sg_bot_util.h"
-#include "CBSE.h"
+#include "Entities.h"
 
 static botMemory_t g_botMind[MAX_CLIENTS];
 static AITreeList_t treeList;
 
 /*
- = *======================
- Bot management functions
- =======================
- */
+=======================
+Bot management functions
+=======================
+*/
 static struct
 {
 	int count;
@@ -51,7 +51,7 @@ static void G_BotListTeamNames( gentity_t *ent, const char *heading, team_t team
 
 		for ( i = 0; i < botNames[team].count; ++i )
 		{
-			ADMBP( va( "  %s^7 %s", botNames[team].name[i].inUse ? marker : " ", botNames[team].name[i].name ) );
+			ADMBP( va( "  %s^* %s", botNames[team].name[i].inUse ? marker : " ", botNames[team].name[i].name ) );
 		}
 
 		ADMBP_end();
@@ -71,65 +71,69 @@ void G_BotListNames( gentity_t *ent )
 
 bool G_BotClearNames()
 {
-#ifdef UNREALARENA
 	int i;
 
+#ifdef UNREALARENA
 	for ( i = 0; i < botNames[TEAM_Q].count; ++i )
+	{
 		if ( botNames[TEAM_Q].name[i].inUse )
 		{
 			return false;
 		}
+	}
 
-		for ( i = 0; i < botNames[TEAM_U].count; ++i )
-			if ( botNames[TEAM_U].name[i].inUse )
-			{
-				return false;
-			}
+	for ( i = 0; i < botNames[TEAM_U].count; ++i )
+	{
+		if ( botNames[TEAM_U].name[i].inUse )
+		{
+			return false;
+		}
+	}
 
-			for ( i = 0; i < botNames[TEAM_Q].count; ++i )
-			{
-				BG_Free( botNames[TEAM_Q].name[i].name );
-			}
+	for ( i = 0; i < botNames[TEAM_Q].count; ++i )
+	{
+		BG_Free( botNames[TEAM_Q].name[i].name );
+	}
 
-			for ( i = 0; i < botNames[TEAM_U].count; ++i )
-			{
-				BG_Free( botNames[TEAM_U].name[i].name );
-			}
+	for ( i = 0; i < botNames[TEAM_U].count; ++i )
+	{
+		BG_Free( botNames[TEAM_U].name[i].name );
+	}
 
-			botNames[TEAM_Q].count = 0;
-			botNames[TEAM_U].count = 0;
-
-			return true;
+	botNames[TEAM_Q].count = 0;
+	botNames[TEAM_U].count = 0;
 #else
-	int i;
-
 	for ( i = 0; i < botNames[TEAM_ALIENS].count; ++i )
+	{
 		if ( botNames[TEAM_ALIENS].name[i].inUse )
 		{
 			return false;
 		}
+	}
 
-		for ( i = 0; i < botNames[TEAM_HUMANS].count; ++i )
-			if ( botNames[TEAM_HUMANS].name[i].inUse )
-			{
-				return false;
-			}
+	for ( i = 0; i < botNames[TEAM_HUMANS].count; ++i )
+	{
+		if ( botNames[TEAM_HUMANS].name[i].inUse )
+		{
+			return false;
+		}
+	}
 
-			for ( i = 0; i < botNames[TEAM_ALIENS].count; ++i )
-			{
-				BG_Free( botNames[TEAM_ALIENS].name[i].name );
-			}
+	for ( i = 0; i < botNames[TEAM_ALIENS].count; ++i )
+	{
+		BG_Free( botNames[TEAM_ALIENS].name[i].name );
+	}
 
-			for ( i = 0; i < botNames[TEAM_HUMANS].count; ++i )
-			{
-				BG_Free( botNames[TEAM_HUMANS].name[i].name );
-			}
+	for ( i = 0; i < botNames[TEAM_HUMANS].count; ++i )
+	{
+		BG_Free( botNames[TEAM_HUMANS].name[i].name );
+	}
 
-			botNames[TEAM_ALIENS].count = 0;
-			botNames[TEAM_HUMANS].count = 0;
-
-			return true;
+	botNames[TEAM_ALIENS].count = 0;
+	botNames[TEAM_HUMANS].count = 0;
 #endif
+
+	return true;
 }
 
 int G_BotAddNames( team_t team, int arg, int last )
@@ -150,14 +154,18 @@ int G_BotAddNames( team_t team, int arg, int last )
 #else
 		for ( t = 1; t < NUM_TEAMS; ++t )
 #endif
+		{
 			for ( j = 0; j < botNames[t].count; ++j )
+			{
 				if ( !Q_stricmp( botNames[t].name[j].name, name ) )
 				{
 					goto next;
 				}
+			}
+		}
 
-				botNames[team].name[i].name = ( char * )BG_Alloc( strlen( name ) + 1 );
-			strcpy( botNames[team].name[i].name, name );
+		botNames[team].name[i].name = ( char * )BG_Alloc( strlen( name ) + 1 );
+		strcpy( botNames[team].name[i].name, name );
 
 		botNames[team].count = ++i;
 		++added;
@@ -251,7 +259,7 @@ bool G_BotSetDefaults( int clientNum, team_t team, int skill, const char* behavi
 	return true;
 }
 
-bool G_BotAdd( char *name, team_t team, int skill, const char *behavior )
+bool G_BotAdd( const char *name, team_t team, int skill, const char *behavior, bool filler )
 {
 	int clientNum;
 	char userinfo[MAX_INFO_STRING];
@@ -278,7 +286,7 @@ bool G_BotAdd( char *name, team_t team, int skill, const char *behavior )
 	bot->r.svFlags |= SVF_BOT;
 	bot->inuse = true;
 
-	if ( !Q_stricmp( name, "*" ) )
+	if ( !Q_stricmp( name, BOT_NAME_FROM_LIST ) )
 	{
 		name = G_BotSelectName( team );
 		autoname = name != nullptr;
@@ -326,6 +334,8 @@ bool G_BotAdd( char *name, team_t team, int skill, const char *behavior )
 
 	ClientBegin( clientNum );
 	bot->pain = BotPain; // ClientBegin resets the pain function
+	level.clients[clientNum].pers.isFillerBot = filler;
+	G_ChangeTeam( bot, team );
 	return true;
 }
 
@@ -337,7 +347,7 @@ void G_BotDel( int clientNum )
 
 	if ( !( bot->r.svFlags & SVF_BOT ) || !bot->botMind )
 	{
-		Log::Warn( "'^7%s^7' is not a bot", bot->client->pers.netname );
+		Log::Warn( "'^7%s^*' is not a bot", bot->client->pers.netname );
 		return;
 	}
 
@@ -349,7 +359,7 @@ void G_BotDel( int clientNum )
 		G_BotNameUsed( BotGetEntityTeam( bot ), autoname, false );
 	}
 
-	trap_SendServerCommand( -1, va( "print_tr %s %s", QQ( N_( "$1$^7 disconnected" ) ),
+	trap_SendServerCommand( -1, va( "print_tr %s %s", QQ( N_( "$1$^* disconnected" ) ),
 					Quote( bot->client->pers.netname ) ) );
 	trap_DropClient( clientNum, "disconnected" );
 }
@@ -376,6 +386,11 @@ void G_BotDelAllBots()
 	{
 		botNames[TEAM_U].name[i].inUse = false;
 	}
+
+	for (team_t team : {TEAM_Q, TEAM_U})
+	{
+		level.team[team].botFillTeamSize = 0;
+	}
 #else
 	for ( i = 0; i < botNames[TEAM_ALIENS].count; ++i )
 	{
@@ -386,14 +401,19 @@ void G_BotDelAllBots()
 	{
 		botNames[TEAM_HUMANS].name[i].inUse = false;
 	}
+
+	for (team_t team : {TEAM_ALIENS, TEAM_HUMANS})
+	{
+		level.team[team].botFillTeamSize = 0;
+	}
 #endif
 }
 
 /*
- = *======================
- Bot Thinks
- =======================
- */
+=======================
+Bot Thinks
+=======================
+*/
 
 void G_BotThink( gentity_t *self )
 {
@@ -427,9 +447,10 @@ void G_BotThink( gentity_t *self )
 	BotFindClosestBuildings( self );
 	BotFindDamagedFriendlyStructure( self );
 #endif
+	BotCalculateStuckTime( self );
 
 	//use medkit when hp is low
-	if ( self->entity->Get<HealthComponent>()->Health() < BOT_USEMEDKIT_HP &&
+	if ( Entities::HealthOf(self) < BOT_USEMEDKIT_HP &&
 	     BG_InventoryContainsUpgrade( UP_MEDKIT, self->client->ps.stats ) )
 	{
 		BG_ActivateUpgrade( UP_MEDKIT, self->client->ps.stats );
@@ -562,11 +583,6 @@ void G_BotSpectatorThink( gentity_t *self )
 
 		G_PushSpawnQueue( &level.team[ teamnum ].spawnQueue, clientNum );
 	}
-	else
-	{
-		G_ChangeTeam( self, self->client->sess.restartTeam );
-		self->client->sess.restartTeam = TEAM_NONE;
-	}
 }
 
 void G_BotIntermissionThink( gclient_t *client )
@@ -583,22 +599,56 @@ void G_BotInit()
 	}
 }
 
-void G_BotCleanup( int restart )
+void G_BotCleanup()
 {
-	if ( !restart )
+	for ( int i = 0; i < MAX_CLIENTS; ++i )
 	{
-		int i;
-
-		for ( i = 0; i < MAX_CLIENTS; ++i )
+		if ( g_entities[i].r.svFlags & SVF_BOT && level.clients[i].pers.connected != CON_DISCONNECTED )
 		{
-			if ( g_entities[i].r.svFlags & SVF_BOT && level.clients[i].pers.connected != CON_DISCONNECTED )
-			{
-				G_BotDel( i );
-			}
+			G_BotDel( i );
 		}
-
-		G_BotClearNames();
 	}
+
+	G_BotClearNames();
+
 	FreeTreeList( &treeList );
 	G_BotNavCleanup();
+}
+
+// add or remove bots to match team size targets set by 'bot fill' command
+void G_BotFill(bool immediately)
+{
+	static int nextCheck = 0;
+	if (!immediately && level.time < nextCheck) {
+		return;  // don't check every frame to prevent warning spam
+	}
+	nextCheck = level.time + 2000;
+
+#ifdef UNREALARENA
+	for (team_t team : {TEAM_Q, TEAM_U}) {
+#else
+	for (team_t team : {TEAM_ALIENS, TEAM_HUMANS}) {
+#endif
+		auto& t = level.team[team];
+		int teamSize = t.numClients;
+		if (teamSize > t.botFillTeamSize && t.numBots > 0) {
+			for (int client = 0; client < MAX_CLIENTS; client++) {
+				if (level.clients[client].pers.connected == CON_CONNECTED
+						&& level.clients[client].pers.team == team
+						&& level.clients[client].pers.isFillerBot) {
+					G_BotDel(client);
+					if (--teamSize <= t.botFillTeamSize) {
+						break;
+					}
+				}
+			}
+		} else if (teamSize < t.botFillTeamSize) {
+			int additionalBots = t.botFillTeamSize - teamSize;
+			while (additionalBots--) {
+				if (!G_BotAdd(BOT_NAME_FROM_LIST, team, t.botFillSkillLevel, BOT_DEFAULT_BEHAVIOR, true)) {
+					break;
+				}
+			}
+		}
+	}
 }

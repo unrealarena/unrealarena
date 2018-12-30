@@ -1,5 +1,5 @@
 /*
- * CBSE Source Code
+ * CBSE GPL Source Code
  * Copyright (C) 2016  Unreal Arena
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,6 +19,6 @@
 
 #include "ClientComponent.h"
 
-ClientComponent::ClientComponent(Entity& entity, gclient_t* clientData)
-	: ClientComponentBase(entity, clientData)
+ClientComponent::ClientComponent(Entity& entity, gclient_t* clientData, TeamComponent& r_TeamComponent)
+	: ClientComponentBase(entity, clientData, r_TeamComponent)
 {}

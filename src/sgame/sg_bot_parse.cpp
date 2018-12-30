@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 
 #include "sg_bot_parse.h"
 #include "sg_bot_util.h"
-#include "CBSE.h"
+#include "Entities.h"
 
 static bool expectToken( const char *s, pc_token_list **list, bool next )
 {
@@ -31,13 +31,13 @@ static bool expectToken( const char *s, pc_token_list **list, bool next )
 		Log::Warn( "Expected token %s but found end of file", s );
 		return false;
 	}
-	
+
 	if ( Q_stricmp( current->token.string, s ) != 0 )
 	{
 		Log::Warn( "Expected token %s but found %s on line %d", s, current->token.string, current->token.line );
 		return false;
 	}
-	
+
 	if ( next )
 	{
 		*list = current->next;
@@ -109,7 +109,7 @@ static AIValue_t goalDead( gentity_t *self, const AIValue_t* )
 	{
 		dead = true;
 	}
-	else if ( !G_Alive( self->botMind->goal.ent ) )
+	else if ( !Entities::IsAlive( self->botMind->goal.ent ) )
 	{
 		dead = true;
 	}
@@ -164,7 +164,7 @@ static AIValue_t distanceTo( gentity_t *self, const AIValue_t *params )
 {
 	AIEntity_t e = ( AIEntity_t ) AIUnBoxInt( params[ 0 ] );
 	botEntityAndDistance_t ent = AIEntityToGentity( self, e );
-	
+
 	return AIBoxFloat( ent.distance );
 }
 
@@ -310,15 +310,19 @@ static AIValue_t percentHealth( gentity_t *self, const AIValue_t *params )
 	AIEntity_t e = ( AIEntity_t ) AIUnBoxInt( params[ 0 ] );
 	botEntityAndDistance_t et = AIEntityToGentity( self, e );
 	float healthFraction;
-	HealthComponent *healthComponent;
 
-	if (et.ent && (healthComponent = et.ent->entity->Get<HealthComponent>())) {
-		healthFraction = healthComponent->HealthFraction();
+	if (Entities::HasHealthComponent(et.ent)) {
+		healthFraction = Entities::HealthFraction(et.ent);
 	} else {
 		healthFraction = 0.0f;
 	}
 
 	return AIBoxFloat( healthFraction );
+}
+
+static AIValue_t stuckTime( gentity_t *self, const AIValue_t* )
+{
+	return AIBoxInt( level.time - self->botMind->stuckTime );
 }
 
 // functions accessible to the behavior tree for use in condition nodes
@@ -362,6 +366,7 @@ static const struct AIConditionMap_s
 	{ "percentHealth",     VALUE_FLOAT, percentHealth,     1 },
 	{ "random",            VALUE_FLOAT, randomChance,      0 },
 	{ "skill",             VALUE_INT,   botSkill,          0 },
+	{ "stuckTime",         VALUE_INT,   stuckTime,         0 },
 	{ "team",              VALUE_INT,   botTeam,           0 },
 	{ "teamateHasWeapon",  VALUE_INT,   teamateHasWeapon,  1 },
 	{ "weapon",            VALUE_INT,   currentWeapon,     0 }
@@ -759,6 +764,7 @@ condition [expression]
 [expression] can be any valid set of boolean operations and values
 ======================
 */
+
 AIGenericNode_t *ReadConditionNode( pc_token_list **tokenlist )
 {
 	pc_token_list *current = *tokenlist;
@@ -940,17 +946,20 @@ static const struct AIActionMap_s
 	{ "fireWeapon",        BotActionFireWeapon,        0, 0 },
 	{ "flee",              BotActionFlee,              0, 0 },
 	{ "heal",              BotActionHeal,              0, 0 },
+	{ "jump",              BotActionJump,              0, 0 },
 	{ "moveInDir",         BotActionMoveInDir,         1, 2 },
 	{ "moveTo",            BotActionMoveTo,            1, 2 },
 	{ "moveToGoal",        BotActionMoveToGoal,        0, 0 },
 #ifndef UNREALARENA
 	{ "repair",            BotActionRepair,            0, 0 },
 #endif
+	{ "resetStuckTime",    BotActionResetStuckTime,    0, 0 },
 	{ "roam",              BotActionRoam,              0, 0 },
 	{ "roamInRadius",      BotActionRoamInRadius,      2, 2 },
 	{ "rush",              BotActionRush,              0, 0 },
 	{ "say",               BotActionSay,               2, 2 },
-	{ "strafeDodge",       BotActionStrafeDodge,       0, 0 }
+	{ "strafeDodge",       BotActionStrafeDodge,       0, 0 },
+	{ "suicide",           BotActionSuicide,           0, 0 },
 };
 
 /*
@@ -966,6 +975,7 @@ action name( p1, p2, ... )
 Where name defines the action to execute, and the parameters are surrounded by parenthesis
 ======================
 */
+
 AIGenericNode_t *ReadActionNode( pc_token_list **tokenlist )
 {
 	pc_token_list *current = *tokenlist;
@@ -1083,6 +1093,7 @@ Parses and creates an AINodeList_t from a token list
 The token list pointer is modified to point to the beginning of the next node text block after reading
 ======================
 */
+
 AIGenericNode_t *ReadNodeList( pc_token_list **tokenlist )
 {
 	AINodeList_t *list;
@@ -1234,6 +1245,7 @@ ReadBehaviorTree
 Load a behavior tree of the given name from a file
 ======================
 */
+
 AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 {
 	int i;
@@ -1313,7 +1325,6 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( E_H_MEDISTAT );
 	D( E_H_DRILL );
 	D( E_H_REACTOR );
-	D( E_H_REPEATER );
 	D( E_GOAL );
 	D( E_ENEMY );
 	D( E_DAMAGEDBUILDING );
@@ -1337,7 +1348,7 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( PCL_HUMAN_MEDIUM );
 	D( PCL_HUMAN_BSUIT );
 #endif
-	
+
 	D( MOVE_FORWARD );
 	D( MOVE_BACKWARD );
 	D( MOVE_RIGHT );
@@ -1356,7 +1367,7 @@ AIBehaviorTree_t *ReadBehaviorTree( const char *name, AITreeList_t *list )
 	D( SAY_TEAM );
 	D( SAY_AREA );
 	D( SAY_AREA_TEAM );
-	
+
 	Q_strncpyz( treefilename, va( "bots/%s.bt", name ), sizeof( treefilename ) );
 
 	handle = trap_Parse_LoadSource( treefilename );
@@ -1405,7 +1416,7 @@ pc_token_list *CreateTokenList( int handle )
 	while ( trap_Parse_ReadToken( handle, &token ) )
 	{
 		pc_token_list *list = ( pc_token_list * ) BG_Alloc( sizeof( pc_token_list ) );
-		
+
 		if ( current )
 		{
 			list->prev = current;
@@ -1416,7 +1427,7 @@ pc_token_list *CreateTokenList( int handle )
 			list->prev = list;
 			root = list;
 		}
-		
+
 		current = list;
 		current->next = nullptr;
 
@@ -1541,7 +1552,7 @@ void FreeExpression( AIExpType_t *exp )
 	else if ( *exp == EX_VALUE )
 	{
 		AIValue_t *v = ( AIValue_t * ) exp;
-		
+
 		FreeValue( v );
 	}
 	else if ( *exp == EX_OP )

@@ -1,23 +1,23 @@
 set(CRUNCHLIST
-    ${LIB_DIR}/crunch/crn_decomp.h
-    ${LIB_DIR}/crunch/crnlib.h
+    ${LIB_DIR}/crunch/inc/crn_decomp.h
+    ${LIB_DIR}/crunch/inc/crnlib.h
 )
 
 set(DETOURLIST
-    ${LIB_DIR}/detour/DebugDraw.cpp
-    ${LIB_DIR}/detour/DetourAlloc.cpp
-    ${LIB_DIR}/detour/DetourAssert.h
-    ${LIB_DIR}/detour/DetourCommon.cpp
-    ${LIB_DIR}/detour/DetourDebugDraw.cpp
-    ${LIB_DIR}/detour/DetourNavMesh.cpp
-    ${LIB_DIR}/detour/DetourNavMeshBuilder.cpp
-    ${LIB_DIR}/detour/DetourNavMeshQuery.cpp
-    ${LIB_DIR}/detour/DetourMath.h
-    ${LIB_DIR}/detour/DetourNode.cpp
-    ${LIB_DIR}/detour/DetourPathCorridor.cpp
-    ${LIB_DIR}/detour/DetourStatus.h
-    ${LIB_DIR}/detour/DetourTileCache.cpp
-    ${LIB_DIR}/detour/DetourTileCacheBuilder.cpp
+    ${LIB_DIR}/recastnavigation/DebugUtils/Source/DebugDraw.cpp
+    ${LIB_DIR}/recastnavigation/Detour/Source/DetourAlloc.cpp
+    ${LIB_DIR}/recastnavigation/Detour/Include/DetourAssert.h
+    ${LIB_DIR}/recastnavigation/Detour/Source/DetourCommon.cpp
+    ${LIB_DIR}/recastnavigation/DebugUtils/Source/DetourDebugDraw.cpp
+    ${LIB_DIR}/recastnavigation/Detour/Source/DetourNavMesh.cpp
+    ${LIB_DIR}/recastnavigation/Detour/Source/DetourNavMeshBuilder.cpp
+    ${LIB_DIR}/recastnavigation/Detour/Source/DetourNavMeshQuery.cpp
+    ${LIB_DIR}/recastnavigation/Detour/Include/DetourMath.h
+    ${LIB_DIR}/recastnavigation/Detour/Source/DetourNode.cpp
+    ${LIB_DIR}/recastnavigation/DetourCrowd/Source/DetourPathCorridor.cpp
+    ${LIB_DIR}/recastnavigation/Detour/Include/DetourStatus.h
+    ${LIB_DIR}/recastnavigation/DetourTileCache/Source/DetourTileCache.cpp
+    ${LIB_DIR}/recastnavigation/DetourTileCache/Source/DetourTileCacheBuilder.cpp
 )
 
 set(FASTLZLIST
@@ -125,20 +125,6 @@ set(PDCURSESLIST
     ${LIB_DIR}/pdcurses/win32a/pdcscrn.c
     ${LIB_DIR}/pdcurses/win32a/pdcsetsc.c
     ${LIB_DIR}/pdcurses/win32a/pdcutil.c
-)
-
-set(RECASTLIST
-    ${LIB_DIR}/recast/ChunkyTriMesh.cpp
-    ${LIB_DIR}/recast/Recast.cpp
-    ${LIB_DIR}/recast/RecastAlloc.cpp
-    ${LIB_DIR}/recast/RecastArea.cpp
-    ${LIB_DIR}/recast/RecastContour.cpp
-    ${LIB_DIR}/recast/RecastFilter.cpp
-    ${LIB_DIR}/recast/RecastLayers.cpp
-    ${LIB_DIR}/recast/RecastMesh.cpp
-    ${LIB_DIR}/recast/RecastMeshDetail.cpp
-    ${LIB_DIR}/recast/RecastRasterization.cpp
-    ${LIB_DIR}/recast/RecastRegion.cpp
 )
 
 set(TINYFORMATLIST

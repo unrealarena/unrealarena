@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -50,6 +50,8 @@
 
 #define MAX_DAMAGE_REGIONS     16
 #define MAX_DAMAGE_REGION_TEXT 8192
+
+#define MAX_NAME_CHARACTERS 32
 
 #define FOFS(x) ((size_t)&(((gentity_t *)0 )->x ))
 

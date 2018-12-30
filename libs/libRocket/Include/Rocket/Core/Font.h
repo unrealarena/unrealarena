@@ -53,7 +53,7 @@ namespace Font
 		OVERLINE = 1,
 		STRIKE_THROUGH = 2
 	};
-};
+}
 
 }
 }

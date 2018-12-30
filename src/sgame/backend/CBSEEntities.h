@@ -1,3 +1,22 @@
+/*
+ * CBSE GPL Source Code
+ * Copyright (C) 2016-2018  Unreal Arena
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 // THIS FILE IS AUTO GENERATED, EDIT AT YOUR OWN RISK
 
 /*
@@ -26,7 +45,7 @@ class EmptyEntity: public Entity {
 		EmptyEntity(Params params);
 
 		/** Default destructor of EmptyEntity. */
-		virtual ~EmptyEntity();
+		virtual ~EmptyEntity() = default;
 
 
 	private:
@@ -50,8 +69,9 @@ class ClientEntity: public Entity {
 		ClientEntity(Params params);
 
 		/** Default destructor of ClientEntity. */
-		virtual ~ClientEntity();
+		virtual ~ClientEntity() = default;
 
+		TeamComponent c_TeamComponent; /**< ClientEntity's TeamComponent instance. */
 		ClientComponent c_ClientComponent; /**< ClientEntity's ClientComponent instance. */
 
 	private:
@@ -68,6 +88,7 @@ class SpectatorEntity: public Entity {
 		/** Initialization parameters for SpectatorEntity. */
 		struct Params {
 			gentity_t* oldEnt;
+			team_t Team_team;
 			gclient_t* Client_clientData;
 		};
 
@@ -75,8 +96,9 @@ class SpectatorEntity: public Entity {
 		SpectatorEntity(Params params);
 
 		/** Default destructor of SpectatorEntity. */
-		virtual ~SpectatorEntity();
+		virtual ~SpectatorEntity() = default;
 
+		TeamComponent c_TeamComponent; /**< SpectatorEntity's TeamComponent instance. */
 		ClientComponent c_ClientComponent; /**< SpectatorEntity's ClientComponent instance. */
 		SpectatorComponent c_SpectatorComponent; /**< SpectatorEntity's SpectatorComponent instance. */
 
@@ -101,8 +123,9 @@ class QPlayerEntity: public Entity {
 		QPlayerEntity(Params params);
 
 		/** Default destructor of QPlayerEntity. */
-		virtual ~QPlayerEntity();
+		virtual ~QPlayerEntity() = default;
 
+		TeamComponent c_TeamComponent; /**< QPlayerEntity's TeamComponent instance. */
 		ClientComponent c_ClientComponent; /**< QPlayerEntity's ClientComponent instance. */
 		HealthComponent c_HealthComponent; /**< QPlayerEntity's HealthComponent instance. */
 		KnockbackComponent c_KnockbackComponent; /**< QPlayerEntity's KnockbackComponent instance. */
@@ -128,8 +151,9 @@ class UPlayerEntity: public Entity {
 		UPlayerEntity(Params params);
 
 		/** Default destructor of UPlayerEntity. */
-		virtual ~UPlayerEntity();
+		virtual ~UPlayerEntity() = default;
 
+		TeamComponent c_TeamComponent; /**< UPlayerEntity's TeamComponent instance. */
 		ClientComponent c_ClientComponent; /**< UPlayerEntity's ClientComponent instance. */
 		HealthComponent c_HealthComponent; /**< UPlayerEntity's HealthComponent instance. */
 		KnockbackComponent c_KnockbackComponent; /**< UPlayerEntity's KnockbackComponent instance. */

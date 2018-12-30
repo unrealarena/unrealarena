@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2016-2018  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -31,11 +31,12 @@
 
 static const Color::Color console_color = Color::White;
 static const int DEFAULT_CONSOLE_WIDTH = 78;
-static const int MAX_CONSOLE_WIDTH   = 1024;
 
 int g_console_field_width = DEFAULT_CONSOLE_WIDTH;
 
 console_t consoleState;
+
+Console::Field g_consoleField(INT_MAX);
 
 cvar_t    *con_animationSpeed;
 cvar_t    *con_animationType;
@@ -76,7 +77,6 @@ cvar_t    *con_debug;
 static const int ANIMATION_TYPE_NONE   = 0;
 static const int ANIMATION_TYPE_SCROLL_DOWN = 1;
 static const int ANIMATION_TYPE_FADE   = 2;
-static const int ANIMATION_TYPE_BOTH   = 3;
 
 /*
 ================
@@ -116,7 +116,7 @@ Con_Clear_f
 void Con_Clear_f()
 {
 	consoleState.lines.clear();
-	Con_ScrollToBottom(); // go to end
+	consoleState.scrollLineIndex = consoleState.bottomDisplayedLine = -1;
 }
 
 /*
@@ -268,7 +268,7 @@ void Con_Grep_f()
 		{
 			unsigned sub_size = std::min<unsigned>( it->size() - i, MAXPRINTMSG - 1 );
 			std::string substring = it->substr(i, sub_size);
-			Log::Notice( "%s", substring.c_str() );
+			Log::Notice( substring.c_str() );
 		}
 
 		++it;
@@ -633,7 +633,7 @@ void Con_DrawInput( int linePosition, float overrideAlpha )
 #ifdef UNREALARENA
 	Com_sprintf( prompt,  sizeof( prompt ), "%s", con_prompt->string );
 #else
-	Com_sprintf( prompt,  sizeof( prompt ), "^0[^3%02d%c%02d^0]^7 %s", realtime.tm_hour, ( realtime.tm_sec & 1 ) ? ':' : ' ', realtime.tm_min, con_prompt->string );
+	Com_sprintf( prompt,  sizeof( prompt ), "^0[^3%02d%c%02d^0]^* %s", realtime.tm_hour, ( realtime.tm_sec & 1 ) ? ':' : ' ', realtime.tm_min, con_prompt->string );
 #endif
 
 	Color::Color color = console_color;
@@ -1106,7 +1106,7 @@ void Con_DrawConsole()
 {
 	// render console only if flag is set or is within an animation but also in special disconnected states
 	if ( !consoleState.isOpened && consoleState.currentAnimationFraction <= 0
-		&& !( cls.state == connstate_t::CA_DISCONNECTED && !( cls.keyCatchers & ( KEYCATCH_UI | KEYCATCH_CGAME ) ) ) )
+		&& !( cls.state == connstate_t::CA_DISCONNECTED && !( cls.keyCatchers & KEYCATCH_UI ) ) )
 		return;
 
 
@@ -1203,7 +1203,7 @@ class GraphicalTarget : public Log::Target {
 			this->Register(Log::GRAPHICAL_CONSOLE);
 		}
 
-		virtual bool Process(const std::vector<Log::Event>& events) OVERRIDE {
+		virtual bool Process(const std::vector<Log::Event>& events) override {
 			// for some demos we don't want to ever show anything on the console
 			// flush the buffer
 			if ( cl_noprint && cl_noprint->integer )
@@ -1277,7 +1277,6 @@ void Con_ScrollToTop()
 void Con_ScrollToBottom()
 {
 	consoleState.scrollLineIndex = consoleState.lines.size() - 1;
-	//consoleState.bottomDisplayedLine = consoleState.currentLine;
 }
 
 void Con_JumpUp()

@@ -431,7 +431,7 @@ static char    *ParseExpressionElement( const char **data_p )
 	}
 
 	// skip whitespace
-	while ( 1 )
+	while ( true )
 	{
 		// skip whitespace
 		while ( ( c = *data ) <= ' ' )
@@ -492,7 +492,7 @@ static char    *ParseExpressionElement( const char **data_p )
 	{
 		data++;
 
-		while ( 1 )
+		while ( true )
 		{
 			c = *data++;
 
@@ -677,7 +677,7 @@ static void ParseExpression( const char **text, expression_t *exp )
 	op.value = 0;
 	inFixOps[ numInFixOps++ ] = op;
 
-	while ( 1 )
+	while ( true )
 	{
 		token = ParseExpressionElement( text );
 
@@ -1336,7 +1336,7 @@ static bool ParseMap( const char **text, char *buffer, int bufferSize )
 	// addnormals (textures/caves/tembrick1crum_local.tga, heightmap (textures/caves/tembrick1crum_bmp.tga, 3 ))
 	// heightmap( textures/hell/hellbones_d07bbump.tga, 8)
 
-	while ( 1 )
+	while ( true )
 	{
 		token = COM_ParseExt2( text, false );
 
@@ -1367,7 +1367,6 @@ static bool LoadMap( shaderStage_t *stage, const char *buffer )
 	char         *token;
 	int          imageBits = 0;
 	filterType_t filterType;
-	wrapType_t   wrapType;
 	const char         *buffer_p = &buffer[ 0 ];
 
 	if ( !buffer || !buffer[ 0 ] )
@@ -1419,11 +1418,6 @@ static bool LoadMap( shaderStage_t *stage, const char *buffer )
 		imageBits |= IF_DISPLACEMAP;
 	}
 
-	if ( stage->uncompressed || stage->highQuality || stage->forceHighQuality || shader.uncompressed )
-	{
-		imageBits |= IF_NOCOMPRESSION;
-	}
-
 	if ( stage->stateBits & ( GLS_ATEST_BITS ) )
 	{
 		imageBits |= IF_ALPHATEST;
@@ -1438,14 +1432,7 @@ static bool LoadMap( shaderStage_t *stage, const char *buffer )
 		filterType = shader.filterType;
 	}
 
-	if ( stage->overrideWrapType )
-	{
-		wrapType = stage->wrapType;
-	}
-	else
-	{
-		wrapType = shader.wrapType;
-	}
+	wrapType_t wrapType = stage->overrideWrapType ? stage->wrapType : shader.wrapType;
 
 	// try to load the image
 	stage->bundle[ 0 ].image[ 0 ] = R_FindImageFile( buffer, imageBits, filterType, wrapType );
@@ -1510,7 +1497,7 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 	char         buffer[ 1024 ] = "";
 	bool     loadMap = false;
 
-	while ( 1 )
+	while ( true )
 	{
 		token = COM_ParseExt2( text, true );
 
@@ -1602,7 +1589,7 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 			stage->bundle[ 0 ].imageAnimationSpeed = atof( token );
 
 			// parse up to MAX_IMAGE_ANIMATIONS animations
-			while ( 1 )
+			while ( true )
 			{
 				int num;
 
@@ -1756,10 +1743,9 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 		{
 			stage->overrideWrapType = true;
 		}
-		// uncompressed
+		// uncompressed (removed option)
 		else if ( !Q_stricmp( token, "uncompressed" ) )
 		{
-			stage->uncompressed = true;
 		}
 		// highQuality
 		else if ( !Q_stricmp( token, "highQuality" ) )
@@ -1858,7 +1844,7 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 			{
 				stage->type = stageType_t::ST_DIFFUSEMAP;
 			}
-			else if ( !Q_stricmp( token, "bumpMap" ) )
+			else if ( !Q_stricmp( token, "normalMap" ) || !Q_stricmp( token, "bumpMap" ) )
 			{
 				stage->type = stageType_t::ST_NORMALMAP;
 			}
@@ -2197,10 +2183,12 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 			{
 				//Log::Warn("texGen environment keyword not supported in shader '%s'", shader.name);
 				stage->tcGen_Environment = true;
+				stage->tcGen_Lightmap = false;
 			}
 			else if ( !Q_stricmp( token, "lightmap" ) )
 			{
 				stage->tcGen_Lightmap = true;
+				stage->tcGen_Environment = false;
 			}
 			else if ( !Q_stricmp( token, "texture" ) || !Q_stricmp( token, "base" ) )
 			{
@@ -2421,7 +2409,7 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 		{
 			Log::Warn("unknown shader stage parameter '%s' in shader '%s'", token, shader.name );
 			SkipRestOfLine( text );
-			return false;
+			continue;
 		}
 	}
 
@@ -2990,11 +2978,6 @@ static void ParseDiffuseMap( shaderStage_t *stage, const char **text )
 	stage->rgbGen = colorGen_t::CGEN_IDENTITY;
 	stage->stateBits = GLS_DEFAULT;
 
-	if ( !r_compressDiffuseMaps->integer )
-	{
-		stage->uncompressed = true;
-	}
-
 	if ( ParseMap( text, buffer, sizeof( buffer ) ) )
 	{
 		LoadMap( stage, buffer );
@@ -3009,11 +2992,6 @@ static void ParseNormalMap( shaderStage_t *stage, const char **text )
 	stage->type = stageType_t::ST_NORMALMAP;
 	stage->rgbGen = colorGen_t::CGEN_IDENTITY;
 	stage->stateBits = GLS_DEFAULT;
-
-	if ( !r_compressNormalMaps->integer )
-	{
-		stage->uncompressed = true;
-	}
 
 	if ( r_highQualityNormalMapping->integer )
 	{
@@ -3038,11 +3016,6 @@ static void ParseSpecularMap( shaderStage_t *stage, const char **text )
 	stage->rgbGen = colorGen_t::CGEN_IDENTITY;
 	stage->stateBits = GLS_DEFAULT;
 
-	if ( !r_compressSpecularMaps->integer )
-	{
-		stage->uncompressed = true;
-	}
-
 	if ( ParseMap( text, buffer, sizeof( buffer ) ) )
 	{
 		LoadMap( stage, buffer );
@@ -3057,11 +3030,6 @@ static void ParseMaterialMap( shaderStage_t *stage, const char **text )
 	stage->type = stageType_t::ST_MATERIALMAP;
 	stage->rgbGen = colorGen_t::CGEN_IDENTITY;
 	stage->stateBits = GLS_DEFAULT;
-
-	if ( !r_compressSpecularMaps->integer )
-	{
-		stage->uncompressed = true;
-	}
 
 	if ( ParseMap( text, buffer, sizeof( buffer ) ) )
 	{
@@ -3161,7 +3129,7 @@ static bool ParseShader( const char *_text )
 		return false;
 	}
 
-	while ( 1 )
+	while ( true )
 	{
 		token = COM_ParseExt2( text, true );
 
@@ -3358,15 +3326,14 @@ static bool ParseShader( const char *_text )
 			shader.noPicMip = true;
 			continue;
 		}
-		// RF, allow each shader to permit compression if available
+		// RF, allow each shader to permit compression if available (removed option)
 		else if ( !Q_stricmp( token, "allowcompress" ) )
 		{
-			shader.uncompressed = false;
 			continue;
 		}
+		// (removed option)
 		else if ( !Q_stricmp( token, "nocompress" ) )
 		{
-			shader.uncompressed = true;
 			continue;
 		}
 		// polygonOffset
@@ -3710,7 +3677,8 @@ static bool ParseShader( const char *_text )
 		else
 		{
 			Log::Warn("unknown general shader parameter '%s' in '%s'", token, shader.name );
-			return false;
+			SkipRestOfLine( text );
+			continue;
 		}
 	}
 
@@ -3739,361 +3707,197 @@ CollapseMultitexture
 // *INDENT-OFF*
 static void CollapseStages()
 {
-	int           i, j;
-
-	bool      hasDiffuseStage;
-	bool      hasNormalStage;
-	bool      hasSpecularStage;
-	bool      hasMaterialStage;
-	bool      hasReflectionStage;
-	bool      hasGlowStage;
-
-	shaderStage_t tmpDiffuseStage;
-	shaderStage_t tmpNormalStage;
-	shaderStage_t tmpSpecularStage;
-	shaderStage_t tmpMaterialStage;
-	shaderStage_t tmpReflectionStage;
-	shaderStage_t tmpGlowStage;
-
-	shaderStage_t tmpColorStage;
-	shaderStage_t tmpLightmapStage;
-
-	shader_t      tmpShader;
-
-	int           numStages = 0;
-	shaderStage_t tmpStages[ MAX_SHADER_STAGES ];
-
 	if ( !r_collapseStages->integer )
 	{
 		return;
 	}
 
-	Com_Memcpy( &tmpShader, &shader, sizeof( shader ) );
+	collapseType_t tmpCollapseType = shader.collapseType;
+	shaderStage_t* activeStages[ MAX_SHADER_STAGES ];
+	int numActiveStages = 0;
+	for (shaderStage_t& stage : stages) {
+		if (stage.active) {
+			activeStages[numActiveStages++] = &stage;
+		}
+	}
+	int stagesWritten = 0;
 
-	Com_Memset( &tmpStages[ 0 ], 0, sizeof( stages ) );
-
-	for ( j = 0; j < MAX_SHADER_STAGES; j++ )
+	for ( int j = 0; j < numActiveStages; )
 	{
-		hasDiffuseStage = false;
-		hasNormalStage = false;
-		hasSpecularStage = false;
-		hasMaterialStage = false;
-		hasReflectionStage = false;
-		hasGlowStage = false;
-
-		Com_Memset( &tmpDiffuseStage, 0, sizeof( shaderStage_t ) );
-		Com_Memset( &tmpNormalStage, 0, sizeof( shaderStage_t ) );
-		Com_Memset( &tmpSpecularStage, 0, sizeof( shaderStage_t ) );
-		Com_Memset( &tmpGlowStage, 0, sizeof( shaderStage_t ) );
-
-		Com_Memset( &tmpColorStage, 0, sizeof( shaderStage_t ) );
-		Com_Memset( &tmpLightmapStage, 0, sizeof( shaderStage_t ) );
-
-		if ( !stages[ j ].active )
-		{
-			continue;
-		}
-
-		if (
-		  stages[ j ].type == stageType_t::ST_REFRACTIONMAP ||
-		  stages[ j ].type == stageType_t::ST_DISPERSIONMAP ||
-		  stages[ j ].type == stageType_t::ST_SKYBOXMAP ||
-		  stages[ j ].type == stageType_t::ST_SCREENMAP ||
-		  stages[ j ].type == stageType_t::ST_PORTALMAP ||
-		  stages[ j ].type == stageType_t::ST_HEATHAZEMAP ||
-		  stages[ j ].type == stageType_t::ST_LIQUIDMAP ||
-		  stages[ j ].type == stageType_t::ST_ATTENUATIONMAP_XY ||
-		  stages[ j ].type == stageType_t::ST_ATTENUATIONMAP_Z )
-		{
-			// only merge lighting relevant stages
-			tmpStages[ numStages ] = stages[ j ];
-			numStages++;
-			continue;
-		}
-
-		for ( i = 0; i < 4; i++ )
-		{
-			if ( ( j + i ) >= MAX_SHADER_STAGES )
+		struct CollapsibleStages {
+			const shaderStage_t* diffuseStage = nullptr;
+			const shaderStage_t* normalStage = nullptr;
+			const shaderStage_t* specularStage = nullptr;
+			const shaderStage_t* materialStage = nullptr;
+			const shaderStage_t* reflectionStage = nullptr;
+			const shaderStage_t* glowStage = nullptr;
+		};
+		auto FindStages = [&activeStages, numActiveStages](CollapsibleStages collapsibleStages, int i) {
+			if ( i >= numActiveStages )
 			{
-				continue;
+				return collapsibleStages;
 			}
 
-			if ( !stages[ j + i ].active )
+			if ( activeStages[ i ]->type == stageType_t::ST_DIFFUSEMAP && !collapsibleStages.diffuseStage )
 			{
-				continue;
+				collapsibleStages.diffuseStage = activeStages[ i ];
 			}
-
-			if ( stages[ j + i ].type == stageType_t::ST_DIFFUSEMAP && !hasDiffuseStage )
+			else if ( activeStages[ i ]->type == stageType_t::ST_NORMALMAP && !collapsibleStages.normalStage )
 			{
-				hasDiffuseStage = true;
-				tmpDiffuseStage = stages[ j + i ];
+				collapsibleStages.normalStage = activeStages[ i ];
 			}
-			else if ( stages[ j + i ].type == stageType_t::ST_NORMALMAP && !hasNormalStage )
+			else if ( activeStages[ i ]->type == stageType_t::ST_SPECULARMAP && !collapsibleStages.specularStage )
 			{
-				hasNormalStage = true;
-				tmpNormalStage = stages[ j + i ];
+				collapsibleStages.specularStage = activeStages[ i ];
 			}
-			else if ( stages[ j + i ].type == stageType_t::ST_SPECULARMAP && !hasSpecularStage )
+			else if ( activeStages[ i ]->type == stageType_t::ST_MATERIALMAP && !collapsibleStages.materialStage )
 			{
-				hasSpecularStage = true;
-				tmpSpecularStage = stages[ j + i ];
+				collapsibleStages.materialStage = activeStages[ i ];
 			}
-			else if ( stages[ j + i ].type == stageType_t::ST_MATERIALMAP && !hasMaterialStage )
+			else if ( activeStages[ i ]->type == stageType_t::ST_REFLECTIONMAP && !collapsibleStages.reflectionStage )
 			{
-				hasMaterialStage = true;
-				tmpMaterialStage = stages[ j + i ];
+				collapsibleStages.reflectionStage = activeStages[ i ];
 			}
-			else if ( stages[ j + i ].type == stageType_t::ST_REFLECTIONMAP && !hasReflectionStage )
+			else if ( activeStages[ i ]->type == stageType_t::ST_GLOWMAP && !collapsibleStages.glowStage )
 			{
-				hasReflectionStage = true;
-				tmpReflectionStage = stages[ j + i ];
+				collapsibleStages.glowStage = activeStages[ i ];
 			}
-			else if ( stages[ j + i ].type == stageType_t::ST_GLOWMAP && !hasGlowStage )
-			{
-				hasGlowStage = true;
-				tmpGlowStage = stages[ j + i ];
-			}
-		}
-
-		// NOTE: Tr3B - merge as many stages as possible
-		if( hasSpecularStage && hasMaterialStage ) {
-			Log::Warn( "specularMap disabled in favor of materialMap in shader '%s'\n", shader.name );
-			hasSpecularStage = false;
-		}
+			return collapsibleStages;
+		};
+		CollapsibleStages stages1 = FindStages(CollapsibleStages(), j);
+		CollapsibleStages stages2 = FindStages(stages1, j + 1);
+		CollapsibleStages stages3 = FindStages(stages2, j + 2);
+		CollapsibleStages stages4 = FindStages(stages3, j + 3);
 
 		// try to merge diffuse/normal/specular/glow
-		if ( hasDiffuseStage         &&
-		     hasNormalStage          &&
-		     hasSpecularStage        &&
-		     hasGlowStage
-		   )
+		if ( stages4.diffuseStage && stages4.normalStage && stages4.specularStage && stages4.glowStage )
 		{
-			tmpShader.collapseType = collapseType_t::COLLAPSE_lighting_DBSG;
+			tmpCollapseType = collapseType_t::COLLAPSE_lighting_DBSG;
 
-			tmpStages[ numStages ] = tmpDiffuseStage;
-			tmpStages[ numStages ].type = stageType_t::ST_COLLAPSE_lighting_DBSG;
+			shaderStage_t tmpStage = *stages4.diffuseStage;
+			tmpStage.type = stageType_t::ST_COLLAPSE_lighting_DBSG;
+			tmpStage.bundle[ TB_NORMALMAP ] = stages4.normalStage->bundle[ 0 ];
+			tmpStage.bundle[ TB_SPECULARMAP ] = stages4.specularStage->bundle[ 0 ];
+			tmpStage.specularExponentMin = stages4.specularStage->specularExponentMin;
+			tmpStage.specularExponentMax = stages4.specularStage->specularExponentMax;
+			tmpStage.bundle[ TB_GLOWMAP ] = stages4.glowStage->bundle[ 0 ];
 
-			tmpStages[ numStages ].bundle[ TB_NORMALMAP ] = tmpNormalStage.bundle[ 0 ];
-
-			tmpStages[ numStages ].bundle[ TB_SPECULARMAP ] = tmpSpecularStage.bundle[ 0 ];
-			tmpStages[ numStages ].specularExponentMin = tmpSpecularStage.specularExponentMin;
-			tmpStages[ numStages ].specularExponentMax = tmpSpecularStage.specularExponentMax;
-
-			tmpStages[ numStages ].bundle[ TB_GLOWMAP ] = tmpGlowStage.bundle[ 0 ];
-			numStages++;
-			j += 3;
-			continue;
+			stages[stagesWritten++] = tmpStage;
+			j += 4;
 		}
-		// try to merge diffuse/normal/specular
-		else if ( hasDiffuseStage         &&
-		          hasNormalStage          &&
-		          hasSpecularStage
-		   )
-		{
-			tmpShader.collapseType = collapseType_t::COLLAPSE_lighting_DBS;
 
-			tmpStages[ numStages ] = tmpDiffuseStage;
-			tmpStages[ numStages ].type = stageType_t::ST_COLLAPSE_lighting_DBS;
-
-			tmpStages[ numStages ].bundle[ TB_NORMALMAP ] = tmpNormalStage.bundle[ 0 ];
-
-			tmpStages[ numStages ].bundle[ TB_SPECULARMAP ] = tmpSpecularStage.bundle[ 0 ];
-			tmpStages[ numStages ].specularExponentMin = tmpSpecularStage.specularExponentMin;
-			tmpStages[ numStages ].specularExponentMax = tmpSpecularStage.specularExponentMax;
-
-			numStages++;
-			j += 2;
-			continue;
-		}
 		// try to merge diffuse/normal/material/glow
-		else if ( hasDiffuseStage         &&
-			  hasNormalStage          &&
-			  hasMaterialStage        &&
-			  hasGlowStage
-		   )
+		else if ( stages4.diffuseStage && stages4.normalStage && stages4.materialStage && stages4.glowStage )
 		{
-			tmpShader.collapseType = collapseType_t::COLLAPSE_lighting_DBMG;
+			tmpCollapseType = collapseType_t::COLLAPSE_lighting_DBMG;
 
-			tmpStages[ numStages ] = tmpDiffuseStage;
-			tmpStages[ numStages ].type = stageType_t::ST_COLLAPSE_lighting_DBMG;
+			shaderStage_t tmpStage = *stages4.diffuseStage;
+			tmpStage.type = stageType_t::ST_COLLAPSE_lighting_DBMG;
+			tmpStage.bundle[ TB_NORMALMAP ] = stages4.normalStage->bundle[ 0 ];
+			tmpStage.bundle[ TB_MATERIALMAP ] = stages4.materialStage->bundle[ 0 ];
+			tmpStage.bundle[ TB_GLOWMAP ] = stages4.glowStage->bundle[ 0 ];
 
-			tmpStages[ numStages ].bundle[ TB_NORMALMAP ] = tmpNormalStage.bundle[ 0 ];
+			stages[stagesWritten++] = tmpStage;
+			j += 4;
+		}
 
-			tmpStages[ numStages ].bundle[ TB_MATERIALMAP ] = tmpMaterialStage.bundle[ 0 ];
+		// try to merge diffuse/normal/specular
+		else if ( stages3.diffuseStage && stages3.normalStage && stages3.specularStage )
+		{
+			tmpCollapseType = collapseType_t::COLLAPSE_lighting_DBS;
 
-			tmpStages[ numStages ].bundle[ TB_GLOWMAP ] = tmpGlowStage.bundle[ 0 ];
-			numStages++;
+			shaderStage_t tmpStage = *stages3.diffuseStage;
+			tmpStage.type = stageType_t::ST_COLLAPSE_lighting_DBS;
+			tmpStage.bundle[ TB_NORMALMAP ] = stages3.normalStage->bundle[ 0 ];
+			tmpStage.bundle[ TB_SPECULARMAP ] = stages3.specularStage->bundle[ 0 ];
+			tmpStage.specularExponentMin = stages3.specularStage->specularExponentMin;
+			tmpStage.specularExponentMax = stages3.specularStage->specularExponentMax;
+
+			stages[stagesWritten++] = tmpStage;
 			j += 3;
-			continue;
 		}
+
 		// try to merge diffuse/normal/material
-		else if ( hasDiffuseStage         &&
-		          hasNormalStage          &&
-		          hasMaterialStage
-		   )
+		else if ( stages3.diffuseStage && stages3.normalStage && stages3.materialStage )
 		{
-			tmpShader.collapseType = collapseType_t::COLLAPSE_lighting_DBM;
+			tmpCollapseType = collapseType_t::COLLAPSE_lighting_DBM;
 
-			tmpStages[ numStages ] = tmpDiffuseStage;
-			tmpStages[ numStages ].type = stageType_t::ST_COLLAPSE_lighting_DBM;
+			shaderStage_t tmpStage = *stages3.diffuseStage;
+			tmpStage.type = stageType_t::ST_COLLAPSE_lighting_DBM;
+			tmpStage.bundle[ TB_NORMALMAP ] = stages3.normalStage->bundle[ 0 ];
+			tmpStage.bundle[ TB_MATERIALMAP ] = stages3.materialStage->bundle[ 0 ];
 
-			tmpStages[ numStages ].bundle[ TB_NORMALMAP ] = tmpNormalStage.bundle[ 0 ];
-
-			tmpStages[ numStages ].bundle[ TB_MATERIALMAP ] = tmpMaterialStage.bundle[ 0 ];
-
-			numStages++;
-			j += 2;
-			continue;
+			stages[stagesWritten++] = tmpStage;
+			j += 3;
 		}
+
 		// try to merge diffuse/normal/glow
-		else if ( hasDiffuseStage         &&
-		          hasNormalStage          &&
-		          hasGlowStage
-		        )
+		else if ( stages3.diffuseStage && stages3.normalStage && stages3.glowStage )
 		{
-			tmpShader.collapseType = collapseType_t::COLLAPSE_lighting_DBG;
+			tmpCollapseType = collapseType_t::COLLAPSE_lighting_DBG;
 
-			tmpStages[ numStages ] = tmpDiffuseStage;
-			tmpStages[ numStages ].type = stageType_t::ST_COLLAPSE_lighting_DBG;
+			shaderStage_t tmpStage = *stages3.diffuseStage;
+			tmpStage.type = stageType_t::ST_COLLAPSE_lighting_DBG;
+			tmpStage.bundle[ TB_NORMALMAP ] = stages3.normalStage->bundle[ 0 ];
+			tmpStage.bundle[ TB_GLOWMAP ] = stages3.glowStage->bundle[ 0 ];
 
-			tmpStages[ numStages ].bundle[ TB_NORMALMAP ] = tmpNormalStage.bundle[ 0 ];
-			tmpStages[ numStages ].bundle[ TB_GLOWMAP ] = tmpGlowStage.bundle[ 0 ];
-			numStages++;
-			j += 2;
-			continue;
+			stages[stagesWritten++] = tmpStage;
+			j += 3;
 		}
+
 		// try to merge diffuse/normal
-		else if ( hasDiffuseStage         &&
-		          hasNormalStage
-		        )
+		else if ( stages2.diffuseStage && stages2.normalStage )
 		{
-			tmpShader.collapseType = collapseType_t::COLLAPSE_lighting_DB;
+			tmpCollapseType = collapseType_t::COLLAPSE_lighting_DB;
 
-			tmpStages[ numStages ] = tmpDiffuseStage;
-			tmpStages[ numStages ].type = stageType_t::ST_COLLAPSE_lighting_DB;
+			shaderStage_t tmpStage = *stages2.diffuseStage;
+			tmpStage.type = stageType_t::ST_COLLAPSE_lighting_DB;
+			tmpStage.bundle[ TB_NORMALMAP ] = stages2.normalStage->bundle[ 0 ];
 
-			tmpStages[ numStages ].bundle[ TB_NORMALMAP ] = tmpNormalStage.bundle[ 0 ];
-
-			numStages++;
-			j += 1;
-			continue;
+			stages[stagesWritten++] = tmpStage;
+			j += 2;
 		}
+
 		// try to merge env/normal
-		else if ( hasReflectionStage &&
-		          hasNormalStage
-		        )
+		else if ( stages2.reflectionStage && stages2.normalStage )
 		{
-			tmpShader.collapseType = collapseType_t::COLLAPSE_reflection_CB;
+			tmpCollapseType = collapseType_t::COLLAPSE_reflection_CB;
 
-			tmpStages[ numStages ] = tmpReflectionStage;
-			tmpStages[ numStages ].type = stageType_t::ST_COLLAPSE_reflection_CB;
+			shaderStage_t tmpStage = *stages2.reflectionStage;
+			tmpStage.type = stageType_t::ST_COLLAPSE_reflection_CB;
+			tmpStage.bundle[ TB_NORMALMAP ] = stages2.normalStage->bundle[ 0 ];
 
-			tmpStages[ numStages ].bundle[ TB_NORMALMAP ] = tmpNormalStage.bundle[ 0 ];
-
-			numStages++;
-			j += 1;
-			continue;
+			stages[stagesWritten++] = tmpStage;
+			j += 2;
 		}
+
 		// if there was no merge option just copy stage
 		else
 		{
-			tmpStages[ numStages ] = stages[ j ];
-			numStages++;
+			if ( &stages[stagesWritten] != activeStages[j] ) {
+				stages[stagesWritten] = *activeStages[j];
+			}
+			++stagesWritten;
+			j += 1;
+		}
+
+		if ( stages4.specularStage && stages4.materialStage )
+		{
+			Log::Warn("Supposedly you shouldn't have both specularMap and materialMap (in shader '%s')?", shader.name);
 		}
 	}
 
-	// clear unused stages
-	Com_Memset( &tmpStages[ numStages ], 0, sizeof( stages[ 0 ] ) * ( MAX_SHADER_STAGES - numStages ) );
-	tmpShader.numStages = numStages;
+	shader.numStages = stagesWritten;
+	// FIXME: This seems stupid since there can be any number of collapse types.
+	shader.collapseType = tmpCollapseType;
 
-	// copy result
-	Com_Memcpy( &stages[ 0 ], &tmpStages[ 0 ], sizeof( stages ) );
-	Com_Memcpy( &shader, &tmpShader, sizeof( shader ) );
+	// The 'active' field is still used instead of numStages in some code that runs later.
+	for ( int i = stagesWritten; i < MAX_SHADER_STAGES; i++ ) {
+		stages[i].active = false;
+	}
 }
 
 // *INDENT-ON*
-
-/*
-=============
-
-FixRenderCommandList
-https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=493
-Arnout: this is a nasty issue. Shaders can be registered after drawsurfaces are generated
-but before the frame is rendered. This will, for the duration of one frame, cause drawsurfaces
-to be rendered with bad shaders. To fix this, need to go through all render commands and fix
-sortedIndex.
-==============
-*/
-static void FixRenderCommandList( int newShader )
-{
-	renderCommandList_t *cmdList = &backEndData[ tr.smpFrame ]->commands;
-
-	if ( cmdList )
-	{
-		const void *curCmd = cmdList->cmds;
-
-		while ( 1 )
-		{
-			switch ( * ( const int * ) curCmd )
-			{
-				case Util::ordinal(renderCommand_t::RC_SET_COLOR):
-					{
-						const setColorCommand_t *sc_cmd = ( const setColorCommand_t * ) curCmd;
-
-						curCmd = ( const void * )( sc_cmd + 1 );
-						break;
-					}
-
-				case Util::ordinal(renderCommand_t::RC_STRETCH_PIC):
-					{
-						const stretchPicCommand_t *sp_cmd = ( const stretchPicCommand_t * ) curCmd;
-
-						curCmd = ( const void * )( sp_cmd + 1 );
-						break;
-					}
-
-				case Util::ordinal(renderCommand_t::RC_DRAW_VIEW):
-					{
-						int                     i;
-						drawSurf_t              *drawSurf;
-
-						const drawViewCommand_t *dv_cmd = ( const drawViewCommand_t * ) curCmd;
-
-						for ( i = 0, drawSurf = dv_cmd->viewParms.drawSurfs; i < dv_cmd->viewParms.numDrawSurfs; i++, drawSurf++ )
-						{
-							if ( drawSurf->shaderNum() >= newShader )
-							{
-								drawSurf->setSort( drawSurf->shaderNum() + 1, drawSurf->lightmapNum(), drawSurf->entityNum(), drawSurf->fogNum(), drawSurf->index() );
-							}
-						}
-
-						curCmd = ( const void * )( dv_cmd + 1 );
-						break;
-					}
-
-				case Util::ordinal(renderCommand_t::RC_DRAW_BUFFER):
-					{
-						const drawBufferCommand_t *db_cmd = ( const drawBufferCommand_t * ) curCmd;
-
-						curCmd = ( const void * )( db_cmd + 1 );
-						break;
-					}
-
-				case Util::ordinal(renderCommand_t::RC_SWAP_BUFFERS):
-					{
-						const swapBuffersCommand_t *sb_cmd = ( const swapBuffersCommand_t * ) curCmd;
-
-						curCmd = ( const void * )( sb_cmd + 1 );
-						break;
-					}
-
-				case Util::ordinal(renderCommand_t::RC_END_OF_LIST):
-				default:
-					return;
-			}
-		}
-	}
-}
 
 /*
 ==============
@@ -4125,10 +3929,6 @@ static void SortNewShader()
 		tr.sortedShaders[ i + 1 ] = tr.sortedShaders[ i ];
 		tr.sortedShaders[ i + 1 ]->sortedIndex++;
 	}
-
-	// Arnout: fix rendercommandlist
-	// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=493
-	FixRenderCommandList( i + 1 );
 
 	newShader->sortedIndex = i + 1;
 	tr.sortedShaders[ i + 1 ] = newShader;
@@ -4523,7 +4323,7 @@ static shader_t *FinishShader()
 		// disable depth writes in the main pass
 		ret->stages[0]->stateBits &= ~GLS_DEPTHMASK_TRUE;
 	} else {
-		ret->depthShader = NULL;
+		ret->depthShader = nullptr;
 	}
 
 	// load all altShaders recursively
@@ -4892,7 +4692,7 @@ shader_t       *R_FindShader( const char *name, shaderType_t type,
 		shader.noPicMip = true;
 
 	if( flags & RSF_NOLIGHTSCALE )
-		bits |= IF_NOLIGHTSCALE | IF_NOCOMPRESSION;
+		bits |= IF_NOLIGHTSCALE;
 
 	// choosing filter based on the NOMIP flag seems strange,
 	// maybe it should be changed to type == SHADER_2D
@@ -5381,7 +5181,7 @@ static void ScanAndLoadShaderFiles()
 
 		p = buffers[ i ];
 
-		while ( 1 )
+		while ( true )
 		{
 			token = COM_ParseExt2( &p, true );
 
@@ -5451,7 +5251,7 @@ static void ScanAndLoadShaderFiles()
 	p = s_shaderText;
 
 	// look for shader names
-	while ( 1 )
+	while ( true )
 	{
 		token = COM_ParseExt2( &p, true );
 
@@ -5492,7 +5292,7 @@ static void ScanAndLoadShaderFiles()
 	p = s_shaderText;
 
 	// look for shader names
-	while ( 1 )
+	while ( true )
 	{
 		oldp = p;
 		token = COM_ParseExt( &p, true );

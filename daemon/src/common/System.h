@@ -31,6 +31,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef COMMON_SYSTEM_H_
 #define COMMON_SYSTEM_H_
 
+#include <chrono>
+#include <stdexcept>
+
+#include "Compiler.h"
+#include "String.h"
+
 // Low-level system functions
 namespace Sys {
 
@@ -42,16 +48,12 @@ public:
 	using rep = duration::rep;
 	using period = duration::period;
 	using time_point = std::chrono::time_point<SteadyClock>;
-	static const bool is_steady = true;
+	static CONSTEXPR bool is_steady = true;
 
 	static time_point now() NOEXCEPT;
 };
 #else
-# ifdef LIBSTDCXX_BROKEN_CXX11
-using SteadyClock = std::chrono::monotonic_clock;
-# else
 using SteadyClock = std::chrono::steady_clock;
-# endif
 #endif
 using RealClock = std::chrono::system_clock;
 
@@ -62,6 +64,10 @@ using RealClock = std::chrono::system_clock;
 // current time is returned.
 SteadyClock::time_point SleepUntil(SteadyClock::time_point time);
 void SleepFor(SteadyClock::duration time);
+
+// Returns approximately the number of milliseconds the engine has been running.
+// Results *within a single module* (engine/cgame/sgame) are monotonic.
+int Milliseconds();
 
 // Exit with a fatal error. Only critical subsystems are shut down cleanly, and
 // an error message is displayed to the user.
@@ -78,7 +84,7 @@ public:
 NORETURN void Drop(Str::StringRef errorMessage);
 
 // Variadic wrappers for Error and Drop
-template<typename ... Args> void Error(Str::StringRef format, Args&& ... args)
+template<typename ... Args> NORETURN void Error(Str::StringRef format, Args&& ... args)
 {
 	Error(Str::Format(format, std::forward<Args>(args)...));
 }

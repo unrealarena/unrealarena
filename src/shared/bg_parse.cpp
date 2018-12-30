@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -132,17 +132,6 @@ int   MEDKIT_POISON_IMMUNITY_TIME;
 int   MEDKIT_STARTUP_TIME;
 int   MEDKIT_STARTUP_SPEED;
 
-#ifndef UNREALARENA
-// Human buildables
-
-float REACTOR_BASESIZE;
-float REACTOR_ATTACK_RANGE;
-int   REACTOR_ATTACK_REPEAT;
-int   REACTOR_ATTACK_DAMAGE;
-
-float REPEATER_BASESIZE;
-#endif
-
 // Human Weapons
 
 int   BLASTER_SPREAD;
@@ -202,13 +191,6 @@ int   LCANNON_CHARGE_AMMO;
 static configVar_t bg_configVars[] =
 {
 #ifndef UNREALARENA
-	{"b_reactor_powerRadius", FLOAT, false, &REACTOR_BASESIZE},
-	{"b_reactor_zapAttackDamage", INTEGER, false, &REACTOR_ATTACK_DAMAGE},
-	{"b_reactor_zapAttackRange", FLOAT, false, &REACTOR_ATTACK_RANGE},
-	{"b_reactor_zapAttackRepeat", INTEGER, false, &REACTOR_ATTACK_REPEAT},
-
-	{"b_repeater_powerRadius", FLOAT, false, &REPEATER_BASESIZE},
-
 	{"u_medkit_poisonImmunityTime", INTEGER, false, &MEDKIT_POISON_IMMUNITY_TIME},
 #endif
 	{"u_medkit_startupSpeed", INTEGER, false, &MEDKIT_STARTUP_SPEED},
@@ -628,8 +610,7 @@ void BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t
 		BUILDWEAPON = 1 << 9,
 		BUILDTIME = 1 << 10,
 		UNUSED_11 = 1 << 11,
-		POWERCONSUMPTION = 1 << 12,
-		UNLOCKTHRESHOLD = 1 << 13
+		UNLOCKTHRESHOLD = 1 << 12
 	};
 
 	if( !BG_ReadWholeFile( filename, text_buffer, sizeof(text_buffer) ) )
@@ -681,14 +662,6 @@ void BG_ParseBuildableAttributeFile( const char *filename, buildableAttributes_t
 			ba->buildPoints = atoi(token);
 
 			defined |= BUILDPOINTS;
-		}
-		else if ( !Q_stricmp( token, "powerConsumption" ) )
-		{
-			PARSE(text, token);
-
-			ba->powerConsumption = atoi(token);
-
-			defined |= POWERCONSUMPTION;
 		}
 		else if ( !Q_stricmp( token, "health" ) )
 		{

@@ -1,4 +1,5 @@
 /*
+ * Daemon BSD Source Code
  * Copyright (c) 2016, Unreal Arena
  * Copyright (c) 2013-2016, Daemon Developers
  * All rights reserved.
@@ -501,7 +502,7 @@ namespace Audio {
             ALInfoCmd(): StaticCmd("printALInfo", Cmd::AUDIO, "Prints information about OpenAL") {
             }
 
-            virtual void Run(const Cmd::Args&) const OVERRIDE {
+            virtual void Run(const Cmd::Args&) const override {
                 Print(AL::GetSystemInfo(device, capture));
             }
     };
@@ -512,7 +513,7 @@ namespace Audio {
             ListSamplesCmd(): StaticCmd("listAudioSamples", Cmd::AUDIO, "Lists all the loaded sound samples") {
             }
 
-            virtual void Run(const Cmd::Args&) const OVERRIDE {
+            virtual void Run(const Cmd::Args&) const override {
                 std::vector<std::string> samples = ListSamples();
 
                 std::sort(samples.begin(), samples.end());
@@ -530,7 +531,7 @@ namespace Audio {
             StopSoundsCmd(): StaticCmd("stopSounds", Cmd::AUDIO, "Stops the music and the looping sounds") {
             }
 
-            virtual void Run(const Cmd::Args&) const OVERRIDE {
+            virtual void Run(const Cmd::Args&) const override {
                 ClearAllLoopingSounds();
                 StopMusic();
             }
@@ -542,7 +543,7 @@ namespace Audio {
             StartCaptureTestCmd(): StaticCmd("startSoundCaptureTest", Cmd::AUDIO, "Starts testing the sound capture") {
             }
 
-            virtual void Run(const Cmd::Args&) const OVERRIDE {
+            virtual void Run(const Cmd::Args&) const override {
                 CaptureTestStart();
             }
     };
@@ -553,7 +554,7 @@ namespace Audio {
             StopCaptureTestCmd(): StaticCmd("stopSoundCaptureTest", Cmd::AUDIO, "Stops the testing of the sound capture") {
             }
 
-            virtual void Run(const Cmd::Args&) const OVERRIDE {
+            virtual void Run(const Cmd::Args&) const override {
                 CaptureTestStop();
             }
     };
@@ -565,7 +566,7 @@ namespace Audio {
             PlaySoundCmd(): StaticCmd("playSound", Cmd::AUDIO, "Plays the given sound effects") {
             }
 
-            virtual void Run(const Cmd::Args& args) const OVERRIDE {
+            virtual void Run(const Cmd::Args& args) const override {
                 if (args.Argc() == 1) {
 #ifdef UNREALARENA
                     PrintUsage(args, "/playSound <file> [<file>...]", "play sound files");
@@ -581,7 +582,7 @@ namespace Audio {
                 }
             }
 
-            virtual Cmd::CompletionResult Complete(int argNum, const Cmd::Args&, Str::StringRef prefix) const OVERRIDE {
+            virtual Cmd::CompletionResult Complete(int argNum, const Cmd::Args&, Str::StringRef prefix) const override {
                 if (argNum >= 1) {
                     //TODO have a list of supported extensions somewhere and use that?
                     return FS::PakPath::CompleteFilename(prefix, "", "", true, false);
@@ -598,7 +599,7 @@ namespace Audio {
             PlayMusicCmd(): StaticCmd("playMusic", Cmd::AUDIO, "Plays a music") {
             }
 
-            virtual void Run(const Cmd::Args& args) const OVERRIDE {
+            virtual void Run(const Cmd::Args& args) const override {
                 if (args.Argc() == 2) {
                     StartMusic( args.Argv(1) , "");
                 } else {
@@ -606,7 +607,7 @@ namespace Audio {
                 }
             }
 
-            virtual Cmd::CompletionResult Complete(int argNum, const Cmd::Args&, Str::StringRef prefix) const OVERRIDE {
+            virtual Cmd::CompletionResult Complete(int argNum, const Cmd::Args&, Str::StringRef prefix) const override {
                 if (argNum == 1) {
                     //TODO have a list of supported extensions somewhere and use that?
                     return FS::PakPath::CompleteFilename(prefix, "", "", true, false);
@@ -623,7 +624,7 @@ namespace Audio {
             StopMusicCmd(): StaticCmd("stopMusic", Cmd::AUDIO, "Stops the currently playing music") {
             }
 
-            virtual void Run(const Cmd::Args&) const OVERRIDE {
+            virtual void Run(const Cmd::Args&) const override {
                 StopMusic();
             }
     };

@@ -48,9 +48,6 @@ Maryland 20850 USA.
 #include "framework/CommandBufferHost.h"
 #include "common/IPC/CommandBuffer.h"
 
-// file containing our RSA public and private keys
-#define RSAKEY_FILE        "pubkey"
-
 #define RETRANSMIT_TIMEOUT 3000 // time between connection packet retransmits
 
 // snapshots are a view of the server at a given time
@@ -193,8 +190,8 @@ struct clientConnection_t
 	char reliableCommands[ MAX_RELIABLE_COMMANDS ][ MAX_TOKEN_CHARS ];
 
 	// unreliable binary data to send to server
-	int      binaryMessageLength;
-	char     binaryMessage[ MAX_BINARY_MESSAGE ];
+	size_t binaryMessageLength;
+	uint8_t binaryMessage[MAX_BINARY_MESSAGE];
 	bool binaryMessageOverflowed;
 
 	// server message (unreliable) and command (reliable) sequence
@@ -233,10 +230,6 @@ struct clientConnection_t
 	bool     demowaiting; // don't record until a non-delta message is received
 	bool     firstDemoFrameSkipped;
 	fileHandle_t demofile;
-
-	bool     waverecording;
-	fileHandle_t wavefile;
-	int          wavetime;
 
 	int          timeDemoFrames; // counter of rendered frames
 	int          timeDemoStart; // cls.realtime before first frame
@@ -371,12 +364,11 @@ public:
 	void CGameShutdown();
 	void CGameDrawActiveFrame(int serverTime, bool demoPlayback);
 	int CGameCrosshairPlayer();
-	void CGameKeyEvent(int key, bool down);
+	void CGameKeyEvent(Keyboard::Key key, bool down);
 	void CGameMouseEvent(int dx, int dy);
-    void CGameMousePosEvent(int x, int y);
+	void CGameMousePosEvent(int x, int y);
 	void CGameTextInputEvent(int c);
 	void CGameFocusEvent(bool focus);
-	//std::vector<std::string> CGameVoipString();
 	//void CGameInitCvars();
 
 	void CGameRocketInit();
@@ -384,7 +376,7 @@ public:
 	void CGameConsoleLine(const std::string& str);
 
 private:
-	virtual void Syscall(uint32_t id, Util::Reader reader, IPC::Channel& channel) OVERRIDE FINAL;
+	virtual void Syscall(uint32_t id, Util::Reader reader, IPC::Channel& channel) override final;
 	void QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel);
 
 	std::unique_ptr<VM::CommonVMServices> services;
@@ -392,7 +384,7 @@ private:
     class CmdBuffer: public IPC::CommandBufferHost {
         public:
             CmdBuffer(std::string name);
-            virtual void HandleCommandBufferSyscall(int major, int minor, Util::Reader& reader) OVERRIDE FINAL;
+            virtual void HandleCommandBufferSyscall(int major, int minor, Util::Reader& reader) override final;
     };
 
     CmdBuffer cmdBuffer;
@@ -419,7 +411,6 @@ extern cvar_t *cl_showSend;
 extern cvar_t *cl_showServerCommands; // NERVE - SMF
 extern cvar_t *cl_timeNudge;
 extern cvar_t *cl_showTimeDelta;
-extern cvar_t *cl_freezeDemo;
 
 extern cvar_t *cl_yawspeed;
 extern cvar_t *cl_pitchspeed;
@@ -431,7 +422,7 @@ extern cvar_t *cl_doubletapdelay;
 extern cvar_t *cl_sensitivity;
 extern cvar_t *cl_freelook;
 
-extern cvar_t *cl_xbox360ControllerAvailable;
+extern cvar_t *cl_gameControllerAvailable;
 
 extern cvar_t *cl_mouseAccel;
 extern cvar_t *cl_mouseAccelOffset;
@@ -464,7 +455,7 @@ extern cvar_t *cl_IRC_nickname;
 extern cvar_t *cl_IRC_kick_rejoin;
 extern cvar_t *cl_IRC_reconnect_delay;
 
-extern cvar_t *cl_timedemo;
+extern Cvar::Cvar<bool> cvar_demo_timedemo;
 
 extern cvar_t *cl_activeAction;
 extern cvar_t *cl_autorecord;
@@ -477,7 +468,6 @@ extern cvar_t *cl_altTab;
 
 // -NERVE - SMF
 
-extern cvar_t *cl_consoleKeys;
 extern cvar_t *cl_consoleFont;
 extern cvar_t *cl_consoleFontSize;
 extern cvar_t *cl_consoleFontKerning;
@@ -503,8 +493,6 @@ extern cvar_t *con_scrollLock;
 extern cvar_t *cl_aviFrameRate;
 extern cvar_t *cl_aviMotionJpeg;
 // XreaL END
-
-extern cvar_t *cl_allowPaste;
 
 extern cvar_t *cl_useMumble;
 extern cvar_t *cl_mumbleScale;
@@ -547,12 +535,12 @@ bool    CL_InitRef();
 
 int         CL_ServerStatus( const char *serverAddress, char *serverStatusString, int maxLen );
 
-void CL_Record( const char *name );
+void CL_Record(std::string demo_name);
 
 //
 // cl_keys (for input usage)
 //
-int             Key_GetKeyNumber();
+Keyboard::Key Key_GetKeyNumber();
 unsigned int    Key_GetKeyTime();
 
 //
@@ -560,7 +548,7 @@ unsigned int    Key_GetKeyTime();
 //
 struct kbutton_t
 {
-	int      down[ 2 ]; // key nums holding it down
+	Keyboard::Key down[ 2 ]; // key nums holding it down
 	unsigned downtime; // msec timestamp
 	unsigned msec; // msec down this frame if both a down and up happened
 	bool active; // current state
@@ -583,14 +571,15 @@ enum kbuttons_t
   KB_DOWN,
 
   KB_MLOOK,
-  KB_VOIPRECORD,
 
   KB_BUTTONS, // must be second-last
   NUM_BUTTONS = KB_BUTTONS + USERCMD_BUTTONS
 };
 
 void CL_ClearKeys();
+void CL_ClearKeyBinding();
 void CL_ClearCmdButtons();
+void CL_ClearInput();
 
 void CL_InitInput();
 void CL_SendCmd();
@@ -607,8 +596,6 @@ void IN_PrepareKeyUp();
 //----(SA)
 
 float    CL_KeyState( kbutton_t *key );
-int      Key_StringToKeynum( const char *str );
-const char *Key_KeynumToString( int keynum );
 
 //cl_irc.c
 void     CL_IRCSetup();
@@ -779,7 +766,7 @@ void     CL_CGameRendering();
 void     CL_SetCGameTime();
 void     CL_FirstSnapshot();
 void     CL_ShaderStateChanged();
-void     CL_CGameBinaryMessageReceived( const char *buf, int buflen, int serverTime );
+void CL_CGameBinaryMessageReceived(const uint8_t *buf, size_t size, int serverTime);
 void     CL_OnTeamChanged( int newTeam );
 
 //
@@ -815,7 +802,6 @@ bool CL_VideoRecording();
 // cl_main.c
 //
 void CL_WriteDemoMessage( msg_t *msg, int headerBytes );
-void CL_RequestMotd();
 void CL_GetClipboardData( char *, int );
 
 //

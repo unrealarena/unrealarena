@@ -1,4 +1,5 @@
 /*
+ * Daemon BSD Source Code
  * Copyright (c) 2016, Unreal Arena
  * Copyright (c) 2013-2016, Daemon Developers
  * All rights reserved.
@@ -316,8 +317,7 @@ namespace Cmd {
     ===============================================================================
     */
 
-    Args::Args() {
-    }
+    Args::Args() = default;
 
     Args::Args(std::vector<std::string> args_) {
         args = std::move(args_);

@@ -154,9 +154,9 @@ struct client_t
 	int            reliableSent; // last sent reliable message, not necessarily acknowledged yet
 	int            messageAcknowledge;
 
-	int            binaryMessageLength;
-	char           binaryMessage[ MAX_BINARY_MESSAGE ];
-	bool       binaryMessageOverflowed;
+	size_t binaryMessageLength;
+	uint8_t binaryMessage[MAX_BINARY_MESSAGE];
+	bool binaryMessageOverflowed;
 
 	int            gamestateMessageNum; // netchan->outgoingSequence of gamestate
 
@@ -284,10 +284,10 @@ public:
 	void GameRunFrame(int levelTime);
 	bool GameSnapshotCallback(int entityNum, int clientNum);
 	void BotAIStartFrame(int levelTime);
-	void GameMessageRecieved(int clientNum, const char *buffer, int bufferSize, int commandTime);
+	void GameMessageRecieved(int clientNum, const uint8_t *buf, size_t size, int commandTime);
 
 private:
-	virtual void Syscall(uint32_t id, Util::Reader reader, IPC::Channel& channel) OVERRIDE FINAL;
+	virtual void Syscall(uint32_t id, Util::Reader reader, IPC::Channel& channel) override final;
 	void QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel);
 
 	IPC::SharedMemory shmRegion;
@@ -308,10 +308,9 @@ extern cvar_t         *sv_privatePassword;
 extern cvar_t         *sv_allowDownload;
 extern cvar_t         *sv_maxclients;
 
-extern cvar_t         *sv_privateClients;
+extern Cvar::Range<Cvar::Cvar<int>> sv_privateClients;
 extern cvar_t         *sv_hostname;
 extern cvar_t         *sv_statsURL;
-extern cvar_t         *sv_master[ MAX_MASTER_SERVERS ];
 extern cvar_t         *sv_reconnectlimit;
 extern cvar_t         *sv_padPackets;
 extern cvar_t         *sv_killserver;
@@ -360,7 +359,6 @@ void       SV_NET_Config();
 
 void       SV_MasterHeartbeat( const char *hbname );
 void       SV_MasterShutdown();
-void       SV_MasterGameStat( const char *data );
 
 //
 // sv_init.c
@@ -379,7 +377,7 @@ void SV_GetPlayerPubkey( int clientNum, char *pubkey, int size );
 void SV_CreateBaseline();
 
 void SV_ChangeMaxClients();
-void SV_SpawnServer( const char *server );
+void SV_SpawnServer(const std::string pakname, const std::string server);
 
 //
 // sv_client.c
@@ -432,7 +430,7 @@ void           SV_InitGameProgs();
 void           SV_ShutdownGameProgs();
 void           SV_RestartGameProgs();
 bool       SV_inPVS( const vec3_t p1, const vec3_t p2 );
-void           SV_GameBinaryMessageReceived( int cno, const char *buf, int buflen, int commandTime );
+void           SV_GameBinaryMessageReceived(int cno, const byte *buf, size_t buflen, int commandTime);
 void           SV_GameCommandHandler();
 
 //
