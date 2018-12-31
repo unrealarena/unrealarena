@@ -1,0 +1,2 @@
+# The unrealarena-deps version to sync against
+option('deps_version', type : 'string', value : '4')

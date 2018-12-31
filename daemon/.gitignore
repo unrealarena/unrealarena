@@ -1,4 +1,2 @@
 # Ignore build stuff
 /deps
-/src/common/Revision.h
-/src/engine/renderer/glsl

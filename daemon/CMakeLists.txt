@@ -227,17 +227,14 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../.git")
 endif()
 
 if (GIT_DESCRIBE_REPORT)
-    set(DESIRED_REVISION_H_CONTENTS "#define REVISION \"${GIT_DESCRIBE_REPORT}\"\n")
+    set(VCS_TAG ${GIT_DESCRIBE_REPORT})
+else()
+    set(VCS_TAG "unknown")
 endif()
 
-if (EXISTS "${COMMON_DIR}/Revision.h")
-    file(READ "${COMMON_DIR}/Revision.h" ACTUAL_REVISION_H_CONTENTS)
-    if (NOT "${ACTUAL_REVISION_H_CONTENTS}" STREQUAL "${DESIRED_REVISION_H_CONTENTS}")
-        file(WRITE "${COMMON_DIR}/Revision.h" "${DESIRED_REVISION_H_CONTENTS}")
-    endif()
-else()
-    file(WRITE "${COMMON_DIR}/Revision.h" "${DESIRED_REVISION_H_CONTENTS}")
-endif()
+configure_file("src/common/Revision.h.in" "${CMAKE_BINARY_DIR}/revision.h" @ONLY)
+
+include_directories("${CMAKE_BINARY_DIR}")
 
 ################################################################################
 # Group the sources by folder to have folder show in Visual Studio
@@ -736,25 +733,19 @@ if (BUILD_CLIENT)
     )
 
     # generate glsl include files
-    set(GLSL_INCLUDE_DIR ${ENGINE_DIR}/renderer/glsl)
     set(GLSL_SOURCE_DIR ${ENGINE_DIR}/renderer/glsl_source)
 
     add_executable(include-bin ${LIB_DIR}/include-bin/main.cpp)
-
-    # create the glsl include directory if it doesn't exist
-    add_custom_command(OUTPUT ${GLSL_INCLUDE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${GLSL_INCLUDE_DIR}
-    )
 
     foreach(res ${GLSLSOURCELIST})
         set(in ${res})
         get_filename_component(filename ${in} NAME)
         get_filename_component(filename_no_ext ${in} NAME_WE)
-        set(outpath ${GLSL_INCLUDE_DIR}/${filename_no_ext}.h)
+        set(outpath ${CMAKE_BINARY_DIR}/${filename_no_ext}.h)
         add_custom_command(OUTPUT "${outpath}"
             WORKING_DIRECTORY "${GLSL_SOURCE_DIR}"
             COMMAND include-bin "${filename}" "${outpath}"
-            DEPENDS "${res}" "${GLSL_INCLUDE_DIR}"
+            DEPENDS "${res}"
         )
     endforeach()
 endif()

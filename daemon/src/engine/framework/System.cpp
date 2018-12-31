@@ -1,6 +1,6 @@
 /*
  * Daemon BSD Source Code
- * Copyright (c) 2016, Unreal Arena
+ * Copyright (c) 2016-2018, Unreal Arena
  * Copyright (c) 2013-2016, Daemon Developers
  * All rights reserved.
  *
@@ -28,6 +28,9 @@
  */
 
 
+#ifdef UNREALARENA
+#include "revision.h"
+#endif
 #include "qcommon/q_shared.h"
 #include "qcommon/qcommon.h"
 #include "Application.h"

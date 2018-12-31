@@ -30,29 +30,20 @@
 #define _USE_MATH_DEFINES
 #endif
 
-#ifdef UNREALARENA
-#include "common/Revision.h"
-#endif
 
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
 
-#define ENGINE_NAME             "Daemon Engine"
 #ifndef UNREALARENA
+#define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          PRODUCT_VERSION
-#endif
 
 #ifdef REVISION
-#ifdef UNREALARENA
-# define Q3_VERSION             PRODUCT_NAME " " PRODUCT_VERSION " " "#" REVISION
-#else
 # define Q3_VERSION             PRODUCT_NAME " " PRODUCT_VERSION " " REVISION
-#endif
 #else
 # define Q3_VERSION             PRODUCT_NAME " " PRODUCT_VERSION
 #endif
 
-#ifndef UNREALARENA
 #define Q3_ENGINE               ENGINE_NAME " " ENGINE_VERSION
 #define Q3_ENGINE_DATE          __DATE__
 #endif

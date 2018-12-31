@@ -49,6 +49,19 @@ std::string sanitize( std::string s ) {
 
 void include_bin( std::istream& in, std::ostream& out, std::string name ) {
   int b = 0, count = 0;
+
+#ifdef UNREALARENA
+#ifdef _WIN32
+  std::size_t pos = name.rfind('\\');
+#else
+  std::size_t pos = name.rfind('/');
+#endif
+  if(pos != std::string::npos)
+  {
+    name = name.substr(pos + 1);
+  }
+#endif
+
   name = sanitize(name);
 
   out << "unsigned char " << name << "[] = {\n  ";

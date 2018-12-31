@@ -60,6 +60,7 @@ set(GAMELOGIC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${GAMELOGIC_DIR})
 include(src.cmake)
 
+include_directories(${CMAKE_BINARY_DIR})
 
 option(BUILD_CGAME "Build client-side gamelogic" 1)
 option(BUILD_SGAME "Build server-side gamelogic" 1)

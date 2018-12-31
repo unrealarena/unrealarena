@@ -1,5 +1,93 @@
+/*
+ * Daemon GPL Source Code
+ * Copyright (C) 2018  Unreal Arena
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #include <string>
 #include <unordered_map>
+#ifdef UNREALARENA
+#include "skybox_vp.h"
+#include "ssao_fp.h"
+#include "ssao_vp.h"
+#include "vertexAnimation_vp.h"
+#include "vertexLighting_DBS_entity_fp.h"
+#include "vertexLighting_DBS_entity_vp.h"
+#include "vertexLighting_DBS_world_fp.h"
+#include "vertexLighting_DBS_world_vp.h"
+#include "vertexSimple_vp.h"
+#include "vertexSkinning_vp.h"
+#include "vertexSprite_vp.h"
+#include "volumetricFog_fp.h"
+#include "volumetricFog_vp.h"
+#include "blurX_fp.h"
+#include "blurX_vp.h"
+#include "blurY_fp.h"
+#include "blurY_vp.h"
+#include "cameraEffects_fp.h"
+#include "cameraEffects_vp.h"
+#include "contrast_fp.h"
+#include "contrast_vp.h"
+#include "debugShadowMap_fp.h"
+#include "debugShadowMap_vp.h"
+#include "deformVertexes_vp.h"
+#include "depthtile1_fp.h"
+#include "depthtile1_vp.h"
+#include "depthtile2_fp.h"
+#include "depthtile2_vp.h"
+#include "depthToColor_fp.h"
+#include "depthToColor_vp.h"
+#include "dispersion_C_fp.h"
+#include "dispersion_C_vp.h"
+#include "fogGlobal_fp.h"
+#include "fogGlobal_vp.h"
+#include "fogQuake3_fp.h"
+#include "fogQuake3_vp.h"
+#include "forwardLighting_fp.h"
+#include "forwardLighting_vp.h"
+#include "fxaa_fp.h"
+#include "fxaa_vp.h"
+#include "fxaa3_11_fp.h"
+#include "generic_fp.h"
+#include "generic_vp.h"
+#include "heatHaze_fp.h"
+#include "heatHaze_vp.h"
+#include "lightMapping_fp.h"
+#include "lightMapping_vp.h"
+#include "lighttile_fp.h"
+#include "lighttile_vp.h"
+#include "lightVolume_omni_fp.h"
+#include "lightVolume_omni_vp.h"
+#include "liquid_fp.h"
+#include "liquid_vp.h"
+#include "motionblur_fp.h"
+#include "motionblur_vp.h"
+#include "portal_fp.h"
+#include "portal_vp.h"
+#include "reflection_CB_fp.h"
+#include "reflection_CB_vp.h"
+#include "refraction_C_fp.h"
+#include "refraction_C_vp.h"
+#include "reliefMapping_fp.h"
+#include "screen_fp.h"
+#include "screen_vp.h"
+#include "shadowFill_fp.h"
+#include "shadowFill_vp.h"
+#include "skybox_fp.h"
+#else
 #include "glsl/skybox_vp.h"
 #include "glsl/ssao_fp.h"
 #include "glsl/ssao_vp.h"
@@ -67,6 +155,7 @@
 #include "glsl/shadowFill_fp.h"
 #include "glsl/shadowFill_vp.h"
 #include "glsl/skybox_fp.h"
+#endif
 
 std::unordered_map<std::string, std::string> shadermap({
 	{ "glsl/blurX_fp.glsl", std::string((char*)blurX_fp_glsl, blurX_fp_glsl_len) },

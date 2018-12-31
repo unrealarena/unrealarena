@@ -20,9 +20,7 @@
 
 // common.c -- misc functions used in client and server
 
-#ifndef UNREALARENA
 #include "revision.h"
-#endif
 #include "qcommon/q_shared.h"
 #include "qcommon/sys.h"
 #include "q_unicode.h"

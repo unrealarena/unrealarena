@@ -27,9 +27,7 @@
 #endif
 
 #include "common/Defs.h"
-#ifndef UNREALARENA
 #include "revision.h"
-#endif
 #include "client.h"
 
 #ifdef WIN32

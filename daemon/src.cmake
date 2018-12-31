@@ -202,7 +202,7 @@ set(GLSLSOURCELIST
 set(GLSLINCLUDELIST "")
 foreach(res ${GLSLSOURCELIST})
     set(in ${res})
-    set(working_dir ${ENGINE_DIR}/renderer/glsl)
+    set(working_dir ${CMAKE_BINARY_DIR})
     get_filename_component(filename_no_ext ${in} NAME_WE)
     set(outpath ${working_dir}/${filename_no_ext}.h)
     list(APPEND GLSLINCLUDELIST ${outpath})

@@ -19,6 +19,9 @@
  */
 
 
+#ifdef UNREALARENA
+#include "revision.h"
+#endif
 #include "sg_local.h"
 #include "Entities.h"
 #include "CBSE.h"

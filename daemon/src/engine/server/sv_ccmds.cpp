@@ -18,6 +18,9 @@
  */
 
 
+#ifdef UNREALARENA
+#include "revision.h"
+#endif
 #include "server.h"
 #include "framework/CvarSystem.h"
 
