@@ -211,7 +211,7 @@ int LuaType<T>::tostring_T(lua_State* L)
     char buff[32];
     T** ptrHold = (T**)lua_touserdata(L,1);
     T *obj = *ptrHold;
-    sprintf(buff, "%p", obj);
+    sprintf(buff, "%p", (void*)obj);
     lua_pushfstring(L, "%s (%s)", GetTClassName<T>(), buff);
     return 1;
 }

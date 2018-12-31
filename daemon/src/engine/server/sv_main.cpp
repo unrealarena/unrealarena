@@ -1,31 +1,48 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+===========================================================================
 
+Daemon GPL Source Code
+Copyright (C) 1999-2010 id Software LLC, a ZeniMax Media company.
+
+This file is part of the Daemon GPL Source Code (Daemon Source Code).
+
+Daemon Source Code is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Daemon Source Code is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Daemon Source Code.  If not, see <http://www.gnu.org/licenses/>.
+
+In addition, the Daemon Source Code is also subject to certain additional terms.
+You should have received a copy of these additional terms immediately following the
+terms and conditions of the GNU General Public License which accompanied the Daemon
+Source Code.  If not, please request a copy in writing from id Software at the address
+below.
+
+If you have questions concerning this license or the applicable additional terms, you
+may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville,
+Maryland 20850 USA.
+
+===========================================================================
+*/
+
+#include "common/Common.h"
 
 #include "server.h"
-#include "common/Assert.h"
 #include "CryptoChallenge.h"
 #include "framework/Rcon.h"
 
+#include "common/Defs.h"
 #include "framework/CommandSystem.h"
 #include "framework/CvarSystem.h"
 #include "framework/Network.h"
+#include "qcommon/sys.h"
 
 serverStatic_t svs; // persistent server info
 server_t       sv; // local server
@@ -38,7 +55,8 @@ cvar_t         *sv_privatePassword; // password for the privateClient slots
 cvar_t         *sv_allowDownload;
 cvar_t         *sv_maxclients;
 
-cvar_t         *sv_privateClients; // number of clients reserved for password
+Cvar::Range<Cvar::Cvar<int>> sv_privateClients("sv_privateClients",
+    "number of password-protected client slots", CVAR_SERVERINFO, 0, 0, MAX_CLIENTS);
 cvar_t         *sv_hostname;
 cvar_t         *sv_statsURL;
 cvar_t         *sv_master[ MAX_MASTER_SERVERS ]; // master server IP addresses
@@ -106,7 +124,7 @@ Cvar::Cvar<ServerPrivate> isPrivate(
 	"1 - Don't advertise but reply to status queries, "
 	"2 - Don't reply to status queries but accept connections, "
 	"3 - Only accept LAN connections.",
-#if BUILD_CLIENT || BUILD_TTY_CLIENT
+#if BUILD_GRAPHICAL_CLIENT || BUILD_TTY_CLIENT
 	Cvar::ROM, ServerPrivate::LanOnly
 #elif BUILD_SERVER
 	Cvar::NONE, ServerPrivate::Public
@@ -295,64 +313,55 @@ static void SV_ResolveMasterServers()
 			continue;
 		}
 
-		// see if we haven't already resolved the name
-		// resolving usually causes hitches on win95, so only
-		// do it when needed
-		if ( master.Cvar()->modified || master.Empty() )
+		if ( netenabled & NET_ENABLEV4 )
 		{
-			master.Cvar()->modified = false;
+			Log::Notice( "Resolving %s (IPv4)\n", master.Cvar()->string );
+			int res = NET_StringToAdr( master.Cvar()->string, &master.ipv4, netadrtype_t::NA_IP );
 
-			if ( netenabled & NET_ENABLEV4 )
+			if ( res == 2 )
 			{
-				Log::Notice( "Resolving %s (IPv4)\n", master.Cvar()->string );
-				int res = NET_StringToAdr( master.Cvar()->string, &master.ipv4, netadrtype_t::NA_IP );
-
-				if ( res == 2 )
-				{
-					// if no port was specified, use the default master port
-					master.ipv4.port = BigShort( PORT_MASTER );
-				}
-
-				if ( res )
-				{
-					Log::Notice( "%s resolved to %s\n", master.Cvar()->string, Net::AddressToString(master.ipv4, true) );
-				}
-				else
-				{
-					Log::Notice( "%s has no IPv4 address.\n", master.Cvar()->string );
-				}
+				// if no port was specified, use the default master port
+				master.ipv4.port = BigShort( PORT_MASTER );
 			}
 
-			if ( netenabled & NET_ENABLEV6 )
+			if ( res )
 			{
-				Log::Notice( "Resolving %s (IPv6)\n", master.Cvar()->string );
-				int res = NET_StringToAdr( master.Cvar()->string, &master.ipv6, netadrtype_t::NA_IP6 );
+				Log::Notice( "%s resolved to %s\n", master.Cvar()->string, Net::AddressToString(master.ipv4, true) );
+			}
+			else
+			{
+				Log::Notice( "%s has no IPv4 address.\n", master.Cvar()->string );
+			}
+		}
 
-				if ( res == 2 )
-				{
-					// if no port was specified, use the default master port
-					master.ipv6.port = BigShort( PORT_MASTER );
-				}
+		if ( netenabled & NET_ENABLEV6 )
+		{
+			Log::Notice( "Resolving %s (IPv6)\n", master.Cvar()->string );
+			int res = NET_StringToAdr( master.Cvar()->string, &master.ipv6, netadrtype_t::NA_IP6 );
 
-				if ( res )
-				{
-					Log::Notice( "%s resolved to %s\n", master.Cvar()->string, Net::AddressToString(master.ipv6, true) );
-				}
-				else
-				{
-					Log::Notice( "%s has no IPv6 address.\n", master.Cvar()->string );
-				}
+			if ( res == 2 )
+			{
+				// if no port was specified, use the default master port
+				master.ipv6.port = BigShort( PORT_MASTER );
 			}
 
-			if ( master.Empty() )
+			if ( res )
 			{
-				// if the address failed to resolve, clear it
-				// so we don't take repeated dns hits
-				Log::Notice( "Couldn't resolve address: %s\n", master.Cvar()->string );
-				Cvar_Set( master.Cvar()->name, "" );
-				master.Cvar()->modified = false;
-				continue;
+				Log::Notice( "%s resolved to %s\n", master.Cvar()->string, Net::AddressToString(master.ipv6, true) );
 			}
+			else
+			{
+				Log::Notice( "%s has no IPv6 address.\n", master.Cvar()->string );
+			}
+		}
+
+		if ( master.Empty() )
+		{
+			// if the address failed to resolve, clear it
+			// so we don't take repeated dns hits
+			Log::Notice( "Couldn't resolve address: %s\n", master.Cvar()->string );
+			Cvar_Set( master.Cvar()->name, "" );
+			continue;
 		}
 	}
 }
@@ -384,13 +393,8 @@ but not on every player enter or exit.
 ================
 */
 static const int HEARTBEAT_MSEC = (300 * 1000);
-#ifdef UNREALARENA
-#define HEARTBEAT_GAME "UNREALARENA"
-#define HEARTBEAT_DEAD "UNREALARENA-DEAD"
-#else
-#define HEARTBEAT_GAME "Unvanquished"
-#define HEARTBEAT_DEAD "Unvanquished-dead"
-#endif
+#define HEARTBEAT_GAME PRODUCT_NAME
+#define HEARTBEAT_DEAD PRODUCT_NAME "-dead"
 
 void SV_MasterHeartbeat( const char *hbname )
 {
@@ -456,42 +460,6 @@ void SV_MasterShutdown()
 
 	// when the master tries to poll the server, it won't respond, so
 	// it will be removed from the list
-}
-
-/*
-=================
-SV_MasterGameStat
-=================
-*/
-void SV_MasterGameStat( const char *data )
-{
-	netadr_t adr;
-
-	if ( SV_Private(ServerPrivate::NoAdvertise) )
-	{
-		return; // only dedicated servers send stats
-	}
-
-	Log::Notice( "Resolving %s", MASTER_SERVER_NAME );
-
-	switch ( NET_StringToAdr( MASTER_SERVER_NAME, &adr, netadrtype_t::NA_UNSPEC ) )
-	{
-		case 0:
-			Log::Warn( "Couldn't resolve master address: %s", MASTER_SERVER_NAME );
-			return;
-
-		case 2:
-			adr.port = BigShort( PORT_MASTER );
-
-		default:
-			break;
-	}
-
-	Log::Notice( "%s resolved to %s", MASTER_SERVER_NAME,
-	            Net::AddressToString(adr, true) );
-
-	Log::Notice( "Sending gamestat to %s", MASTER_SERVER_NAME );
-	Net::OutOfBandPrint( netsrc_t::NS_SERVER, adr, "gamestat %s", data );
 }
 
 /*
@@ -561,21 +529,25 @@ void SVC_Info( netadr_t from, const Cmd::Args& args )
 
 	SV_ResolveMasterServers();
 
-	// don't count privateclients
-	int botCount = 0;
-	int count = 0;
+	int bots = 0; // Bots always use public slots.
+	int publicSlotHumans = 0;
+	int privateSlotHumans = 0;
 
-	for ( int i = sv_privateClients->integer; i < sv_maxclients->integer; i++ )
+	for ( int i = 0; i < sv_maxclients->integer; i++ )
 	{
 		if ( svs.clients[ i ].state >= clientState_t::CS_CONNECTED )
 		{
-			if ( SV_IsBot(&svs.clients[ i ]) )
+			if (i < sv_privateClients.Get())
 			{
-				++botCount;
+				++privateSlotHumans;
+			}
+			else if ( SV_IsBot(&svs.clients[ i ]) )
+			{
+				++bots;
 			}
 			else
 			{
-				++count;
+				++publicSlotHumans;
 			}
 		}
 	}
@@ -622,9 +594,11 @@ void SVC_Info( netadr_t from, const Cmd::Args& args )
 	info_map["hostname"] = sv_hostname->string;
 	info_map["serverload"] = std::to_string( svs.serverLoad );
 	info_map["mapname"] = sv_mapname->string;
-	info_map["clients"] = std::to_string( count );
-	info_map["bots"] = std::to_string( botCount );
-	info_map["sv_maxclients"] = std::to_string( sv_maxclients->integer - sv_privateClients->integer );
+	info_map["clients"] = std::to_string( publicSlotHumans + privateSlotHumans );
+	info_map["bots"] = std::to_string( bots );
+	// Satisfies (number of open public slots) = (displayed max clients) - (number of clients).
+	info_map["sv_maxclients"] = std::to_string(
+	    std::max( 0, sv_maxclients->integer - sv_privateClients.Get() ) + privateSlotHumans );
 	info_map["pure"] = std::to_string( sv_pure->integer );
 
 	if ( sv_statsURL->string[0] )
@@ -778,7 +752,7 @@ public:
 		: from(from), bufferSize(MAX_MSGLEN - prefix.size() - 1)
 	{}
 
-	virtual void Print(Str::StringRef text) OVERRIDE
+	virtual void Print(Str::StringRef text) override
 	{
 		if (text.size() + buffer.size() > bufferSize - 1)
 		{

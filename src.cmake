@@ -23,6 +23,8 @@ set(CGAMELIST
     ${GAMELOGIC_DIR}/cgame/cg_ents.cpp
     ${GAMELOGIC_DIR}/cgame/cg_event.cpp
     ${GAMELOGIC_DIR}/cgame/cg_gameinfo.cpp
+    ${GAMELOGIC_DIR}/cgame/cg_key_name.cpp
+    ${GAMELOGIC_DIR}/cgame/cg_key_name.h
     ${GAMELOGIC_DIR}/cgame/cg_main.cpp
     ${GAMELOGIC_DIR}/cgame/cg_marks.cpp
     ${GAMELOGIC_DIR}/cgame/cg_minimap.cpp
@@ -37,6 +39,8 @@ set(CGAMELIST
     ${GAMELOGIC_DIR}/cgame/cg_rocket_draw.cpp
     ${GAMELOGIC_DIR}/cgame/cg_rocket_events.cpp
     ${GAMELOGIC_DIR}/cgame/cg_rocket_progressbar.cpp
+    ${GAMELOGIC_DIR}/cgame/cg_segmented_skeleton.cpp
+    ${GAMELOGIC_DIR}/cgame/cg_segmented_skeleton.h
     ${GAMELOGIC_DIR}/cgame/cg_servercmds.cpp
     ${GAMELOGIC_DIR}/cgame/cg_snapshot.cpp
     ${GAMELOGIC_DIR}/cgame/cg_trails.cpp
@@ -45,7 +49,9 @@ set(CGAMELIST
     ${GAMELOGIC_DIR}/cgame/cg_utils.cpp
     ${GAMELOGIC_DIR}/cgame/cg_view.cpp
     ${GAMELOGIC_DIR}/cgame/cg_weapons.cpp
+    ${GAMELOGIC_DIR}/cgame/cg_animdelta.cpp
     ${GAMELOGIC_DIR}/cgame/Filter.h
+    ${GAMELOGIC_DIR}/cgame/CombatFeedback.cpp
 
     ${GAMELOGIC_DIR}/cgame/rocket/rocket.cpp
     ${GAMELOGIC_DIR}/cgame/rocket/rocket.h
@@ -94,7 +100,8 @@ set(CGAMELIST
 
 set(SGAMELIST
     ${GAMELOGIC_DIR}/sgame/Beacon.cpp
-    ${GAMELOGIC_DIR}/sgame/Clustering.cpp
+    ${GAMELOGIC_DIR}/sgame/Entities.cpp
+    ${GAMELOGIC_DIR}/sgame/Entities.h
     ${GAMELOGIC_DIR}/sgame/sg_active.cpp
     ${GAMELOGIC_DIR}/sgame/sg_admin.cpp
     ${GAMELOGIC_DIR}/sgame/sg_api.cpp
@@ -139,7 +146,7 @@ set(SGAMELIST
     ${GAMELOGIC_DIR}/sgame/sg_typedef.h
     ${GAMELOGIC_DIR}/sgame/sg_utils.cpp
     ${GAMELOGIC_DIR}/sgame/sg_weapon.cpp
-    ${GAMELOGIC_DIR}/sgame/Utility.cpp
+    ${GAMELOGIC_DIR}/sgame/CombatFeedback.cpp
 
     ${GAMELOGIC_DIR}/sgame/backend/CBSEBackend.cpp
 
@@ -147,6 +154,7 @@ set(SGAMELIST
     ${GAMELOGIC_DIR}/sgame/components/HealthComponent.cpp
     ${GAMELOGIC_DIR}/sgame/components/KnockbackComponent.cpp
     ${GAMELOGIC_DIR}/sgame/components/SpectatorComponent.cpp
+    ${GAMELOGIC_DIR}/sgame/components/TeamComponent.cpp
 
     ${ENGINE_DIR}/server/sg_api.h
     ${ENGINE_DIR}/server/sg_msgdef.h

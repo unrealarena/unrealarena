@@ -31,7 +31,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef COMMON_SERIALIZATION_H_
 #define COMMON_SERIALIZATION_H_
 
+#include <limits>
+#include <map>
+#include <set>
+#include <string>
+#include <string.h>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 #include "IPC/Common.h"
+#include "Optional.h"
+#include "String.h"
 
 namespace Util {
 
@@ -212,7 +224,7 @@ namespace Util {
 
 	// Simple implementation for POD types
 	template<typename T>
-	struct SerializeTraits<T, typename std::enable_if<Util::IsPOD<T>::value && !std::is_array<T>::value>::type> {
+	struct SerializeTraits<T, typename std::enable_if<std::is_pod<T>::value && !std::is_array<T>::value>::type> {
 		static void Write(Writer& stream, const T& value)
 		{
 			stream.WriteData(std::addressof(value), sizeof(value));
@@ -227,7 +239,7 @@ namespace Util {
 
 	// std::array for non-POD types (POD types are already handled by the base case)
 	template<typename T, size_t N>
-	struct SerializeTraits<std::array<T, N>, typename std::enable_if<!Util::IsPOD<T>::value>::type> {
+	struct SerializeTraits<std::array<T, N>, typename std::enable_if<!std::is_pod<T>::value>::type> {
 		static void Write(Writer& stream, const std::array<T, N>& value)
 		{
 			for (const T& x: value)
@@ -244,7 +256,7 @@ namespace Util {
 
 	// std::vector, with a specialization for POD types
 	template<typename T>
-	struct SerializeTraits<std::vector<T>, typename std::enable_if<Util::IsPOD<T>::value>::type> {
+	struct SerializeTraits<std::vector<T>, typename std::enable_if<std::is_pod<T>::value>::type> {
 		static void Write(Writer& stream, const std::vector<T>& value)
 		{
 			stream.WriteSize(value.size());
@@ -259,7 +271,7 @@ namespace Util {
 		}
 	};
 	template<typename T>
-	struct SerializeTraits<std::vector<T>, typename std::enable_if<!Util::IsPOD<T>::value>::type> {
+	struct SerializeTraits<std::vector<T>, typename std::enable_if<!std::is_pod<T>::value>::type> {
 		static void Write(Writer& stream, const std::vector<T>& value)
 		{
 			stream.WriteSize(value.size());

@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "common/IPC/CommonSyscalls.h"
+#include "engine/botlib/bot_types.h"
 
 // game-module-to-engine calls
 enum gameImport_t
@@ -41,7 +42,6 @@ enum gameImport_t
   G_GET_SERVERINFO,
   G_GET_USERCMD,
   G_GET_ENTITY_TOKEN,
-  G_SEND_GAME_STAT,
   G_SEND_MESSAGE,
   G_MESSAGE_STATUS,
   G_RSA_GENMSG, // ( const char *public_key, char *cleartext, char *encrypted )
@@ -101,11 +101,10 @@ using GetEntityTokenMsg = IPC::SyncMessage<
     IPC::Message<IPC::Id<VM::QVM, G_GET_ENTITY_TOKEN>>,
     IPC::Reply<bool, std::string>
 >;
-using SendGameStatMsg = IPC::Message<IPC::Id<VM::QVM, G_SEND_GAME_STAT>, std::string>;
-using SendMessageMsg = IPC::Message<IPC::Id<VM::QVM, G_SEND_MESSAGE>, int, int, std::vector<char>>;
+using SendMessageMsg = IPC::Message<IPC::Id<VM::QVM, G_SEND_MESSAGE>, int, std::vector<uint8_t>>;
 using MessageStatusMsg = IPC::SyncMessage<
     IPC::Message<IPC::Id<VM::QVM, G_MESSAGE_STATUS>, int>,
-    IPC::Reply<int>
+    IPC::Reply<messageStatus_t>
 >;
 using RSAGenMsgMsg = IPC::SyncMessage<
     IPC::Message<IPC::Id<VM::QVM, G_RSA_GENMSG>, std::string>,
@@ -242,4 +241,7 @@ using GameClientThinkMsg = IPC::SyncMessage<
 >;
 using GameRunFrameMsg = IPC::SyncMessage<
 	IPC::Message<IPC::Id<VM::QVM, GAME_RUN_FRAME>, int>
+>;
+using GameRecvMessageMsg = IPC::SyncMessage<
+	IPC::Message<IPC::Id<VM::QVM, GAME_MESSAGERECEIVED>, int, IPC::SharedMemory, size_t, int>
 >;

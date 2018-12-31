@@ -395,6 +395,8 @@ struct glconfig2_t
 	bool textureFloatAvailable;
 	bool textureIntegerAvailable;
 	bool textureRGAvailable;
+	bool gpuShader4Available;
+	bool textureGatherAvailable;
 	int      maxDrawBuffers;
 
 	float    maxTextureAnisotropy;
@@ -402,7 +404,6 @@ struct glconfig2_t
 
 	int      maxRenderbufferSize;
 	int      maxColorAttachments;
-	bool framebufferPackedDepthStencilAvailable;
 
 	bool getProgramBinaryAvailable;
 	bool bufferStorageAvailable;

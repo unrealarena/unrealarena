@@ -1,21 +1,36 @@
 /*
- * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+===========================================================================
 
+Daemon GPL Source Code
+Copyright (C) 1999-2010 id Software LLC, a ZeniMax Media company.
+
+This file is part of the Daemon GPL Source Code (Daemon Source Code).
+
+Daemon Source Code is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Daemon Source Code is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Daemon Source Code.  If not, see <http://www.gnu.org/licenses/>.
+
+In addition, the Daemon Source Code is also subject to certain additional terms.
+You should have received a copy of these additional terms immediately following the
+terms and conditions of the GNU General Public License which accompanied the Daemon
+Source Code.  If not, please request a copy in writing from id Software at the address
+below.
+
+If you have questions concerning this license or the applicable additional terms, you
+may contact in writing id Software LLC, c/o ZeniMax Media Inc., Suite 120, Rockville,
+Maryland 20850 USA.
+
+===========================================================================
+*/
 
 /*
  * name:    sv_init.c
@@ -26,6 +41,8 @@
 
 #include "server.h"
 #include "CryptoChallenge.h"
+#include "common/Defs.h"
+#include "qcommon/sys.h"
 
 /*
 ===============
@@ -75,6 +92,8 @@ void SV_UpdateConfigStrings()
 		// spawning a new server
 		if ( sv.state == serverState_t::SS_GAME || sv.restarting )
 		{
+			len = strlen( sv.configstrings[ index ] );
+
 			// send the data to all relevent clients
 			for ( i = 0, client = svs.clients; i < sv_maxclients->integer; i++, client++ )
 			{
@@ -88,8 +107,6 @@ void SV_UpdateConfigStrings()
 				{
 					continue;
 				}
-
-				len = strlen( sv.configstrings[ index ] );
 
 				if ( len >= maxChunkSize )
 				{
@@ -431,7 +448,7 @@ clients along with it.
 This is NOT called for map_restart
 ================
 */
-void SV_SpawnServer( const char *server )
+void SV_SpawnServer(const std::string pakname, const std::string server)
 {
 	int        i;
 	bool   isBot;
@@ -497,13 +514,14 @@ void SV_SpawnServer( const char *server )
 
 	FS::PakPath::ClearPaks();
 	FS_LoadBasePak();
-	if (!FS_LoadPak(va("map-%s", server)))
+	if (!FS_LoadPak(pakname.c_str()))
 		Com_Error(errorParm_t::ERR_DROP, "Could not load map pak\n");
 
 	CM_LoadMap(server);
 
 	// set serverinfo visible name
-	Cvar_Set( "mapname", server );
+	Cvar_Set( "mapname", server.c_str() );
+	Cvar_Set( "pakname", pakname.c_str() );
 
 	// serverid should be different each time
 	sv.serverId = com_frameTime;
@@ -582,7 +600,7 @@ void SV_SpawnServer( const char *server )
 	sv.time += FRAMETIME;
 
 	// the server sends these to the clients so they can figure
-	// out which pk3s should be auto-downloaded
+	// out which dpk/pk3s should be auto-downloaded
 
 	Cvar_Set( "sv_paks", FS_LoadedPaks() );
 
@@ -626,14 +644,10 @@ void SV_Init()
 
 	Cvar_Get( "protocol", va( "%i", PROTOCOL_VERSION ), CVAR_SERVERINFO  );
 	sv_mapname = Cvar_Get( "mapname", "nomap", CVAR_SERVERINFO | CVAR_ROM );
+	Cvar_Get( "pakname", "", CVAR_SERVERINFO | CVAR_ROM );
 	Cvar_Get( "layout", "", CVAR_SERVERINFO | CVAR_ROM );
 	Cvar_Get( "g_layouts", "", 0 ); // FIXME
-	sv_privateClients = Cvar_Get( "sv_privateClients", "0", CVAR_SERVERINFO );
-#ifdef UNREALARENA
-	sv_hostname = Cvar_Get( "sv_hostname", "Unnamed Unreal Arena Server", CVAR_SERVERINFO  );
-#else
-	sv_hostname = Cvar_Get( "sv_hostname", "Unnamed Unvanquished Server", CVAR_SERVERINFO  );
-#endif
+	sv_hostname = Cvar_Get( "sv_hostname", UNNAMED_SERVER, CVAR_SERVERINFO  );
 	sv_maxclients = Cvar_Get( "sv_maxclients", "20", CVAR_SERVERINFO | CVAR_LATCH );  // NERVE - SMF - changed to 20 from 8
 	sv_maxRate = Cvar_Get( "sv_maxRate", "0",  CVAR_SERVERINFO );
 	sv_floodProtect = Cvar_Get( "sv_floodProtect", "0",  CVAR_SERVERINFO );
@@ -646,7 +660,7 @@ void SV_Init()
 	sv_pure = Cvar_Get( "sv_pure", "1", CVAR_SYSTEMINFO );
 #else
 	// Use OS shared libs for the client at startup. This prevents crashes due to mismatching syscall ABIs
-	// from loading outdated vms pk3s. The correct vms pk3 will be loaded upon connecting to a pure server.
+	// from loading outdated vms dpks. The correct vms dpk will be loaded upon connecting to a pure server.
 	sv_pure = Cvar_Get( "sv_pure", "0", CVAR_SYSTEMINFO );
 #endif
 	Cvar_Get( "sv_paks", "", CVAR_SYSTEMINFO | CVAR_ROM );
@@ -659,11 +673,11 @@ void SV_Init()
 	Cvar_Get( "sv_nextmap", "", CVAR_TEMP );
 
 	sv_allowDownload = Cvar_Get( "sv_allowDownload", "1", 0 );
-	sv_master[ 0 ] = Cvar_Get( "sv_master1", MASTER_SERVER_NAME, 0 );
-	sv_master[ 1 ] = Cvar_Get( "sv_master2", "", 0 );
-	sv_master[ 2 ] = Cvar_Get( "sv_master3", "", 0 );
-	sv_master[ 3 ] = Cvar_Get( "sv_master4", "", 0 );
-	sv_master[ 4 ] = Cvar_Get( "sv_master5", "", 0 );
+	sv_master[ 0 ] = Cvar_Get( "sv_master1", MASTER1_SERVER_NAME, 0 );
+	sv_master[ 1 ] = Cvar_Get( "sv_master2", MASTER2_SERVER_NAME, 0 );
+	sv_master[ 2 ] = Cvar_Get( "sv_master3", MASTER3_SERVER_NAME, 0 );
+	sv_master[ 3 ] = Cvar_Get( "sv_master4", MASTER4_SERVER_NAME, 0 );
+	sv_master[ 4 ] = Cvar_Get( "sv_master5", MASTER5_SERVER_NAME, 0 );
 	sv_reconnectlimit = Cvar_Get( "sv_reconnectlimit", "3", 0 );
 	sv_padPackets = Cvar_Get( "sv_padPackets", "0", 0 );
 	sv_killserver = Cvar_Get( "sv_killserver", "0", 0 );
@@ -676,11 +690,7 @@ void SV_Init()
 	sv_dl_maxRate = Cvar_Get( "sv_dl_maxRate", "42000", 0 );
 
 	sv_wwwDownload = Cvar_Get( "sv_wwwDownload", "0", 0 );
-#ifdef UNREALARENA
-	sv_wwwBaseURL = Cvar_Get( "sv_wwwBaseURL", "dl.example.com/pkg", 0 );
-#else
-	sv_wwwBaseURL = Cvar_Get( "sv_wwwBaseURL", "dl.unvanquished.net/pkg", 0 );
-#endif
+	sv_wwwBaseURL = Cvar_Get( "sv_wwwBaseURL", WWW_BASEURL, 0 );
 	sv_wwwDlDisconnected = Cvar_Get( "sv_wwwDlDisconnected", "0", 0 );
 	sv_wwwFallbackURL = Cvar_Get( "sv_wwwFallbackURL", "", 0 );
 

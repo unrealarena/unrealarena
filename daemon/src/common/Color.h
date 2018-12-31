@@ -165,7 +165,6 @@ public:
 		: red( r ), green( g ), blue( b ), alpha( a )
 	{}
 
-#ifdef HAS_EXPLICIT_DEFAULT
     // Default constructor, all components set to zero
     CONSTEXPR_FUNCTION BasicColor() NOEXCEPT = default;
 
@@ -173,11 +172,6 @@ public:
 	CONSTEXPR_FUNCTION BasicColor( BasicColor&& ) NOEXCEPT = default;
     BasicColor& operator=( const BasicColor& ) NOEXCEPT = default;
     BasicColor& operator=( BasicColor&& ) NOEXCEPT = default;
-#else
-    BasicColor()
-        : red( 0 ), green( 0 ), blue( 0 ), alpha( 0 )
-    {}
-#endif
 
 	template<class T, class = std::enable_if<T::is_color>>
 		BasicColor( const T& adaptor ) :
@@ -331,7 +325,7 @@ CONSTEXPR_FUNCTION BasicColor<ComponentType, Traits> Blend(
 
 namespace detail {
 
-const char* CString( const Color32Bit& color );
+std::string ToString( const Color32Bit& color );
 
 } // namespace detail
 
@@ -339,9 +333,9 @@ const char* CString( const Color32Bit& color );
  * Returns a C string for the given color, suitable for printf-like functions
  */
 template<class Component, class Traits = ColorComponentTraits<Component>>
-const char* CString( const BasicColor<Component, Traits>& color )
+std::string ToString( const BasicColor<Component, Traits>& color )
 {
-	return detail::CString( color );
+	return detail::ToString( color );
 }
 
 namespace Constants {
@@ -381,16 +375,7 @@ public:
 	/*
 	 * Constructs an invalid token
 	 */
-#ifdef HAS_EXPLICIT_DEFAULT
 	Token() = default;
-#else
-    Token()
-        : begin( nullptr ),
-          end( nullptr ),
-          type( INVALID )
-    {}
-#endif
-
 
 	/*
 	 * Constructs a token with the given type and range
@@ -585,7 +570,7 @@ char* StripColors( char* string );
 
 // Removes color codes from in, writing to out
 // Pre: in NUL terminated and out can contain at least len characters
-void StripColors( const char *in, char *out, int len );
+void StripColors( const char *in, char *out, size_t len );
 
 // Overload for C++ strings
 std::string StripColors( const std::string& input );

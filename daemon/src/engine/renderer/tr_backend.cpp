@@ -24,6 +24,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "tr_local.h"
 #include "gl_shader.h"
+#if defined( REFBONE_NAMES )
+	#include <client/client.h>
+#endif
 
 backEndData_t  *backEndData[ SMP_FRAMES ];
 backEndState_t backEnd;
@@ -420,6 +423,7 @@ in Q3.
 void GL_State( uint32_t stateBits )
 {
 	uint32_t diff = stateBits ^ glState.glStateBits;
+	diff &= ~glState.glStateBitsMask;
 
 	if ( !diff )
 	{
@@ -591,20 +595,7 @@ void GL_State( uint32_t stateBits )
 		}
 	}
 
-	// stenciltest
-	if ( diff & GLS_STENCILTEST_ENABLE )
-	{
-		if ( stateBits & GLS_STENCILTEST_ENABLE )
-		{
-			glEnable( GL_STENCIL_TEST );
-		}
-		else
-		{
-			glDisable( GL_STENCIL_TEST );
-		}
-	}
-
-	glState.glStateBits = stateBits;
+	glState.glStateBits ^= diff;
 }
 
 void GL_VertexAttribsState( uint32_t stateBits )
@@ -757,12 +748,13 @@ static void SetViewportAndScissor()
 	vec4_t	q, c;
 
 	Com_Memcpy( mat, backEnd.viewParms.projectionMatrix, sizeof(mat) );
-	if( backEnd.viewParms.isPortal ) {
-		c[0] = -DotProduct( backEnd.viewParms.portalPlane.normal, backEnd.viewParms.orientation.axis[1] );
-		c[1] = DotProduct( backEnd.viewParms.portalPlane.normal, backEnd.viewParms.orientation.axis[2] );
-		c[2] = -DotProduct( backEnd.viewParms.portalPlane.normal, backEnd.viewParms.orientation.axis[0] );
-		c[3] = DotProduct( backEnd.viewParms.portalPlane.normal, backEnd.viewParms.orientation.origin ) - backEnd.viewParms.portalPlane.dist;
+	if( backEnd.viewParms.portalLevel > 0 )
+	{
+		VectorCopy(backEnd.viewParms.portalFrustum[FRUSTUM_NEAR].normal, c);
+		c[3] = backEnd.viewParms.portalFrustum[FRUSTUM_NEAR].dist;
 
+		// Lengyel, Eric. "Modifying the Projection Matrix to Perform Oblique Near-plane Clipping".
+		// Terathon Software 3D Graphics Library, 2004. http://www.terathon.com/code/oblique.html
 		q[0] = (c[0] < 0.0f ? -1.0f : 1.0f) / mat[0];
 		q[1] = (c[1] < 0.0f ? -1.0f : 1.0f) / mat[5];
 		q[2] = -1.0f;
@@ -774,14 +766,15 @@ static void SetViewportAndScissor()
 		mat[10] = c[2] * scale + 1.0f;
 		mat[14] = c[3] * scale;
 	}
+
 	GL_LoadProjectionMatrix( mat );
 
 	// set the window clipping
 	GL_Viewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
 	             backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
 
-	GL_Scissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
-	            backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
+	GL_Scissor( backEnd.viewParms.scissorX, backEnd.viewParms.scissorY,
+	            backEnd.viewParms.scissorWidth, backEnd.viewParms.scissorHeight);
 }
 
 /*
@@ -814,7 +807,7 @@ static void RB_SetGL2D()
 
 	// set time for 2D shaders
 	backEnd.refdef.time = ri.Milliseconds();
-	backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;
+	backEnd.refdef.floatTime =float(double(backEnd.refdef.time) * 0.001);
 }
 
 // used as bitfield
@@ -858,7 +851,7 @@ static void RB_RenderDrawSurfaces( shaderSort_t fromSort, shaderSort_t toSort,
 
 		// update locals
 		entity = drawSurf->entity;
-		shader = tr.sortedShaders[ drawSurf->shaderNum() ];
+		shader = drawSurf->shader;
 		lightmapNum = drawSurf->lightmapNum();
 		fogNum = drawSurf->fogNum();
 
@@ -1228,7 +1221,7 @@ static void RB_RenderInteractions()
 		{
 			backEnd.currentEntity = entity = ia->entity;
 			surface = ia->surface;
-			shader = tr.sortedShaders[ ia->shaderNum ];
+			shader = ia->shader;
 
 			if ( !shader || !shader->interactLight )
 			{
@@ -1325,8 +1318,8 @@ static void RB_RenderInteractions()
 	}
 
 	// reset scissor
-	GL_Scissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
-	            backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
+	GL_Scissor( backEnd.viewParms.scissorX, backEnd.viewParms.scissorY,
+	            backEnd.viewParms.scissorWidth, backEnd.viewParms.scissorHeight );
 
 	GL_CheckErrors();
 
@@ -1334,7 +1327,7 @@ static void RB_RenderInteractions()
 	{
 		glFinish();
 		endTime = ri.Milliseconds();
-		backEnd.pc.c_forwardLightingTime = endTime - startTime;
+		backEnd.pc.c_forwardLightingTime += endTime - startTime;
 	}
 }
 
@@ -1860,11 +1853,14 @@ static void RB_SetupLightForLighting( trRefLight_t *light )
 							gl_genericShader->DisableVertexSkinning();
 							gl_genericShader->DisableVertexAnimation();
 							gl_genericShader->DisableTCGenEnvironment();
-
+							gl_genericShader->DisableVertexSprite();
+							gl_genericShader->DisableTCGenLightmap();
+							gl_genericShader->DisableDepthFade();
+							gl_genericShader->DisableAlphaTesting();
 							gl_genericShader->BindProgram( 0 );
 
 							// set uniforms
-							gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+							//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 							gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 							gl_genericShader->SetUniform_Color( Color::Black );
 
@@ -2134,7 +2130,7 @@ static void RB_RenderInteractionsShadowMapped()
 				iaLast = ia;
 				backEnd.currentEntity = entity = ia->entity;
 				surface = ia->surface;
-				shader = tr.sortedShaders[ ia->shaderNum ];
+				shader = ia->shader;
 				alphaTest = shader->alphaTest;
 
 				if ( entity->e.renderfx & ( RF_NOSHADOW | RF_DEPTHHACK ) )
@@ -2317,7 +2313,7 @@ static void RB_RenderInteractionsShadowMapped()
 					iaLast = ia;
 					backEnd.currentEntity = entity = ia->entity;
 					surface = ia->surface;
-					shader = tr.sortedShaders[ ia->shaderNum ];
+					shader = ia->shader;
 					alphaTest = shader->alphaTest;
 
 					if ( entity->e.renderfx & ( RF_NOSHADOW | RF_DEPTHHACK ) )
@@ -2496,7 +2492,7 @@ static void RB_RenderInteractionsShadowMapped()
 			iaLast = ia;
 			backEnd.currentEntity = entity = ia->entity;
 			surface = ia->surface;
-			shader = tr.sortedShaders[ ia->shaderNum ];
+			shader = ia->shader;
 			alphaTest = shader->alphaTest;
 
 			if ( !shader->interactLight )
@@ -2610,8 +2606,8 @@ static void RB_RenderInteractionsShadowMapped()
 	}
 
 	// reset scissor clamping
-	GL_Scissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
-	            backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
+	GL_Scissor( backEnd.viewParms.scissorX, backEnd.viewParms.scissorY,
+	            backEnd.viewParms.scissorWidth, backEnd.viewParms.scissorHeight );
 
 	// reset clear color
 	GL_ClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
@@ -2622,7 +2618,7 @@ static void RB_RenderInteractionsShadowMapped()
 	{
 		glFinish();
 		endTime = ri.Milliseconds();
-		backEnd.pc.c_forwardLightingTime = endTime - startTime;
+		backEnd.pc.c_forwardLightingTime += endTime - startTime;
 	}
 }
 
@@ -2724,12 +2720,14 @@ void RB_RunVisTests( )
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
 		gl_genericShader->DisableTCGenLightmap();
-
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_Color( Color::White );
 
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CONST, alphaGen_t::AGEN_CONST );
@@ -2809,11 +2807,18 @@ void RB_RenderPostDepth()
 
 	Tess_InstantQuad( quadVerts );
 
+	vec3_t projToViewParams;
+	projToViewParams[0] = tanf(DEG2RAD(backEnd.refdef.fov_x * 0.5f)) * backEnd.viewParms.zFar;
+	projToViewParams[1] = tanf(DEG2RAD(backEnd.refdef.fov_y * 0.5f)) * backEnd.viewParms.zFar;
+	projToViewParams[2] = backEnd.viewParms.zFar;
+
 	// render lights
 	R_BindFBO( tr.lighttileFBO );
 	gl_lighttileShader->BindProgram( 0 );
 	gl_lighttileShader->SetUniform_ModelMatrix( backEnd.viewParms.world.modelViewMatrix );
 	gl_lighttileShader->SetUniform_numLights( backEnd.refdef.numLights );
+	gl_lighttileShader->SetUniform_zFar( projToViewParams );
+
 	if( glConfig2.uniformBufferObjectAvailable ) {
 		gl_lighttileShader->SetUniformBlock_Lights( tr.dlightUBO );
 	} else {
@@ -2846,8 +2851,8 @@ void RB_RenderPostDepth()
 	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
 	GL_Viewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
 		     backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
-	GL_Scissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
-		    backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
+	GL_Scissor( backEnd.viewParms.scissorX, backEnd.viewParms.scissorY,
+		    backEnd.viewParms.scissorWidth, backEnd.viewParms.scissorHeight );
 
 	GL_CheckErrors();
 }
@@ -2949,7 +2954,9 @@ void RB_RenderBloom()
 
 	GLimp_LogComment( "--- RB_RenderBloom ---\n" );
 
-	if ( ( backEnd.refdef.rdflags & ( RDF_NOWORLDMODEL | RDF_NOBLOOM ) ) || !r_bloom->integer || backEnd.viewParms.isPortal )
+	if ( ( backEnd.refdef.rdflags & ( RDF_NOWORLDMODEL | RDF_NOBLOOM ) ) ||
+	     !r_bloom->integer ||
+	     backEnd.viewParms.portalLevel > 0 )
 	{
 		return;
 	}
@@ -3068,7 +3075,8 @@ void RB_RenderMotionBlur()
 
 	GLimp_LogComment( "--- RB_RenderMotionBlur ---\n" );
 
-	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) || backEnd.viewParms.isPortal )
+	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) ||
+	     backEnd.viewParms.portalLevel > 0 )
 	{
 		return;
 	}
@@ -3108,7 +3116,8 @@ void RB_RenderSSAO()
 		return;
 	}
 
-	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) || backEnd.viewParms.isPortal )
+	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) ||
+	     backEnd.viewParms.portalLevel > 0 )
 	{
 		return;
 	}
@@ -3150,7 +3159,7 @@ void RB_FXAA()
 	GLimp_LogComment( "--- RB_FXAA ---\n" );
 
 	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) ||
-	     backEnd.viewParms.isPortal )
+	     backEnd.viewParms.portalLevel )
 	{
 		return;
 	}
@@ -3183,7 +3192,7 @@ void RB_CameraPostFX()
 	GLimp_LogComment( "--- RB_CameraPostFX ---\n" );
 
 	if ( ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) ||
-	     backEnd.viewParms.isPortal )
+	     backEnd.viewParms.portalLevel > 0 )
 	{
 		return;
 	}
@@ -3238,15 +3247,18 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
-
+		gl_genericShader->DisableTCGenLightmap();
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
 		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CUSTOM_RGB, alphaGen_t::AGEN_CUSTOM );
 
 		gl_genericShader->SetRequiredVertexPointers();
@@ -3396,15 +3408,18 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
-
+		gl_genericShader->DisableTCGenLightmap();
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
 		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
@@ -3518,15 +3533,18 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
-
+		gl_genericShader->DisableTCGenLightmap();
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
 		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
@@ -3538,7 +3556,8 @@ static void RB_RenderDebugUtils()
 
 		for ( i = 0; i < backEnd.refdef.numEntities; i++, ent++ )
 		{
-			if ( ( ent->e.renderfx & RF_THIRD_PERSON ) && !backEnd.viewParms.isPortal )
+			if ( ( ent->e.renderfx & RF_THIRD_PERSON ) &&
+			     backEnd.viewParms.portalLevel == 0 )
 			{
 				continue;
 			}
@@ -3591,26 +3610,36 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
-
+		gl_genericShader->DisableTCGenLightmap();
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
 		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
 		// bind u_ColorMap
-		GL_BindToTMU( 0, tr.charsetImage );
+#if defined( REFBONE_NAMES )
+		GL_BindToTMU( 0, r_imageHashTable [ tr.charsetImageHash ] );
+		int width = r_imageHashTable [ tr.charsetImageHash ]->width;
+		int height = r_imageHashTable [ tr.charsetImageHash ]->height;
+#else
+		GL_BindToTMU( 0, tr.whiteImage );
+#endif
 		gl_genericShader->SetUniform_ColorTextureMatrix( matrixIdentity );
 
 		ent = backEnd.refdef.entities;
 
 		for ( i = 0; i < backEnd.refdef.numEntities; i++, ent++ )
 		{
-			if ( ( ent->e.renderfx & RF_THIRD_PERSON ) && !backEnd.viewParms.isPortal )
+			if ( ( ent->e.renderfx & RF_THIRD_PERSON ) &&
+			     backEnd.viewParms.portalLevel == 0 )
 			{
 				continue;
 			}
@@ -3762,9 +3791,6 @@ static void RB_RenderDebugUtils()
 						for ( k = 0; ( unsigned ) k < strlen( skel->bones[ j ].name ); k++ )
 						{
 							int   ch;
-							int   row, col;
-							float frow, fcol;
-							float size;
 
 							ch = skel->bones[ j ].name[ k ];
 							ch &= 255;
@@ -3774,15 +3800,15 @@ static void RB_RenderDebugUtils()
 								break;
 							}
 
-							row = ch >> 4;
-							col = ch & 15;
+							glyphInfo_t *glyph = &cls.consoleFont->glyphBlock[ 0 ][ ch ];
+							re.GlyphChar( cls.consoleFont, ch, glyph );
 
-							frow = row * 0.0625;
-							fcol = col * 0.0625;
-							size = 0.0625;
-
-							VectorMA( worldOrigins[ j ], - ( k + 2.0f ), left, origin );
-							Tess_AddQuadStampExt( origin, left, up, Color::White, fcol, frow, fcol + size, frow + size );
+							// factor 1.5 improves readability
+							VectorMA( worldOrigins[ j ], - ( k*1.5f + 2.0f ), left, origin );
+							float pixelheight = 1.0f/(float)height;
+							int heightAdj = 16 - glyph->height;
+							Tess_AddQuadStampExt( origin, left, up, Color::White, glyph->s,
+												  glyph->t-pixelheight*heightAdj, glyph->s2, glyph->t2);
 						}
 
 						Tess_UpdateVBOs( );
@@ -3813,15 +3839,18 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
-
+		gl_genericShader->DisableTCGenLightmap();
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
 		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CUSTOM_RGB, alphaGen_t::AGEN_CUSTOM );
 
 		// bind u_ColorMap
@@ -3890,8 +3919,6 @@ static void RB_RenderDebugUtils()
 		gl_reflectionShader->SetVertexSkinning( false );
 		gl_reflectionShader->SetVertexAnimation( false );
 
-		gl_reflectionShader->SetNormalMapping( false );
-
 		gl_reflectionShader->BindProgram( 0 );
 
 		// end choose right shader program ------------------------------
@@ -3928,11 +3955,14 @@ static void RB_RenderDebugUtils()
 
 			gl_genericShader->DisableVertexSkinning();
 			gl_genericShader->DisableVertexAnimation();
+			gl_genericShader->DisableVertexSprite();
 			gl_genericShader->DisableTCGenEnvironment();
-
+			gl_genericShader->DisableTCGenLightmap();
+			gl_genericShader->DisableDepthFade();
+			gl_genericShader->DisableAlphaTesting();
 			gl_genericShader->BindProgram( 0 );
 
-			gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+			//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 			gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 			gl_genericShader->SetUniform_Color( Color::Black );
 
@@ -4001,11 +4031,14 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
-
+		gl_genericShader->DisableTCGenLightmap();
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
@@ -4095,12 +4128,15 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
-
+		gl_genericShader->DisableTCGenLightmap();
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
 		// set uniforms
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_CUSTOM_RGB, alphaGen_t::AGEN_CUSTOM );
 
 		// bind u_ColorMap
@@ -4351,8 +4387,8 @@ static void RB_RenderDebugUtils()
 				GL_Viewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
 				             backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
 
-				GL_Scissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
-				            backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
+				GL_Scissor( backEnd.viewParms.scissorX, backEnd.viewParms.scissorY,
+				            backEnd.viewParms.scissorWidth, backEnd.viewParms.scissorHeight );
 
 				GL_PopMatrix();
 			}
@@ -4380,15 +4416,18 @@ static void RB_RenderDebugUtils()
 
 		gl_genericShader->DisableVertexSkinning();
 		gl_genericShader->DisableVertexAnimation();
+		gl_genericShader->DisableVertexSprite();
 		gl_genericShader->DisableTCGenEnvironment();
-
+		gl_genericShader->DisableTCGenLightmap();
+		gl_genericShader->DisableDepthFade();
+		gl_genericShader->DisableAlphaTesting();
 		gl_genericShader->BindProgram( 0 );
 
 		GL_State( GLS_POLYMODE_LINE | GLS_DEPTHTEST_DISABLE );
 		GL_Cull( cullType_t::CT_TWO_SIDED );
 
 		// set uniforms
-		gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+		//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 		gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 		gl_genericShader->SetUniform_Color( Color::Black );
 
@@ -4472,8 +4511,11 @@ void DebugDrawBegin( debugDrawMode_t mode, float size ) {
 
 	gl_genericShader->DisableVertexSkinning();
 	gl_genericShader->DisableVertexAnimation();
+	gl_genericShader->DisableVertexSprite();
 	gl_genericShader->DisableTCGenEnvironment();
 	gl_genericShader->DisableTCGenLightmap();
+	gl_genericShader->DisableDepthFade();
+	gl_genericShader->DisableAlphaTesting();
 	gl_genericShader->BindProgram( 0 );
 
 	GL_State( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
@@ -4482,13 +4524,12 @@ void DebugDrawBegin( debugDrawMode_t mode, float size ) {
 	GL_VertexAttribsState( ATTR_POSITION | ATTR_COLOR | ATTR_TEXCOORD );
 
 	// set uniforms
-	gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+	//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 	gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 	gl_genericShader->SetUniform_Color( colorClear );
 
 	// bind u_ColorMap
-	GL_SelectTexture( 0 );
-	GL_Bind( tr.whiteImage );
+	GL_BindToTMU( 0, tr.whiteImage );
 	gl_genericShader->SetUniform_ColorTextureMatrix( matrixIdentity );
 
 	// render in world space
@@ -4562,9 +4603,8 @@ void DebugDrawEnd() {
 RB_RenderView
 ==================
 */
-static void RB_RenderView()
+static void RB_RenderView( bool depthPass )
 {
-	int clearBits = 0;
 	int startTime = 0, endTime = 0;
 
 	if ( r_logFile->integer )
@@ -4579,18 +4619,6 @@ static void RB_RenderView()
 
 	backEnd.pc.c_surfaces += backEnd.viewParms.numDrawSurfs;
 
-	// sync with gl if needed
-	if ( r_finish->integer == 1 && !glState.finishCalled )
-	{
-		glFinish();
-		glState.finishCalled = true;
-	}
-
-	if ( r_finish->integer == 0 )
-	{
-		glState.finishCalled = true;
-	}
-
 	// disable offscreen rendering
 	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
 
@@ -4603,15 +4631,6 @@ static void RB_RenderView()
 
 	// ensures that depth writes are enabled for the depth clear
 	GL_State( GLS_DEFAULT );
-
-	// clear relevant buffers
-	clearBits = GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-
-	if ( r_clear->integer && !backEnd.viewParms.isPortal ) {
-		clearBits |= GL_COLOR_BUFFER_BIT;
-	}
-
-	glClear( clearBits );
 
 	if ( ( backEnd.refdef.rdflags & RDF_HYPERSPACE ) )
 	{
@@ -4634,9 +4653,12 @@ static void RB_RenderView()
 		startTime = ri.Milliseconds();
 	}
 
-	RB_RenderDrawSurfaces( shaderSort_t::SS_DEPTH, shaderSort_t::SS_DEPTH, DRAWSURFACES_ALL );
-	RB_RunVisTests();
-	RB_RenderPostDepth();
+	if( depthPass ) {
+		RB_RenderDrawSurfaces( shaderSort_t::SS_DEPTH, shaderSort_t::SS_DEPTH, DRAWSURFACES_ALL );
+		RB_RunVisTests();
+		RB_RenderPostDepth();
+		return;
+	}
 
 	if( tr.refdef.blurVec[0] != 0.0f ||
 			tr.refdef.blurVec[1] != 0.0f ||
@@ -4664,7 +4686,7 @@ static void RB_RenderView()
 	{
 		glFinish();
 		endTime = ri.Milliseconds();
-		backEnd.pc.c_forwardAmbientTime = endTime - startTime;
+		backEnd.pc.c_forwardAmbientTime += endTime - startTime;
 	}
 
 	if ( r_shadows->integer >= Util::ordinal(shadowingMode_t::SHADOWING_ESM16) )
@@ -4685,48 +4707,62 @@ static void RB_RenderView()
 	RB_RenderDrawSurfaces( shaderSort_t::SS_ENVIRONMENT_NOFOG, shaderSort_t::SS_POST_PROCESS, DRAWSURFACES_ALL );
 
 	GL_CheckErrors();
+
 	// render bloom post process effect
 	RB_RenderBloom();
 
 	// render debug information
 	RB_RenderDebugUtils();
 
-	if ( backEnd.viewParms.isPortal )
+	if ( backEnd.viewParms.portalLevel > 0 )
 	{
+#if !defined( GLSL_COMPILE_STARTUP_ONLY )
 		{
 			// capture current color buffer
 			GL_SelectTexture( 0 );
 			GL_Bind( tr.portalRenderImage );
 			glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, tr.portalRenderImage->uploadWidth, tr.portalRenderImage->uploadHeight );
 		}
+#endif
 		backEnd.pc.c_portals++;
 	}
 
+	backEnd.pc.c_views++;
+}
+
+/*
+==================
+RB_RenderPostProcess
+
+Present FBO to screen, and render any effects that must go after the main view and its sub views have been rendered
+This is done so various debugging facilities will work properly
+==================
+*/
+static void RB_RenderPostProcess()
+{
 	RB_FXAA();
 
 	// render chromatric aberration
 	RB_CameraPostFX();
 
 	// copy to given byte buffer that is NOT a FBO
-	if ( tr.refdef.pixelTarget != nullptr )
+	if (tr.refdef.pixelTarget != nullptr)
 	{
 		int i;
 
 		// need to convert Y axis
 		// Bugfix: drivers absolutely hate running in high res and using glReadPixels near the top or bottom edge.
 		// Sooo... let's do it in the middle.
-		glReadPixels( glConfig.vidWidth / 2, glConfig.vidHeight / 2, tr.refdef.pixelTargetWidth, tr.refdef.pixelTargetHeight, GL_RGBA,
-		              GL_UNSIGNED_BYTE, tr.refdef.pixelTarget );
+		glReadPixels(glConfig.vidWidth / 2, glConfig.vidHeight / 2, tr.refdef.pixelTargetWidth, tr.refdef.pixelTargetHeight, GL_RGBA,
+			GL_UNSIGNED_BYTE, tr.refdef.pixelTarget);
 
-		for ( i = 0; i < tr.refdef.pixelTargetWidth * tr.refdef.pixelTargetHeight; i++ )
+		for (i = 0; i < tr.refdef.pixelTargetWidth * tr.refdef.pixelTargetHeight; i++)
 		{
-			tr.refdef.pixelTarget[( i * 4 ) + 3 ] = 255;  //set the alpha pure white
+			tr.refdef.pixelTarget[(i * 4) + 3] = 255;  //set the alpha pure white
 		}
 	}
 
 	GL_CheckErrors();
-
-	backEnd.pc.c_views++;
 }
 
 /*
@@ -4790,12 +4826,15 @@ void RE_StretchRaw( int x, int y, int w, int h, int cols, int rows, const byte *
 
 	gl_genericShader->DisableVertexSkinning();
 	gl_genericShader->DisableVertexAnimation();
+	gl_genericShader->DisableVertexSprite();
 	gl_genericShader->DisableTCGenEnvironment();
-
+	gl_genericShader->DisableTCGenLightmap();
+	gl_genericShader->DisableDepthFade();
+	gl_genericShader->DisableAlphaTesting();
 	gl_genericShader->BindProgram( 0 );
 
 	// set uniforms
-	gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+	//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 	gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 	gl_genericShader->SetUniform_Color( Color::Black );
 
@@ -4926,17 +4965,13 @@ void RE_UploadCinematic( int cols, int rows, const byte *data, int client, bool 
 RB_SetColor
 =============
 */
-const void     *RB_SetColor( const void *data )
+const RenderCommand *SetColorCommand::ExecuteSelf() const
 {
-	const setColorCommand_t *cmd;
+	GLimp_LogComment( "--- SetColorCommand::ExecuteSelf ---\n" );
 
-	GLimp_LogComment( "--- RB_SetColor ---\n" );
+	backEnd.color2D = color;
 
-	cmd = ( const setColorCommand_t * ) data;
-
-	backEnd.color2D = cmd->color;
-
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
 /*
@@ -4944,36 +4979,32 @@ const void     *RB_SetColor( const void *data )
 RB_SetColorGrading
 =============
 */
-const void *RB_SetColorGrading( const void *data )
+const RenderCommand *SetColorGradingCommand::ExecuteSelf( ) const
 {
-	const setColorGradingCommand_t *cmd;
+	GLimp_LogComment( "--- SetColorGradingCommand::ExecuteSelf ---\n" );
 
-	GLimp_LogComment( "--- RB_SetColorGrading ---\n" );
-
-	cmd = ( const setColorGradingCommand_t * ) data;
-
-	if( cmd->slot < 0 || cmd->slot >= REF_COLORGRADE_SLOTS ) {
-		return ( const void * ) ( cmd + 1 );
+	if( slot < 0 || slot >= REF_COLORGRADE_SLOTS ) {
+		return this + 1;
 	}
 
-	if( glState.colorgradeSlots[ cmd->slot ] == cmd->image ) {
-		return ( const void * ) ( cmd + 1 );
+	if( glState.colorgradeSlots[ slot ] == image ) {
+		return this + 1;
 	}
 
-	GL_Bind( cmd->image );
+	GL_Bind( image );
 
 	glBindBuffer( GL_PIXEL_PACK_BUFFER, tr.colorGradePBO );
 
-	glGetTexImage( cmd->image->type, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr );
+	glGetTexImage( image->type, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr );
 	glBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
 
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, tr.colorGradePBO );
 
 	GL_Bind( tr.colorGradeImage );
 
-	if ( cmd->image->width == REF_COLORGRADEMAP_SIZE )
+	if ( image->width == REF_COLORGRADEMAP_SIZE )
 	{
-		glTexSubImage3D( GL_TEXTURE_3D, 0, 0, 0, cmd->slot * REF_COLORGRADEMAP_SIZE,
+		glTexSubImage3D( GL_TEXTURE_3D, 0, 0, 0, slot * REF_COLORGRADEMAP_SIZE,
 		                 REF_COLORGRADEMAP_SIZE, REF_COLORGRADEMAP_SIZE, REF_COLORGRADEMAP_SIZE,
 		                 GL_RGBA, GL_UNSIGNED_BYTE, nullptr );
 	}
@@ -4985,7 +5016,7 @@ const void *RB_SetColorGrading( const void *data )
 
 		for ( i = 0; i < 16; i++ )
 		{
-			glTexSubImage3D( GL_TEXTURE_3D, 0, 0, 0, i + cmd->slot * REF_COLORGRADEMAP_SIZE,
+			glTexSubImage3D( GL_TEXTURE_3D, 0, 0, 0, i + slot * REF_COLORGRADEMAP_SIZE,
 			                 REF_COLORGRADEMAP_SIZE, REF_COLORGRADEMAP_SIZE, 1,
 			                 GL_RGBA, GL_UNSIGNED_BYTE, ( ( u8vec4_t * ) nullptr ) + REF_COLORGRADEMAP_SIZE );
 		}
@@ -4995,9 +5026,9 @@ const void *RB_SetColorGrading( const void *data )
 
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0 );
 
-	glState.colorgradeSlots[ cmd->slot ] = cmd->image;
+	glState.colorgradeSlots[ slot ] = image;
 
-	return ( const void * ) ( cmd + 1 );
+	return this + 1;
 }
 
 /*
@@ -5005,22 +5036,16 @@ const void *RB_SetColorGrading( const void *data )
 RB_StretchPic
 =============
 */
-const void     *RB_StretchPic( const void *data )
+const RenderCommand *StretchPicCommand::ExecuteSelf( ) const
 {
-	const stretchPicCommand_t *cmd;
-	shader_t                  *shader;
 	int                       numVerts, numIndexes;
 
-	GLimp_LogComment( "--- RB_StretchPic ---\n" );
-
-	cmd = ( const stretchPicCommand_t * ) data;
+	GLimp_LogComment( "--- StretchPicCommand::ExecuteSelf ---\n" );
 
 	if ( !backEnd.projection2D )
 	{
 		RB_SetGL2D();
 	}
-
-	shader = cmd->shader;
 
 	if ( shader != tess.surfaceShader )
 	{
@@ -5051,75 +5076,64 @@ const void     *RB_StretchPic( const void *data )
 	tess.indexes[ numIndexes + 4 ] = numVerts + 0;
 	tess.indexes[ numIndexes + 5 ] = numVerts + 1;
 
-	tess.verts[ numVerts ].xyz[ 0 ] = cmd->x;
-	tess.verts[ numVerts ].xyz[ 1 ] = cmd->y;
+	tess.verts[ numVerts ].xyz[ 0 ] = x;
+	tess.verts[ numVerts ].xyz[ 1 ] = y;
 	tess.verts[ numVerts ].xyz[ 2 ] = 0.0f;
 	tess.verts[ numVerts + 0 ].color = backEnd.color2D;
 
-	tess.verts[ numVerts ].texCoords[ 0 ] = floatToHalf( cmd->s1 );
-	tess.verts[ numVerts ].texCoords[ 1 ] = floatToHalf( cmd->t1 );
+	tess.verts[ numVerts ].texCoords[ 0 ] = floatToHalf( s1 );
+	tess.verts[ numVerts ].texCoords[ 1 ] = floatToHalf( t1 );
 
-	tess.verts[ numVerts + 1 ].xyz[ 0 ] = cmd->x + cmd->w;
-	tess.verts[ numVerts + 1 ].xyz[ 1 ] = cmd->y;
+	tess.verts[ numVerts + 1 ].xyz[ 0 ] = x + w;
+	tess.verts[ numVerts + 1 ].xyz[ 1 ] = y;
 	tess.verts[ numVerts + 1 ].xyz[ 2 ] = 0.0f;
 	tess.verts[ numVerts + 1 ].color = backEnd.color2D;
 
-	tess.verts[ numVerts + 1 ].texCoords[ 0 ] = floatToHalf( cmd->s2 );
-	tess.verts[ numVerts + 1 ].texCoords[ 1 ] = floatToHalf( cmd->t1 );
+	tess.verts[ numVerts + 1 ].texCoords[ 0 ] = floatToHalf( s2 );
+	tess.verts[ numVerts + 1 ].texCoords[ 1 ] = floatToHalf( t1 );
 
-	tess.verts[ numVerts + 2 ].xyz[ 0 ] = cmd->x + cmd->w;
-	tess.verts[ numVerts + 2 ].xyz[ 1 ] = cmd->y + cmd->h;
+	tess.verts[ numVerts + 2 ].xyz[ 0 ] = x + w;
+	tess.verts[ numVerts + 2 ].xyz[ 1 ] = y + h;
 	tess.verts[ numVerts + 2 ].xyz[ 2 ] = 0.0f;
 	tess.verts[ numVerts + 2 ].color = backEnd.color2D;
 
-	tess.verts[ numVerts + 2 ].texCoords[ 0 ] = floatToHalf( cmd->s2 );
-	tess.verts[ numVerts + 2 ].texCoords[ 1 ] = floatToHalf( cmd->t2 );
+	tess.verts[ numVerts + 2 ].texCoords[ 0 ] = floatToHalf( s2 );
+	tess.verts[ numVerts + 2 ].texCoords[ 1 ] = floatToHalf( t2 );
 
-	tess.verts[ numVerts + 3 ].xyz[ 0 ] = cmd->x;
-	tess.verts[ numVerts + 3 ].xyz[ 1 ] = cmd->y + cmd->h;
+	tess.verts[ numVerts + 3 ].xyz[ 0 ] = x;
+	tess.verts[ numVerts + 3 ].xyz[ 1 ] = y + h;
 	tess.verts[ numVerts + 3 ].xyz[ 2 ] = 0.0f;
 	tess.verts[ numVerts + 3 ].color = backEnd.color2D;
 
-	tess.verts[ numVerts + 3 ].texCoords[ 0 ] = floatToHalf( cmd->s1 );
-	tess.verts[ numVerts + 3 ].texCoords[ 1 ] = floatToHalf( cmd->t2 );
+	tess.verts[ numVerts + 3 ].texCoords[ 0 ] = floatToHalf( s1 );
+	tess.verts[ numVerts + 3 ].texCoords[ 1 ] = floatToHalf( t2 );
 
 	tess.attribsSet |= ATTR_POSITION | ATTR_COLOR | ATTR_TEXCOORD;
 
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
-const void     *RB_ScissorSet( const void *data )
-{
-	const scissorSetCommand_t *cmd;
-
-	cmd = ( const scissorSetCommand_t * ) data;
-
-	tr.scissor.x = cmd->x;
-	tr.scissor.y = cmd->y;
-	tr.scissor.w = cmd->w;
-	tr.scissor.h = cmd->h;
+const RenderCommand *ScissorSetCommand::ExecuteSelf( ) const {
+	tr.scissor.x = x;
+	tr.scissor.y = y;
+	tr.scissor.w = w;
+	tr.scissor.h = h;
 
 	Tess_End();
-	GL_Scissor( cmd->x, cmd->y, cmd->w, cmd->h );
+	GL_Scissor( x, y, w, h );
 	tess.surfaceShader = nullptr;
 
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
-const void     *RB_Draw2dPolys( const void *data )
+const RenderCommand *Poly2dCommand::ExecuteSelf( ) const
 {
-	const poly2dCommand_t *cmd;
-	shader_t              *shader;
 	int                   i;
-
-	cmd = ( const poly2dCommand_t * ) data;
 
 	if ( !backEnd.projection2D )
 	{
 		RB_SetGL2D();
 	}
-
-	shader = cmd->shader;
 
 	if ( shader != tess.surfaceShader )
 	{
@@ -5132,9 +5146,9 @@ const void     *RB_Draw2dPolys( const void *data )
 		Tess_Begin( Tess_StageIteratorGeneric, nullptr, shader, nullptr, false, false, -1, 0 );
 	}
 
-	Tess_CheckOverflow( cmd->numverts, ( cmd->numverts - 2 ) * 3 );
+	Tess_CheckOverflow( numverts, ( numverts - 2 ) * 3 );
 
-	for ( i = 0; i < cmd->numverts - 2; i++ )
+	for ( i = 0; i < numverts - 2; i++ )
 	{
 		tess.indexes[ tess.numIndexes + 0 ] = tess.numVertexes;
 		tess.indexes[ tess.numIndexes + 1 ] = tess.numVertexes + i + 1;
@@ -5142,38 +5156,33 @@ const void     *RB_Draw2dPolys( const void *data )
 		tess.numIndexes += 3;
 	}
 
-	for ( i = 0; i < cmd->numverts; i++ )
+	for ( i = 0; i < numverts; i++ )
 	{
-		tess.verts[ tess.numVertexes ].xyz[ 0 ] = cmd->verts[ i ].xyz[ 0 ];
-		tess.verts[ tess.numVertexes ].xyz[ 1 ] = cmd->verts[ i ].xyz[ 1 ];
+		tess.verts[ tess.numVertexes ].xyz[ 0 ] = verts[ i ].xyz[ 0 ];
+		tess.verts[ tess.numVertexes ].xyz[ 1 ] = verts[ i ].xyz[ 1 ];
 		tess.verts[ tess.numVertexes ].xyz[ 2 ] = 0.0f;
 
-		tess.verts[ tess.numVertexes ].texCoords[ 0 ] = floatToHalf( cmd->verts[ i ].st[ 0 ] );
-		tess.verts[ tess.numVertexes ].texCoords[ 1 ] = floatToHalf( cmd->verts[ i ].st[ 1 ] );
+		tess.verts[ tess.numVertexes ].texCoords[ 0 ] = floatToHalf( verts[ i ].st[ 0 ] );
+		tess.verts[ tess.numVertexes ].texCoords[ 1 ] = floatToHalf( verts[ i ].st[ 1 ] );
 
-		tess.verts[ tess.numVertexes ].color = Color::Adapt( cmd->verts[ i ].modulate );
+		tess.verts[ tess.numVertexes ].color = Color::Adapt( verts[ i ].modulate );
 		tess.numVertexes++;
 	}
 
 	tess.attribsSet |= ATTR_POSITION | ATTR_TEXCOORD | ATTR_COLOR;
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
-const void     *RB_Draw2dPolysIndexed( const void *data )
+const RenderCommand *Poly2dIndexedCommand::ExecuteSelf( ) const
 {
-	const poly2dIndexedCommand_t *cmd;
 	cullType_t            oldCullType;
-	shader_t              *shader;
 	int                   i;
-
-	cmd = ( const poly2dIndexedCommand_t * ) data;
 
 	if ( !backEnd.projection2D )
 	{
 		RB_SetGL2D();
 	}
 
-	shader = cmd->shader;
 	// HACK: Our shader system likes to cull things that we'd like shown
 	oldCullType = shader->cullType;
 	shader->cullType = CT_TWO_SIDED;
@@ -5193,28 +5202,28 @@ const void     *RB_Draw2dPolysIndexed( const void *data )
 		Tess_Begin( Tess_StageIteratorGeneric, nullptr, shader, nullptr, false, false, -1, 0 );
 	}
 
-	Tess_CheckOverflow( cmd->numverts, cmd->numIndexes );
+	Tess_CheckOverflow( numverts, numIndexes );
 
-	for ( i = 0; i < cmd->numIndexes; i++ )
+	for ( i = 0; i < numIndexes; i++ )
 	{
-		tess.indexes[ tess.numIndexes + i ] = tess.numVertexes + cmd->indexes[ i ];
+		tess.indexes[ tess.numIndexes + i ] = tess.numVertexes + indexes[ i ];
 	}
-	tess.numIndexes += cmd->numIndexes;
+	tess.numIndexes += numIndexes;
 	if ( tr.scissor.status )
 	{
 		GL_Scissor( tr.scissor.x, tr.scissor.y, tr.scissor.w, tr.scissor.h );
 	}
 
-	for ( i = 0; i < cmd->numverts; i++ )
+	for ( i = 0; i < numverts; i++ )
 	{
-		tess.verts[ tess.numVertexes ].xyz[ 0 ] = cmd->verts[ i ].xyz[ 0 ] + cmd->translation[ 0 ];
-		tess.verts[ tess.numVertexes ].xyz[ 1 ] = cmd->verts[ i ].xyz[ 1 ] + cmd->translation[ 1 ];
+		tess.verts[ tess.numVertexes ].xyz[ 0 ] = verts[ i ].xyz[ 0 ] + translation[ 0 ];
+		tess.verts[ tess.numVertexes ].xyz[ 1 ] = verts[ i ].xyz[ 1 ] + translation[ 1 ];
 		tess.verts[ tess.numVertexes ].xyz[ 2 ] = 0.0f;
 
-		tess.verts[ tess.numVertexes ].texCoords[ 0 ] = floatToHalf( cmd->verts[ i ].st[ 0 ] );
-		tess.verts[ tess.numVertexes ].texCoords[ 1 ] = floatToHalf( cmd->verts[ i ].st[ 1 ] );
+		tess.verts[ tess.numVertexes ].texCoords[ 0 ] = floatToHalf( verts[ i ].st[ 0 ] );
+		tess.verts[ tess.numVertexes ].texCoords[ 1 ] = floatToHalf( verts[ i ].st[ 1 ] );
 
-		tess.verts[ tess.numVertexes ].color = Color::Adapt( cmd->verts[ i ].modulate );
+		tess.verts[ tess.numVertexes ].color = Color::Adapt( verts[ i ].modulate );
 		tess.numVertexes++;
 	}
 
@@ -5222,7 +5231,7 @@ const void     *RB_Draw2dPolysIndexed( const void *data )
 
 	shader->cullType = oldCullType;
 
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
 // NERVE - SMF
@@ -5232,21 +5241,15 @@ const void     *RB_Draw2dPolysIndexed( const void *data )
 RB_RotatedPic
 =============
 */
-const void     *RB_RotatedPic( const void *data )
+const RenderCommand *RotatedPicCommand::ExecuteSelf( ) const
 {
-	const stretchPicCommand_t *cmd;
-	shader_t                  *shader;
 	int                       numVerts, numIndexes;
 	float                     mx, my, cosA, sinA, cw, ch, sw, sh;
-
-	cmd = ( const stretchPicCommand_t * ) data;
 
 	if ( !backEnd.projection2D )
 	{
 		RB_SetGL2D();
 	}
-
-	shader = cmd->shader;
 
 	if ( shader != tess.surfaceShader )
 	{
@@ -5277,50 +5280,50 @@ const void     *RB_RotatedPic( const void *data )
 	tess.indexes[ numIndexes + 4 ] = numVerts + 0;
 	tess.indexes[ numIndexes + 5 ] = numVerts + 1;
 
-	mx = cmd->x + ( cmd->w / 2 );
-	my = cmd->y + ( cmd->h / 2 );
-	cosA = cos( DEG2RAD( cmd->angle ) );
-	sinA = sin( DEG2RAD( cmd->angle ) );
-	cw = cosA * ( cmd->w / 2 );
-	ch = cosA * ( cmd->h / 2 );
-	sw = sinA * ( cmd->w / 2 );
-	sh = sinA * ( cmd->h / 2 );
+	mx = x + ( w / 2 );
+	my = y + ( h / 2 );
+	cosA = cos( DEG2RAD( angle ) );
+	sinA = sin( DEG2RAD( angle ) );
+	cw = cosA * ( w / 2 );
+	ch = cosA * ( h / 2 );
+	sw = sinA * ( w / 2 );
+	sh = sinA * ( h / 2 );
 
 	tess.verts[ numVerts ].xyz[ 0 ] = mx - cw - sh;
 	tess.verts[ numVerts ].xyz[ 1 ] = my + sw - ch;
 	tess.verts[ numVerts ].xyz[ 2 ] = 0.0f;
 	tess.verts[ numVerts + 0 ].color = backEnd.color2D;
 
-	tess.verts[ numVerts ].texCoords[ 0 ] = floatToHalf( cmd->s1 );
-	tess.verts[ numVerts ].texCoords[ 1 ] = floatToHalf( cmd->t1 );
+	tess.verts[ numVerts ].texCoords[ 0 ] = floatToHalf( s1 );
+	tess.verts[ numVerts ].texCoords[ 1 ] = floatToHalf( t1 );
 
 	tess.verts[ numVerts + 1 ].xyz[ 0 ] = mx + cw - sh;
 	tess.verts[ numVerts + 1 ].xyz[ 1 ] = my - sw - ch;
 	tess.verts[ numVerts + 1 ].xyz[ 2 ] = 0.0f;
 	tess.verts[ numVerts + 1 ].color = backEnd.color2D;
 
-	tess.verts[ numVerts + 1 ].texCoords[ 0 ] = floatToHalf( cmd->s2 );
-	tess.verts[ numVerts + 1 ].texCoords[ 1 ] = floatToHalf( cmd->t1 );
+	tess.verts[ numVerts + 1 ].texCoords[ 0 ] = floatToHalf( s2 );
+	tess.verts[ numVerts + 1 ].texCoords[ 1 ] = floatToHalf( t1 );
 
 	tess.verts[ numVerts + 2 ].xyz[ 0 ] = mx + cw + sh;
 	tess.verts[ numVerts + 2 ].xyz[ 1 ] = my - sw + ch;
 	tess.verts[ numVerts + 2 ].xyz[ 2 ] = 0.0f;
 	tess.verts[ numVerts + 2 ].color = backEnd.color2D;
 
-	tess.verts[ numVerts + 2 ].texCoords[ 0 ] = floatToHalf( cmd->s2 );
-	tess.verts[ numVerts + 2 ].texCoords[ 1 ] = floatToHalf( cmd->t2 );
+	tess.verts[ numVerts + 2 ].texCoords[ 0 ] = floatToHalf( s2 );
+	tess.verts[ numVerts + 2 ].texCoords[ 1 ] = floatToHalf( t2 );
 
 	tess.verts[ numVerts + 3 ].xyz[ 0 ] = mx - cw + sh;
 	tess.verts[ numVerts + 3 ].xyz[ 1 ] = my + sw + ch;
 	tess.verts[ numVerts + 3 ].xyz[ 2 ] = 0.0f;
 	tess.verts[ numVerts + 3 ].color = backEnd.color2D;
 
-	tess.verts[ numVerts + 3 ].texCoords[ 0 ] = floatToHalf( cmd->s1 );
-	tess.verts[ numVerts + 3 ].texCoords[ 1 ] = floatToHalf( cmd->t2 );
+	tess.verts[ numVerts + 3 ].texCoords[ 0 ] = floatToHalf( s1 );
+	tess.verts[ numVerts + 3 ].texCoords[ 1 ] = floatToHalf( t2 );
 
 	tess.attribsSet |= ATTR_POSITION | ATTR_TEXCOORD | ATTR_COLOR;
 
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
 // -NERVE - SMF
@@ -5330,20 +5333,14 @@ const void     *RB_RotatedPic( const void *data )
 RB_StretchPicGradient
 ==============
 */
-const void     *RB_StretchPicGradient( const void *data )
+const RenderCommand *GradientPicCommand::ExecuteSelf( ) const
 {
-	const stretchPicCommand_t *cmd;
-	shader_t                  *shader;
 	int                       numVerts, numIndexes;
-
-	cmd = ( const stretchPicCommand_t * ) data;
 
 	if ( !backEnd.projection2D )
 	{
 		RB_SetGL2D();
 	}
-
-	shader = cmd->shader;
 
 	if ( shader != tess.surfaceShader )
 	{
@@ -5376,39 +5373,39 @@ const void     *RB_StretchPicGradient( const void *data )
 
 	tess.verts[ numVerts + 0 ].color = backEnd.color2D;
 	tess.verts[ numVerts + 1 ].color = backEnd.color2D;
-	tess.verts[ numVerts + 2 ].color = cmd->gradientColor;
-	tess.verts[ numVerts + 3 ].color = cmd->gradientColor;
+	tess.verts[ numVerts + 2 ].color = gradientColor;
+	tess.verts[ numVerts + 3 ].color = gradientColor;
 
-	tess.verts[ numVerts ].xyz[ 0 ] = cmd->x;
-	tess.verts[ numVerts ].xyz[ 1 ] = cmd->y;
+	tess.verts[ numVerts ].xyz[ 0 ] = x;
+	tess.verts[ numVerts ].xyz[ 1 ] = y;
 	tess.verts[ numVerts ].xyz[ 2 ] = 0.0f;
 
-	tess.verts[ numVerts ].texCoords[ 0 ] = floatToHalf( cmd->s1 );
-	tess.verts[ numVerts ].texCoords[ 1 ] = floatToHalf( cmd->t1 );
+	tess.verts[ numVerts ].texCoords[ 0 ] = floatToHalf( s1 );
+	tess.verts[ numVerts ].texCoords[ 1 ] = floatToHalf( t1 );
 
-	tess.verts[ numVerts + 1 ].xyz[ 0 ] = cmd->x + cmd->w;
-	tess.verts[ numVerts + 1 ].xyz[ 1 ] = cmd->y;
+	tess.verts[ numVerts + 1 ].xyz[ 0 ] = x + w;
+	tess.verts[ numVerts + 1 ].xyz[ 1 ] = y;
 	tess.verts[ numVerts + 1 ].xyz[ 2 ] = 0.0f;
 
-	tess.verts[ numVerts + 1 ].texCoords[ 0 ] = floatToHalf( cmd->s2 );
-	tess.verts[ numVerts + 1 ].texCoords[ 1 ] = floatToHalf( cmd->t1 );
+	tess.verts[ numVerts + 1 ].texCoords[ 0 ] = floatToHalf( s2 );
+	tess.verts[ numVerts + 1 ].texCoords[ 1 ] = floatToHalf( t1 );
 
-	tess.verts[ numVerts + 2 ].xyz[ 0 ] = cmd->x + cmd->w;
-	tess.verts[ numVerts + 2 ].xyz[ 1 ] = cmd->y + cmd->h;
+	tess.verts[ numVerts + 2 ].xyz[ 0 ] = x + w;
+	tess.verts[ numVerts + 2 ].xyz[ 1 ] = y + h;
 	tess.verts[ numVerts + 2 ].xyz[ 2 ] = 0.0f;
 
-	tess.verts[ numVerts + 2 ].texCoords[ 0 ] = floatToHalf( cmd->s2 );
-	tess.verts[ numVerts + 2 ].texCoords[ 1 ] = floatToHalf( cmd->t2 );
+	tess.verts[ numVerts + 2 ].texCoords[ 0 ] = floatToHalf( s2 );
+	tess.verts[ numVerts + 2 ].texCoords[ 1 ] = floatToHalf( t2 );
 
-	tess.verts[ numVerts + 3 ].xyz[ 0 ] = cmd->x;
-	tess.verts[ numVerts + 3 ].xyz[ 1 ] = cmd->y + cmd->h;
+	tess.verts[ numVerts + 3 ].xyz[ 0 ] = x;
+	tess.verts[ numVerts + 3 ].xyz[ 1 ] = y + h;
 	tess.verts[ numVerts + 3 ].xyz[ 2 ] = 0.0f;
 
-	tess.verts[ numVerts + 3 ].texCoords[ 0 ] = floatToHalf( cmd->s1 );
-	tess.verts[ numVerts + 3 ].texCoords[ 1 ] = floatToHalf( cmd->t2 );
+	tess.verts[ numVerts + 3 ].texCoords[ 0 ] = floatToHalf( s1 );
+	tess.verts[ numVerts + 3 ].texCoords[ 1 ] = floatToHalf( t2 );
 
 	tess.attribsSet |= ATTR_POSITION | ATTR_TEXCOORD | ATTR_COLOR;
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
 /*
@@ -5416,17 +5413,14 @@ const void     *RB_StretchPicGradient( const void *data )
 RB_SetupLights
 =============
 */
-static const void *RB_SetupLights( const void *data )
+const RenderCommand *SetupLightsCommand::ExecuteSelf( ) const
 {
-	const setupLightsCommand_t *cmd;
 	int numLights;
 	GLenum bufferTarget = glConfig2.uniformBufferObjectAvailable ? GL_UNIFORM_BUFFER : GL_PIXEL_UNPACK_BUFFER;
 
-	GLimp_LogComment( "--- RB_SetupLights ---\n" );
+	GLimp_LogComment( "--- SetupLightsCommand::ExecuteSelf ---\n" );
 
-	cmd = ( const setupLightsCommand_t * ) data;
-
-	if( (numLights = cmd->refdef.numLights) > 0 ) {
+	if( (numLights = refdef.numLights) > 0 ) {
 		shaderLight_t *buffer;
 
 		glBindBuffer( bufferTarget, tr.dlightUBO );
@@ -5435,10 +5429,10 @@ static const void *RB_SetupLights( const void *data )
 							    GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
 
 		for( int i = 0, j = 0; i < numLights; i++, j++ ) {
-			trRefLight_t *light = &cmd->refdef.lights[j];
+			trRefLight_t *light = &refdef.lights[j];
 
 			while( light->l.inverseShadows ) {
-				light = &cmd->refdef.lights[++j];
+				light = &refdef.lights[++j];
 			}
 
 			VectorCopy( light->l.origin, buffer[i].center );
@@ -5463,24 +5457,24 @@ static const void *RB_SetupLights( const void *data )
 		glUnmapBuffer( bufferTarget );
 		if( !glConfig2.uniformBufferObjectAvailable ) {
 			GL_BindToTMU( 0, tr.dlightImage );
-			glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, tr.dlightImage->width, tr.dlightImage->height, GL_RGBA, GL_FLOAT, NULL );
+			glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, tr.dlightImage->width, tr.dlightImage->height, GL_RGBA, GL_FLOAT, nullptr );
 		}
 		glBindBuffer( bufferTarget, 0 );
 	}
 
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
 /*
 =============
-RB_DrawView
+RB_ClearBuffer
 =============
 */
-const void     *RB_DrawView( const void *data )
+const RenderCommand *ClearBufferCommand::ExecuteSelf( ) const
 {
-	const drawViewCommand_t *cmd;
+	int clearBits = GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
 
-	GLimp_LogComment( "--- RB_DrawView ---\n" );
+	GLimp_LogComment( "--- ClearBufferCommand::ExecuteSelf ---\n" );
 
 	// finish any 2D drawing if needed
 	if ( tess.numIndexes )
@@ -5488,14 +5482,218 @@ const void     *RB_DrawView( const void *data )
 		Tess_End();
 	}
 
-	cmd = ( const drawViewCommand_t * ) data;
+	backEnd.refdef = refdef;
+	backEnd.viewParms = viewParms;
 
-	backEnd.refdef = cmd->refdef;
-	backEnd.viewParms = cmd->viewParms;
+	GL_CheckErrors();
 
-	RB_RenderView();
+	// sync with gl if needed
+	if ( r_finish->integer == 1 && !glState.finishCalled )
+	{
+		glFinish();
+		glState.finishCalled = true;
+	}
 
-	return ( const void * )( cmd + 1 );
+	if ( r_finish->integer == 0 )
+	{
+		glState.finishCalled = true;
+	}
+
+	// disable offscreen rendering
+	R_BindFBO( tr.mainFBO[ backEnd.currentMainFBO ] );
+
+	// we will need to change the projection matrix before drawing
+	// 2D images again
+	backEnd.projection2D = false;
+
+	// set the modelview matrix for the viewer
+	SetViewportAndScissor();
+
+	// ensures that depth writes are enabled for the depth clear
+	GL_State( GLS_DEFAULT );
+
+	// clear relevant buffers
+	if ( r_clear->integer ) {
+		clearBits |= GL_COLOR_BUFFER_BIT;
+	}
+
+	glClear( clearBits );
+
+	return this + 1;
+}
+
+/*
+=============
+RB_PreparePortal
+=============
+*/
+const RenderCommand *PreparePortalCommand::ExecuteSelf( ) const
+{
+	GLimp_LogComment( "--- PreparePortalCommand::ExecuteSelf ---\n" );
+
+	backEnd.refdef = refdef;
+	backEnd.viewParms = viewParms;
+	shader_t *shader = surface->shader;
+
+	// set the modelview matrix for the viewer
+	SetViewportAndScissor();
+
+	if ( surface->entity != &tr.worldEntity )
+	{
+		backEnd.currentEntity = surface->entity;
+
+		// set up the transformation matrix
+		R_RotateEntityForViewParms( backEnd.currentEntity, &backEnd.viewParms, &backEnd.orientation );
+	}
+	else
+	{
+		backEnd.currentEntity = &tr.worldEntity;
+		backEnd.orientation = backEnd.viewParms.world;
+	}
+
+	GL_LoadModelViewMatrix( backEnd.orientation.modelViewMatrix );
+
+	if ( backEnd.viewParms.portalLevel == 0 ) {
+		glEnable( GL_STENCIL_TEST );
+		glStencilMask( 0xff );
+	}
+
+	glStencilFunc( GL_EQUAL, backEnd.viewParms.portalLevel, 0xff );
+	glStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
+
+	GL_State( GLS_COLORMASK_BITS );
+	glState.glStateBitsMask = GLS_COLORMASK_BITS;
+
+	Tess_Begin( Tess_StageIteratorGeneric, nullptr, shader,
+		    nullptr, false, false, -1, -1 );
+	rb_surfaceTable[Util::ordinal(*(surface->surface))](surface->surface );
+	Tess_End();
+
+	glState.glStateBitsMask = 0;
+
+	// set depth to max on portal area
+	glDepthRange( 1.0f, 1.0f );
+
+	glStencilFunc( GL_EQUAL, backEnd.viewParms.portalLevel + 1, 0xff );
+	glStencilOp( GL_KEEP, GL_KEEP, GL_KEEP );
+
+	GL_State( GLS_DEPTHMASK_TRUE | GLS_DEPTHTEST_DISABLE | GLS_COLORMASK_BITS );
+	glState.glStateBitsMask = GLS_DEPTHMASK_TRUE | GLS_DEPTHTEST_DISABLE | GLS_COLORMASK_BITS;
+
+	Tess_Begin( Tess_StageIteratorGeneric, nullptr, shader,
+		    nullptr, false, false, -1, -1 );
+	rb_surfaceTable[Util::ordinal(*(surface->surface))](surface->surface );
+	Tess_End();
+
+	glState.glStateBitsMask = 0;
+
+	glDepthRange( 0.0f, 1.0f );
+
+	// keep stencil test enabled !
+
+	return this + 1;
+}
+
+/*
+=============
+RB_FinalisePortal
+=============
+*/
+const RenderCommand *FinalisePortalCommand::ExecuteSelf( ) const
+{
+	GLimp_LogComment( "--- FinalisePortalCommand::ExecuteSelf ---\n" );
+
+	backEnd.refdef = refdef;
+	backEnd.viewParms = viewParms;
+	shader_t *shader = surface->shader;
+
+	// set the modelview matrix for the viewer
+	SetViewportAndScissor();
+
+	if ( surface->entity != &tr.worldEntity )
+	{
+		backEnd.currentEntity = surface->entity;
+
+		// set up the transformation matrix
+		R_RotateEntityForViewParms( backEnd.currentEntity, &backEnd.viewParms, &backEnd.orientation );
+	}
+	else
+	{
+		backEnd.currentEntity = &tr.worldEntity;
+		backEnd.orientation = backEnd.viewParms.world;
+	}
+
+	GL_LoadModelViewMatrix( backEnd.orientation.modelViewMatrix );
+
+	// set depth to max on portal area
+	glDepthRange( 1.0f, 1.0f );
+
+	glStencilFunc( GL_EQUAL, backEnd.viewParms.portalLevel + 1, 0xff );
+	glStencilOp( GL_KEEP, GL_KEEP, GL_DECR );
+
+	GL_State( GLS_DEPTHMASK_TRUE | GLS_DEPTHTEST_DISABLE | GLS_COLORMASK_BITS );
+	glState.glStateBitsMask = GLS_DEPTHMASK_TRUE | GLS_DEPTHTEST_DISABLE | GLS_COLORMASK_BITS;
+
+	Tess_Begin( Tess_StageIteratorGeneric, nullptr, shader,
+		    nullptr, false, false, -1, -1 );
+	rb_surfaceTable[Util::ordinal(*(surface->surface))](surface->surface );
+	Tess_End();
+
+	glState.glStateBitsMask = 0;
+
+	glDepthRange( 0.0f, 1.0f );
+
+	if( backEnd.viewParms.portalLevel == 0 ) {
+		glDisable( GL_STENCIL_TEST );
+	}
+	
+	return this + 1;
+}
+
+/*
+=============
+RB_DrawView
+=============
+*/
+const RenderCommand *DrawViewCommand::ExecuteSelf( ) const
+{
+	GLimp_LogComment( "--- DrawViewCommand::ExecuteSelf ---\n" );
+
+	// finish any 2D drawing if needed
+	if ( tess.numIndexes )
+	{
+		Tess_End();
+	}
+
+	backEnd.refdef = refdef;
+	backEnd.viewParms = viewParms;
+
+	RB_RenderView( depthPass );
+
+	return this + 1;
+}
+
+/*
+=============
+RB_DrawPostProcess
+=============
+*/
+const RenderCommand *RenderPostProcessCommand::ExecuteSelf( ) const
+{
+	GLimp_LogComment("--- RenderPostProcessCommand::ExecuteSelf ---\n");
+
+	// finish any 3D drawing if needed
+	if (tess.numIndexes)
+	{
+		Tess_End();
+	}
+
+	backEnd.refdef = refdef;
+	backEnd.viewParms = viewParms;
+
+	RB_RenderPostProcess();
+
+	return this + 1;
 }
 
 /*
@@ -5503,18 +5701,14 @@ const void     *RB_DrawView( const void *data )
 RB_DrawBuffer
 =============
 */
-const void     *RB_DrawBuffer( const void *data )
+const RenderCommand *DrawBufferCommand::ExecuteSelf( ) const
 {
-	const drawBufferCommand_t *cmd;
+	GLimp_LogComment( "--- DrawBufferCommand::ExecuteSelf ---\n" );
 
-	GLimp_LogComment( "--- RB_DrawBuffer ---\n" );
-
-	cmd = ( const drawBufferCommand_t * ) data;
-
-	GL_DrawBuffer( cmd->buffer );
+	GL_DrawBuffer( buffer );
 
 	glState.finishCalled = false;
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
 /*
@@ -5548,14 +5742,17 @@ void RB_ShowImages()
 
 	gl_genericShader->DisableVertexSkinning();
 	gl_genericShader->DisableVertexAnimation();
+	gl_genericShader->DisableVertexSprite();
 	gl_genericShader->DisableTCGenEnvironment();
-
+	gl_genericShader->DisableTCGenLightmap();
+	gl_genericShader->DisableDepthFade();
+	gl_genericShader->DisableAlphaTesting();
 	gl_genericShader->BindProgram( 0 );
 
 	GL_Cull( cullType_t::CT_TWO_SIDED );
 
 	// set uniforms
-	gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
+	//gl_genericShader->SetUniform_AlphaTest( GLS_ATEST_NONE );
 	gl_genericShader->SetUniform_ColorModulate( colorGen_t::CGEN_VERTEX, alphaGen_t::AGEN_VERTEX );
 	gl_genericShader->SetUniform_ColorTextureMatrix( matrixIdentity );
 
@@ -5611,10 +5808,8 @@ void RB_ShowImages()
 RB_SwapBuffers
 =============
 */
-const void     *RB_SwapBuffers( const void *data )
+const RenderCommand *SwapBuffersCommand::ExecuteSelf( ) const
 {
-	const swapBuffersCommand_t *cmd;
-
 	// finish any 2D drawing if needed
 	if ( tess.numIndexes )
 	{
@@ -5626,8 +5821,6 @@ const void     *RB_SwapBuffers( const void *data )
 	{
 		RB_ShowImages();
 	}
-
-	cmd = ( const swapBuffersCommand_t * ) data;
 
 	// we measure overdraw by reading back the stencil buffer and
 	// counting up the number of increments that have happened
@@ -5655,7 +5848,7 @@ const void     *RB_SwapBuffers( const void *data )
 
 	backEnd.projection2D = false;
 
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
 /*
@@ -5663,15 +5856,11 @@ const void     *RB_SwapBuffers( const void *data )
 RB_Finish
 =============
 */
-const void     *RB_Finish( const void *data )
+const RenderCommand *RenderFinishCommand::ExecuteSelf( ) const
 {
-	const renderFinishCommand_t *cmd;
-
-	cmd = ( const renderFinishCommand_t * ) data;
-
 	glFinish();
 
-	return ( const void * )( cmd + 1 );
+	return this + 1;
 }
 
 /*
@@ -5690,6 +5879,11 @@ void R_ShutdownBackend()
 	glState.vertexAttribsState = 0;
 }
 
+const RenderCommand *EndOfListCommand::ExecuteSelf( ) const
+{
+	return nullptr;
+}
+
 /*
 ====================
 RB_ExecuteRenderCommands
@@ -5700,6 +5894,7 @@ smp extensions, or asynchronously by another thread.
 */
 void RB_ExecuteRenderCommands( const void *data )
 {
+	const RenderCommand *cmd = (const RenderCommand *)data;
 	int t1, t2;
 
 	GLimp_LogComment( "--- RB_ExecuteRenderCommands ---\n" );
@@ -5715,78 +5910,14 @@ void RB_ExecuteRenderCommands( const void *data )
 		backEnd.smpFrame = 1;
 	}
 
-	while ( 1 )
+	while ( cmd != nullptr )
 	{
-		switch ( * ( const int * ) data )
-		{
-			case Util::ordinal(renderCommand_t::RC_SET_COLORGRADING):
-				data = RB_SetColorGrading( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_SET_COLOR):
-				data = RB_SetColor( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_STRETCH_PIC):
-				data = RB_StretchPic( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_2DPOLYS):
-				data = RB_Draw2dPolys( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_2DPOLYSINDEXED):
-				data = RB_Draw2dPolysIndexed( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_ROTATED_PIC):
-				data = RB_RotatedPic( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_STRETCH_PIC_GRADIENT):
-				data = RB_StretchPicGradient( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_SETUP_LIGHTS):
-				data = RB_SetupLights( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_DRAW_VIEW):
-				data = RB_DrawView( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_DRAW_BUFFER):
-				data = RB_DrawBuffer( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_SWAP_BUFFERS):
-				data = RB_SwapBuffers( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_SCREENSHOT):
-				data = RB_TakeScreenshotCmd( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_VIDEOFRAME):
-				data = RB_TakeVideoFrameCmd( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_FINISH):
-				data = RB_Finish( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_SCISSORSET):
-				data = RB_ScissorSet( data );
-				break;
-
-			case Util::ordinal(renderCommand_t::RC_END_OF_LIST):
-			default:
-				// stop rendering on this thread
-				t2 = ri.Milliseconds();
-				backEnd.pc.msec = t2 - t1;
-				return;
-		}
+		cmd = cmd->ExecuteSelf();
 	}
+	// stop rendering on this thread
+	t2 = ri.Milliseconds();
+	backEnd.pc.msec = t2 - t1;
+	return;
 }
 
 /*
@@ -5799,7 +5930,7 @@ void RB_RenderThread()
 	const void *data;
 
 	// wait for either a rendering command or a quit command
-	while ( 1 )
+	while ( true )
 	{
 		// sleep until we have work to do
 		data = GLimp_RendererSleep();

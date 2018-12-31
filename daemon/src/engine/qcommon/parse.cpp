@@ -30,8 +30,6 @@ static const int SCFL_NOWARNINGS          = 0x0002;
 static const int SCFL_NOSTRINGWHITESPACES = 0x0004;
 static const int SCFL_NOSTRINGESCAPECHARS = 0x0008;
 static const int SCFL_PRIMITIVE           = 0x0010;
-static const int SCFL_NOBINARYNUMBERS     = 0x0020;
-static const int SCFL_NONUMBERVALUES      = 0x0040;
 
 //string sub type
 //---------------
@@ -420,7 +418,7 @@ Parse_ReadWhiteSpace
 */
 static int Parse_ReadWhiteSpace( script_t *script )
 {
-	while ( 1 )
+	while (true)
 	{
 		//skip white space
 		while ( *script->script_p <= ' ' )
@@ -632,7 +630,7 @@ static int Parse_ReadString( script_t *script, token_t *token, int quote )
 	token->string[ len++ ] = *script->script_p++;
 
 	//
-	while ( 1 )
+	while (true)
 	{
 		//minus 2 because trailing double quote and zero have to be appended
 		if ( len >= MAX_TOKEN_CHARS - 2 )
@@ -913,7 +911,7 @@ static int Parse_ReadNumber( script_t *script, token_t *token )
 
 		if ( *script->script_p == '0' ) { octal = true; }
 
-		while ( 1 )
+		while (true)
 		{
 			c = *script->script_p;
 
@@ -1376,6 +1374,16 @@ static void Parse_FreeToken( token_t *token )
 //  token->next = freetokens;
 //  freetokens = token;
 	numtokens--;
+}
+
+static void Parse_FreeTokens(token_t *firsttoken)
+{
+	token_t *t, *nexttoken;
+	for ( t = firsttoken; t; t = nexttoken )
+	{
+		nexttoken = t->next;
+		Parse_FreeToken( t );
+	}
 }
 
 /*
@@ -2356,10 +2364,12 @@ static int Parse_EvaluateTokens( source_t *source, token_t *tokens, signed long 
 
 						case punctuationSub_t::P_INC:
 						case punctuationSub_t::P_DEC:
+							if ( lastwasvalue )
 							{
 								Parse_SourceError( source, "++ or -- used in #if/#elif" );
 								break;
 							}
+							break;
 
 						case punctuationSub_t::P_SUB:
 							{
@@ -2369,6 +2379,7 @@ static int Parse_EvaluateTokens( source_t *source, token_t *tokens, signed long 
 									break;
 								}
 							}
+							DAEMON_FALLTHROUGH;
 
 						case punctuationSub_t::P_MUL:
 						case punctuationSub_t::P_DIV:
@@ -2721,7 +2732,7 @@ static int Parse_Evaluate( source_t *source, signed long int *intvalue,
                            double *floatvalue, int integer )
 {
 	token_t  token, *firsttoken, *lasttoken;
-	token_t  *t, *nexttoken;
+	token_t  *t;
 	define_t *define;
 	int      defined = false;
 
@@ -2773,11 +2784,16 @@ static int Parse_Evaluate( source_t *source, signed long int *intvalue,
 
 				if ( !define )
 				{
+					Parse_FreeTokens( firsttoken );
 					Parse_SourceError( source, "can't evaluate %s, not defined", token.string );
 					return false;
 				}
 
-				if ( !Parse_ExpandDefineIntoSource( source, &token, define ) ) { return false; }
+				if ( !Parse_ExpandDefineIntoSource( source, &token, define ) )
+				{
+					Parse_FreeTokens( firsttoken );
+					return false;
+				}
 			}
 		}
 		//if the token is a number or a punctuation
@@ -2793,6 +2809,7 @@ static int Parse_Evaluate( source_t *source, signed long int *intvalue,
 		}
 		else //can't evaluate the token
 		{
+			Parse_FreeTokens( firsttoken );
 			Parse_SourceError( source, "can't evaluate %s", token.string );
 			return false;
 		}
@@ -2800,14 +2817,14 @@ static int Parse_Evaluate( source_t *source, signed long int *intvalue,
 	while ( Parse_ReadLine( source, &token ) );
 
 	//
-	if ( !Parse_EvaluateTokens( source, firsttoken, intvalue, floatvalue, integer ) ) { return false; }
+	if ( !Parse_EvaluateTokens( source, firsttoken, intvalue, floatvalue, integer ) )
+	{
+		Parse_FreeTokens( firsttoken );
+		return false;
+	}
 
 	//
-	for ( t = firsttoken; t; t = nexttoken )
-	{
-		nexttoken = t->next;
-		Parse_FreeToken( t );
-	}
+	Parse_FreeTokens( firsttoken );
 
 	//
 	return true;
@@ -2823,7 +2840,7 @@ static int Parse_DollarEvaluate( source_t *source, signed long int *intvalue,
 {
 	int      indent, defined = false;
 	token_t  token, *firsttoken, *lasttoken;
-	token_t  *t, *nexttoken;
+	token_t  *t;
 	define_t *define;
 
 	if ( intvalue ) { *intvalue = 0; }
@@ -2881,22 +2898,14 @@ static int Parse_DollarEvaluate( source_t *source, signed long int *intvalue,
 
 				if ( !define )
 				{
-					for ( t = firsttoken; t; t = nexttoken )
-					{
-						nexttoken = t->next;
-						Parse_FreeToken( t );
-					}
+					Parse_FreeTokens( firsttoken );
 					Parse_SourceError( source, "can't evaluate %s, not defined", token.string );
 					return false;
 				}
 
-				if ( !Parse_ExpandDefineIntoSource( source, &token, define ) ) 
+				if ( !Parse_ExpandDefineIntoSource( source, &token, define ) )
 				{
-					for ( t = firsttoken; t; t = nexttoken )
-					{
-						nexttoken = t->next;
-						Parse_FreeToken( t );
-					}
+					Parse_FreeTokens( firsttoken );
 					return false;
 				}
 			}
@@ -2919,6 +2928,7 @@ static int Parse_DollarEvaluate( source_t *source, signed long int *intvalue,
 		}
 		else //can't evaluate the token
 		{
+			Parse_FreeTokens( firsttoken );
 			Parse_SourceError( source, "can't evaluate %s", token.string );
 			return false;
 		}
@@ -2926,14 +2936,14 @@ static int Parse_DollarEvaluate( source_t *source, signed long int *intvalue,
 	while ( Parse_ReadSourceToken( source, &token ) );
 
 	//
-	if ( !Parse_EvaluateTokens( source, firsttoken, intvalue, floatvalue, integer ) ) { return false; }
+	if ( !Parse_EvaluateTokens( source, firsttoken, intvalue, floatvalue, integer ) )
+	{
+		Parse_FreeTokens( firsttoken );
+		return false;
+	}
 
 	//
-	for ( t = firsttoken; t; t = nexttoken )
-	{
-		nexttoken = t->next;
-		Parse_FreeToken( t );
-	}
+	Parse_FreeTokens( firsttoken );
 
 	//
 	return true;
@@ -3548,7 +3558,7 @@ static int Parse_Directive_define( source_t *source )
 
 		if ( !Parse_CheckTokenString( source, ")" ) )
 		{
-			while ( 1 )
+			while (true)
 			{
 				if ( !Parse_ReadLine( source, &token ) )
 				{
@@ -3876,7 +3886,7 @@ static bool Parse_ReadToken( source_t *source, token_t *token )
 {
 	define_t *define;
 
-	while ( 1 )
+	while (true)
 	{
 		if ( !Parse_ReadSourceToken( source, token ) ) { return false; }
 
@@ -4309,12 +4319,12 @@ bool Parse_ReadTokenHandle( int handle, pc_token_t *pc_token )
 
 	if ( handle < 1 || handle >= MAX_SOURCEFILES )
 	{
-		return 0;
+		return false;
 	}
 
 	if ( !sourceFiles[ handle ] )
 	{
-		return 0;
+		return false;
 	}
 
 	ret = Parse_ReadToken( sourceFiles[ handle ], &token );

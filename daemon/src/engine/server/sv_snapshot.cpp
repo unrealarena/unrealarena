@@ -33,6 +33,7 @@ Maryland 20850 USA.
 */
 
 #include "server.h"
+#include "qcommon/sys.h"
 
 /*
 =============================================================================
@@ -168,7 +169,7 @@ static void SV_WriteSnapshotToClient( client_t *client, msg_t *msg )
 	else if ( client->netchan.outgoingSequence - client->deltaMessage >= ( PACKET_BACKUP - 3 ) )
 	{
 		// client hasn't gotten a good message through in a long time
-		Log::Debug( "%s^7: Delta request from out of date packet.", client->name );
+		Log::Debug( "%s^*: Delta request from out of date packet.", client->name );
 		oldframe = nullptr;
 		lastframe = 0;
 	}
@@ -181,7 +182,7 @@ static void SV_WriteSnapshotToClient( client_t *client, msg_t *msg )
 		// the snapshot's entities may still have rolled off the buffer, though
 		if ( oldframe->first_entity <= svs.nextSnapshotEntities - svs.numSnapshotEntities )
 		{
-			Log::Debug( "%s^7: Delta request from out of date entities.", client->name );
+			Log::Debug( "%s^*: Delta request from out of date entities.", client->name );
 			oldframe = nullptr;
 			lastframe = 0;
 		}
@@ -540,14 +541,14 @@ static void SV_AddEntitiesVisibleFromPoint( vec3_t origin, clientSnapshot_t *fra
 		//----(SA) added "visibility dummies"
 		if ( ent->r.svFlags & SVF_VISDUMMY )
 		{
-			sharedEntity_t *ment = 0;
+			sharedEntity_t *ment = nullptr;
 
 			//find master;
 			ment = SV_GentityNum( ent->s.otherEntityNum );
 
 			if ( ment )
 			{
-				svEntity_t *master = 0;
+				svEntity_t *master = nullptr;
 
 				master = SV_SvEntityForGentity( ment );
 
@@ -566,8 +567,8 @@ static void SV_AddEntitiesVisibleFromPoint( vec3_t origin, clientSnapshot_t *fra
 		{
 			{
 				int            h;
-				sharedEntity_t *ment = 0;
-				svEntity_t     *master = 0;
+				sharedEntity_t *ment = nullptr;
+				svEntity_t     *master = nullptr;
 
 				for ( h = 0; h < sv.num_entities; h++ )
 				{

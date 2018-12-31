@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -101,11 +101,10 @@ struct gentity_s
 
 	// New style entity
 	Entity* entity;
-	
+
 	struct gclient_s *client; // nullptr if not a client
 
 	bool     inuse;
-	bool     neverFree; // if true, FreeEntity will only unlink
 	int          freetime; // level.time when the object was freed
 	int          eventTime; // events will be cleared EVENT_VALID_MSEC after set
 	bool     freeAfterEvent;
@@ -127,13 +126,15 @@ struct gentity_s
 
 	char         *names[ MAX_ENTITY_ALIASES + 1 ];
 
-	/**
-	 * is the entity considered active?
-	 * as in 'currently doing something'
-	 * e.g. used for buildables (e.g. medi-stations or hives can be in an active state or being inactive)
-	 * or during executing act() in general
-	 */
-	bool     active;
+	// These formerly all used a field named "active" and are now split such that it gets easier
+	// to convert them to CBSE component members.
+#ifndef UNREALARENA
+	bool hiveInsectsActive;
+	bool medistationIsHealing;
+#endif
+	bool bodyStartedSinking;
+	bool shaderActive;
+
 	/**
 	 * delay being really active until this time, e.g for act() delaying or for spinup for norfenturrets
 	 * this will most probably be set by think() before act()ing, probably by using the config.delay time
@@ -175,19 +176,6 @@ struct gentity_s
 	 * other entities might also consider the powergrid for behavior changes
 	 */
 	bool     powered;
-	gentity_t    *powerSource;
-
-	/**
-	 * Human buildables compete for power.
-	 * currentSparePower takes temporary influences into account and sets a buildables power state.
-	 * expectedSparePower is a prediction of the static part and is used for limiting new buildables.
-	 *
-	 * currentSparePower  >= 0: Buildable has enough power
-	 * currentSparePower  <  0: Buildable lacks power, will shut down
-	 * expectedSparePower >  0: New buildables can be built in range
-	 */
-	float        currentSparePower;
-	float        expectedSparePower;
 
 	/**
 	 * The amount of momentum this building generated on construction
@@ -201,8 +189,7 @@ struct gentity_s
 	int          targetCount;
 	char         *targets[ MAX_ENTITY_TARGETS + 1 ];
 	gentity_t    *target;  /*< the currently selected target to aim at/for, is the reverse to "tracker" */
-	gentity_t    *tracker; /*< entity that currently targets, aims for or tracks this entity, is the reverse to "target" */
-	int          numTrackedBy;
+
 	/* path chaining, not unlike the target/tracker relationship */
 	gentity_t    *nextPathSegment;
 	gentity_t    *prevPathSegment;
@@ -265,11 +252,7 @@ struct gentity_s
 	char         *shaderKey;
 	char         *shaderReplacement;
 
-	float        lastHealthFrac;
 	int          health;
-#ifndef UNREALARENA
-	float        deconHealthFrac;
-#endif
 
 	float        speed;
 
@@ -294,19 +277,6 @@ struct gentity_s
 	vec3_t    jerk;
 
 	vec3_t       movedir;
-
-
-	/*
-	 * handle the notification about an event or undertaken action, so each entity can decide to undertake special actions as result
-	 */
-	void ( *notifyHandler )( gentity_t *self, gentityCall_t *call );
-
-	/**
-	 * the entry function for calls to the entity;
-	 * especially previous chain members will indirectly call this when firing against the given entity
-	 * @returns true if the call was handled by the given function and doesn't need default handling anymore or false otherwise
-	 */
-	bool ( *handleCall )( gentity_t *self, gentityCall_t *call );
 
 	int       nextthink;
 	void ( *think )( gentity_t *self );
@@ -357,22 +327,15 @@ struct gentity_s
 #endif
 	int         healthSourceTime; // last time an alien had contact to a health source
 	int         animTime; // last animation change
-	int         time1000; // timer evaluated every second
 #ifndef UNREALARENA
 	float       barbRegeneration; // goon barb regeneration is complete if this value is >= 1
 
 	bool        deconMarkHack; // TODO: Remove.
-#endif
-	int         attackTimer, attackLastEvent; // self being attacked
-#ifndef UNREALARENA
 	int         warnTimer; // nearby building(s) being attacked
-	int         overmindDyingTimer;
-	int         overmindSpawnsTimer;
 #endif
 	int         nextPhysicsTime; // buildables don't need to check what they're sitting on
 	// every single frame.. so only do it periodically
 	int         clientSpawnTime; // the time until this spawn can spawn a client
-	int         spawnBlockTime; // timer for anti spawn-block
 
 #ifndef UNREALARENA
 	struct {
@@ -388,24 +351,7 @@ struct gentity_s
 	vec3_t      buildableAim; // aim vector for buildables
 
 	// turret
-	int         turretNextShot;
-	int         turretLastLOSToTarget;
-	int         turretLastValidTargetTime;
-	int         turretLastTargetSearch;
-	int         turretLastHeadMove;
-	int         turretCurrentDamage;
-	vec3_t      turretDirToTarget;
-	vec3_t      turretBaseDir;
-	bool    turretDisabled;
-	int         turretSafeModeCheckTime;
-	bool    turretSafeMode;
-	int         turretPrepareTime; // when the turret can start locking on and/or firing
-	int         turretLockonTime;  // when the turret can start firing
-
-	// spiker
-	int         spikerRestUntil;
-	float       spikerLastScoring;
-	bool    spikerLastSensing;
+	float       turretCurrentDamage;
 #endif
 
 	vec4_t      animation; // animated map objects
@@ -552,6 +498,8 @@ struct clientPersistant_s
 
 	// warnings in the ban log
 	bool            hasWarnings;
+
+	bool isFillerBot;
 };
 
 struct unlagged_s
@@ -707,7 +655,6 @@ struct level_locals_s
 
 	struct gentity_s *gentities;
 
-	int              gentitySize;
 	int              num_entities; // MAX_CLIENTS <= num_entities <= ENTITYNUM_MAX_NORMAL
 
 	int              warmupTime; // restart match at this time
@@ -765,12 +712,16 @@ struct level_locals_s
 	vec3_t           intermission_origin; // also used for spectator spawns
 	vec3_t           intermission_angle;
 
+	/**
+	 *  drop-in for yet unmigrated entities
+	 */
+	Entity* emptyEntity;
+
+
 	gentity_t        *locationHead; // head of the location list
 	gentity_t        *fakeLocation; // fake location for anything which might need one
 
 #ifndef UNREALARENA
-	float            mineRate;
-
 	gentity_t        *markedBuildables[ MAX_GENTITIES ];
 	int              numBuildablesForRemoval;
 #endif
@@ -803,10 +754,6 @@ struct level_locals_s
 	buildLog_t       buildLog[ MAX_BUILDLOG ];
 	int              buildId;
 	int              numBuildLogs;
-
-	bool         overmindMuted;
-
-	int              humanBaseAttackTimer;
 #endif
 
 	struct
@@ -837,18 +784,19 @@ struct level_locals_s
 		int              numSamples;
 		int              numAliveClients;
 #ifndef UNREALARENA
-		float            buildPoints;
-		float            acquiredBuildPoints;
-		float            mainStructAcquiredBP;
-		float            mineEfficiency;
+		float            totalBudget; // Read access always rounds towards zero.
+		int              spentBudget;
+		int              queuedBudget;
 #endif
 		int              kills;
 		spawnQueue_t     spawnQueue;
-		bool         locked;
+		bool             locked;
 #ifndef UNREALARENA
 		float            momentum;
 		int              layoutBuildPoints;
 #endif
+		int              botFillTeamSize;
+		int              botFillSkillLevel;
 	} team[ NUM_TEAMS ];
 
 	struct {

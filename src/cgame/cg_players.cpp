@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -22,6 +22,8 @@
 // cg_players.c -- handle the media and animation for player entities
 
 #include "cg_local.h"
+#include "cg_animdelta.h"
+#include "cg_segmented_skeleton.h"
 
 // debugging
 int   debug_anim_current;
@@ -35,30 +37,21 @@ static refSkeleton_t oldSkeleton;
 static refSkeleton_t jetpackSkeleton;
 #endif
 
-typedef struct {
-	vec3_t delta;
-	quat_t rot;
-}
-
-delta_t;
-
-delta_t deltas[ WP_NUM_WEAPONS ][ MAX_BONES ];
-
 static const char *const cg_customSoundNames[ MAX_CUSTOM_SOUNDS ] =
 {
-	"*death1.wav",
-	"*death2.wav",
-	"*death3.wav",
-	"*jump1.wav",
-	"*pain25_1.wav",
-	"*pain50_1.wav",
-	"*pain75_1.wav",
-	"*pain100_1.wav",
-	"*falling1.wav",
-	"*gasp.wav",
-	"*drown.wav",
-	"*fall1.wav",
-	"*taunt.wav"
+	"*death1",
+	"*death2",
+	"*death3",
+	"*jump1",
+	"*pain25_1",
+	"*pain50_1",
+	"*pain75_1",
+	"*pain100_1",
+	"*falling1",
+	"*gasp",
+	"*drown",
+	"*fall1",
+	"*taunt"
 };
 
 /*
@@ -149,10 +142,7 @@ static bool CG_ParseCharacterFile( const char *filename, clientInfo_t *ci )
 	ci->gender = GENDER_MALE;
 	ci->fixedlegs = false;
 	ci->fixedtorso = false;
-	ci->numLegBones = 0;
 	ci->modelScale = 1.0f;
-	ci->leftShoulderBone = 0;
-	ci->rightShoulderBone = 0;
 
 	// read optional parameters
 	while ( 1 )
@@ -163,8 +153,41 @@ static bool CG_ParseCharacterFile( const char *filename, clientInfo_t *ci )
 		{
 			break;
 		}
-
-		if(!Q_stricmp(token, "footsteps"))
+		if ( !Q_stricmp( token, "modifiers" ) )
+		{
+			char* token = COM_Parse2( &text_p );
+			if ( !token || *token != '{' )
+			{
+				Log::Notice( "^1ERROR^*: Expected '{' but found '%s' in %s's character.cfg", token, ci->modelName );
+				continue;
+			}
+			while ( 1 )
+			{
+				token = COM_Parse( &text_p );
+				if ( !token || *token == '}' ) break;
+				if ( !Q_stricmp( token, "HandDelta" ) )
+				{
+					ci->modifiers.emplace_back(new AnimDelta());
+				}
+				else if ( !Q_stricmp( token, "HumanRotations" ) )
+				{
+					ci->modifiers.emplace_back(new HumanSkeletonRotations());
+				}
+				else if ( !Q_stricmp( token, "BattlesuitRotations" ) )
+				{
+					ci->modifiers.emplace_back(new BsuitSkeletonRotations());
+				}
+				else if ( !Q_stricmp( token, "Segmented" ) )
+				{
+					ci->modifiers.emplace_back(new SegmentedSkeletonCombiner());
+				}
+				else
+				{
+					Log::Notice("Unknown modifier '%s' in %s's character.cfg", token, ci->modelName);
+				}
+			}
+			continue;
+		} else if (!Q_stricmp(token, "footsteps"))
 		{
 			token = COM_Parse(&text_p);
 			if(!token)
@@ -186,6 +209,10 @@ static bool CG_ParseCharacterFile( const char *filename, clientInfo_t *ci )
 			else if( !Q_stricmp(token, "splash") )
 			{
 				ci->footsteps = FOOTSTEP_SPLASH;
+			}
+			else if ( !Q_stricmp( token, "custom" ) )
+			{
+				ci->footsteps = FOOTSTEP_CUSTOM;
 			}
 			else if( !Q_stricmp(token, "none") )
 			{
@@ -258,88 +285,24 @@ static bool CG_ParseCharacterFile( const char *filename, clientInfo_t *ci )
 
 			continue;
 		}
-		else if ( !Q_stricmp( token, "torsoControlBone" ) )
+		else
 		{
-			token = COM_Parse2( &text_p );
-
-			ci->torsoControlBone = trap_R_BoneIndex( ci->bodyModel, token );
-			continue;
-		}
-		else if ( !Q_stricmp( token, "leftShoulder" ) )
-		{
-			token = COM_Parse2( &text_p );
-
-			ci->leftShoulderBone = trap_R_BoneIndex( ci->bodyModel, token );
-			continue;
-		}
-		else if ( !Q_stricmp( token, "rightShoulder" ) )
-		{
-			token = COM_Parse2( &text_p );
-
-			ci->rightShoulderBone = trap_R_BoneIndex( ci->bodyModel, token );
-			continue;
-		}
-		else if ( !Q_stricmp( token, "handBones" ) )
-		{
-			token = COM_Parse2( &text_p );
-
-			if ( token[0] != '{' )
+			bool parsed = false;
+			for ( size_t i = 0; i < ci->modifiers.size(); ++i )
 			{
-				Log::Notice( "^1ERROR^7: Expected '{' but found '%s' in character.cfg", token );
+				if ( ( parsed = ci->modifiers[i]->ParseConfiguration( ci, token, &text_p ) ) ) break;
 			}
-
-			i = 0;
-
-			while( 1 )
-			{
-				token = COM_Parse2( &text_p );
-
-				if ( !token || token[ 0 ] == '}' )
-				{
-					ci->numHandBones = i;
-					break;
-				}
-
-				ci->handBones[ i++ ] = trap_R_BoneIndex( ci->bodyModel, token );
-			}
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "legBones" ) )
-		{
-			token = COM_Parse2( &text_p );
-
-			if ( token[0] != '{' )
-			{
-				Log::Notice( "^1ERROR^7: Expected '{' but found '%s' in character.cfg\n", token );
-			}
-
-			i = 0;
-
-			while( 1 )
-			{
-				token = COM_Parse2( &text_p );
-
-				if ( !token || token[ 0 ] == '}' )
-				{
-					ci->numLegBones = i;
-					break;
-				}
-
-				ci->legBones[ i++ ] = trap_R_BoneIndex( ci->bodyModel, token );
-			}
-
-			continue;
+			if ( parsed ) continue;
 		}
 
-		Log::Notice( "unknown token '%s' is %s\n", token, filename );
+		Log::Notice( "unknown token '%s' in %s\n", token, filename );
 	}
 
 	return true;
 }
 
 static bool CG_RegisterPlayerAnimation( clientInfo_t *ci, const char *modelName, int anim, const char *animName,
-                                            bool loop, bool reversed, bool clearOrigin, bool iqm )
+                                            bool loop, bool reversed, bool clearOrigin )
 {
 	char filename[ MAX_QPATH ], newModelName[ MAX_QPATH ];
 	int  frameRate;
@@ -362,7 +325,7 @@ static bool CG_RegisterPlayerAnimation( clientInfo_t *ci, const char *modelName,
 	}
 #endif
 
-	if ( iqm )
+	if ( ci->iqm )
 	{
 		Com_sprintf( filename, sizeof( filename ), "models/players/%s/%s.iqm:%s",
 		     newModelName, newModelName, animName );
@@ -407,62 +370,6 @@ static bool CG_RegisterPlayerAnimation( clientInfo_t *ci, const char *modelName,
 
 	ci->animations[ anim ].reversed = reversed;
 	ci->animations[ anim ].clearOrigin = clearOrigin;
-
-	return true;
-}
-
-static bool CG_DeriveAnimationDelta( const char *modelName, weapon_t weapon, clientInfo_t *ci, bool iqm )
-{
-	int handle, i;
-	char newModelName[ MAX_QPATH ];
-	static refSkeleton_t base, delta;
-
-#ifdef UNREALARENA
-	{
-		Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
-	}
-#else
-	// special handling for human_(naked|light|medium)
-	if ( !Q_stricmp( modelName, "human_naked"   ) ||
-		!Q_stricmp( modelName, "human_light"   ) ||
-		!Q_stricmp( modelName, "human_medium" ) )
-	{
-		Q_strncpyz( newModelName, "human_nobsuit_common", sizeof( newModelName ) );
-	}
-	else
-	{
-		Q_strncpyz( newModelName, modelName, sizeof( newModelName ) );
-	}
-#endif
-
-	if ( iqm )
-	{
-		handle = trap_R_RegisterAnimation( va( "models/players/%s/%s.iqm:%s_delta", newModelName, newModelName, BG_Weapon( weapon )->name ) );
-
-	}
-	else
-	{
-		handle = trap_R_RegisterAnimation( va( "models/players/%s/%s_delta.md5anim", newModelName, BG_Weapon( weapon )->name ) );
-	}
-
-	if ( !handle )
-	{
-		return false;
-	}
-
-	ci->weaponAdjusted |= 1 << weapon;
-
-	trap_R_BuildSkeleton( &delta, handle, 1, 1, 0, false );
-	trap_R_BuildSkeleton( &base, ci->animations[ TORSO_STAND ].handle, 1, 1, 0, false );
-
-	for ( i = 0; i < ci->numHandBones; i++ )
-	{
-		VectorSubtract( delta.bones[ ci->handBones[ i ] ].t.trans, base.bones[ ci->handBones[ i ] ].t.trans, deltas[ weapon ][ ci->handBones[ i ] ].delta );
-
-		QuatInverse( base.bones[ ci->handBones[ i ] ].t.rot );
-
-		QuatMultiply1( base.bones[ ci->handBones[ i ] ].t.rot, delta.bones[ ci->handBones[ i ] ].t.rot, deltas[ weapon ][ ci->handBones[ i ] ].rot );
-	}
 
 	return true;
 }
@@ -836,7 +743,7 @@ static bool CG_RegisterClientSkin( clientInfo_t *ci, const char *modelName, cons
 {
 	char filename[ MAX_QPATH ];
 
-	if ( ci->md5 )
+	if ( ci->skeletal )
 	{
 		Com_sprintf( filename, sizeof( filename ), "models/players/%s/body_%s.skin", modelName, skinName );
 		ci->bodySkin = trap_R_RegisterSkin( filename );
@@ -909,40 +816,35 @@ CG_RegisterClientModelname
 static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName, const char *skinName )
 {
 	char filename[ MAX_QPATH ];
-	bool iqm = false;
 
-	if ( cg_highPolyPlayerModels.integer )
+	Com_sprintf( filename, sizeof( filename ), "models/players/%s/%s.iqm", modelName, modelName );
+	if ( CG_FileExists( filename ) )
 	{
-		Com_sprintf( filename, sizeof( filename ), "models/players/%s/%s.iqm",
-			     modelName, modelName );
-		if ( CG_FileExists( filename ) )
+		ci->bodyModel = trap_R_RegisterModel( filename );
+	}
+
+	if ( ! ci->bodyModel ) {
+		Com_sprintf( filename, sizeof( filename ), "models/players/%s/body.md5mesh", modelName );
+		if ( CG_FileExists(filename) )
 		{
 			ci->bodyModel = trap_R_RegisterModel( filename );
 		}
-
-		if ( ! ci->bodyModel ) {
-			Com_sprintf( filename, sizeof( filename ), "models/players/%s/body.md5mesh", modelName );
-			if ( CG_FileExists(filename) )
-			{
-				ci->bodyModel = trap_R_RegisterModel( filename );
-			}
-		}
-		else
-		{
-			iqm = true;
-		}
-
-		if ( ci->bodyModel )
-		{
-			ci->md5 = true;
-		}
-		else
-		{
-			ci->md5 = false;
-		}
+	}
+	else
+	{
+		ci->iqm = true;
 	}
 
-	if ( ci->md5 )
+	if ( ci->bodyModel )
+	{
+		ci->skeletal = true;
+	}
+	else
+	{
+		ci->skeletal = false;
+	}
+
+	if ( ci->skeletal )
 	{
 		int i, j;
 		// load the animations
@@ -954,14 +856,12 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 			return false;
 		}
 
-		ci->weaponAdjusted = 0;
-
 		// If model is not an alien, load human animations
 		if ( ci->gender != GENDER_NEUTER )
 		{
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_IDLE, "idle", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_IDLE, "idle", true, false, false ) )
 			{
-				Log::Notice( "Failed to load idle animation file %s\n", filename );
+				Log::Notice( "Failed to load idle animation." );
 				return false;
 			}
 
@@ -980,128 +880,123 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 
 			// FIXME add death animations
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, BOTH_DEATH1, "die", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, BOTH_DEATH1, "die", false, false, false ) )
 			{
 				ci->animations[ BOTH_DEATH1 ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if( !CG_RegisterPlayerAnimation(ci, modelName, BOTH_DEATH2, "death2", false, false, false, iqm ) )
+			if( !CG_RegisterPlayerAnimation(ci, modelName, BOTH_DEATH2, "death2", false, false, false ) )
 			{
 				ci->animations[ BOTH_DEATH2 ] = ci->animations[ BOTH_DEATH1 ];
 			}
 
-			if( !CG_RegisterPlayerAnimation(ci, modelName, BOTH_DEATH3, "death3", false, false, false, iqm ) )
+			if( !CG_RegisterPlayerAnimation(ci, modelName, BOTH_DEATH3, "death3", false, false, false ) )
 			{
 				ci->animations[ BOTH_DEATH3 ] = ci->animations[ BOTH_DEATH1 ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_GESTURE, "gesture", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_GESTURE, "gesture", false, false, false ) )
 			{
 				ci->animations[ TORSO_GESTURE ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_RALLY, "rally", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_RALLY, "rally", false, false, false ) )
 			{
 				ci->animations[ TORSO_RALLY ] = ci->animations[ LEGS_IDLE ];
 			}
 
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_ATTACK, "attack", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_ATTACK, "attack", false, false, false ) )
 			{
 				ci->animations[ TORSO_ATTACK ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_ATTACK_BLASTER, "blaster_attack", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_ATTACK_BLASTER, "blaster_attack", false, false, false ) )
 			{
 				ci->animations[ TORSO_ATTACK_BLASTER ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_ATTACK_PSAW, "psaw_attack", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_ATTACK_PSAW, "psaw_attack", false, false, false ) )
 			{
 				ci->animations[ TORSO_ATTACK_BLASTER ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_STAND, "stand", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_STAND, "stand", true, false, false ) )
 			{
 				ci->animations[ TORSO_STAND ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_STAND_BLASTER, "stand_blaster", true, false, false, iqm ) )
-			{
-				ci->animations[ TORSO_STAND_BLASTER ] = ci->animations[ LEGS_IDLE ];
-			}
-
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_IDLECR, "crouch", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_IDLECR, "crouch", false, false, false ) )
 			{
 				ci->animations[ LEGS_IDLECR ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_WALKCR, "crouch_forward", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_WALKCR, "crouch_forward", true, false, false ) )
 			{
 				ci->animations[ LEGS_WALKCR ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_BACKCR, "crouch_back", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_BACKCR, "crouch_back", true, false, false ) )
 			{
 				ci->animations[ LEGS_BACKCR ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_WALK, "walk", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_WALK, "walk", true, false, false ) )
 			{
 				ci->animations[ LEGS_WALK ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_BACKWALK, "walk_back", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_BACKWALK, "walk_back", true, false, false ) )
 			{
 				ci->animations[ LEGS_BACKWALK ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_RUN, "run", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_RUN, "run", true, false, false ) )
 			{
 				ci->animations[ LEGS_RUN ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_BACK, "run_back", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_BACK, "run_back", true, false, false ) )
 			{
 				ci->animations[ LEGS_BACK ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_SWIM, "swim", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_SWIM, "swim", true, false, false ) )
 			{
 				ci->animations[ LEGS_SWIM ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_JUMP, "jump", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_JUMP, "jump", false, false, false ) )
 			{
 				ci->animations[ LEGS_JUMP ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_LAND, "land", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_LAND, "land", false, false, false ) )
 			{
 				ci->animations[ LEGS_LAND ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_JUMPB, "jump_back", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_JUMPB, "jump_back", false, false, false ) )
 			{
 				ci->animations[ LEGS_JUMPB ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_LANDB, "land_back", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_LANDB, "land_back", false, false, false ) )
 			{
 				ci->animations[ LEGS_LANDB ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_TURN, "step", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, LEGS_TURN, "step", true, false, false ) )
 			{
 				ci->animations[ LEGS_TURN ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_DROP, "drop", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_DROP, "drop", false, false, false ) )
 			{
 				ci->animations[ TORSO_DROP ] = ci->animations[ LEGS_IDLE ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_RAISE, "raise", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, TORSO_RAISE, "raise", false, false, false ) )
 			{
 				ci->animations[ TORSO_RAISE ] = ci->animations[ LEGS_IDLE ];
 			}
@@ -1112,30 +1007,22 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 				if ( i == TORSO_GESTURE ) { continue; }
 				if ( i == TORSO_GESTURE_CKIT ) { j = WP_HBUILD; }
 
-				if ( !CG_RegisterPlayerAnimation( ci, modelName, i, va( "%s_taunt", BG_Weapon( j )->name ), false, false, false, iqm ) )
+				if ( !CG_RegisterPlayerAnimation( ci, modelName, i, va( "%s_taunt", BG_Weapon( j )->name ), false, false, false ) )
 				{
 					ci->animations[ i ] = ci->animations[ TORSO_GESTURE ];
 				}
 			}
-
-			// TODO: Don't assume WP_BLASTER is first human weapon
-			for ( i = WP_BLASTER; i < WP_NUM_WEAPONS; i++ )
-			{
-#ifdef UNREALARENA
-				if ( BG_Weapon( i )->team != TEAM_U ) { continue; }
-#else
-				if ( BG_Weapon( i )->team != TEAM_HUMANS || !BG_Weapon( i )->purchasable ) { continue; }
-#endif
-				CG_DeriveAnimationDelta( modelName, (weapon_t)i, ci, iqm );
-			}
-
 		}
 		else
 		{
 			// Load Alien animations
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_STAND, "stand", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName,
+NSPA_STAND, "stand", true, false, false ) &&
+			     !CG_RegisterPlayerAnimation( ci, modelName,
+NSPA_STAND, "idle", true, false, false )
+			)
 			{
-				Log::Notice( "Failed to load standing animation file %s\n", filename );
+				Log::Notice( "Failed to load stand animation." );
 				return false;
 			}
 
@@ -1154,121 +1041,121 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 
 			// FIXME add death animations
 
-			CG_RegisterPlayerAnimation( ci, modelName, NSPA_DEATH1, "die", false, false, false, iqm );
+			CG_RegisterPlayerAnimation( ci, modelName, NSPA_DEATH1, "die", false, false, false );
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_DEATH2, "die2", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_DEATH2, "die2", false, false, false ) )
 			{
 				ci->animations[ NSPA_DEATH2 ] = ci->animations[ NSPA_DEATH1 ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_DEATH3, "die3", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_DEATH3, "die3", false, false, false ) )
 			{
 				ci->animations[ NSPA_DEATH3 ] = ci->animations[ NSPA_DEATH1 ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_GESTURE, "gesture", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_GESTURE, "gesture", false, false, false ) )
 			{
 				ci->animations[ NSPA_GESTURE ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_ATTACK1, "attack", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_ATTACK1, "attack", false, false, false ) )
 			{
 				ci->animations[ NSPA_ATTACK1 ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_ATTACK2, "attack2", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_ATTACK2, "attack2", false, false, false ) )
 			{
 				ci->animations[ NSPA_ATTACK2 ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_ATTACK3, "attack3", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_ATTACK3, "attack3", false, false, false ) )
 			{
 				ci->animations[ NSPA_ATTACK3 ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_RUN, "run", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_RUN, "run", true, false, false ) )
 			{
 				ci->animations[ NSPA_RUN ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_RUNBACK, "run_backwards", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_RUNBACK, "run_backwards", true, false, false ) )
 			{
 				ci->animations[ NSPA_RUNBACK ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_RUNLEFT, "run_left", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_RUNLEFT, "run_left", true, false, false ) )
 			{
 				ci->animations[ NSPA_RUNLEFT ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_RUNRIGHT, "run_right", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_RUNRIGHT, "run_right", true, false, false ) )
 			{
 				ci->animations[ NSPA_RUNRIGHT ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_WALK, "walk", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_WALK, "walk", true, false, false ) )
 			{
 				ci->animations[ NSPA_WALK ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_WALKBACK, "walk", true, true, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_WALKBACK, "walk", true, true, false ) )
 			{
 				ci->animations[ NSPA_WALKBACK ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_WALKLEFT, "walk_left", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_WALKLEFT, "walk_left", true, false, false ) )
 			{
 				ci->animations[ NSPA_WALKLEFT ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_WALKRIGHT, "walk_right", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_WALKRIGHT, "walk_right", true, false, false ) )
 			{
 				ci->animations[ NSPA_WALKRIGHT ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_SWIM, "swim", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_SWIM, "swim", true, false, false ) )
 			{
 				ci->animations[ NSPA_SWIM ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_JUMP, "jump", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_JUMP, "jump", false, false, false ) )
 			{
 				ci->animations[ NSPA_JUMP ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_JUMPBACK, "jump_back", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_JUMPBACK, "jump_back", false, false, false ) )
 			{
 				ci->animations[ NSPA_JUMPBACK ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_LAND, "land", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_LAND, "land", false, false, false ) )
 			{
 				ci->animations[ NSPA_LAND ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_LANDBACK, "land_back", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_LANDBACK, "land_back", false, false, false ) )
 			{
 				ci->animations[ NSPA_LANDBACK ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_TURN, "turn", true, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_TURN, "turn", true, false, false ) )
 			{
 				ci->animations[ NSPA_TURN ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_PAIN1, "pain1", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_PAIN1, "pain1", false, false, false ) )
 			{
 				ci->animations[ NSPA_PAIN1 ] = ci->animations[ NSPA_STAND ];
 			}
 
-			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_PAIN2, "pain2", false, false, false, iqm ) )
+			if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_PAIN2, "pain2", false, false, false ) )
 			{
 				ci->animations[ NSPA_PAIN2 ] = ci->animations[ NSPA_STAND ];
 			}
 
 			if ( !Q_stricmp( modelName, "level4" ) )
 			{
-				if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_CHARGE, "charge", true, false, false, iqm ) )
+				if ( !CG_RegisterPlayerAnimation( ci, modelName, NSPA_CHARGE, "charge", true, false, false ) )
 				{
 					ci->animations[ NSPA_CHARGE ] = ci->animations[ NSPA_STAND ];
 				}
@@ -1280,6 +1167,14 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 		{
 			Log::Notice( "Failed to load skin file: %s : %s\n", modelName, skinName );
 			return false;
+		}
+
+		for ( size_t i = 0; i < ci->modifiers.size(); ++i )
+		{
+			if ( !ci->modifiers[i]->LoadData( ci ) )
+			{
+				Log::Warn( "^3WARNING: Error loading data for modifier for %s", ci->modelName );
+			}
 		}
 
 		return true;
@@ -1378,32 +1273,28 @@ static void CG_LoadClientInfo( clientInfo_t *ci )
 			break;
 		}
 
+		ci->sounds[ i ] = trap_S_RegisterSound( va( "sound/player/%s/%s", dir, s + 1 ), false );
 		// fanny about a bit with sounds that are missing
-		if ( !CG_FileExists( va( "sound/player/%s/%s", dir, s + 1 ) ) )
+		if ( ci->sounds[ i ] == -1 )
 		{
 			//file doesn't exist
-
-			if ( i == 11 || i == 8 ) //fall or falling
+			if ( i == 11 || i == 8 ) // fall or falling
 			{
-				ci->sounds[ i ] = trap_S_RegisterSound( "sound/null.wav", false );
+				ci->sounds[ i ] = trap_S_RegisterSound( "sound/null", false );
 			}
 			else
 			{
-				if ( i == 9 ) //gasp
+				if ( i == 9 ) // gasp
 				{
-					s = cg_customSoundNames[ 7 ]; //pain100_1
+					s = cg_customSoundNames[ 7 ]; // pain100_1
 				}
 				else if ( i == 10 ) //drown
 				{
-					s = cg_customSoundNames[ 0 ]; //death1
+					s = cg_customSoundNames[ 0 ]; // death1
 				}
 
 				ci->sounds[ i ] = trap_S_RegisterSound( va( "sound/player/%s/%s", dir, s + 1 ), false );
 			}
-		}
-		else
-		{
-			ci->sounds[ i ] = trap_S_RegisterSound( va( "sound/player/%s/%s", dir, s + 1 ), false );
 		}
 	}
 
@@ -1411,18 +1302,18 @@ static void CG_LoadClientInfo( clientInfo_t *ci )
 	{
 		for ( i = 0; i < 4; i++ )
 		{
-			ci->customFootsteps[ i ] = trap_S_RegisterSound( va( "sound/player/%s/step%d.wav", dir, i + 1 ), false );
+			ci->customFootsteps[ i ] = trap_S_RegisterSound( va( "sound/player/%s/step%d", dir, i + 1 ), false );
 
 			if ( !ci->customFootsteps[ i ] )
 			{
-				ci->customFootsteps[ i ] = trap_S_RegisterSound( va( "sound/player/footsteps/step%d.wav", i + 1 ), false );
+				ci->customFootsteps[ i ] = trap_S_RegisterSound( va( "sound/player/footsteps/step%d", i + 1 ), false );
 			}
 
-			ci->customMetalFootsteps[ i ] = trap_S_RegisterSound( va( "sound/player/%s/clank%d.wav", dir, i + 1 ), false );
+			ci->customMetalFootsteps[ i ] = trap_S_RegisterSound( va( "sound/player/%s/clank%d", dir, i + 1 ), false );
 
 			if ( !ci->customMetalFootsteps[ i ] )
 			{
-				ci->customMetalFootsteps[ i ] = trap_S_RegisterSound( va( "sound/player/footsteps/clank%d.wav", i + 1 ), false );
+				ci->customMetalFootsteps[ i ] = trap_S_RegisterSound( va( "sound/player/footsteps/clank%d", i + 1 ), false );
 			}
 		}
 	}
@@ -1453,13 +1344,6 @@ static void CG_CopyClientInfoModel( clientInfo_t *from, clientInfo_t *to )
 	to->footsteps = from->footsteps;
 	to->gender = from->gender;
 
-	to->numLegBones = from->numLegBones;
-	to->numHandBones = from->numHandBones;
-	to->torsoControlBone = from->torsoControlBone;
-	to->weaponAdjusted = from->weaponAdjusted;
-	to->rightShoulderBone = from->rightShoulderBone;
-	to->leftShoulderBone = from->leftShoulderBone;
-
 	to->legsModel = from->legsModel;
 	to->legsSkin = from->legsSkin;
 	to->torsoModel = from->torsoModel;
@@ -1472,14 +1356,14 @@ static void CG_CopyClientInfoModel( clientInfo_t *from, clientInfo_t *to )
 	to->modelIcon = from->modelIcon;
 	to->bodyModel = from->bodyModel;
 	to->bodySkin = from->bodySkin;
-	to->md5 = from->md5;
+	to->skeletal = from->skeletal;
+	to->iqm = from->iqm;
+	to->modifiers = from->modifiers;
 
 	memcpy( to->animations, from->animations, sizeof( to->animations ) );
 	memcpy( to->sounds, from->sounds, sizeof( to->sounds ) );
 	memcpy( to->customFootsteps, from->customFootsteps, sizeof( to->customFootsteps ) );
 	memcpy( to->customMetalFootsteps, from->customMetalFootsteps, sizeof( to->customMetalFootsteps ) );
-	memcpy( to->legBones, from->legBones, sizeof( to->legBones ) );
-	memcpy( to->handBones, from->handBones, sizeof( to->legBones ) );
 }
 
 /*
@@ -1580,7 +1464,6 @@ void CG_PrecacheClientInfo( class_t class_, const char *model, const char *skin 
 #endif
 {
 	clientInfo_t *ci;
-	clientInfo_t newInfo;
 
 #ifdef UNREALARENA
 	ci = &cgs.corpseinfo[ team ];
@@ -1589,7 +1472,7 @@ void CG_PrecacheClientInfo( class_t class_, const char *model, const char *skin 
 #endif
 
 	// the old value
-	memset( &newInfo, 0, sizeof( newInfo ) );
+	clientInfo_t newInfo{};
 
 	// model
 	Q_strncpyz( newInfo.modelName, model, sizeof( newInfo.modelName ) );
@@ -1627,24 +1510,24 @@ static void CG_StatusMessages( clientInfo_t *new_, clientInfo_t *old )
 
 	if ( strcmp( new_->name, old->name ) )
 	{
-		Log::Notice(_( "%s^7 renamed to %s"), old->name, new_->name );
+		Log::Notice(_( "%s^* renamed to %s"), old->name, new_->name );
 	}
 
 	if ( old->team != new_->team )
 	{
 		if ( new_->team == TEAM_NONE )
 		{
-			Log::Notice(_( "%s^7 left the %s"), new_->name,
+			Log::Notice(_( "%s^* left the %s"), new_->name,
 			           BG_TeamNamePlural( old->team ) );
 		}
 		else if ( old->team == TEAM_NONE )
 		{
-			Log::Notice(_( "%s^7 joined the %s"), new_->name,
+			Log::Notice(_( "%s^* joined the %s"), new_->name,
 			           BG_TeamNamePlural( new_->team ) );
 		}
 		else
 		{
-			Log::Notice(_( "%s^7 left the %s and joined the %s"),
+			Log::Notice(_( "%s^* left the %s and joined the %s"),
 			           new_->name, BG_TeamNamePlural( old->team ), BG_TeamNamePlural( new_->team ) );
 		}
 	}
@@ -1658,7 +1541,6 @@ CG_NewClientInfo
 void CG_NewClientInfo( int clientNum )
 {
 	clientInfo_t *ci;
-	clientInfo_t newInfo;
 	const char   *configstring;
 	const char   *v;
 	char         *slash;
@@ -1669,12 +1551,12 @@ void CG_NewClientInfo( int clientNum )
 
 	if ( !configstring[ 0 ] )
 	{
-		memset( ci, 0, sizeof( *ci ) );
+		*ci = {};
 		return; // player just left
 	}
 
 	// the old value
-	memset( &newInfo, 0, sizeof( newInfo ) );
+	clientInfo_t newInfo{};
 
 	// grab our own ignoreList
 	if ( clientNum == cg.predictedPlayerState.clientNum )
@@ -1735,17 +1617,6 @@ PLAYER ANIMATION
 =============================================================================
 */
 
-static void CG_CombineLegSkeleton( refSkeleton_t *dest, refSkeleton_t *legs, int *legBones, int numBones )
-{
-	int i;
-
-	for ( i = 0; i < numBones; i++ )
-	{
-		dest->bones[ legBones[ i ] ] = legs->bones[ legBones[ i ] ];
-	}
-}
-
-
 
 /*
 ===============
@@ -1761,7 +1632,8 @@ static void CG_SetLerpFrameAnimation( clientInfo_t *ci, lerpFrame_t *lf, int new
 	lf->old_animation = lf->animation;
 
 	lf->animationNumber = newAnimation;
-	newAnimation &= ~ANIM_TOGGLEBIT;
+	newAnimation = CG_AnimNumber( newAnimation );
+	int oldAnimation = CG_AnimNumber( lf->old_animationNumber );
 
 	if ( newAnimation < 0 || newAnimation >= MAX_PLAYER_TOTALANIMATIONS )
 	{
@@ -1772,7 +1644,7 @@ static void CG_SetLerpFrameAnimation( clientInfo_t *ci, lerpFrame_t *lf, int new
 
 	lf->animation = anim;
 
-	if ( ci->md5 )
+	if ( ci->skeletal )
 	{
 		debug_anim_current = lf->animationNumber;
 		debug_anim_old = lf->old_animationNumber;
@@ -1784,15 +1656,7 @@ static void CG_SetLerpFrameAnimation( clientInfo_t *ci, lerpFrame_t *lf, int new
 			return;
 		}
 
-		if ( lf->old_animationNumber <= 0 )
-		{
-			// skip initial / invalid blending
-			lf->blendlerp = 0.0f;
-			return;
-		}
-
 		// TODO: blend through two blendings!
-
 		if ( ( lf->blendlerp <= 0.0f ) )
 		{
 			lf->blendlerp = 1.0f;
@@ -1801,10 +1665,6 @@ static void CG_SetLerpFrameAnimation( clientInfo_t *ci, lerpFrame_t *lf, int new
 		{
 			lf->blendlerp = 1.0f - lf->blendlerp; // use old blending for smooth blending between two blended animations
 		}
-
-		oldSkeleton = *skel;
-
-		//Log::Notice(_("new: %i old %i\n"), newAnimation,lf->old_animationNumber);
 
 		if ( lf->old_animation->handle && oldSkeleton.numBones == skel->numBones )
 		{
@@ -1822,6 +1682,15 @@ static void CG_SetLerpFrameAnimation( clientInfo_t *ci, lerpFrame_t *lf, int new
 	}
 	else
 	{
+		lf->animationTime = lf->frameTime + anim->initialLerp;
+	}
+
+	// HACK: If the previous animation was crouch and we are crouching, the frame number will be 0,
+	//       but we want the model to still be crouching so we should actually be at the last frame.
+	if ( newAnimation == LEGS_IDLECR && ( oldAnimation == LEGS_BACKCR ||
+			oldAnimation == LEGS_WALKCR ) )
+	{
+		lf->frame = lf->oldFrame = lf->animation->numFrames - 1;
 		lf->animationTime = lf->frameTime + anim->initialLerp;
 	}
 
@@ -1851,9 +1720,7 @@ static void CG_RunPlayerLerpFrame( clientInfo_t *ci, lerpFrame_t *lf, int newAni
 		animChanged = true;
 	}
 
-	CG_RunLerpFrame( lf, speedScale );
-
-	if ( ci->md5 )
+	if ( ci->skeletal )
 	{
 		CG_RunMD5LerpFrame( lf, speedScale, animChanged );
 
@@ -1862,6 +1729,10 @@ static void CG_RunPlayerLerpFrame( clientInfo_t *ci, lerpFrame_t *lf, int newAni
 
 		if( ci->team != TEAM_NONE )
 			CG_BuildAnimSkeleton( lf, skel, &oldSkeleton );
+	}
+	else
+	{
+		CG_RunLerpFrame( lf, speedScale );
 	}
 }
 
@@ -1922,11 +1793,10 @@ static void CG_ClearLerpFrame( clientInfo_t *ci, lerpFrame_t *lf, int animationN
 
 /*
 ===============
-CG_PlayerAnimation
+CG_SegmentAnimation
 ===============
 */
-static void CG_PlayerAnimation( centity_t *cent, int *legsOld, int *legs, float *legsBackLerp,
-                                int *torsoOld, int *torso, float *torsoBackLerp )
+static void CG_SegmentAnimation( centity_t *cent, lerpFrame_t *lf, refSkeleton_t *skel, int anim, int *oldFrame, int *frame, float *backlerp )
 {
 	clientInfo_t *ci;
 	int          clientNum;
@@ -1936,104 +1806,16 @@ static void CG_PlayerAnimation( centity_t *cent, int *legsOld, int *legs, float 
 
 	if ( cg_noPlayerAnims.integer )
 	{
-		*legsOld = *legs = *torsoOld = *torso = 0;
+		*oldFrame = *frame = 0;
 		return;
 	}
 
 	ci = &cgs.clientinfo[ clientNum ];
+	CG_RunPlayerLerpFrame( ci, lf, anim, skel, speedScale );
 
-	// do the shuffle turn frames locally
-	if ( cent->pe.legs.yawing && ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) == LEGS_IDLE )
-	{
-		CG_RunPlayerLerpFrame( ci, &cent->pe.legs, LEGS_TURN, nullptr, speedScale );
-	}
-	else
-	{
-		CG_RunPlayerLerpFrame( ci, &cent->pe.legs, cent->currentState.legsAnim, nullptr, speedScale );
-	}
-
-	*legsOld = cent->pe.legs.oldFrame;
-	*legs = cent->pe.legs.frame;
-	*legsBackLerp = cent->pe.legs.backlerp;
-
-	CG_RunPlayerLerpFrame( ci, &cent->pe.torso, cent->currentState.torsoAnim, nullptr, speedScale );
-
-	*torsoOld = cent->pe.torso.oldFrame;
-	*torso = cent->pe.torso.frame;
-	*torsoBackLerp = cent->pe.torso.backlerp;
-}
-
-/*
-===============
-CG_PlayerNonSegAnimation
-===============
-*/
-static void CG_PlayerNonSegAnimation( centity_t *cent, int *nonSegOld,
-                                      int *nonSeg, float *nonSegBackLerp )
-{
-	clientInfo_t *ci;
-	int          clientNum;
-	float        speedScale = 1.0f;
-
-	clientNum = cent->currentState.clientNum;
-
-	if ( cg_noPlayerAnims.integer )
-	{
-		*nonSegOld = *nonSeg = 0;
-		return;
-	}
-
-	ci = &cgs.clientinfo[ clientNum ];
-
-	// do the shuffle turn frames locally
-	if ( cent->pe.nonseg.yawing && ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) == NSPA_STAND )
-	{
-		CG_RunPlayerLerpFrame( ci, &cent->pe.nonseg, NSPA_TURN, nullptr, speedScale );
-	}
-	else
-	{
-		CG_RunPlayerLerpFrame( ci, &cent->pe.nonseg, cent->currentState.legsAnim, nullptr, speedScale );
-	}
-
-	*nonSegOld = cent->pe.nonseg.oldFrame;
-	*nonSeg = cent->pe.nonseg.frame;
-	*nonSegBackLerp = cent->pe.nonseg.backlerp;
-}
-
-/*
-===============
-CG_PlayerMD5Animation
-===============
-*/
-
-static void CG_PlayerMD5Animation( centity_t *cent )
-{
-	clientInfo_t *ci;
-	int          clientNum;
-	float        speedScale;
-
-	clientNum = cent->currentState.clientNum;
-
-	if ( cg_noPlayerAnims.integer )
-	{
-		return;
-	}
-
-	speedScale = 1;
-
-	ci = &cgs.clientinfo[ clientNum ];
-
-	// do the shuffle turn frames locally
-	if ( cent->pe.legs.yawing && ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) == LEGS_IDLE )
-	{
-		CG_RunPlayerLerpFrame( ci, &cent->pe.legs, LEGS_TURN, &legsSkeleton, speedScale );
-	}
-	else
-	{
-		CG_RunPlayerLerpFrame( ci, &cent->pe.legs, cent->currentState.legsAnim, &legsSkeleton, speedScale );
-	}
-
-	CG_RunPlayerLerpFrame( ci, &cent->pe.torso, cent->currentState.torsoAnim, &torsoSkeleton, speedScale );
+	*oldFrame = lf->oldFrame;
+	*frame = lf->frame;
+	*backlerp = lf->backlerp;
 }
 
 /*
@@ -2041,7 +1823,6 @@ static void CG_PlayerMD5Animation( centity_t *cent )
 CG_PlayerMD5AlienAnimation
 ===============
 */
-
 #ifdef UNREALARENA
 static void CG_PlayerMD5QAnimation( centity_t *cent )
 #else
@@ -2065,14 +1846,14 @@ static void CG_PlayerMD5AlienAnimation( centity_t *cent )
 	ci = &cgs.clientinfo[ clientNum ];
 
 	// If we are attacking/taunting, and in motion, allow blending the two skeletons
-	if ( ( ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) >= NSPA_ATTACK1 &&
-	       ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) <= NSPA_ATTACK3 ) ||
-	     ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) == NSPA_GESTURE )
+	if ( ( CG_AnimNumber( cent->currentState.legsAnim ) >= NSPA_ATTACK1 &&
+				CG_AnimNumber( cent->currentState.legsAnim ) <= NSPA_ATTACK3 ) ||
+				CG_AnimNumber( cent->currentState.legsAnim ) == NSPA_GESTURE )
 	{
 		blend.type = refSkeletonType_t::SK_RELATIVE; // Tell game to blend
 
-		if( ( cent->pe.nonseg.animationNumber & ~ANIM_TOGGLEBIT ) <= NSPA_TURN &&
-			( cent->pe.nonseg.animationNumber & ~ANIM_TOGGLEBIT ) != NSPA_GESTURE )
+		if( CG_AnimNumber( cent->pe.nonseg.animationNumber ) <= NSPA_TURN &&
+			CG_AnimNumber( cent->pe.nonseg.animationNumber ) != NSPA_GESTURE )
 		{
 			cent->pe.legs = cent->pe.nonseg;
 		}
@@ -2083,7 +1864,7 @@ static void CG_PlayerMD5AlienAnimation( centity_t *cent )
 	}
 
 	// do the shuffle turn frames locally
-	if ( cent->pe.nonseg.yawing && ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) == NSPA_STAND )
+	if ( cent->pe.nonseg.yawing && CG_AnimNumber( cent->currentState.legsAnim ) == NSPA_STAND )
 	{
 		CG_RunPlayerLerpFrame( ci, &cent->pe.nonseg, NSPA_TURN, &legsSkeleton, speedScale );
 	}
@@ -2253,8 +2034,8 @@ static void CG_PlayerAngles( centity_t *cent, const vec3_t srcAngles,
 	// --------- yaw -------------
 
 	// allow yaw to drift a bit
-	if ( ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) != LEGS_IDLE ||
-	     ( cent->currentState.torsoAnim & ~ANIM_TOGGLEBIT ) != TORSO_STAND )
+	if ( CG_AnimNumber( cent->currentState.legsAnim ) != LEGS_IDLE ||
+	     CG_AnimNumber( cent->currentState.torsoAnim ) != TORSO_STAND )
 	{
 		// if not standing still, always point all in the same direction
 		cent->pe.torso.yawing = true; // always center
@@ -2345,9 +2126,6 @@ static void CG_PlayerAngles( centity_t *cent, const vec3_t srcAngles,
 		AnglesToAxis( legsAngles, axis );
 		side = speed * DotProduct( velocity, axis[ 1 ] );
 		legsAngles[ ROLL ] -= side;
-
-		side = speed * DotProduct( velocity, axis[ 0 ] );
-		legsAngles[ PITCH ] += side;
 	}
 
 	//
@@ -2502,7 +2280,9 @@ static void CG_PlayerNonSegAxis( centity_t *cent, vec3_t srcAngles, vec3_t nonSe
 	int           dir;
 	entityState_t *es = &cent->currentState;
 	vec3_t        surfNormal;
+#ifndef UNREALARENA
 	vec3_t        ceilingNormal = { 0.0f, 0.0f, -1.0f };
+#endif
 
 	VectorCopy( srcAngles, localAngles );
 	localAngles[ YAW ] = AngleMod( localAngles[ YAW ] );
@@ -2536,7 +2316,7 @@ static void CG_PlayerNonSegAxis( centity_t *cent, vec3_t srcAngles, vec3_t nonSe
 	// --------- yaw -------------
 
 	// allow yaw to drift a bit
-	if ( ( cent->currentState.legsAnim & ~ANIM_TOGGLEBIT ) != NSPA_STAND )
+	if ( CG_AnimNumber( cent->currentState.legsAnim ) != NSPA_STAND )
 	{
 		// if not standing still, always point all in the same direction
 		cent->pe.nonseg.yawing = true; // always center
@@ -2689,8 +2469,8 @@ static void CG_JetpackAnimation( centity_t *cent, int *old, int *now, float *bac
 static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 {
 	static refEntity_t jetpack; // static for proper alignment in QVMs
-	static refEntity_t flash; // static for proper alignment in QVMs
 
+	// TODO: Remove this QVM relic.
 	// jetpack and battpack are never both in use together
 #	define radar jetpack
 
@@ -2746,25 +2526,6 @@ static void CG_PlayerUpgrades( centity_t *cent, refEntity_t *torso )
 			// play thrust sound
 			trap_S_AddLoopingSound( cent->currentState.number, cent->lerpOrigin,
 			                        vec3_origin, cgs.media.jetpackThrustLoopSound );
-
-			// Add flash tag (?)
-			{
-				memset( &flash, 0, sizeof( flash ) );
-				VectorCopy( torso->lightingOrigin, flash.lightingOrigin );
-				flash.renderfx = torso->renderfx;
-
-				flash.hModel = cgs.media.jetpackFlashModel;
-
-				if ( !flash.hModel )
-				{
-					return;
-				}
-
-				AxisCopy( axisDefault, flash.axis );
-
-				CG_PositionRotatedEntityOnTag( &flash, &jetpack, jetpack.hModel, "tag_flash" );
-				trap_R_AddRefEntityToScene( &flash );
-			}
 
 			// attach ps
 			if ( CG_IsParticleSystemValid( &cent->jetPackPS[ 0 ] ) )
@@ -2927,7 +2688,9 @@ static bool CG_PlayerShadow( centity_t *cent, class_t class_ )
 	vec3_t        end, mins, maxs;
 	trace_t       trace;
 	float         alpha;
+#ifndef UNREALARENA
 	entityState_t *es = &cent->currentState;
+#endif
 	vec3_t        surfNormal = { 0.0f, 0.0f, 1.0f };
 
 #ifdef UNREALARENA
@@ -3229,13 +2992,14 @@ int CG_AmbientLight( vec3_t point )
 CG_Player
 ===============
 */
+// TODO: Break this function up and reduce code copy-paste between md3 and skeletal code paths.
 void CG_Player( centity_t *cent )
 {
 	clientInfo_t *ci;
 
-	// NOTE: legs is used for nonsegmented models
+	// NOTE: legs is used for nonsegmented and skeletal models
 	//       this helps reduce code to be changed
-	refEntity_t legs, torso, body, head;
+	refEntity_t legs, torso, head;
 
 	int           clientNum;
 	int           renderfx;
@@ -3318,23 +3082,16 @@ void CG_Player( centity_t *cent )
 		CG_DrawBoundingBox( cg_drawBBOX.integer, cent->lerpOrigin, mins, maxs );
 	}
 
-	if ( ci->md5 )
-	{
-		memset( &body,    0, sizeof( body ) );
-	}
-	else
-	{
-		memset( &legs,    0, sizeof( legs ) );
-		memset( &torso,   0, sizeof( torso ) );
-		memset( &head,    0, sizeof( head ) );
-	}
+	memset( &legs,    0, sizeof( legs ) );
+	memset( &torso,   0, sizeof( torso ) );
+	memset( &head,    0, sizeof( head ) );
 
 	VectorCopy( cent->lerpAngles, angles );
 #ifndef UNREALARENA
 	AnglesToAxis( cent->lerpAngles, tempAxis );
 #endif
 
-	//rotate lerpAngles to floor
+	// rotate lerpAngles to floor
 #ifdef UNREALARENA
 	{
 		VectorCopy( cent->lerpAngles, angles );
@@ -3351,55 +3108,58 @@ void CG_Player( centity_t *cent )
 	}
 #endif
 
-	//normalise the pitch
+	// normalise the pitch
 	if ( angles[ PITCH ] < -180.0f )
 	{
 		angles[ PITCH ] += 360.0f;
 	}
 
-	if ( ci->md5 )
+	if ( ci->skeletal )
 	{
 		vec3_t legsAngles, torsoAngles, headAngles;
-		int    boneIndex;
 		vec3_t playerOrigin, mins, maxs;
-		quat_t rotation;
 
+		// TODO: Don't use GENDER to differentiate between aliens and humans
 		if ( ci->gender != GENDER_NEUTER )
 		{
 			CG_PlayerAngles( cent, angles, legsAngles, torsoAngles, headAngles );
-			AnglesToAxis( legsAngles, body.axis );
+			AnglesToAxis( legsAngles, legs.axis );
 		}
 		else
 		{
-			CG_PlayerNonSegAxis( cent, angles, body.axis );
+			CG_PlayerNonSegAxis( cent, angles, legs.axis );
 		}
 
-#ifndef UNREALARENA
-		AxisCopy( body.axis, tempAxis );
+#ifdef UNREALARENA
+		AxisCopy( legs.axis, cent->pe.lastAxis );
+#else
+		AxisCopy( legs.axis, tempAxis );
 
 		// rotate the legs axis to back to the wall
-		if ( es->eFlags & EF_WALLCLIMB && BG_RotateAxis( es->angles2, body.axis, tempAxis, false, es->eFlags & EF_WALLCLIMBCEILING ) )
+		if ( es->eFlags & EF_WALLCLIMB && BG_RotateAxis( es->angles2, legs.axis, tempAxis, false, es->eFlags & EF_WALLCLIMBCEILING ) )
 		{
-			AxisCopy( tempAxis, body.axis );
+			AxisCopy( tempAxis, legs.axis );
 		}
 
 		// smooth out WW transitions so the model doesn't hop around
-		CG_PlayerWWSmoothing( cent, body.axis, body.axis );
-#endif
+		CG_PlayerWWSmoothing( cent, legs.axis, legs.axis );
 
-#ifdef UNREALARENA
-		AxisCopy( body.axis, cent->pe.lastAxis );
-#else
 		AxisCopy( tempAxis, cent->pe.lastAxis );
 #endif
 
 		// get the animation state (after rotation, to allow feet shuffle)
 		if ( ci->gender != GENDER_NEUTER )
 		{
-			CG_PlayerMD5Animation( cent );
+					bool yawing = cent->pe.legs.yawing && CG_AnimNumber( cent->currentState.legsAnim ) == LEGS_IDLE;
+		CG_SegmentAnimation( cent, &cent->pe.legs, &legsSkeleton, yawing ? LEGS_TURN : cent->currentState.legsAnim,
+												 &legs.oldframe, &legs.frame, &legs.backlerp );
+		CG_SegmentAnimation( cent, &cent->pe.torso, &torsoSkeleton, cent->currentState.torsoAnim,
+												 &torso.oldframe, &torso.frame, &torso.backlerp );
+
 		}
 		else
 		{
+			// Special code for blending alien skeletons.
 #ifdef UNREALARENA
 			CG_PlayerMD5QAnimation( cent );
 #else
@@ -3431,16 +3191,16 @@ void CG_Player( centity_t *cent )
 		renderfx |= RF_LIGHTING_ORIGIN; // use the same origin for all
 
 		// add the body
-		body.hModel = ci->bodyModel;
-		body.customSkin = ci->bodySkin;
+		legs.hModel = ci->bodyModel;
+		legs.customSkin = ci->bodySkin;
 
-		if ( !body.hModel )
+		if ( !legs.hModel )
 		{
 			Log::Warn( "No body model for player %i", clientNum );
 			return;
 		}
 
-		body.renderfx = renderfx;
+		legs.renderfx = renderfx;
 
 #ifdef UNREALARENA
 		BG_ClassBoundingBox( team, mins, maxs, nullptr, nullptr, nullptr );
@@ -3449,15 +3209,7 @@ void CG_Player( centity_t *cent )
 #endif
 
 		// move the origin closer into the wall with a CapTrace
-#ifdef UNREALARENA
-		{
-			VectorCopy( cent->lerpOrigin, playerOrigin );
-			VectorCopy( playerOrigin, body.origin );
-			body.origin[ 0 ] -= ci->headOffset[ 0 ];
-			body.origin[ 1 ] -= ci->headOffset[ 1 ];
-			body.origin[ 2 ] -= 22 + ci->headOffset[ 2 ];
-		}
-#else
+#ifndef UNREALARENA
 		if ( es->eFlags & EF_WALLCLIMB && !( es->eFlags & EF_DEAD ) && !( cg.intermissionStarted ) )
 		{
 			vec3_t  start, end;
@@ -3477,43 +3229,48 @@ void CG_Player( centity_t *cent )
 			VectorMA( cent->lerpOrigin, 1.0f, surfNormal, start );
 			CG_CapTrace( &tr, start, nullptr, nullptr, end, es->number, MASK_PLAYERSOLID, 0 );
 
-			// if the trace misses completely then just use body.origin
+			// if the trace misses completely then just use legs.origin
 			// apparently capsule traces are "smaller" than box traces
 			if ( tr.fraction != 1.0f )
 			{
 				VectorCopy( tr.endpos, playerOrigin );
 
 				// MD5 player models have their model origin at (0 0 0)
-				VectorMA( playerOrigin, 0, surfNormal, body.origin );
+				VectorMA( playerOrigin, 0, surfNormal, legs.origin );
 			}
 			else
 			{
 				VectorCopy( cent->lerpOrigin, playerOrigin );
 
 				// MD5 player models have their model origin at (0 0 0)
-				VectorMA( cent->lerpOrigin, -TRACE_DEPTH, surfNormal, body.origin );
+				VectorMA( cent->lerpOrigin, -TRACE_DEPTH, surfNormal, legs.origin );
 			}
 
-			VectorCopy( body.origin, body.lightingOrigin );
-			VectorCopy( body.origin, body.oldorigin );  // don't positionally lerp at all
+			VectorCopy( legs.origin, legs.lightingOrigin );
+			VectorCopy( legs.origin, legs.oldorigin );  // don't positionally lerp at all
 		}
 		else
+#endif
 		{
 			VectorCopy( cent->lerpOrigin, playerOrigin );
-			VectorCopy( playerOrigin, body.origin );
-			body.origin[ 0 ] -= ci->headOffset[ 0 ];
-			body.origin[ 1 ] -= ci->headOffset[ 1 ];
-			body.origin[ 2 ] -= 22 + ci->headOffset[ 2 ];
-		}
+			VectorCopy( playerOrigin, legs.origin );
+			legs.origin[ 0 ] -= ci->headOffset[ 0 ];
+			legs.origin[ 1 ] -= ci->headOffset[ 1 ];
+			legs.origin[ 2 ] -= 22 + ci->headOffset[ 2 ];
+#ifdef UNREALARENA
+			VectorMA( legs.origin, BG_ClassModelConfig( team )->zOffset, surfNormal, legs.origin );
+#else
+			VectorMA( legs.origin, BG_ClassModelConfig( class_ )->zOffset, surfNormal, legs.origin );
 #endif
+		}
 
-		VectorCopy( body.origin, body.lightingOrigin );
-		VectorCopy( body.origin, body.oldorigin );  // don't positionally lerp at all
+		VectorCopy( legs.origin, legs.lightingOrigin );
+		VectorCopy( legs.origin, legs.oldorigin );  // don't positionally lerp at all
 
 		if ( ci->gender != GENDER_NEUTER )
 		{
 			// copy legs skeleton to have a base
-			body.skeleton = torsoSkeleton;
+			legs.skeleton = torsoSkeleton;
 			if ( torsoSkeleton.numBones != legsSkeleton.numBones )
 			{
 
@@ -3524,80 +3281,39 @@ void CG_Player( centity_t *cent )
 				Log::Warn( S_SKIPNOTIFY "cent->pe.legs.skeleton.numBones != cent->pe.torso.skeleton.numBones" );
 			}
 
-			// combine legs and torso skeletons
-			if ( ci->numLegBones )
+			// apply skeleton modifiers
+			SkeletonModifierContext ctx;
+			ctx.es = es;
+			ctx.torsoYawAngle = torsoAngles[YAW];
+			ctx.pitchAngle = cent->lerpAngles[PITCH];
+			ctx.legsSkeleton = &legsSkeleton;
+			for ( auto& mod : ci->modifiers )
 			{
-				CG_CombineLegSkeleton( &body.skeleton, &legsSkeleton, ci->legBones, ci->numLegBones );
+				mod->Apply( ctx, &legs.skeleton );
 			}
 
-			if ( ci->weaponAdjusted & ( 1 << es->weapon ) && ( cent->currentState.torsoAnim & ~ANIM_TOGGLEBIT ) >= TORSO_ATTACK  )
-			{
-				int j;
-
-				for ( j = 0; j < ci->numHandBones; j++ )
-				{
-					VectorAdd( deltas[ es->weapon ][ ci->handBones[ j ] ].delta, body.skeleton.bones[ ci->handBones[ j ] ].t.trans, body.skeleton.bones[ ci->handBones[ j ] ].t.trans );
-					QuatMultiply0( body.skeleton.bones[ ci->handBones[ j ] ].t.rot, deltas[ es->weapon ][ ci->handBones[ j ] ].rot );
-				}
-			}
-
-			// HACK: Stop taunt from clipping through the body.
-			if ( ( cent->currentState.torsoAnim & ~ANIM_TOGGLEBIT ) >= TORSO_GESTURE_BLASTER && ( cent->currentState.torsoAnim & ~ANIM_TOGGLEBIT ) <= TORSO_GESTURE_CKIT  )
-			{
-				quat_t rot;
-				QuatFromAngles( rot, 15, 0, 0 );
-				QuatMultiply0( body.skeleton.bones[ 33 ].t.rot, rot );
-			}
-
-			// rotate torso
-			boneIndex = ci->torsoControlBone;
-
-			if ( boneIndex >= 0 && boneIndex < torsoSkeleton.numBones )
-			{
-				// HACK: convert angles to bone system
-				QuatFromAngles( rotation, torsoAngles[ YAW ], 0, 0 );
-				QuatMultiply0( body.skeleton.bones[ boneIndex ].t.rot, rotation );
-			}
-
-			// HACK: limit angle (avoids worst of the gun clipping through the body)
-			// Needs some proper animation fixes...
-			if ( cent->lerpAngles[ 0 ] > 60 )
-			{
-				cent->lerpAngles[ 0 ] = 60;
-			}
-			else if ( cent->lerpAngles[ 0 ] < -60 )
-			{
-				cent->lerpAngles[ 0 ] = -60;
-			}
-
-			QuatFromAngles( rotation, -cent->lerpAngles[ 0 ], 0, 0 );
-			QuatMultiply0( body.skeleton.bones[ ci->rightShoulderBone ].t.rot, rotation );
-
-			// Relationships are emphirically derived. They will probably need to be changed upon changes to the human model
-			QuatFromAngles( rotation, cent->lerpAngles[ 0 ], cent->lerpAngles[ 0 ] < 0 ? -cent->lerpAngles[ 0 ] / 9 : -cent->lerpAngles[ 0 ] / ( 8 - ( 5 * ( cent->lerpAngles[ 0 ] / 90 ) ) )  , 0 );
-			QuatMultiply0( body.skeleton.bones[ ci->leftShoulderBone ].t.rot, rotation );
 		}
 		else
 		{
-			body.skeleton = legsSkeleton;
+			legs.skeleton = legsSkeleton;
 		}
 
 		// transform relative bones to absolute ones required for vertex skinning and tag attachments
-		CG_TransformSkeleton( &body.skeleton, ci->modelScale );
+		CG_TransformSkeleton( &legs.skeleton, ci->modelScale );
 
 		// add the gun / barrel / flash
 		if ( es->weapon != WP_NONE )
 		{
-			CG_AddPlayerWeapon( &body, nullptr, cent );
+			CG_AddPlayerWeapon( &legs, nullptr, cent );
 		}
 
 #ifndef UNREALARENA
-		CG_PlayerUpgrades( cent, &body );
+		CG_PlayerUpgrades( cent, &legs );
 #endif
 
-		// add body to renderer
-		body.altShaderIndex = altShaderIndex;
-		trap_R_AddRefEntityToScene( &body );
+		// add skeletal model to renderer
+		legs.altShaderIndex = altShaderIndex;
+		trap_R_AddRefEntityToScene( &legs );
 
 		goto finish_up;
 
@@ -3636,12 +3352,17 @@ void CG_Player( centity_t *cent )
 	// get the animation state (after rotation, to allow feet shuffle)
 	if ( !ci->nonsegmented )
 	{
-		CG_PlayerAnimation( cent, &legs.oldframe, &legs.frame, &legs.backlerp,
-		                    &torso.oldframe, &torso.frame, &torso.backlerp );
+		bool yawing = cent->pe.legs.yawing && CG_AnimNumber( cent->currentState.legsAnim ) == LEGS_IDLE;
+		CG_SegmentAnimation( cent, &cent->pe.legs, nullptr, yawing ? LEGS_TURN : cent->currentState.legsAnim,
+												 &legs.oldframe, &legs.frame, &legs.backlerp );
+		CG_SegmentAnimation( cent, &cent->pe.torso, nullptr, cent->currentState.torsoAnim,
+												 &torso.oldframe, &torso.frame, &torso.backlerp );
 	}
 	else
 	{
-		CG_PlayerNonSegAnimation( cent, &legs.oldframe, &legs.frame, &legs.backlerp );
+		bool yawing = cent->pe.legs.yawing && CG_AnimNumber( cent->currentState.legsAnim ) == NSPA_STAND;
+		CG_SegmentAnimation( cent, &cent->pe.legs, nullptr, yawing ? NSPA_TURN : cent->currentState.legsAnim,
+												 &legs.oldframe, &legs.frame, &legs.backlerp );
 	}
 
 	// add the talk baloon or disconnect icon
@@ -3901,7 +3622,7 @@ void CG_Corpse( centity_t *cent )
 #endif
 	origin[ 2 ] -= ( liveZ[ 2 ] - deadZ[ 2 ] );
 
-	if( ci->md5 )
+	if( ci->skeletal )
 	{
 		origin[ 0 ] -= ci->headOffset[ 0 ];
 		origin[ 1 ] -= ci->headOffset[ 1 ];
@@ -3924,7 +3645,7 @@ void CG_Corpse( centity_t *cent )
 	{
 		legs.oldframe = legs.frame = torso.oldframe = torso.frame = 0;
 	}
-	else if ( ci->md5 )
+	else if ( ci->skeletal )
 	{
 		if ( ci->gender == GENDER_NEUTER )
 		{
@@ -3979,7 +3700,7 @@ void CG_Corpse( centity_t *cent )
 	//
 	// add the legs
 	//
-	if ( ci->md5 )
+	if ( ci->skeletal )
 	{
 		legs.hModel = ci->bodyModel;
 		legs.customSkin = ci->bodySkin;
@@ -4015,7 +3736,7 @@ void CG_Corpse( centity_t *cent )
 	scale = BG_ClassModelConfig( es->clientNum )->modelScale;
 #endif
 
-	if ( scale != 1.0f && !ci->md5 )
+	if ( scale != 1.0f && !ci->skeletal )
 	{
 		VectorScale( legs.axis[ 0 ], scale, legs.axis[ 0 ] );
 		VectorScale( legs.axis[ 1 ], scale, legs.axis[ 1 ] );
@@ -4028,7 +3749,7 @@ void CG_Corpse( centity_t *cent )
 	trap_R_AddRefEntityToScene( &legs );
 
 	// if the model failed, allow the default nullmodel to be displayed. Also, if MD5, no need to add other parts
-	if ( !legs.hModel || ci->md5 )
+	if ( !legs.hModel || ci->skeletal )
 	{
 		CG_PlayerShadowEnd( );
 		return;

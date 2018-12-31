@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -276,7 +276,7 @@ static gclient_t *ClientForString( char *s )
 
 	if ( idnum == -1 )
 	{
-		Log::Notice( "%s", err );
+		Log::Notice( err );
 		return nullptr;
 	}
 
@@ -454,6 +454,9 @@ static void Svcmd_AdmitDefeat_f()
 
 static void Svcmd_TeamWin_f()
 {
+#ifdef UNREALARENA
+	// [TODO] UNIMPLEMENTED
+#else
 	// this is largely made redundant by admitdefeat <team>
 	char cmd[ 6 ];
 	team_t team;
@@ -461,9 +464,6 @@ static void Svcmd_TeamWin_f()
 
 	team = G_TeamFromString( cmd );
 
-#ifdef UNREALARENA
-	// [TODO] UNIMPLEMENTED
-#else
 	if ( TEAM_ALIENS == team )
 	{
 		G_BaseSelfDestruct( TEAM_HUMANS );

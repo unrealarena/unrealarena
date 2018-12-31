@@ -32,12 +32,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COMMON_STRING_H_
 
 #include <algorithm>
+#include <limits>
 #include "Compiler.h"
 
 namespace Str {
     void AssertOnTinyFormatError(std::string reason);
 }
 
+#define TINYFORMAT_USE_VARIADIC_TEMPLATES
 #define TINYFORMAT_ERROR(reason) Str::AssertOnTinyFormatError(#reason);
 #include "tinyformat/tinyformat.h"
 
@@ -45,7 +47,7 @@ namespace Str {
 
     template<typename T> class BasicStringRef {
     public:
-        static const size_t npos = -1;
+        static CONSTEXPR size_t npos = std::numeric_limits<size_t>::max();
 
         BasicStringRef(const std::basic_string<T>& other)
             : ptr(other.c_str()), len(other.size()) {}
@@ -248,6 +250,12 @@ namespace Str {
      */
     int GetHex(char ch);
 
+
+    /*
+     * Converts a value from 0 to 15 into a hexadecimal digit
+     */
+    char HexDigit( uint8_t digit );
+
     std::string ToUpper(Str::StringRef text);
     std::string ToLower(Str::StringRef text);
 
@@ -258,6 +266,7 @@ namespace Str {
     // Case insensitive versions
     bool IsIPrefix(Str::StringRef prefix, Str::StringRef text);
     int LongestIPrefixSize(Str::StringRef text1, Str::StringRef text2);
+    bool IsIEqual(Str::StringRef text1, Str::StringRef text2);
 
     // Case insensitive Hash and Equal functions for maps
     struct IHash {

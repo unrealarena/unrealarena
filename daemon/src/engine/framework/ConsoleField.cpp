@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016, Unreal Arena
+ * Daemon BSD Source Code
+ * Copyright (c) 2016-2018, Unreal Arena
  * Copyright (c) 2013-2016, Daemon Developers
  * All rights reserved.
  *
@@ -128,16 +129,16 @@ namespace Console {
         //Print the matches if it is ambiguous
         if (candidates.size() >= 2) {
 #ifdef UNREALARENA
-            Log::Notice("^*> ^*%s", Str::UTF32To8(GetText()).c_str());
+            Log::CommandInteractionMessage(Str::Format("^*> ^*%s", Str::UTF32To8(GetText())));
 #else
-            Log::Notice("^3-> ^*%s", Str::UTF32To8(GetText()).c_str());
+            Log::CommandInteractionMessage(Str::Format("^3-> ^*%s", Str::UTF32To8(GetText())));
 #endif
             for (const auto& candidate : candidates) {
                 std::string filler(maxCandidateLength - candidate.first.length(), ' ');
 #ifdef UNREALARENA
-                Log::Notice("%s%s %s", candidate.first.c_str(), filler.c_str(), candidate.second.c_str());
+                Log::CommandInteractionMessage(Str::Format("%s%s %s", candidate.first, filler, candidate.second));
 #else
-                Log::Notice("   %s%s %s", candidate.first.c_str(), filler.c_str(), candidate.second.c_str());
+                Log::CommandInteractionMessage(Str::Format("   %s%s %s", candidate.first, filler, candidate.second));
 #endif
             }
         }

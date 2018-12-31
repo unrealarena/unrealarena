@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2016-2018  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -25,8 +25,6 @@
 #include "client/keys.h"
 
 #include "framework/CommandSystem.h"
-
-static const int MAX_CMD_BUFFER = 131072;
 
 struct cmdContext_t
 {
@@ -168,14 +166,14 @@ static void Tokenise( const char *text, char *textOut, bool tokens, bool ignoreQ
 
 	*textOut = '\0'; // initial NUL-termination in case of early exit
 
-	while ( 1 )
+	while (true)
 	{
 		if ( tokens && cmd.argc == MAX_STRING_TOKENS )
 		{
 			goto done; // this is usually something malicious
 		}
 
-		while ( 1 )
+		while (true)
 		{
 			// skip whitespace
 			while ( *text > '\0' && *text <= ' ' )
@@ -339,6 +337,7 @@ static const char *EscapeString( const char *in, bool quote )
 			// no need to quote semicolons if in ""
 			quoted = true;
 			if ( quote ) break;
+            DAEMON_FALLTHROUGH;
 		case '"':
 		case '$':
 		case '\\':
@@ -432,12 +431,12 @@ class ProxyCmd: public Cmd::CmdBase {
 	public:
 		ProxyCmd(): Cmd::CmdBase(Cmd::PROXY_FOR_OLD) {}
 
-		void Run(const Cmd::Args& args) const OVERRIDE {
+		void Run(const Cmd::Args& args) const override {
 			proxyInfo_t proxy = proxies[args.Argv(0)];
 			proxy.cmd();
 		}
 
-		Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const OVERRIDE {
+		Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const override {
 			static char buffer[4096];
 			proxyInfo_t proxy = proxies[args.Argv(0)];
 

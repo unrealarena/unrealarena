@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -101,7 +101,6 @@ typedef enum {
 	VOTE_NEXT_MAP,
 	VOTE_POLL,
 	VOTE_BOT_KICK,
-	VOTE_BOT_SPECTATE
 } voteType_t;
 
 #endif // SG_TYPEDEF_H_

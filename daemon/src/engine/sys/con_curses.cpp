@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2016-2018  Unreal Arena
  * Copyright (C) 2008  Amanieu d'Antras
  *
  * This program is free software: you can redistribute it and/or modify
@@ -39,7 +39,6 @@
 #else
 #define PROMPT        "^3-> "
 #endif
-static const int INPUT_SCROLL  = 15;
 static const int LOG_SCROLL    = 5;
 static const int MAX_LOG_LINES = 1024;
 static const int LOG_BUF_SIZE  = 65536;
@@ -70,7 +69,9 @@ static bool     forceRedraw = false;
 static int      stderr_fd;
 #endif
 
-static const int LOG_LINES = ( LINES - 3 );
+static int NumLogLines() {
+	return LINES - 3;
+}
 
 static const int CURSES_DEFAULT_COLOR = 32;
 
@@ -188,7 +189,7 @@ static void CON_UpdateClock()
 	qtime_t realtime;
 	Com_Time( &realtime );
 	werase( clockwin );
-	CON_ColorPrint( clockwin, va( "^0[^3%02d%c%02d^0]^7 ", realtime.tm_hour, ( realtime.tm_sec & 1 ) ? ':' : ' ', realtime.tm_min ), true );
+	CON_ColorPrint( clockwin, va( "^0[^3%02d%c%02d^0] ", realtime.tm_hour, ( realtime.tm_sec & 1 ) ? ':' : ' ', realtime.tm_min ), true );
 	wnoutrefresh( clockwin );
 }
 #endif
@@ -236,12 +237,12 @@ static void CON_Redraw()
 	{
 		lastline++;
 	}
-	scrollline = lastline - LOG_LINES;
+	scrollline = lastline - NumLogLines();
 	if ( scrollline < 0 )
 	{
 		scrollline = 0;
 	}
-	pnoutrefresh( logwin, scrollline, 0, 1, 0, LOG_LINES, COLS );
+	pnoutrefresh( logwin, scrollline, 0, 1, 0, NumLogLines(), COLS );
 
 	// Create the input field
 #ifdef UNREALARENA
@@ -409,7 +410,9 @@ CON_Input
 char *CON_Input()
 {
 	int         chr, num_chars = 0;
+#ifndef UNREALARENA
 	static int  lasttime = -1;
+#endif
 	static enum {
 		MODE_UNKNOWN,
 		MODE_PLAIN,
@@ -438,7 +441,7 @@ char *CON_Input()
 	}
 #endif
 
-	while ( 1 )
+	while ( true )
 	{
 		chr = getch();
 		num_chars++;
@@ -471,7 +474,7 @@ char *CON_Input()
 			case '\n':
 			case '\r':
 			case KEY_ENTER:
-                Log::Notice( PROMPT "^*%s", Str::UTF32To8(input_field.GetText()).c_str() );
+				Log::CommandInteractionMessage( Str::Format( PROMPT "^*%s", Str::UTF32To8(input_field.GetText()) ) );
 				input_field.RunCommand(com_consoleCommand.Get());
 				werase( inputwin );
 				wnoutrefresh( inputwin );
@@ -523,18 +526,18 @@ char *CON_Input()
 				continue;
 
 			case KEY_NPAGE:
-				if ( lastline > scrollline + LOG_LINES )
+				if ( lastline > scrollline + NumLogLines() )
 				{
 					scrollline += LOG_SCROLL;
 
-					if ( scrollline + LOG_LINES > lastline )
+					if ( scrollline + NumLogLines() > lastline )
 					{
-						scrollline = lastline - LOG_LINES;
+						scrollline = lastline - NumLogLines();
 					}
 
-					pnoutrefresh( logwin, scrollline, 0, 1, 0, LOG_LINES, COLS );
+					pnoutrefresh( logwin, scrollline, 0, 1, 0, NumLogLines(), COLS );
 				}
-				if (scrollline >= lastline - LOG_LINES) {
+				if (scrollline >= lastline - NumLogLines()) {
 					CON_SetColor( stdscr, Color::Green );
 					for (int i = COLS - 7; i < COLS - 1; i++)
 						mvaddch(LINES - 2, i, ACS_HLINE);
@@ -552,9 +555,9 @@ char *CON_Input()
 						scrollline = 0;
 					}
 
-					pnoutrefresh( logwin, scrollline, 0, 1, 0, LOG_LINES, COLS );
+					pnoutrefresh( logwin, scrollline, 0, 1, 0, NumLogLines(), COLS );
 				}
-				if (scrollline < lastline - LOG_LINES) {
+				if (scrollline < lastline - NumLogLines()) {
 					CON_SetColor( stdscr, Color::Red );
 					mvaddstr(LINES - 2, COLS - 7, "(more)");
 				}
@@ -686,7 +689,7 @@ CON_Print
 void CON_Print( const char *msg )
 {
 	int      col;
-	bool scroll = ( lastline > scrollline && lastline <= scrollline + LOG_LINES );
+	bool scroll = ( lastline > scrollline && lastline <= scrollline + NumLogLines() );
 
 	if ( !curses_on )
 	{
@@ -705,14 +708,14 @@ void CON_Print( const char *msg )
 
 	if ( scroll )
 	{
-		scrollline = lastline - LOG_LINES;
+		scrollline = lastline - NumLogLines();
 
 		if ( scrollline < 0 )
 		{
 			scrollline = 0;
 		}
 
-		pnoutrefresh( logwin, scrollline, 0, 1, 0, LOG_LINES, COLS );
+		pnoutrefresh( logwin, scrollline, 0, 1, 0, NumLogLines(), COLS );
 	}
 
 	// Add the message to the log buffer

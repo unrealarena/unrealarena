@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -133,6 +133,7 @@ void BotSetNavmesh( gentity_t  *self, class_t newClass )
 Bot Navigation Querys
 ========================
 */
+
 float RadiusFromBounds2D( vec3_t mins, vec3_t maxs )
 {
 	float rad1s = Square( mins[0] ) + Square( mins[1] );

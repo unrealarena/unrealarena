@@ -25,6 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 
@@ -55,9 +56,19 @@ endmacro()
 
 function(try_flag LIST FLAG)
     string(REGEX REPLACE "[/=-]" "_" TEST ${FLAG})
-    set(CMAKE_REQUIRED_FLAGS "-Werror")
-    check_CXX_compiler_flag("${FLAG}" ${TEST})
-    set(CMAKE_REQUIRED_FLAGS "")
+    if (MSVC) # check_CXX_compiler_flag apparently always fails for MSVC.
+              # MSVC ignores unknown uptions, so just check if it begins with '/'.
+        string(SUBSTRING "${FLAG}" 0 1 FLAG_FIRST_CHAR)
+        if ("${FLAG_FIRST_CHAR}" STREQUAL "/")
+            set(${TEST} 1)
+        else()
+            set(${TEST} 0)
+        endif()
+    else()
+        set(CMAKE_REQUIRED_FLAGS "-Werror")
+        check_CXX_compiler_flag("${FLAG}" ${TEST})
+        set(CMAKE_REQUIRED_FLAGS "")
+    endif()
     if (${TEST})
         set(${LIST} ${${LIST}} ${FLAG} PARENT_SCOPE)
     endif()
@@ -337,6 +348,9 @@ if (LINUX)
 endif()
 
 # Configuration specific definitions
-if (CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo)
-    add_definitions(-DDEBUG_BUILD)
-endif()
+
+# This stupid trick to define THIS_IS_NOT_A_DEBUG_BUILD (rather than nothing) in the non-debug case
+# is so that it doesn't break the hacky gcc/clang PCH code which reads all the definitions
+# and prefixes "-D" to them.
+set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+             $<$<NOT:$<CONFIG:Debug>>:THIS_IS_NOT_A_>DEBUG_BUILD)

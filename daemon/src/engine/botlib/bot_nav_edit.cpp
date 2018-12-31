@@ -32,11 +32,15 @@ Maryland 20850 USA.
 ===========================================================================
 */
 #include "client/client.h"
-#include "detour/DetourDebugDraw.h"
+#include "DetourDebugDraw.h"
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#include "detour/DebugDraw.h"
+#endif
+#include "DebugDraw.h"
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 #include "bot_navdraw.h"
 #include "nav.h"
 
@@ -181,7 +185,7 @@ void Cmd_NavEdit()
 
 	if ( argc < 2 )
 	{
-		Log::Notice( "%s", usage );
+		Log::Notice( usage );
 		return;
 	}
 
@@ -192,7 +196,7 @@ void Cmd_NavEdit()
 		int i;
 		if ( argc < 3 )
 		{
-			Log::Notice( "%s", usage );
+			Log::Notice( usage );
 			return;
 		}
 
@@ -234,7 +238,7 @@ void Cmd_NavEdit()
 	}
 	else
 	{
-		Log::Notice( "%s", usage );
+		Log::Notice( usage );
 	}
 }
 
@@ -247,7 +251,7 @@ void Cmd_AddConnection()
 
 	if ( argc < 2 )
 	{
-		Log::Notice( "%s", usage );
+		Log::Notice( usage );
 		return;
 	}
 
@@ -262,7 +266,7 @@ void Cmd_AddConnection()
 
 		if ( argc < 3 )
 		{
-			Log::Notice( "%s", usage );
+			Log::Notice( usage );
 			return;
 		}
 
@@ -337,7 +341,7 @@ void Cmd_AddConnection()
 	}
 	else
 	{
-		Log::Notice( "%s", usage );
+		Log::Notice( usage );
 	}
 }
 
@@ -379,13 +383,13 @@ void Cmd_NavTest()
 
 	if ( !cmd.enabled )
 	{
-		Log::Notice( "%s", "Can't test navmesh without enabling navedit" );
+		Log::Notice( "Can't test navmesh without enabling navedit" );
 		return;
 	}
 
 	if ( argc < 2 )
 	{
-		Log::Notice( "%s", usage );
+		Log::Notice( usage );
 		return;
 	}
 
@@ -439,7 +443,7 @@ void Cmd_NavTest()
 	}
 	else
 	{
-		Log::Notice( "%s", usage );
+		Log::Notice( usage );
 	}
 }
 

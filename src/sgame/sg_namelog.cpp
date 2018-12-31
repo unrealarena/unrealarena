@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2010  Darklegion Development
  *

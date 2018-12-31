@@ -182,14 +182,14 @@ class TrapProxyCommand: public Cmd::CmdBase {
     public:
         TrapProxyCommand() : Cmd::CmdBase(0) {
         }
-        virtual void Run(const Cmd::Args& args) const OVERRIDE {
+        virtual void Run(const Cmd::Args& args) const override {
             // Push a pointer to args, it is fine because we remove the pointer before args goes out of scope
             argStack.push_back(&args);
             ConsoleCommand();
             argStack.pop_back();
         }
 
-        Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const OVERRIDE {
+        Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const override {
             static char buffer[4096];
 
             completedPrefix = prefix;
@@ -238,6 +238,14 @@ void trap_Argv(int n, char *buffer, int bufferLength) {
     } else {
         buffer[0] = '\0';
     }
+}
+
+const Cmd::Args& trap_Args() {
+	static const Cmd::Args empty;
+	if (argStack.empty()) {
+		return empty;
+	}
+	return *argStack.back();
 }
 
 void trap_EscapedArgs( char *buffer, int bufferLength ) {
@@ -374,7 +382,7 @@ class VMCvarProxy : public Cvar::CvarProxy {
             Register("");
         }
 
-        virtual Cvar::OnValueChangedResult OnValueChanged(Str::StringRef newValue) OVERRIDE {
+        virtual Cvar::OnValueChangedResult OnValueChanged(Str::StringRef newValue) override {
             value = newValue;
             modificationCount++;
             return Cvar::OnValueChangedResult{true, ""};

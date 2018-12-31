@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -1324,7 +1324,7 @@ static bool PM_CheckJetpack()
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Log::Notice( "[PM_CheckJetpack] %sJetpack enabled\n", Color::CString( Color::Cyan ) );
+			Log::Notice( "[PM_CheckJetpack] %sJetpack enabled\n", Color::ToString( Color::Cyan ) );
 		}
 
 		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ENABLED;
@@ -1340,7 +1340,7 @@ static bool PM_CheckJetpack()
 		{
 			if ( pm->debugLevel > 0 && pm->cmd.upmove < 10 )
 			{
-				Log::Notice( "[PM_CheckJetpack] %sJetpack thrust stopped (jump key released)\n", Color::CString( Color::LtOrange ) );
+				Log::Notice( "[PM_CheckJetpack] %sJetpack thrust stopped (jump key released)\n", Color::ToString( Color::LtOrange ) );
 			}
 
 			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
@@ -1355,7 +1355,7 @@ static bool PM_CheckJetpack()
 	{
 		if ( pm->debugLevel > 0 )
 		{
-			Log::Notice( "[PM_CheckJetpack] %sCan't start jetpack thrust (jetpack not enabled)\n", Color::CString( Color::Red ) );
+			Log::Notice( "[PM_CheckJetpack] %sCan't start jetpack thrust (jetpack not enabled)\n", Color::ToString( Color::Red ) );
 		}
 
 		return false;
@@ -1408,7 +1408,7 @@ static bool PM_CheckJetpack()
 		{
 			if ( pm->debugLevel > 0 )
 			{
-				Log::Notice( "[PM_CheckJetpack] %sJetpack thrust stopped (out of fuel)\n", Color::CString( Color::LtOrange ) );
+				Log::Notice( "[PM_CheckJetpack] %sJetpack thrust stopped (out of fuel)\n", Color::ToString( Color::LtOrange ) );
 			}
 
 			pm->ps->stats[ STAT_STATE2 ] &= ~SS2_JETPACK_ACTIVE;
@@ -1429,7 +1429,7 @@ static bool PM_CheckJetpack()
 
 		if ( pm->debugLevel > 0 )
 		{
-			Log::Notice( "[PM_CheckJetpack] %sJetpack thrust started\n", Color::CString( Color::Green ) );
+			Log::Notice( "[PM_CheckJetpack] %sJetpack thrust started\n", Color::ToString( Color::Green ) );
 		}
 
 		pm->ps->stats[ STAT_STATE2 ] |= SS2_JETPACK_ACTIVE;
@@ -1509,7 +1509,7 @@ static void PM_LandJetpack( bool force )
 		if ( pm->debugLevel > 0 )
 		{
 			Log::Notice( "[PM_LandJetpack] %sJetpack thrust stopped (hit surface at %.0f°)%s\n",
-			            Color::CString( Color::LtOrange ),
+			            Color::ToString( Color::LtOrange ),
 			            RAD2DEG( angle ),
 			            force ? " ^1(FORCED)" : "" );
 		}
@@ -1527,7 +1527,7 @@ static void PM_LandJetpack( bool force )
 		if ( pm->debugLevel > 0 )
 		{
 			Log::Notice( "[PM_LandJetpack] %sJetpack disabled (hit surface at %.0f°)%s\n",
-			            Color::CString( Color::Yellow ),
+			            Color::ToString( Color::Yellow ),
 			            RAD2DEG( angle ),
 			            force ? " ^1(FORCED)" : "" );
 		}
@@ -1751,108 +1751,6 @@ static bool PM_CheckWaterJump()
 
 	return true;
 }
-
-#ifndef UNREALARENA
-/*
- ==================
- PM_CheckDodge
-
- Checks the dodge key and starts a human dodge
- ==================
- */
-static bool PM_CheckDodge( void )
-{
-	vec3_t right, velocity = { 0.0f, 0.0f, 0.0f };
-	float jump, sideModifier;
-	int cost = BG_Class( pm->ps->stats[ STAT_CLASS ] )->staminaJumpCost;
-
-	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS )
-	{
-		return false;
-	}
-
-	// Landed a dodge
-	if ( ( pm->ps->pm_flags & PMF_CHARGE ) &&
-	        pm->ps->groundEntityNum != ENTITYNUM_NONE )
-	{
-		pm->ps->pm_flags = ( pm->ps->pm_flags & ~PMF_CHARGE );
-		return false;
-	}
-
-	// Reasons why we can't start a dodge or sprint
-	if ( pm->ps->pm_type != PM_NORMAL || pm->ps->stats[ STAT_STAMINA ] < cost ||
-	        ( pm->ps->pm_flags & PMF_DUCKED ) || pm->ps->pm_time > 0 )
-	{
-		return false;
-	}
-
-	// Reasons why we can't start a dodge only
-	if ( pm->ps->pm_flags & ( PMF_CHARGE ) ||
-	        pm->ps->groundEntityNum == ENTITYNUM_NONE ||
-	        ( pm->cmd.doubleTap != dtType_t::DT_MOVELEFT &&
-	          pm->cmd.doubleTap != dtType_t::DT_MOVERIGHT ) )
-	{
-		return false;
-	}
-
-	// don't allow jump until all buttons are up (?)
-	if ( pm->ps->pm_flags & PMF_RESPAWNED )
-	{
-		return false;
-	}
-
-	// can't jump whilst grabbed
-	if ( pm->ps->pm_type == PM_GRABBED )
-	{
-		return false;
-	}
-
-	// must wait for jump to be released
-	if ( pm->ps->pm_flags & PMF_JUMP_HELD )
-	{
-		return false;
-	}
-
-	VectorCopy( pml.right, right );
-
-	// Dodge magnitude is based on the jump magnitude scaled by the modifiers
-	jump = BG_Class( pm->ps->stats[ STAT_CLASS ] )->jumpMagnitude;
-
-	// Weaken dodge if slowed
-	if ( ( pm->ps->stats[ STAT_STATE ] & SS_SLOWLOCKED )  ||
-	        ( pm->ps->stats[ STAT_STATE ] & SS_CREEPSLOWED ) )
-	{
-		sideModifier = HUMAN_DODGE_SLOW_MULTIPLIER;
-	}
-	else
-	{
-		sideModifier = HUMAN_DODGE_SIDE_MULTIPLIER;
-	}
-
-	// The dodge sets minimum velocity
-	if ( pm->cmd.doubleTap == dtType_t::DT_MOVELEFT )
-	{
-		VectorNegate( right, right );
-	}
-
-	VectorMA( velocity, jump * sideModifier, right, velocity );
-	velocity[ 2 ] = jump * HUMAN_DODGE_VERTICAL_MULTIPLIER;
-	VectorAdd( velocity, pm->ps->velocity, pm->ps->velocity );
-	pm->ps->stats[ STAT_STAMINA ] -= cost;
-
-	// Jumped away
-	pml.groundPlane = false;
-	pml.walking = false;
-	pm->ps->pm_flags |= PMF_JUMP_HELD;
-	pm->ps->pm_flags |= PMF_JUMPED;
-	pm->ps->pm_time = HUMAN_DODGE_COOLDOWN;
-	pm->ps->groundEntityNum = ENTITYNUM_NONE;
-	PM_AddEvent( EV_JUMP );
-	PM_PlayJumpingAnimation();
-
-	return true;
-}
-#endif
 
 //============================================================================
 
@@ -2896,7 +2794,7 @@ static void PM_GroundClimbTrace()
 				break;
 
 			case GCT_ATP_STEPMOVE:
-				if ( pml.groundPlane != false && PM_PredictStepMove() )
+				if ( pml.groundPlane && PM_PredictStepMove() )
 				{
 					// step down
 					VectorMA( pm->ps->origin, -STEPSIZE, surfNormal, point );
@@ -2912,7 +2810,7 @@ static void PM_GroundClimbTrace()
 
 			case GCT_ATP_UNDERNEATH:
 				// trace "underneath" BBOX so we can traverse angles > 180deg
-				if ( pml.groundPlane != false )
+				if ( pml.groundPlane )
 				{
 					VectorMA( pm->ps->origin, -16.0f, surfNormal, point );
 					VectorMA( point, -16.0f, moveDir, point );
@@ -4043,14 +3941,7 @@ static void PM_TorsoAnimation()
 	{
 		if ( !( pm->ps->persistant[ PERS_STATE ] & PS_NONSEGMODEL ) )
 		{
-			if ( pm->ps->weapon == WP_BLASTER )
-			{
-				PM_ContinueTorsoAnim( TORSO_STAND_BLASTER );
-			}
-			else
-			{
-				PM_ContinueTorsoAnim( TORSO_STAND );
-			}
+			PM_ContinueTorsoAnim( TORSO_STAND );
 		}
 
 		PM_ContinueWeaponAnim( WANIM_IDLE );
@@ -4346,14 +4237,7 @@ static void PM_Weapon()
 
 		if ( !( pm->ps->persistant[ PERS_STATE ] & PS_NONSEGMODEL ) )
 		{
-			if ( pm->ps->weapon == WP_BLASTER )
-			{
-				PM_ContinueTorsoAnim( TORSO_STAND_BLASTER );
-			}
-			else
-			{
-				PM_ContinueTorsoAnim( TORSO_STAND );
-			}
+			PM_ContinueTorsoAnim( TORSO_STAND );
 		}
 
 		PM_ContinueWeaponAnim( WANIM_IDLE );
@@ -4645,6 +4529,7 @@ static void PM_Weapon()
 					PM_ForceLegsAnim( NSPA_ATTACK2 );
 					PM_StartWeaponAnim( WANIM_ATTACK7 );
 				}
+				DAEMON_FALLTHROUGH;
 
 			case WP_ALEVEL2:
 				if ( attack1 )
@@ -5240,9 +5125,6 @@ void PmoveSingle( pmove_t *pmove )
 	}
 
 	PM_DropTimers();
-#ifndef UNREALARENA
-	PM_CheckDodge();
-#endif
 
 	if ( pm->ps->pm_flags & PMF_TIME_WATERJUMP )
 	{

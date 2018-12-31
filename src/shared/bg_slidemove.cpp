@@ -1,5 +1,5 @@
 /*
- * Daemon GPL Source Code
+ * Unvanquished GPL Source Code
  * Copyright (C) 2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -353,7 +353,7 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 
 		//we can step down
 		if ( trace.fraction > 0.01f && trace.fraction < 1.0f &&
-		     !trace.allsolid && pml.groundPlane != false )
+		     !trace.allsolid && pml.groundPlane )
 		{
 			if ( pm->debugLevel > 1 )
 			{

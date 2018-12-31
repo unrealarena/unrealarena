@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ void InitBrushSensor( gentity_t *self )
 	}
 
 	trap_SetBrushModel( self, self->model );
-	self->r.contents = CONTENTS_SENSOR; // replaces the -1 from trap_SetBrushModel
+	self->r.contents = CONTENTS_TRIGGER; // replaces the -1 from trap_SetBrushModel
 	self->r.svFlags = SVF_NOCLIENT;
 	trap_LinkEntity( self );
 }
@@ -349,7 +349,7 @@ bool sensor_buildable_match( gentity_t *self, gentity_t *activator )
 void sensor_buildable_touch( gentity_t *self, gentity_t *activator, trace_t* )
 {
 	//sanity check
-	if ( !activator || !(activator->s.eType == entityType_t::ET_BUILDABLE) )
+	if ( !activator || activator->s.eType != entityType_t::ET_BUILDABLE )
 	{
 		return;
 	}
@@ -549,17 +549,19 @@ void sensor_support_think( gentity_t *self )
 		return;
 	}
 
-	//TODO check the difference between G_FindCreep and G_FindPower
 	switch (self->conditions.team) {
 		case TEAM_HUMANS:
-			self->powered = false;
+			self->powered = (G_ActiveReactor() != nullptr);
 			break;
+
 		case TEAM_ALIENS:
-			self->powered = G_FindCreep( self );
+			self->powered = (G_ActiveOvermind() != nullptr);
 			break;
+
 		case TEAM_ALL:
-			self->powered = G_FindCreep( self );
+			self->powered = (G_ActiveReactor() != nullptr && G_ActiveOvermind() != nullptr);
 			break;
+
 		default:
 			Log::Warn("missing team field for %s", etos( self ));
 			G_FreeEntity( self );
@@ -567,7 +569,7 @@ void sensor_support_think( gentity_t *self )
 	}
 
 	if(self->powered)
-		G_FireEntity( self, self->powerSource );
+		G_FireEntity( self, nullptr );
 
 	self->nextthink = level.time + SENSOR_POLL_PERIOD;
 }
@@ -602,10 +604,10 @@ void sensor_power_think( gentity_t *self )
 		return;
 	}
 
-	self->powered = false; //TODO: Reuse or remove this sensor
+	self->powered = (G_ActiveReactor() != nullptr);
 
 	if(self->powered)
-		G_FireEntity( self, self->powerSource );
+		G_FireEntity( self, nullptr );
 
 	self->nextthink = level.time + SENSOR_POLL_PERIOD;
 }
@@ -633,10 +635,10 @@ void sensor_creep_think( gentity_t *self )
 		return;
 	}
 
-	self->powered = G_FindCreep( self );
+	self->powered = (G_ActiveOvermind() != nullptr);
 
 	if(self->powered)
-		G_FireEntity( self, self->powerSource );
+		G_FireEntity( self, nullptr );
 
 	self->nextthink = level.time + SENSOR_POLL_PERIOD;
 }

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -99,7 +99,6 @@ vmCvar_t        cg_drawTeamOverlay;
 vmCvar_t        cg_teamOverlaySortMode;
 vmCvar_t        cg_teamOverlayMaxPlayers;
 vmCvar_t        cg_teamOverlayUserinfo;
-vmCvar_t        cg_noPrintDuplicate;
 vmCvar_t        cg_noVoiceChats;
 vmCvar_t        cg_noVoiceText;
 vmCvar_t        cg_hudFiles;
@@ -124,11 +123,6 @@ vmCvar_t        cg_debugParticles;
 vmCvar_t        cg_debugTrails;
 vmCvar_t        cg_debugPVS;
 vmCvar_t        cg_disableWarningDialogs;
-vmCvar_t        cg_disableUpgradeDialogs;
-#ifndef UNREALARENA
-vmCvar_t        cg_disableBuildDialogs;
-#endif
-vmCvar_t        cg_disableCommandDialogs;
 vmCvar_t        cg_disableScannerPlane;
 vmCvar_t        cg_tutorial;
 
@@ -195,11 +189,6 @@ vmCvar_t        cg_chatTeamPrefix;
 vmCvar_t        cg_animSpeed;
 vmCvar_t        cg_animBlend;
 
-vmCvar_t        cg_highPolyPlayerModels;
-#ifndef UNREALARENA
-vmCvar_t        cg_highPolyBuildableModels;
-#endif
-vmCvar_t        cg_highPolyWeaponModels;
 vmCvar_t        cg_motionblur;
 vmCvar_t        cg_motionblurMinSpeed;
 vmCvar_t        cg_spawnEffects;
@@ -291,7 +280,6 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_teamOverlayMaxPlayers,       "cg_teamOverlayMaxPlayers",       "8",            0                            },
 	{ &cg_teamOverlayUserinfo,         "teamoverlay",                    "1",            CVAR_USERINFO                },
 	{ &cg_teamChatsOnly,               "cg_teamChatsOnly",               "0",            0                            },
-	{ &cg_noPrintDuplicate,            "cg_noPrintDuplicate",            "0",            0                            },
 	{ &cg_noVoiceChats,                "cg_noVoiceChats",                "0",            0                            },
 	{ &cg_noVoiceText,                 "cg_noVoiceText",                 "0",            0                            },
 	{ &cg_drawSurfNormal,              "cg_drawSurfNormal",              "0",            CVAR_CHEAT                   },
@@ -308,18 +296,13 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_unlagged,                    "cg_unlagged",                    "1",            CVAR_USERINFO                },
 	{ nullptr,                            "cg_flySpeed",                    "800",          CVAR_USERINFO                },
 	{ &cg_depthSortParticles,          "cg_depthSortParticles",          "1",            0                            },
-	{ &cg_bounceParticles,             "cg_bounceParticles",             "0",            0                            },
+	{ &cg_bounceParticles,             "cg_bounceParticles",             "1",            0                            },
 	{ &cg_consoleLatency,              "cg_consoleLatency",              "3000",         0                            },
 	{ &cg_lightFlare,                  "cg_lightFlare",                  "3",            0                            },
 	{ &cg_debugParticles,              "cg_debugParticles",              "0",            CVAR_CHEAT                   },
 	{ &cg_debugTrails,                 "cg_debugTrails",                 "0",            CVAR_CHEAT                   },
 	{ &cg_debugPVS,                    "cg_debugPVS",                    "0",            CVAR_CHEAT                   },
 	{ &cg_disableWarningDialogs,       "cg_disableWarningDialogs",       "0",            0                            },
-	{ &cg_disableUpgradeDialogs,       "cg_disableUpgradeDialogs",       "0",            0                            },
-#ifndef UNREALARENA
-	{ &cg_disableBuildDialogs,         "cg_disableBuildDialogs",         "0",            0                            },
-#endif
-	{ &cg_disableCommandDialogs,       "cg_disableCommandDialogs",       "0",            0                            },
 	{ &cg_disableScannerPlane,         "cg_disableScannerPlane",         "0",            0                            },
 	{ &cg_tutorial,                    "cg_tutorial",                    "1",            0                            },
 
@@ -387,11 +370,6 @@ static const cvarTable_t cvarTable[] =
 	{ &cg_animBlend,                   "cg_animblend",                   "5.0",          0                            },
 
 	{ &cg_chatTeamPrefix,              "cg_chatTeamPrefix",              "1",            0                            },
-	{ &cg_highPolyPlayerModels,        "cg_highPolyPlayerModels",        "1",            CVAR_LATCH                   },
-#ifndef UNREALARENA
-	{ &cg_highPolyBuildableModels,     "cg_highPolyBuildableModels",     "1",            CVAR_LATCH                   },
-#endif
-	{ &cg_highPolyWeaponModels,        "cg_highPolyWeaponModels",        "1",            CVAR_LATCH                   },
 	{ &cg_motionblur,                  "cg_motionblur",                  "0.05",         0                            },
 	{ &cg_motionblurMinSpeed,          "cg_motionblurMinSpeed",          "600",          0                            },
 	{ &cg_spawnEffects,                "cg_spawnEffects",                "1",            0                            },
@@ -625,8 +603,8 @@ void CG_UpdateBuildableRangeMarkerMask()
 			{
 				brmMask |= ( 1 << BA_A_OVERMIND ) | ( 1 << BA_A_SPAWN ) | ( 1 << BA_A_ACIDTUBE ) |
 				           ( 1 << BA_A_TRAPPER ) | ( 1 << BA_A_HIVE ) | ( 1 << BA_A_LEECH ) |
-				           ( 1 << BA_A_BOOSTER ) | ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) |
-				           ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) | ( 1 << BA_H_DRILL );
+				           ( 1 << BA_A_BOOSTER ) | ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_MGTURRET ) |
+				           ( 1 << BA_H_ROCKETPOD ) | ( 1 << BA_H_DRILL );
 			}
 			else if ( !Q_stricmp( p, "none" ) )
 			{
@@ -646,8 +624,8 @@ void CG_UpdateBuildableRangeMarkerMask()
 				else if ( !Q_strnicmp( p, "human", 5 ) )
 				{
 					pp = p + 5;
-					only = ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) |
-					       ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) | ( 1 << BA_H_DRILL );
+					only = ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_MGTURRET ) | ( 1 << BA_H_ROCKETPOD ) |
+					       ( 1 << BA_H_DRILL );
 				}
 				else
 				{
@@ -662,7 +640,7 @@ void CG_UpdateBuildableRangeMarkerMask()
 				else if ( !Q_stricmp( pp, "support" ) )
 				{
 					brmMask |= only & ( ( 1 << BA_A_OVERMIND ) | ( 1 << BA_A_SPAWN ) | ( 1 << BA_A_LEECH ) | ( 1 << BA_A_BOOSTER ) |
-					                    ( 1 << BA_H_REACTOR ) | ( 1 << BA_H_REPEATER ) | ( 1 << BA_H_DRILL ) );
+					                    ( 1 << BA_H_REACTOR ) |  ( 1 << BA_H_DRILL ) );
 				}
 				else if ( !Q_stricmp( pp, "offensive" ) )
 				{
@@ -758,85 +736,6 @@ int CG_CrosshairPlayer()
 	}
 
 	return cg.crosshairClientNum;
-}
-
-/*
-=================
-CG_RemoveNotifyLine
-=================
-*/
-void CG_RemoveNotifyLine()
-{
-	int i, offset, totalLength;
-
-	if ( cg.numConsoleLines == 0 )
-	{
-		return;
-	}
-
-	offset = cg.consoleLines[ 0 ].length;
-	totalLength = strlen( cg.consoleText ) - offset;
-
-	//slide up consoleText
-	for ( i = 0; i <= totalLength; i++ )
-	{
-		cg.consoleText[ i ] = cg.consoleText[ i + offset ];
-	}
-
-	//pop up the first consoleLine
-	cg.numConsoleLines--;
-	for ( i = 0; i < cg.numConsoleLines; i++ )
-	{
-		cg.consoleLines[ i ] = cg.consoleLines[ i + 1 ];
-	}
-}
-
-/*
-=================
-CG_AddNotifyText
-TODO TODO this can be removed, as well as all its dependencies
-=================
-*/
-void CG_AddNotifyText()
-{
-	char buffer[ BIG_INFO_STRING ];
-	int  bufferLen, textLen;
-
-	if ( cg.loading )
-	{
-		return;
-	}
-
-	trap_LiteralArgs( buffer, BIG_INFO_STRING );
-
-	if ( !buffer[ 0 ] )
-	{
-		cg.consoleText[ 0 ] = '\0';
-		cg.numConsoleLines = 0;
-		return;
-	}
-
-	bufferLen = strlen( buffer );
-	textLen = strlen( cg.consoleText );
-
-	// Ignore console messages that were just printed
-	if ( cg_noPrintDuplicate.integer && textLen >= bufferLen &&
-	     !strcmp( cg.consoleText + textLen - bufferLen, buffer ) )
-	{
-		return;
-	}
-
-	if ( cg.numConsoleLines == MAX_CONSOLE_LINES )
-	{
-		CG_RemoveNotifyLine();
-		textLen = strlen( cg.consoleText );
-	}
-
-	Q_strncpyz( cg.consoleText + textLen, buffer, MAX_CONSOLE_TEXT - textLen );
-	cg.consoleLines[ cg.numConsoleLines ].time = cg.time;
-	cg.consoleLines[ cg.numConsoleLines ].length =
-		std::min( bufferLen, MAX_CONSOLE_TEXT - textLen - 1 );
-	cg.numConsoleLines++;
 }
 
 /*
@@ -1076,51 +975,51 @@ static void CG_RegisterSounds()
 	const char *soundName;
 
 #ifndef UNREALARENA
-	cgs.media.weHaveEvolved = trap_S_RegisterSound( "sound/announcements/overmindevolved.wav", true );
-	cgs.media.reinforcement = trap_S_RegisterSound( "sound/announcements/reinforcement.wav", true );
+	cgs.media.weHaveEvolved = trap_S_RegisterSound( "sound/announcements/overmindevolved", true );
+	cgs.media.reinforcement = trap_S_RegisterSound( "sound/announcements/reinforcement", true );
 
-	cgs.media.alienOvermindAttack = trap_S_RegisterSound( "sound/announcements/overmindattack.wav", true );
-	cgs.media.alienOvermindDying = trap_S_RegisterSound( "sound/announcements/overminddying.wav", true );
-	cgs.media.alienOvermindSpawns = trap_S_RegisterSound( "sound/announcements/overmindspawns.wav", true );
+	cgs.media.alienOvermindAttack = trap_S_RegisterSound( "sound/announcements/overmindattack", true );
+	cgs.media.alienOvermindDying = trap_S_RegisterSound( "sound/announcements/overminddying", true );
+	cgs.media.alienOvermindSpawns = trap_S_RegisterSound( "sound/announcements/overmindspawns", true );
 
-	cgs.media.alienL4ChargePrepare = trap_S_RegisterSound( "sound/player/level4/charge_prepare.wav", true );
-	cgs.media.alienL4ChargeStart = trap_S_RegisterSound( "sound/player/level4/charge_start.wav", true );
+	cgs.media.alienL4ChargePrepare = trap_S_RegisterSound( "sound/player/level4/charge_prepare", true );
+	cgs.media.alienL4ChargeStart = trap_S_RegisterSound( "sound/player/level4/charge_start", true );
 #endif
 
-	cgs.media.selectSound = trap_S_RegisterSound( "sound/weapons/change.wav", false );
+	cgs.media.selectSound = trap_S_RegisterSound( "sound/weapons/change", false );
 #ifndef UNREALARENA
-	cgs.media.turretSpinupSound = trap_S_RegisterSound( "sound/buildables/mgturret/spinup.wav", false );
+	cgs.media.turretSpinupSound = trap_S_RegisterSound( "sound/buildables/mgturret/spinup", false );
 #endif
-	cgs.media.weaponEmptyClick = trap_S_RegisterSound( "sound/weapons/click.wav", false );
+	cgs.media.weaponEmptyClick = trap_S_RegisterSound( "sound/weapons/click", false );
 
-	cgs.media.talkSound = trap_S_RegisterSound( "sound/misc/talk.wav", false );
+	cgs.media.talkSound = trap_S_RegisterSound( "sound/feedback/talk", false );
 #ifdef UNREALARENA
-	cgs.media.qTalkSound = trap_S_RegisterSound( "sound/misc/q_talk.wav", false );
-	cgs.media.uTalkSound = trap_S_RegisterSound( "sound/misc/u_talk.wav", false );
+	cgs.media.qTalkSound = trap_S_RegisterSound( "sound/feedback/q_talk", false );
+	cgs.media.uTalkSound = trap_S_RegisterSound( "sound/feedback/u_talk", false );
 #else
-	cgs.media.alienTalkSound = trap_S_RegisterSound( "sound/misc/alien_talk.wav", false );
-	cgs.media.humanTalkSound = trap_S_RegisterSound( "sound/misc/human_talk.wav", false );
+	cgs.media.alienTalkSound = trap_S_RegisterSound( "sound/feedback/alien_talk", false );
+	cgs.media.humanTalkSound = trap_S_RegisterSound( "sound/feedback/human_talk", false );
 #endif
-	cgs.media.landSound = trap_S_RegisterSound( "sound/player/land1.wav", false );
+	cgs.media.landSound = trap_S_RegisterSound( "sound/player/land1", false );
 
-	cgs.media.watrInSound = trap_S_RegisterSound( "sound/player/watr_in.wav", false );
-	cgs.media.watrOutSound = trap_S_RegisterSound( "sound/player/watr_out.wav", false );
-	cgs.media.watrUnSound = trap_S_RegisterSound( "sound/player/watr_un.wav", false );
+	cgs.media.watrInSound = trap_S_RegisterSound( "sound/player/watr_in", false );
+	cgs.media.watrOutSound = trap_S_RegisterSound( "sound/player/watr_out", false );
+	cgs.media.watrUnSound = trap_S_RegisterSound( "sound/player/watr_un", false );
 
-	cgs.media.disconnectSound = trap_S_RegisterSound( "sound/misc/disconnect.wav", false );
+	cgs.media.disconnectSound = trap_S_RegisterSound( "sound/feedback/disconnect", false );
 
 	for ( i = 0; i < 4; i++ )
 	{
-		Com_sprintf( name, sizeof( name ), "sound/player/footsteps/step%i.wav", i + 1 );
+		Com_sprintf( name, sizeof( name ), "sound/player/footsteps/step%i", i + 1 );
 		cgs.media.footsteps[ FOOTSTEP_GENERAL ][ i ] = trap_S_RegisterSound( name, false );
 
-		Com_sprintf( name, sizeof( name ), "sound/player/footsteps/flesh%i.wav", i + 1 );
+		Com_sprintf( name, sizeof( name ), "sound/player/footsteps/flesh%i", i + 1 );
 		cgs.media.footsteps[ FOOTSTEP_FLESH ][ i ] = trap_S_RegisterSound( name, false );
 
-		Com_sprintf( name, sizeof( name ), "sound/player/footsteps/splash%i.wav", i + 1 );
+		Com_sprintf( name, sizeof( name ), "sound/player/footsteps/splash%i", i + 1 );
 		cgs.media.footsteps[ FOOTSTEP_SPLASH ][ i ] = trap_S_RegisterSound( name, false );
 
-		Com_sprintf( name, sizeof( name ), "sound/player/footsteps/clank%i.wav", i + 1 );
+		Com_sprintf( name, sizeof( name ), "sound/player/footsteps/clank%i", i + 1 );
 		cgs.media.footsteps[ FOOTSTEP_METAL ][ i ] = trap_S_RegisterSound( name, false );
 	}
 
@@ -1142,46 +1041,48 @@ static void CG_RegisterSounds()
 	}
 
 #ifndef UNREALARENA
-	cgs.media.jetpackThrustLoopSound = trap_S_RegisterSound( "sound/upgrades/jetpack/hi.wav", false );
+	cgs.media.jetpackThrustLoopSound = trap_S_RegisterSound( "sound/upgrades/jetpack/hi", false );
 #endif
 
-	cgs.media.medkitUseSound = trap_S_RegisterSound( "sound/upgrades/medkit/medkit.wav", false );
+	cgs.media.medkitUseSound = trap_S_RegisterSound( "sound/upgrades/medkit/medkit", false );
 
 #ifndef UNREALARENA
-	cgs.media.alienEvolveSound = trap_S_RegisterSound( "sound/player/alienevolve.wav", false );
+	cgs.media.alienEvolveSound = trap_S_RegisterSound( "sound/player/alienevolve", false );
 
-	cgs.media.alienBuildableExplosion = trap_S_RegisterSound( "sound/buildables/alien/explosion.wav", false );
-	cgs.media.alienBuildablePrebuild = trap_S_RegisterSound( "sound/buildables/alien/prebuild.wav", false );
+	cgs.media.alienBuildableExplosion = trap_S_RegisterSound( "sound/buildables/alien/explosion", false );
+	cgs.media.alienBuildablePrebuild = trap_S_RegisterSound( "sound/buildables/alien/prebuild", false );
 
-	cgs.media.humanBuildableDying = trap_S_RegisterSound( "sound/buildables/human/dying.wav", false );
-	cgs.media.humanBuildableExplosion = trap_S_RegisterSound( "sound/buildables/human/explosion.wav", false );
-	cgs.media.humanBuildablePrebuild = trap_S_RegisterSound( "sound/buildables/human/prebuild.wav", false );
+	cgs.media.humanBuildableDying = trap_S_RegisterSound( "sound/buildables/human/dying", false );
+	cgs.media.humanBuildableExplosion = trap_S_RegisterSound( "sound/buildables/human/explosion", false );
+	cgs.media.humanBuildablePrebuild = trap_S_RegisterSound( "sound/buildables/human/prebuild", false );
 
 	for ( i = 0; i < 4; i++ )
 	{
 		cgs.media.humanBuildableDamage[ i ] = trap_S_RegisterSound(
-		                                        va( "sound/buildables/human/damage%d.wav", i ), false );
+		                                        va( "sound/buildables/human/damage%d", i ), false );
 	}
 #endif
 
-	cgs.media.hardBounceSound1 = trap_S_RegisterSound( "sound/misc/hard_bounce1.wav", false );
-	cgs.media.hardBounceSound2 = trap_S_RegisterSound( "sound/misc/hard_bounce2.wav", false );
+	cgs.media.grenadeBounceSound0 = trap_S_RegisterSound( "models/weapons/grenade/bounce0", false );
+	cgs.media.grenadeBounceSound1 = trap_S_RegisterSound( "models/weapons/grenade/bounce1", false );
 
 #ifndef UNREALARENA
-	cgs.media.repeaterUseSound = trap_S_RegisterSound( "sound/buildables/repeater/use.wav", false );
+	// TODO: Rename this sound.
+	cgs.media.itemFillSound = trap_S_RegisterSound( "sound/buildables/repeater/use", false );
 
-	cgs.media.buildableRepairSound = trap_S_RegisterSound( "sound/buildables/human/repair.wav", false );
-	cgs.media.buildableRepairedSound = trap_S_RegisterSound( "sound/buildables/human/repaired.wav", false );
+	cgs.media.buildableRepairSound = trap_S_RegisterSound( "sound/buildables/human/repair", false );
+	cgs.media.buildableRepairedSound = trap_S_RegisterSound( "sound/buildables/human/repaired", false );
 #endif
 
-	cgs.media.lCannonWarningSound = trap_S_RegisterSound( "models/weapons/lcannon/warning.wav", false );
-	cgs.media.lCannonWarningSound2 = trap_S_RegisterSound( "models/weapons/lcannon/warning2.wav", false );
+	cgs.media.lCannonWarningSound = trap_S_RegisterSound( "models/weapons/lcannon/warning", false );
+	cgs.media.lCannonWarningSound2 = trap_S_RegisterSound( "models/weapons/lcannon/warning2", false );
 
 #ifndef UNREALARENA
-	cgs.media.rocketpodLockonSound = trap_S_RegisterSound( "sound/rocketpod/lockon.wav", false );
+	cgs.media.rocketpodLockonSound = trap_S_RegisterSound( "sound/rocketpod/lockon", false );
 #endif
 
-	cgs.media.timerBeaconExpiredSound = trap_S_RegisterSound( "sound/feedback/beacon-timer-expired.ogg", false );
+	cgs.media.timerBeaconExpiredSound = trap_S_RegisterSound( "sound/feedback/beacons/timer-expired", false );
+	cgs.media.killSound = trap_S_RegisterSound( "sound/feedback/damage/bell", false );
 }
 
 //===================================================================================
@@ -1247,17 +1148,17 @@ static void CG_RegisterGraphics()
 	int         i;
 	static const char *const sb_nums[ 11 ] =
 	{
-		"gfx/2d/numbers/zero_32b",
-		"gfx/2d/numbers/one_32b",
-		"gfx/2d/numbers/two_32b",
-		"gfx/2d/numbers/three_32b",
-		"gfx/2d/numbers/four_32b",
-		"gfx/2d/numbers/five_32b",
-		"gfx/2d/numbers/six_32b",
-		"gfx/2d/numbers/seven_32b",
-		"gfx/2d/numbers/eight_32b",
-		"gfx/2d/numbers/nine_32b",
-		"gfx/2d/numbers/minus_32b",
+		"ui/assets/numbers/zero_32b",
+		"ui/assets/numbers/one_32b",
+		"ui/assets/numbers/two_32b",
+		"ui/assets/numbers/three_32b",
+		"ui/assets/numbers/four_32b",
+		"ui/assets/numbers/five_32b",
+		"ui/assets/numbers/six_32b",
+		"ui/assets/numbers/seven_32b",
+		"ui/assets/numbers/eight_32b",
+		"ui/assets/numbers/nine_32b",
+		"ui/assets/numbers/minus_32b",
 	};
 	static const char *const buildWeaponTimerPieShaders[ 8 ] =
 	{
@@ -1285,41 +1186,38 @@ static void CG_RegisterGraphics()
 								     (RegisterShaderFlags_t) RSF_DEFAULT);
 	}
 
-	cgs.media.viewBloodShader = trap_R_RegisterShader("gfx/damage/fullscreen_painblend",
+	cgs.media.viewBloodShader = trap_R_RegisterShader("gfx/feedback/painblend",
 							  (RegisterShaderFlags_t) RSF_DEFAULT);
 
-	cgs.media.connectionShader = trap_R_RegisterShader("gfx/2d/net",
+	cgs.media.connectionShader = trap_R_RegisterShader("gfx/feedback/net",
 							   (RegisterShaderFlags_t) RSF_DEFAULT);
 
 #ifndef UNREALARENA
-	cgs.media.creepShader = trap_R_RegisterShader("creep", (RegisterShaderFlags_t) RSF_DEFAULT);
+	cgs.media.creepShader = trap_R_RegisterShader("gfx/buildables/creep/creep", (RegisterShaderFlags_t) RSF_DEFAULT);
 #endif
 
-	cgs.media.scannerBlipShader = trap_R_RegisterShader("gfx/2d/blip",
+	cgs.media.scannerBlipShader = trap_R_RegisterShader("gfx/feedback/scanner/blip",
 							    (RegisterShaderFlags_t) RSF_DEFAULT);
 
-	cgs.media.scannerBlipBldgShader = trap_R_RegisterShader("gfx/2d/blip_bldg",
+	cgs.media.scannerBlipBldgShader = trap_R_RegisterShader("gfx/feedback/scanner/blip_bldg",
 								(RegisterShaderFlags_t) RSF_DEFAULT);
 
-	cgs.media.scannerLineShader = trap_R_RegisterShader("gfx/2d/stalk",
+	cgs.media.scannerLineShader = trap_R_RegisterShader("gfx/feedback/scanner/stalk",
 							    (RegisterShaderFlags_t) RSF_DEFAULT);
 
-	cgs.media.teamOverlayShader = trap_R_RegisterShader("gfx/2d/teamoverlay",
-							    (RegisterShaderFlags_t) RSF_DEFAULT);
-
-	cgs.media.tracerShader = trap_R_RegisterShader("gfx/misc/tracer",
+	cgs.media.tracerShader = trap_R_RegisterShader("gfx/weapons/tracer/tracer",
 						       (RegisterShaderFlags_t) RSF_DEFAULT);
 
-	cgs.media.backTileShader = trap_R_RegisterShader("console",
+	cgs.media.backTileShader = trap_R_RegisterShader("gfx/colors/backtile",
 							 (RegisterShaderFlags_t) RSF_DEFAULT);
 
 #ifndef UNREALARENA
 	// building shaders
-	cgs.media.greenBuildShader = trap_R_RegisterShader("gfx/misc/greenbuild",
+	cgs.media.greenBuildShader = trap_R_RegisterShader("gfx/buildables/common/greenbuild",
 							   (RegisterShaderFlags_t) RSF_DEFAULT);
-	cgs.media.redBuildShader = trap_R_RegisterShader("gfx/misc/redbuild",
+	cgs.media.redBuildShader = trap_R_RegisterShader("gfx/buildables/common/redbuild",
 							 (RegisterShaderFlags_t) RSF_DEFAULT);
-	cgs.media.humanSpawningShader = trap_R_RegisterShader("models/buildables/humanSpawning",
+	cgs.media.humanSpawningShader = trap_R_RegisterShader("gfx/buildables/human_base/spawning",
 							      (RegisterShaderFlags_t) RSF_DEFAULT);
 #endif
 
@@ -1355,56 +1253,56 @@ static void CG_RegisterGraphics()
 	cgs.media.tealCgrade = trap_R_RegisterShader("gfx/cgrading/teal-only",
 								 (RegisterShaderFlags_t) ( RSF_NOMIP | RSF_NOLIGHTSCALE ) );
 
-	cgs.media.balloonShader = trap_R_RegisterShader("gfx/sprites/chatballoon",
+	cgs.media.balloonShader = trap_R_RegisterShader("gfx/feedback/chatballoon",
 							(RegisterShaderFlags_t) RSF_SPRITE);
 
-	cgs.media.disconnectPS = CG_RegisterParticleSystem( "disconnectPS" );
+	cgs.media.disconnectPS = CG_RegisterParticleSystem( "particles/feedback/disconnect" );
 
-	cgs.media.scopeShader = trap_R_RegisterShader( "scope", (RegisterShaderFlags_t) ( RSF_DEFAULT | RSF_NOMIP ) );
+	cgs.media.scopeShader = trap_R_RegisterShader( "gfx/weapons/scope", (RegisterShaderFlags_t) ( RSF_DEFAULT | RSF_NOMIP ) );
 
 	CG_UpdateMediaFraction( 0.7f );
 
 	memset( cg_weapons, 0, sizeof( cg_weapons ) );
 	memset( cg_upgrades, 0, sizeof( cg_upgrades ) );
 
-	cgs.media.shadowMarkShader = trap_R_RegisterShader("gfx/marks/shadow",
+	cgs.media.shadowMarkShader = trap_R_RegisterShader("gfx/players/common/shadow",
 							   (RegisterShaderFlags_t) RSF_DEFAULT);
-	cgs.media.wakeMarkShader = trap_R_RegisterShader("gfx/marks/wake",
+	cgs.media.wakeMarkShader = trap_R_RegisterShader("gfx/players/common/wake",
 							 (RegisterShaderFlags_t) RSF_DEFAULT);
 
 #ifndef UNREALARENA
-	cgs.media.alienEvolvePS = CG_RegisterParticleSystem( "alienEvolvePS" );
-	cgs.media.alienAcidTubePS = CG_RegisterParticleSystem( "alienAcidTubePS" );
-	cgs.media.alienBoosterPS = CG_RegisterParticleSystem( "alienBoosterPS" );
+	cgs.media.alienEvolvePS = CG_RegisterParticleSystem( "particles/players/alien_base/evolve" );
+	cgs.media.alienAcidTubePS = CG_RegisterParticleSystem( "particles/buildables/acide_tube/spore" );
+	cgs.media.alienBoosterPS = CG_RegisterParticleSystem( "particles/buildables/booster/spore" );
 
-	cgs.media.jetPackThrustPS = CG_RegisterParticleSystem( "jetPackAscendPS" );
+	cgs.media.jetPackThrustPS = CG_RegisterParticleSystem( "particles/players/human_base/jetpack_ascend" );
 
-	cgs.media.humanBuildableDamagedPS = CG_RegisterParticleSystem( "humanBuildableDamagedPS" );
-	cgs.media.alienBuildableDamagedPS = CG_RegisterParticleSystem( "alienBuildableDamagedPS" );
-	cgs.media.humanBuildableDestroyedPS = CG_RegisterParticleSystem( "humanBuildableDestroyedPS" );
-	cgs.media.humanBuildableNovaPS = CG_RegisterParticleSystem( "humanBuildableNovaPS" );
-	cgs.media.alienBuildableDestroyedPS = CG_RegisterParticleSystem( "alienBuildableDestroyedPS" );
+	cgs.media.humanBuildableDamagedPS = CG_RegisterParticleSystem( "particles/buildables/human_base/damaged" );
+	cgs.media.alienBuildableDamagedPS = CG_RegisterParticleSystem( "particles/buildables/alien_base/damaged" );
+	cgs.media.humanBuildableDestroyedPS = CG_RegisterParticleSystem( "particles/buildables/human_base/destroyed" );
+	cgs.media.humanBuildableNovaPS = CG_RegisterParticleSystem( "particles/buildables/human_base/nova" );
+	cgs.media.alienBuildableDestroyedPS = CG_RegisterParticleSystem( "particles/buildables/alien_base/destroyed" );
 
-	cgs.media.humanBuildableBleedPS = CG_RegisterParticleSystem( "humanBuildableBleedPS" );
-	cgs.media.alienBuildableBleedPS = CG_RegisterParticleSystem( "alienBuildableBleedPS" );
-	cgs.media.alienBuildableBurnPS  = CG_RegisterParticleSystem( "alienBuildableBurnPS" );
+	cgs.media.humanBuildableBleedPS = CG_RegisterParticleSystem( "particles/buildables/human_base/bleed" );
+	cgs.media.alienBuildableBleedPS = CG_RegisterParticleSystem( "particles/buildables/alien_base/bleed" );
+	cgs.media.alienBuildableBurnPS  = CG_RegisterParticleSystem( "particles/buildables/alien_base/burn" );
 
-	cgs.media.floorFirePS = CG_RegisterParticleSystem( "floorFirePS" );
+	cgs.media.floorFirePS = CG_RegisterParticleSystem( "particles/weapons/flamer/floorfire" );
 #endif
 
 #ifdef UNREALARENA
-	cgs.media.qBleedPS = CG_RegisterParticleSystem( "qBleedPS" );
-	cgs.media.uBleedPS = CG_RegisterParticleSystem( "uBleedPS" );
+	cgs.media.qBleedPS = CG_RegisterParticleSystem( "particles/players/q/bleed" );
+	cgs.media.uBleedPS = CG_RegisterParticleSystem( "particles/players/u/bleed" );
 #else
-	cgs.media.alienBleedPS = CG_RegisterParticleSystem( "alienBleedPS" );
-	cgs.media.humanBleedPS = CG_RegisterParticleSystem( "humanBleedPS" );
+	cgs.media.alienBleedPS = CG_RegisterParticleSystem( "particles/players/alien_base/bleed" );
+	cgs.media.humanBleedPS = CG_RegisterParticleSystem( "particles/players/human_base/bleed" );
 #endif
 
 	cgs.media.sphereModel = trap_R_RegisterModel( "models/generic/sphere.md3" );
 	cgs.media.sphericalCone64Model = trap_R_RegisterModel( "models/generic/sphericalCone64.md3" );
 	cgs.media.sphericalCone240Model = trap_R_RegisterModel( "models/generic/sphericalCone240.md3" );
 
-	cgs.media.plainColorShader = trap_R_RegisterShader("gfx/plainColor",
+	cgs.media.plainColorShader = trap_R_RegisterShader("gfx/colors/plain",
 							   (RegisterShaderFlags_t) RSF_DEFAULT);
 	cgs.media.binaryAlpha1Shader = trap_R_RegisterShader("gfx/binary/alpha1",
 							     (RegisterShaderFlags_t) RSF_DEFAULT);
@@ -1430,9 +1328,11 @@ static void CG_RegisterGraphics()
 	CG_BuildableStatusParse( "ui/assets/alien/buildstat.cfg", &cgs.alienBuildStat );
 #endif
 
-	cgs.media.beaconIconArrow = trap_R_RegisterShader( "gfx/2d/beacons/arrow", RSF_DEFAULT );
-	cgs.media.beaconNoTarget = trap_R_RegisterShader( "gfx/2d/beacons/no-target", RSF_DEFAULT );
-	cgs.media.beaconTagScore = trap_R_RegisterShader( "gfx/2d/beacons/tagscore", RSF_DEFAULT );
+	cgs.media.beaconIconArrow = trap_R_RegisterShader( "gfx/feedback/beacons/arrow", RSF_DEFAULT );
+	cgs.media.beaconNoTarget = trap_R_RegisterShader( "gfx/feedback/beacons/no-target", RSF_DEFAULT );
+	cgs.media.beaconTagScore = trap_R_RegisterShader( "gfx/feedback/beacons/tagscore", RSF_DEFAULT );
+
+	cgs.media.damageIndicatorFont = trap_R_RegisterShader( "gfx/feedback/damage/font", RSF_DEFAULT );
 
 	// register the inline models
 	cgs.numInlineModels = trap_CM_NumInlineModels();
@@ -1581,23 +1481,13 @@ static void CG_RegisterClients()
 	}
 #endif
 
-	if ( !cg_highPolyPlayerModels.integer )
-	{
-		cgs.media.larmourHeadSkin = trap_R_RegisterSkin( "models/players/human_base/head_light.skin" );
-		cgs.media.larmourLegsSkin = trap_R_RegisterSkin( "models/players/human_base/lower_light.skin" );
-		cgs.media.larmourTorsoSkin = trap_R_RegisterSkin( "models/players/human_base/upper_light.skin" );
-	}
-	else
-	{
-		// Borrow these variables for MD5 models so we don't have to create new ones.
-		cgs.media.larmourHeadSkin = trap_R_RegisterSkin( "models/players/human_base/body_helmet.skin" );
-		cgs.media.larmourLegsSkin = trap_R_RegisterSkin( "models/players/human_base/body_larmour.skin" );
-		cgs.media.larmourTorsoSkin = trap_R_RegisterSkin( "models/players/human_base/body_helmetlarmour.skin" );
-	}
+	// Borrow these variables for MD5 models so we don't have to create new ones.
+	cgs.media.larmourHeadSkin = trap_R_RegisterSkin( "models/players/human_base/body_helmet.skin" );
+	cgs.media.larmourLegsSkin = trap_R_RegisterSkin( "models/players/human_base/body_larmour.skin" );
+	cgs.media.larmourTorsoSkin = trap_R_RegisterSkin( "models/players/human_base/body_helmetlarmour.skin" );
 
 #ifndef UNREALARENA
 	cgs.media.jetpackModel = trap_R_RegisterModel( "models/players/human_base/jetpack.iqm" );
-	cgs.media.jetpackFlashModel = trap_R_RegisterModel( "models/players/human_base/jetpack_flash.md3" );
 	cgs.media.radarModel = trap_R_RegisterModel( "models/players/human_base/battpack.md3" ); // HACK: Use old battpack
 
 	CG_RegisterWeaponAnimation(
@@ -1731,10 +1621,8 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 #ifndef UNREALARENA
 	trap_R_SetAltShaderTokens( "unpowered,destroyed,idle,idle2" );
 #endif
-	cgs.media.whiteShader = trap_R_RegisterShader("white", (RegisterShaderFlags_t) RSF_DEFAULT);
-	cgs.media.charsetShader = trap_R_RegisterShader("gfx/2d/bigchars",
-							(RegisterShaderFlags_t) RSF_DEFAULT);
-	cgs.media.outlineShader = trap_R_RegisterShader("outline",
+	cgs.media.whiteShader = trap_R_RegisterShader("gfx/colors/white", (RegisterShaderFlags_t) RSF_DEFAULT);
+	cgs.media.outlineShader = trap_R_RegisterShader("gfx/outline",
 							(RegisterShaderFlags_t) RSF_DEFAULT);
 
 	BG_InitAllowedGameElements();
@@ -1743,8 +1631,6 @@ void CG_Init( int serverMessageNum, int clientNum, glconfig_t gl, GameStateCSs g
 	// Initialize item locking state
 	BG_InitUnlockackables();
 #endif
-
-	CG_RegisterCvars();
 
 	CG_InitConsoleCommands();
 	trap_S_BeginRegistration();

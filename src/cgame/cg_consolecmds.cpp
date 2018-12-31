@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -102,25 +102,25 @@ void CG_ClientList_f()
 #ifdef UNREALARENA
 			case TEAM_Q:
 				Log::Notice( "%2d %sQ   ^*%s\n", i,
-				            Color::CString( Color::Red ),
+				            Color::ToString( Color::Red ),
 				            ci->name );
 				break;
 
 			case TEAM_U:
 				Log::Notice( "%2d %sU   ^*%s\n", i,
-				            Color::CString( Color::Blue ),
+				            Color::ToString( Color::Blue ),
 				            ci->name );
 				break;
 #else
 			case TEAM_ALIENS:
 				Log::Notice( "%2d %sA   ^*%s\n", i,
-				            Color::CString( Color::Red ),
+				            Color::ToString( Color::Red ),
 				            ci->name );
 				break;
 
 			case TEAM_HUMANS:
 				Log::Notice( "%2d %sH   ^*%s\n", i,
-				            Color::CString( Color::Cyan ),
+				            Color::ToString( Color::Cyan ),
 				            ci->name );
 				break;
 #endif

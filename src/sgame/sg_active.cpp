@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -20,6 +20,7 @@
 
 
 #include "sg_local.h"
+#include "Entities.h"
 #include "CBSE.h"
 
 bool ClientInactivityTimer( gentity_t *ent, bool active );
@@ -126,7 +127,7 @@ void P_WorldEffects( gentity_t *ent )
 			// drown!
 			ent->client->airOutTime += 1000;
 
-			if ( G_Alive( ent ) )
+			if ( Entities::IsAlive( ent ) )
 			{
 				// take more damage the longer underwater
 				ent->damage += 2;
@@ -139,15 +140,15 @@ void P_WorldEffects( gentity_t *ent )
 				// play a gurp sound instead of a general pain sound
 				if ( ent->entity->Get<HealthComponent>()->Health() <= (float)ent->damage )
 				{
-					G_Sound( ent, soundChannel_t::CHAN_VOICE, G_SoundIndex( "*drown.wav" ) );
+					G_Sound( ent, soundChannel_t::CHAN_VOICE, G_SoundIndex( "*drown" ) );
 				}
 				else if ( rand() < RAND_MAX / 2 + 1 )
 				{
-					G_Sound( ent, soundChannel_t::CHAN_VOICE, G_SoundIndex( "sound/player/gurp1.wav" ) );
+					G_Sound( ent, soundChannel_t::CHAN_VOICE, G_SoundIndex( "sound/player/gurp1" ) );
 				}
 				else
 				{
-					G_Sound( ent, soundChannel_t::CHAN_VOICE, G_SoundIndex( "sound/player/gurp2.wav" ) );
+					G_Sound( ent, soundChannel_t::CHAN_VOICE, G_SoundIndex( "sound/player/gurp2" ) );
 				}
 
 				// don't play a general pain sound
@@ -170,7 +171,7 @@ void P_WorldEffects( gentity_t *ent )
 	if ( waterlevel &&
 	     ( ent->watertype & ( CONTENTS_LAVA | CONTENTS_SLIME ) ) )
 	{
-		if ( G_Alive( ent ) && ent->pain_debounce_time <= level.time )
+		if ( Entities::IsAlive( ent ) && ent->pain_debounce_time <= level.time )
 		{
 			if ( ent->watertype & CONTENTS_LAVA )
 			{
@@ -451,7 +452,7 @@ void  G_TouchTriggers( gentity_t *ent )
 	}
 
 	// dead clients don't activate triggers!
-	if ( G_Dead( ent ) )
+	if ( Entities::IsDead( ent ) )
 	{
 		return;
 	}
@@ -485,7 +486,7 @@ void  G_TouchTriggers( gentity_t *ent )
 			continue;
 		}
 
-		if ( !( hit->r.contents & CONTENTS_SENSOR ) )
+		if ( !( hit->r.contents & CONTENTS_TRIGGER ) )
 		{
 			continue;
 		}
@@ -531,8 +532,8 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 	bool  following;
 #else
 	bool  attack1, following, queued, attackReleased;
-#endif
 	team_t    team;
+#endif
 
 	client = ent->client;
 
@@ -568,9 +569,9 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		}
 	}
 
+#ifndef UNREALARENA
 	team = (team_t) client->pers.team;
 
-#ifndef UNREALARENA
 	// Check to see if we are in the spawn queue
 	// Also, do some other checks and updates which players need while spectating
 	if ( team == TEAM_ALIENS || team == TEAM_HUMANS )
@@ -739,7 +740,7 @@ bool ClientInactivityTimer( gentity_t *ent, bool active )
 			if( strchr( g_inactivity.string, 's' ) )
 			{
 				trap_SendServerCommand( -1,
-				                        va( "print_tr %s %s %s", QQ( N_("$1$^7 moved from $2$ to spectators due to inactivity\n") ),
+				                        va( "print_tr %s %s %s", QQ( N_("$1$^* moved from $2$ to spectators due to inactivity\n") ),
 				                            Quote( client->pers.netname ), Quote( BG_TeamName( client->pers.team ) ) ) );
 				G_LogPrintf( "Inactivity: %d\n", (int)( client - level.clients ) );
 				G_ChangeTeam( ent, TEAM_NONE );
@@ -765,7 +766,7 @@ bool ClientInactivityTimer( gentity_t *ent, bool active )
 }
 
 #ifndef UNREALARENA
-// TODO: Move to MedikitComponent.
+// TODO: Move to MedkitComponent.
 static void G_ReplenishHumanHealth( gentity_t *self )
 {
 	gclient_t *client;
@@ -777,54 +778,79 @@ static void G_ReplenishHumanHealth( gentity_t *self )
 	}
 
 	client = self->client;
-
 	if ( !client || client->pers.team != TEAM_HUMANS )
 	{
 		return;
 	}
 
-	// check if medikit is active
-	if ( !( client->ps.stats[ STAT_STATE ] & SS_HEALING_4X ) )
+	HealthComponent *healthComponent = self->entity->Get<HealthComponent>();
+
+	// handle medkit activation
+	if ( BG_InventoryContainsUpgrade( UP_MEDKIT, client->ps.stats ) &&
+	     BG_UpgradeIsActive( UP_MEDKIT, client->ps.stats ) )
 	{
-		return;
-	}
-
-	// stop if client is fully healed
-	if ( self->entity->Get<HealthComponent>()->FullHealth() )
-	{
-		client->medKitHealthToRestore = 0;
-		client->ps.stats[ STAT_STATE ] &= ~SS_HEALING_4X;
-
-		return;
-	}
-
-	// stop if client is dead or medikit is depleted
-	if ( client->medKitHealthToRestore <= 0 || client->ps.pm_type == PM_DEAD )
-	{
-		client->medKitHealthToRestore = 0;
-		client->ps.stats[ STAT_STATE ] &= ~SS_HEALING_4X;
-
-		return;
-	}
-
-	remainingStartupTime = MEDKIT_STARTUP_TIME - ( level.time - client->lastMedKitTime );
-
-	// increase heal rate during startup
-	if ( remainingStartupTime > 0 )
-	{
-		if ( level.time < client->medKitIncrementTime )
+		// if currently using a medkit or have no need for a medkit now
+		if ( (client->ps.stats[ STAT_STATE ] & SS_HEALING_4X) ||
+		     ( healthComponent->FullHealth() &&
+		       !( client->ps.stats[ STAT_STATE ] & SS_POISONED ) ) )
 		{
+			BG_DeactivateUpgrade( UP_MEDKIT, client->ps.stats );
+		}
+		else if ( Entities::IsAlive( self ) ) // activate medkit
+		{
+			// remove medkit from inventory
+			BG_DeactivateUpgrade( UP_MEDKIT, client->ps.stats );
+			BG_RemoveUpgradeFromInventory( UP_MEDKIT, client->ps.stats );
+
+			// remove alien poison
+			client->ps.stats[ STAT_STATE ] &= ~SS_POISONED;
+			client->poisonImmunityTime = level.time + MEDKIT_POISON_IMMUNITY_TIME;
+
+			// initiate healing
+			client->ps.stats[ STAT_STATE ] |= SS_HEALING_4X;
+			client->lastMedKitTime = level.time;
+			client->medKitHealthToRestore = healthComponent->MaxHealth() - healthComponent->Health();
+			client->medKitIncrementTime = level.time + ( MEDKIT_STARTUP_TIME / MEDKIT_STARTUP_SPEED );
+
+			G_AddEvent( self, EV_MEDKIT_USED, 0 );
+		}
+	}
+
+	// if medkit is active
+	if ( client->ps.stats[ STAT_STATE ] & SS_HEALING_4X )
+	{
+
+		// stop healing if
+		if ( healthComponent->FullHealth() ||     // client is fully healed or
+		     client->ps.pm_type == PM_DEAD ||     // client is dead or
+		     client->medKitHealthToRestore <= 0 ) // medkit is depleted
+		{
+			client->medKitHealthToRestore = 0;
+			client->ps.stats[ STAT_STATE ] &= ~SS_HEALING_4X;
+
 			return;
 		}
-		else
+
+		if ( level.time >= client->medKitIncrementTime )
 		{
-			client->medKitIncrementTime = level.time + ( remainingStartupTime / MEDKIT_STARTUP_SPEED );
+			// heal
+			self->entity->Heal(1.0f, nullptr);
+			client->medKitHealthToRestore --;
+
+			// set timer for next healing action
+			remainingStartupTime = MEDKIT_STARTUP_TIME - ( level.time - client->lastMedKitTime );
+			if ( remainingStartupTime > 0 )
+			{
+				// heal slowly during startup
+				client->medKitIncrementTime += std::max( 100, remainingStartupTime / MEDKIT_STARTUP_SPEED );
+			}
+			else
+			{
+				// heal 1 hp every 100 ms later on
+				client->medKitIncrementTime += 100;
+			}
 		}
 	}
-
-	// heal
-	self->entity->Heal(1.0f, nullptr);
-	client->medKitHealthToRestore --;
 }
 #endif
 
@@ -854,7 +880,7 @@ static void BeaconAutoTag( gentity_t *self, int timePassed )
 		// Tag entity directly hit and entities in human radar range, make sure the latter are also
 		// in vis and, for buildables, are in a line of sight.
 #ifdef UNREALARENA
-		if( ( target == traceEnt ) )
+		if( target == traceEnt )
 #else
 		if( ( target == traceEnt ) ||
 		    ( team == TEAM_HUMANS &&
@@ -885,14 +911,10 @@ static void BeaconAutoTag( gentity_t *self, int timePassed )
 /*
 ==================
 ClientTimerActions
-
-Actions that happen once a second
 ==================
 */
 void ClientTimerActions( gentity_t *ent, int msec )
 {
-	playerState_t *ps;
-	gclient_t     *client;
 #ifndef UNREALARENA
 	int           i;
 	buildable_t   buildable;
@@ -903,11 +925,14 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		return;
 	}
 
-	client = ent->client;
-	ps     = &client->ps;
+	gclient_t *client = ent->client;
+#ifndef UNREALARENA
+	playerState_t *ps = &client->ps;
+	team_t team       = (team_t)ps->persistant[PERS_TEAM];
+#endif
 
-	client->time100 += msec;
-	client->time1000 += msec;
+	client->time100   += msec;
+	client->time1000  += msec;
 	client->time10000 += msec;
 
 	if( ent->r.svFlags & SVF_BOT )
@@ -965,8 +990,22 @@ void ClientTimerActions( gentity_t *ent, int msec )
 
 					if ( buildable == BA_H_DRILL || buildable == BA_A_LEECH )
 					{
-						client->ps.stats[ STAT_PREDICTION ] =
-							( int )( G_RGSPredictEfficiencyDelta( dummy, ( team_t )ps->persistant[ PERS_TEAM ] ) * 100.0f );
+						float deltaEff = G_RGSPredictEfficiencyDelta(dummy, team);
+						int   deltaBP  = (int)(level.team[team].totalBudget + deltaEff *
+						                       g_buildPointBudgetPerMiner.value) -
+						                 (int)(level.team[team].totalBudget);
+
+						signed char deltaEffNetwork = (signed char)((float)0x7f * deltaEff);
+						signed char deltaBPNetwork  = (signed char)deltaBP;
+
+						unsigned int deltasNetwork = (unsigned char)deltaEffNetwork |
+						                             (unsigned char)deltaBPNetwork << 8;
+
+						// The efficiency and budget deltas are signed values that are encode as the
+						// least and most significant byte of the de-facto short
+						// ps->stats[STAT_PREDICTION], respectively. The efficiency delta is a value
+						// between -1 and 1, the budget delta is an integer between -128 and 127.
+						client->ps.stats[STAT_PREDICTION] = (int)deltasNetwork;
 					}
 
 					// Let the client know which buildables will be removed by building
@@ -1000,9 +1039,6 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		BeaconAutoTag( ent, 100 );
 
 #ifndef UNREALARENA
-		// replenish human health
-		G_ReplenishHumanHealth( ent );
-
 		// refill weapon ammo
 		if ( ent->client->lastAmmoRefillTime + HUMAN_AMMO_REFILL_PERIOD < level.time &&
 		     ps->weaponTime == 0 )
@@ -1686,7 +1722,7 @@ static int FindAlienHealthSource( gentity_t *self )
 	for ( ent = nullptr; ( ent = G_IterateEntities( ent, nullptr, true, 0, nullptr ) ); )
 	{
 		if ( !G_OnSameTeam( self, ent ) ) continue;
-		if ( G_Dead( ent ) )              continue;
+		if ( Entities::IsDead( ent ) )              continue;
 
 		distance = Distance( ent->s.origin, self->s.origin );
 
@@ -1753,7 +1789,7 @@ static void G_ReplenishAlienHealth( gentity_t *self )
 	client = self->client;
 
 	// Check if client is an alien and has the healing ability
-	if ( !client || client->pers.team != TEAM_ALIENS || G_Dead( self )
+	if ( !client || client->pers.team != TEAM_ALIENS || Entities::IsDead( self )
 	     || level.surrenderTeam == client->pers.team )
 	{
 		return;
@@ -1950,7 +1986,7 @@ void ClientThink_real( gentity_t *self )
 	{
 		client->ps.pm_type = PM_NOCLIP;
 	}
-	else if ( G_Dead( self ) )
+	else if ( Entities::IsDead( self ) )
 	{
 		client->ps.pm_type = PM_DEAD;
 	}
@@ -1980,20 +2016,6 @@ void ClientThink_real( gentity_t *self )
 	}
 
 #ifndef UNREALARENA
-	// Is power/creep available for the client's team?
-	if ( client->pers.team == TEAM_HUMANS && G_ActiveReactor() )
-	{
-		client->ps.eFlags |= EF_POWER_AVAILABLE;
-	}
-	else if ( client->pers.team == TEAM_ALIENS && G_ActiveOvermind() )
-	{
-		client->ps.eFlags |= EF_POWER_AVAILABLE;
-	}
-	else
-	{
-		client->ps.eFlags &= ~EF_POWER_AVAILABLE;
-	}
-
 	// Update boosted state flags
 	client->ps.stats[ STAT_STATE ] &= ~SS_BOOSTEDWARNING;
 
@@ -2023,46 +2045,9 @@ void ClientThink_real( gentity_t *self )
 	// copy global gravity to playerstate
 	client->ps.gravity = g_gravity.value;
 
-	HealthComponent *healthComponent = self->entity->Get<HealthComponent>();
-
-	// handle medkit (TODO: move into helper function)
-	if ( BG_InventoryContainsUpgrade( UP_MEDKIT, client->ps.stats ) &&
-	     BG_UpgradeIsActive( UP_MEDKIT, client->ps.stats ) )
-	{
-		//if currently using a medkit or have no need for a medkit now
-#ifdef UNREALARENA
-		if ( (client->ps.stats[ STAT_STATE ] & SS_HEALING_4X) ||
-		     ( healthComponent->FullHealth() ) )
-#else
-		if ( (client->ps.stats[ STAT_STATE ] & SS_HEALING_4X) ||
-		     ( healthComponent->FullHealth() &&
-		       !( client->ps.stats[ STAT_STATE ] & SS_POISONED ) ) )
-#endif
-		{
-			BG_DeactivateUpgrade( UP_MEDKIT, client->ps.stats );
-		}
-		else if ( G_Alive( self ) )
-		{
-			//remove anti toxin
-			BG_DeactivateUpgrade( UP_MEDKIT, client->ps.stats );
-			BG_RemoveUpgradeFromInventory( UP_MEDKIT, client->ps.stats );
-
 #ifndef UNREALARENA
-			client->ps.stats[ STAT_STATE ] &= ~SS_POISONED;
-			client->poisonImmunityTime = level.time + MEDKIT_POISON_IMMUNITY_TIME;
-#endif
+	G_ReplenishHumanHealth( self );
 
-			client->ps.stats[ STAT_STATE ] |= SS_HEALING_4X;
-			client->lastMedKitTime = level.time;
-			client->medKitHealthToRestore = healthComponent->MaxHealth() - healthComponent->Health();
-			client->medKitIncrementTime = level.time +
-			                              ( MEDKIT_STARTUP_TIME / MEDKIT_STARTUP_SPEED );
-
-			G_AddEvent( self, EV_MEDKIT_USED, 0 );
-		}
-	}
-
-#ifndef UNREALARENA
 	// Replenish alien health
 	G_ReplenishAlienHealth( self );
 
@@ -2274,7 +2259,7 @@ void ClientThink_real( gentity_t *self )
 #endif
 
 	// Don't think anymore if dead
-	if ( G_Dead( self ) )
+	if ( Entities::IsDead( self ) )
 	{
 		return;
 	}
@@ -2286,7 +2271,7 @@ void ClientThink_real( gentity_t *self )
 
 	if ( usercmdButtonPressed( client->buttons, BUTTON_ACTIVATE ) &&
 	     !usercmdButtonPressed( client->oldbuttons, BUTTON_ACTIVATE ) &&
-	     G_Alive( self ) )
+	     Entities::IsAlive( self ) )
 	{
 		trace_t   trace;
 		vec3_t    view, point;
@@ -2356,14 +2341,11 @@ void ClientThink_real( gentity_t *self )
 	}
 
 #ifndef UNREALARENA
-	client->ps.persistant[ PERS_BP ] = G_GetBuildPointsInt( (team_t) client->pers.team );
-	client->ps.persistant[ PERS_MARKEDBP ] = G_GetMarkedBuildPointsInt( (team_t) client->pers.team );
+	client->ps.persistant[ PERS_SPENTBUDGET ]  = level.team[client->pers.team].spentBudget;
+	client->ps.persistant[ PERS_MARKEDBUDGET ] = G_GetMarkedBudget( (team_t)client->pers.team );
+	client->ps.persistant[ PERS_TOTALBUDGET ]  = (int)level.team[client->pers.team].totalBudget;
+	client->ps.persistant[ PERS_QUEUEDBUDGET ] = level.team[client->pers.team].queuedBudget;
 #endif
-
-	if ( client->ps.persistant[ PERS_BP ] < 0 )
-	{
-		client->ps.persistant[ PERS_BP ] = 0;
-	}
 
 	// perform once-a-second actions
 	ClientTimerActions( self, msec );
@@ -2371,7 +2353,7 @@ void ClientThink_real( gentity_t *self )
 #ifndef UNREALARENA
 	if ( self->suicideTime > 0 && self->suicideTime < level.time )
 	{
-		G_Kill(self, nullptr, MOD_SUICIDE);
+		Entities::Kill(self, nullptr, MOD_SUICIDE);
 		self->suicideTime = 0;
 	}
 #endif
@@ -2453,7 +2435,7 @@ void ClientEndFrame( gentity_t *ent )
 	}
 
 	// respawn if dead
-	if ( G_Dead( ent ) && level.time >= ent->client->respawnTime )
+	if ( Entities::IsDead( ent ) && level.time >= ent->client->respawnTime )
 	{
 		respawn( ent );
 	}

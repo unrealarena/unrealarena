@@ -37,6 +37,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "framework/LogSystem.h"
 #include "framework/VirtualMachine.h"
 
+// Suppress warnings for unused [this] lambda captures.
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
+
 namespace VM {
 
     // Misc Related
@@ -86,8 +91,7 @@ namespace VM {
         public:
             ProxyCmd(CommonVMServices& services, int flag): Cmd::CmdBase(flag), services(services) {
             }
-            virtual ~ProxyCmd() {
-            }
+            virtual ~ProxyCmd() = default;
 
             virtual void Run(const Cmd::Args& args) const {
                 services.GetVM().SendMsg<ExecuteMsg>(args.EscapedArgs(0));
@@ -151,7 +155,7 @@ namespace VM {
                 }
             }
 
-            virtual Cvar::OnValueChangedResult OnValueChanged(Str::StringRef newValue) OVERRIDE {
+            virtual Cvar::OnValueChangedResult OnValueChanged(Str::StringRef newValue) override {
                 Cvar::OnValueChangedResult result;
                 services->GetVM().SendMsg<OnValueChangedMsg>(name, newValue, result.success, result.description);
                 return result;
@@ -232,12 +236,6 @@ namespace VM {
     // Common common QVM syscalls
     void CommonVMServices::HandleCommonQVMSyscall(int minor, Util::Reader& reader, IPC::Channel& channel) {
         switch (minor) {
-            case QVM_COMMON_PRINT:
-                IPC::HandleMsg<PrintMsg>(channel, std::move(reader), [this](const std::string& text) {
-                    Log::Notice("%s", text.c_str());
-                });
-                break;
-
             case QVM_COMMON_ERROR:
                 IPC::HandleMsg<ErrorMsg>(channel, std::move(reader), [this](const std::string& text) {
                     Sys::Drop("%s VM: %s", vmName, text);

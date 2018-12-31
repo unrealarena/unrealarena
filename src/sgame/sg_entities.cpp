@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,8 +22,6 @@
 #include "sg_entities.h"
 #include "CBSE.h"
 
-static EmptyEntity emptyEntity(EmptyEntity::Params{nullptr});
-
 /*
 =================================================================================
 
@@ -37,7 +35,7 @@ basic gentity lifecycle handling
  */
 void G_InitGentityMinimal( gentity_t *entity )
 {
-	entity->entity = &emptyEntity;
+	entity->entity = level.emptyEntity;
 }
 
 void G_InitGentity( gentity_t *entity )
@@ -121,7 +119,7 @@ gentity_t *G_NewEntity()
 	level.num_entities++;
 
 	// let the server system know that there are more entities
-	trap_LocateGameData( level.gentities, level.num_entities, sizeof( gentity_t ),
+	trap_LocateGameData( level.num_entities, sizeof( gentity_t ),
 	                     &level.clients[ 0 ].ps, sizeof( level.clients[ 0 ] ) );
 
 	G_InitGentity( newEntity );
@@ -139,11 +137,6 @@ void G_FreeEntity( gentity_t *entity )
 {
 	trap_UnlinkEntity( entity );  // unlink from world
 
-	if ( entity->neverFree )
-	{
-		return;
-	}
-
 	if ( g_debugEntities.integer > 2 )
 	{
 		Log::Debug("Freeing Entity %s", etos(entity));
@@ -159,19 +152,21 @@ void G_FreeEntity( gentity_t *entity )
 		entity->eclass->instanceCounter--;
 	}
 
+#ifndef UNREALARENA
 	if ( entity->s.eType == entityType_t::ET_BEACON && entity->s.modelindex == BCT_TAG )
 	{
 		// It's possible that this happened before, but we need to be sure.
 		BaseClustering::Remove(entity);
 	}
+#endif
 
-	if (entity->entity != &emptyEntity)
+	if (entity->entity != level.emptyEntity)
 	{
 		delete entity->entity;
 	}
 
 	memset( entity, 0, sizeof( *entity ) );
-	entity->entity = &emptyEntity;
+	entity->entity = level.emptyEntity;
 	entity->classname = "freent";
 	entity->freetime = level.time;
 	entity->inuse = false;
@@ -240,7 +235,7 @@ const char *etos( const gentity_t *entity )
 	index = ( index + 1 ) & 3;
 
 	Com_sprintf( resultString, MAX_ETOS_LENGTH,
-			"%s%s^7(^5%s^7|^5#%i^7)",
+			"%s%s^7(^5%s^*|^5#%i^*)",
 			entity->names[0] ? entity->names[0] : "", entity->names[0] ? " " : "", entity->classname, entity->s.number
 			);
 
@@ -476,7 +471,7 @@ gentity_t *G_PickRandomEntity( const char *classname, size_t fieldofs, const cha
 	{
 
 		if ( g_debugEntities.integer > -1 )
-			Log::Warn( "Could not find any entity matching \"^5%s%s%s^7\"",
+			Log::Warn( "Could not find any entity matching \"^5%s%s%s^*\"",
 					classname ? classname : "",
 					classname && match ? "^7 and ^5" :  "",
 					match ? match : ""
@@ -606,8 +601,7 @@ gentity_t *G_ResolveEntityKeyword( gentity_t *self, char *keyword )
 		resolution = self->parent;
 	else if (!Q_stricmp(keyword, "$target"))
 		resolution = self->target;
-	else if (!Q_stricmp(keyword, "$tracker"))
-		resolution = self->tracker;
+	//TODO $tracker for entities, that currently target, track or aim for this entity, is the reverse to "target"
 
 	if(!resolution || !resolution->inuse)
 		return nullptr;
@@ -798,19 +792,12 @@ void G_ExecuteAct( gentity_t *entity, gentityCall_t *call )
 
 	//ASSERT(entity->callIn->activator != nullptr);
 
-	if( entity->active )
-	{
-		//TODO
-	}
-
 	entity->nextAct = 0;
-	entity->active = true;
 	/*
 	 * for now we use the callIn activator if its set or fallback to the old solution, but we should
 	 * //TODO remove the old solution of activator setting from this
 	 */
 	entity->act(entity, call->caller, call->caller->activator ? call->caller->activator : entity->activator );
-	entity->active = false;
 }
 
 /**
@@ -849,7 +836,7 @@ void G_CallEntity(gentity_t *targetedEntity, gentityCall_t *call)
 
 	targetedEntity->callIn = *call;
 
-	if((!targetedEntity->handleCall || !targetedEntity->handleCall(targetedEntity, call)) && call->definition)
+	if(call->definition)
 	{
 		switch (call->definition->actionType)
 		{
@@ -925,8 +912,6 @@ void G_CallEntity(gentity_t *targetedEntity, gentityCall_t *call)
 			break;
 		}
 	}
-	if(targetedEntity->notifyHandler)
-		targetedEntity->notifyHandler( targetedEntity, call );
 
 	targetedEntity->callIn = NULL_CALL; /**< not called anymore */
 }

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -458,7 +458,7 @@ static void CG_Missile( centity_t *cent )
 			// FRU because that's what MakeNormalVectors produces (?)
 			MatrixFromVectorsFRU( axisMat, ent.axis[ 0 ], ent.axis[ 1 ], ent.axis[ 2 ] );
 			QuatFromMatrix( axisQuat, axisMat );
-			QuatMultiply0( axisQuat, rotQuat );
+			QuatMultiply2( axisQuat, rotQuat );
 			MatrixFromQuat( axisMat, axisQuat );
 			MatrixToVectorsFRU( axisMat, ent.axis[ 0 ], ent.axis[ 1 ], ent.axis[ 2 ] );
 		}

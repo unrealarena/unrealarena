@@ -99,6 +99,10 @@ namespace Str {
         ;
     }
 
+    char HexDigit( uint8_t digit ) {
+        return digit > 9 ? digit - 10 + 'a' : digit + '0';
+    }
+
     std::string ToUpper(Str::StringRef text) {
         std::string res;
         res.reserve(text.size());
@@ -140,6 +144,10 @@ namespace Str {
 
     int LongestIPrefixSize(Str::StringRef text1, Str::StringRef text2) {
         return LongestPrefixSize(ToLower(text1), ToLower(text2));
+    }
+
+    bool IsIEqual(Str::StringRef text1, Str::StringRef text2) {
+        return IEqual()(text1, text2);
     }
 
     // Unicode encoder/decoder based on http://utfcpp.sourceforge.net/

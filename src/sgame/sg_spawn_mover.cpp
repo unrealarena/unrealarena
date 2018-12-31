@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 
 #include "sg_local.h"
 #include "sg_spawn.h"
+#include "Entities.h"
 #include "CBSE.h"
 
 #define DEFAULT_FUNC_TRAIN_SPEED 100
@@ -364,7 +365,7 @@ bool G_MoverPush( gentity_t *pusher, vec3_t move, vec3_t amove, gentity_t **obst
 		// bobbing entities are instant-kill and never get blocked
 		if ( pusher->s.pos.trType == trType_t::TR_SINE || pusher->s.apos.trType == trType_t::TR_SINE )
 		{
-			G_Kill(check, pusher, MOD_CRUSH);
+			Entities::Kill(check, pusher, MOD_CRUSH);
 			continue;
 		}
 
@@ -1478,7 +1479,7 @@ void Think_SpawnNewDoorTrigger( gentity_t *self )
 	VectorCopy( mins, other->r.mins );
 	VectorCopy( maxs, other->r.maxs );
 	other->parent = self;
-	other->r.contents = CONTENTS_SENSOR;
+	other->r.contents = CONTENTS_TRIGGER;
 	other->touch = door_trigger_touch;
 	// remember the thinnest axis
 	other->customNumber = best;
@@ -1515,19 +1516,19 @@ void SP_func_door( gentity_t *self )
 
 	if( !self->sound1to2 )
 	{
-		self->sound1to2 = G_SoundIndex( "sound/movers/doors/dr1_strt.wav" );
+		self->sound1to2 = G_SoundIndex( "sound/movers/doors/dr1_strt" );
 	}
 	if( !self->sound2to1 )
 	{
-		self->sound2to1 = G_SoundIndex( "sound/movers/doors/dr1_strt.wav" );
+		self->sound2to1 = G_SoundIndex( "sound/movers/doors/dr1_strt" );
 	}
 	if( !self->soundPos1 )
 	{
-		self->soundPos1 = G_SoundIndex( "sound/movers/doors/dr1_end.wav" );
+		self->soundPos1 = G_SoundIndex( "sound/movers/doors/dr1_end" );
 	}
 	if( !self->soundPos2 )
 	{
-		self->soundPos2 = G_SoundIndex( "sound/movers/doors/dr1_end.wav" );
+		self->soundPos2 = G_SoundIndex( "sound/movers/doors/dr1_end" );
 	}
 
 	self->blocked = func_door_block;
@@ -1604,19 +1605,19 @@ void SP_func_door_rotating( gentity_t *self )
 {
 	if( !self->sound1to2 )
 	{
-		self->sound1to2 = G_SoundIndex( "sound/movers/doors/dr1_strt.wav" );
+		self->sound1to2 = G_SoundIndex( "sound/movers/doors/dr1_strt" );
 	}
 	if( !self->sound2to1 )
 	{
-		self->sound2to1 = G_SoundIndex( "sound/movers/doors/dr1_strt.wav" );
+		self->sound2to1 = G_SoundIndex( "sound/movers/doors/dr1_strt" );
 	}
 	if( !self->soundPos1 )
 	{
-		self->soundPos1 = G_SoundIndex( "sound/movers/doors/dr1_end.wav" );
+		self->soundPos1 = G_SoundIndex( "sound/movers/doors/dr1_end" );
 	}
 	if( !self->soundPos2 )
 	{
-		self->soundPos2 = G_SoundIndex( "sound/movers/doors/dr1_end.wav" );
+		self->soundPos2 = G_SoundIndex( "sound/movers/doors/dr1_end" );
 	}
 
 	self->blocked = func_door_block;
@@ -1736,19 +1737,19 @@ void SP_func_door_model( gentity_t *self )
 
 	if( !self->sound1to2 )
 	{
-		self->sound1to2 = G_SoundIndex( "sound/movers/doors/dr1_strt.wav" );
+		self->sound1to2 = G_SoundIndex( "sound/movers/doors/dr1_strt" );
 	}
 	if( !self->sound2to1 )
 	{
-		self->sound2to1 = G_SoundIndex( "sound/movers/doors/dr1_strt.wav" );
+		self->sound2to1 = G_SoundIndex( "sound/movers/doors/dr1_strt" );
 	}
 	if( !self->soundPos1 )
 	{
-		self->soundPos1 = G_SoundIndex( "sound/movers/doors/dr1_end.wav" );
+		self->soundPos1 = G_SoundIndex( "sound/movers/doors/dr1_end" );
 	}
 	if( !self->soundPos2 )
 	{
-		self->soundPos2 = G_SoundIndex( "sound/movers/doors/dr1_end.wav" );
+		self->soundPos2 = G_SoundIndex( "sound/movers/doors/dr1_end" );
 	}
 
 	self->reset = func_door_model_reset;
@@ -1865,7 +1866,7 @@ void Touch_Plat( gentity_t *ent, gentity_t *other, trace_t* )
 		return;
 	}
 
-	if ( !other->client || G_Dead( other ) )
+	if ( !other->client || Entities::IsDead( other ) )
 	{
 		return;
 	}
@@ -1916,7 +1917,7 @@ void SpawnPlatSensor( gentity_t *self )
 	sensor = G_NewEntity();
 	sensor->classname = S_PLAT_SENSOR;
 	sensor->touch = Touch_PlatCenterTrigger;
-	sensor->r.contents = CONTENTS_SENSOR;
+	sensor->r.contents = CONTENTS_TRIGGER;
 	sensor->parent = self;
 
 	tmin[ 0 ] = self->restingPosition[ 0 ] + self->r.mins[ 0 ] + 33;
@@ -1951,19 +1952,19 @@ void SP_func_plat( gentity_t *self )
 
 	if( !self->sound1to2 )
 	{
-		self->sound1to2 = G_SoundIndex( "sound/movers/plats/pt1_strt.wav" );
+		self->sound1to2 = G_SoundIndex( "sound/movers/plats/pt1_strt" );
 	}
 	if( !self->sound2to1 )
 	{
-		self->sound2to1 = G_SoundIndex( "sound/movers/plats/pt1_strt.wav" );
+		self->sound2to1 = G_SoundIndex( "sound/movers/plats/pt1_strt" );
 	}
 	if( !self->soundPos1 )
 	{
-		self->soundPos1 = G_SoundIndex( "sound/movers/plats/pt1_end.wav" );
+		self->soundPos1 = G_SoundIndex( "sound/movers/plats/pt1_end" );
 	}
 	if( !self->soundPos2 )
 	{
-		self->soundPos2 = G_SoundIndex( "sound/movers/plats/pt1_end.wav" );
+		self->soundPos2 = G_SoundIndex( "sound/movers/plats/pt1_end" );
 	}
 
 	VectorClear( self->s.angles );
@@ -2053,7 +2054,7 @@ void SP_func_button( gentity_t *self )
 
 	if( !self->sound1to2 )
 	{
-		self->sound1to2 = G_SoundIndex( "sound/movers/switches/button1.wav" );
+		self->sound1to2 = G_SoundIndex( "sound/movers/switches/button1" );
 	}
 
 	self->reset = func_button_reset;
@@ -2331,7 +2332,7 @@ void func_train_blocked( gentity_t *self, gentity_t *other )
 			//whatever is blocking the train isn't a client
 
 			//KILL!!1!!!
-			G_Kill(other, self, MOD_CRUSH);
+			Entities::Kill(other, self, MOD_CRUSH);
 
 #ifndef UNREALARENA
 			//buildables need to be handled differently since even when
@@ -2361,7 +2362,7 @@ void func_train_blocked( gentity_t *self, gentity_t *other )
 			return;
 		}
 
-		G_Kill(other, self, MOD_CRUSH);
+		Entities::Kill(other, self, MOD_CRUSH);
 	}
 }
 

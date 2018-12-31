@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,38 +20,43 @@
 
 // cg_tutorial.c -- the tutorial system
 
+#include "cg_key_name.h"
 #include "cg_local.h"
 
-typedef struct
-{
+namespace {
+struct bind_t {
 	const char *command;
 	const char *humanName;
-	int keys[ 2 ];
-} bind_t;
+	std::vector<Keyboard::Key> keys;
+};
+} // namespace
+
+// toggleconsole's name is inaccurate: you can only *open* the console with it!
+static const char* const OPEN_CONSOLE_CMD = "toggleconsole";
 
 static bind_t bindings[] =
 {
-	{ "+useitem",       N_( "Activate Upgrade" ),                      { -1, -1 } },
-	{ "+speed",         N_( "Run/Walk" ),                              { -1, -1 } },
-	{ "+sprint",        N_( "Sprint" ),                                { -1, -1 } },
-	{ "+moveup",        N_( "Jump" ),                                  { -1, -1 } },
-	{ "+movedown",      N_( "Crouch" ),                                { -1, -1 } },
-	{ "+attack",        N_( "Primary Attack" ),                        { -1, -1 } },
-	{ "+attack2",       N_( "Secondary Attack" ),                      { -1, -1 } },
-	{ "reload",         N_( "Reload" ),                                { -1, -1 } },
+	{ "+useitem",       N_( "Activate Upgrade" ),                      {} },
+	{ "+speed",         N_( "Run/Walk" ),                              {} },
+	{ "+sprint",        N_( "Sprint" ),                                {} },
+	{ "+moveup",        N_( "Jump" ),                                  {} },
+	{ "+movedown",      N_( "Crouch" ),                                {} },
+	{ "+attack",        N_( "Primary Attack" ),                        {} },
+	{ "+attack2",       N_( "Secondary Attack" ),                      {} },
+	{ "reload",         N_( "Reload" ),                                {} },
 #ifndef UNREALARENA
-	{ "buy ammo",       N_( "Buy Ammo" ),                              { -1, -1 } },
+	{ "buy ammo",       N_( "Buy Ammo" ),                              {} },
 #endif
-	{ "itemact medkit", N_( "Use Medkit" ),                            { -1, -1 } },
-	{ "+activate",      N_( "Use Structure/Evolve" ),                  { -1, -1 } },
+	{ "itemact medkit", N_( "Use Medkit" ),                            {} },
+	{ "+activate",      N_( "Use Structure/Evolve" ),                  {} },
 #ifndef UNREALARENA
 	{ "modcase alt \"/deconstruct marked\" /deconstruct",
-                            N_( "Deconstruct Structure" ),                 { -1, -1 } },
+	                    N_( "Deconstruct Structure" ),                 {} },
 #endif
-	{ "weapprev",       N_( "Previous Upgrade" ),                      { -1, -1 } },
-	{ "weapnext",       N_( "Next Upgrade" ),                          { -1, -1 } },
-	{ "toggleconsole",  N_( "Toggle Console" ),                        { -1, -1 } },
-	{ "itemact grenade", N_( "Throw a grenade" ),                      { -1, -1 } }
+	{ "weapprev",       N_( "Previous Upgrade" ),                      {} },
+	{ "weapnext",       N_( "Next Upgrade" ),                          {} },
+	{ OPEN_CONSOLE_CMD, N_( "Toggle Console" ),                        {} },
+	{ "itemact grenade", N_( "Throw a grenade" ),                      {} }
 };
 
 static const size_t numBindings = ARRAY_LEN( bindings );
@@ -66,19 +71,13 @@ static void CG_GetBindings( team_t team )
     std::vector<std::string> binds;
 
     for (unsigned i = 0; i < numBindings; i++) {
-		bindings[i].keys[0] = bindings[i].keys[1] = K_NONE;
         binds.push_back(bindings[i].command);
     }
 
-    std::vector<std::vector<int>> keyNums = trap_Key_GetKeynumForBinds(team, binds);
+    std::vector<std::vector<Keyboard::Key>> keys = trap_Key_GetKeysForBinds(team, binds);
 
     for (unsigned i = 0; i < numBindings; i++) {
-        if (keyNums[i].size() > 0) {
-            bindings[i].keys[0] = keyNums[i][0];
-        }
-        if (keyNums[i].size() > 1) {
-            bindings[i].keys[1] = keyNums[i][1];
-        }
+        bindings[i].keys = keys[i];
     }
 }
 
@@ -89,42 +88,37 @@ CG_KeyNameForCommand
 */
 static const char *CG_KeyNameForCommand( const char *command )
 {
-	unsigned    i;
 	static char buffer[ 2 ][ MAX_STRING_CHARS ];
 	static int  which = 1;
-	char        keyName[ 2 ][ 32 ];
 
 	which ^= 1;
 
-	buffer[ which ][ 0 ] = '\0';
-
-	for ( i = 0; i < numBindings; i++ )
+	for ( const auto& binding : bindings )
 	{
-		if ( !Q_stricmp( command, bindings[ i ].command ) )
+		if ( !Q_stricmp( command, binding.command ) )
 		{
-			if ( bindings[ i ].keys[ 0 ] != K_NONE )
+			std::string keyNames;
+			if ( binding.command == OPEN_CONSOLE_CMD )
 			{
-				trap_Key_KeynumToStringBuf( bindings[ i ].keys[ 0 ],
-				                            keyName[ 0 ], sizeof( keyName[ 0 ] ) );
-
-				if ( bindings[ i ].keys[ 1 ] != K_NONE )
-				{
-					trap_Key_KeynumToStringBuf( bindings[ i ].keys[ 1 ],
-					                            keyName[ 1 ], sizeof( keyName[ 1 ] ) );
-					Q_snprintf( buffer[ which ], sizeof( buffer[ 0 ] ), _("%s or %s"),
-					            Q_strupr( keyName[ 0 ] ), Q_strupr( keyName[ 1 ] ) );
-				}
-				else
-				{
-					Q_strncpyz( buffer[ which ], Q_strupr( keyName[ 0 ] ), sizeof( buffer[ 0 ] ) );
-				}
-			}
-			else
-			{
-				Com_sprintf( buffer[ which ], MAX_STRING_CHARS, _( "\"%s\" (unbound)" ),
-				             _( bindings[ i ].humanName ) );
+				// Hard-coded console toggle key binding
+				keyNames = "Shift-Escape";
+				// cl_consoleKeys is yet another source of keys for toggling the console,
+				// but it is omitted out of laziness.
 			}
 
+			for ( Keyboard::Key key : binding.keys )
+			{
+				if ( !keyNames.empty() )
+				{
+					keyNames += _(" or ");
+				}
+				keyNames += CG_KeyDisplayName( key );
+			}
+			if ( keyNames.empty() )
+			{
+				keyNames = Str::Format( _( "\"%s\" (unbound)" ), _( binding.humanName ) );
+			}
+			Q_strncpyz( buffer[ which ], keyNames.c_str(), sizeof( buffer[ which ] ) );
 			return buffer[ which ];
 		}
 	}
@@ -410,7 +404,7 @@ static void CG_HumanText( char *text, playerState_t *ps )
 			case WP_MASS_DRIVER:
 			case WP_LUCIFER_CANNON:
 				Q_strcat( text, MAX_TUTORIAL_TEXT,
-				          _( "Find an Armoury, Reactor, or Repeater for more ammo\n" ) );
+				          _( "Find an Armoury or Reactor for more ammo\n" ) );
 				break;
 
 			default:
@@ -712,7 +706,7 @@ const char *CG_TutorialText()
 	if ( !cg.demoPlayback )
 	{
 		Q_strcat( text, MAX_TUTORIAL_TEXT, va( _( "Press %s to open the console\n" ), CG_KeyNameForCommand( "toggleconsole" ) ) );
-		Q_strcat( text, MAX_TUTORIAL_TEXT, _( "Press ESC for the menu" ) );
+		Q_strcat( text, MAX_TUTORIAL_TEXT, _( "Press ESCAPE for the menu" ) );
 	}
 
 	return text;

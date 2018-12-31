@@ -1,5 +1,5 @@
 /*
- * CBSE Source Code
+ * CBSE GPL Source Code
  * Copyright (C) 2016  Unreal Arena
  *
  * This program is free software: you can redistribute it and/or modify

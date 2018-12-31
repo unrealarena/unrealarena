@@ -27,15 +27,21 @@ messages:
           type: meansOfDeath_t
 
 components:
+    Team:
+        parameters:
+            team: team_t
+
     Client:
         parameters:
             clientData: gclient_t*
+        requires:
+            Team:
 
     Spectator:
         messages:
             - PrepareNetCode
         requires:
-            - Client
+            Client:
 
     Health:
         messages:
@@ -54,6 +60,8 @@ entities:
     Client:
         components:
             Client:
+            Team:
+                team: TEAM_NONE
 
     Spectator:
         components:
@@ -62,11 +70,15 @@ entities:
     QPlayer:
         components:
             Client:
+            Team:
+                team: TEAM_Q
             Health:
             Knockback:
 
     UPlayer:
         components:
             Client:
+            Team:
+                team: TEAM_U
             Health:
             Knockback:

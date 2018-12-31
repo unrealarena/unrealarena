@@ -32,22 +32,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COMMON_UTIL_H_
 
 #include <algorithm>
+#include <memory>
 #include <tuple>
+#include <type_traits>
+
+#include "Compiler.h"
 
 // Various utilities
 
-// Workaround for broken tuples in GCC 4.6
-#ifdef LIBSTDCXX_BROKEN_CXX11
-namespace std {
-
-template<size_t Index, typename... T>
-typename std::tuple_element<Index, std::tuple<T...>>::type&& get(std::tuple<T...>&& tuple)
-{
-    return static_cast<typename std::tuple_element<Index, std::tuple<T...>>::type&&>(std::get<Index>(tuple));
-}
-
-} // namespace std
-#endif
+char     *QDECL PRINTF_LIKE(1) va( const char *format, ... );
 
 namespace Util {
 
@@ -75,20 +68,27 @@ Iter binary_find(Iter begin, Iter end, const T& value, Compare comp)
  * Enum to integral
  */
 template<class E, class R = typename std::underlying_type<E>::type>
-constexpr R ordinal(E e) { return static_cast<R>(e); }
+constexpr R ordinal(E e)
+{
+    static_assert(std::is_enum<E>::value, "Type should be an enum");
+    return static_cast<R>(e);
+}
 
 /**
  * Integral to enum
  * Prefer ordinal, as that's guaranteed to be valid
  */
 template<class E, class I = typename std::underlying_type<E>::type>
-constexpr E enum_cast(I i) { return static_cast<E>(i); }
+constexpr E enum_cast(I i) {
+    static_assert(std::is_enum<E>::value, "Type should be an enum");
+    return static_cast<E>(i);
+}
 
 /**
  * Enum to string
  */
 template<class E>
-const char *enum_str(E e) { return va("%d", ordinal(e)); }
+const char* enum_str(E e) { return va("%d", ordinal<E, int>(e)); }
 
 // Compile-time integer sequences
 template<size_t...> struct seq {
@@ -130,34 +130,24 @@ decltype(apply_impl(std::declval<Func>(), std::declval<Tuple>(), gen_seq<std::tu
 	return apply_impl(std::forward<Func>(func), std::forward<Tuple>(tuple), gen_seq<std::tuple_size<typename std::decay<Tuple>::type>::value>());
 }
 
-// An equivalent of is_pod to workaround an MSVC bug where Vec3 is not POD
-// while it is both trivial and standard layout.
-
-template<typename T, typename = void>
-struct IsPOD :std::false_type {};
-
-template<typename T>
-struct IsPOD<T, typename std::enable_if<std::is_trivial<T>::value && std::is_standard_layout<T>::value>::type> : std::true_type{};
-
 // Utility class to hold a possibly uninitialized object.
 template<typename T> class uninitialized {
 public:
-	uninitialized() {}
+	uninitialized() = default;
+
+	uninitialized(const uninitialized&) = delete;
+	uninitialized(uninitialized&&) = delete;
+	uninitialized& operator=(const uninitialized&) = delete;
+	uninitialized& operator=(uninitialized&&) = delete;
+
 	template<typename... Args> void construct(Args&&... args)
 	{
 		new(&data) T(std::forward<Args>(args)...);
 	}
-#ifdef GCC_BROKEN_CXX11
-	template<typename Arg> T& assign(Arg&& arg)
-	{
-		return get() = std::forward<Arg>(arg);
-	}
-#else
 	template<typename Arg> decltype(std::declval<T&>() = std::declval<Arg>()) assign(Arg&& arg)
 	{
 		return get() = std::forward<Arg>(arg);
 	}
-#endif
 	void destroy()
 	{
 		get().~T();
@@ -173,13 +163,35 @@ public:
 
 private:
 	typename std::aligned_storage<sizeof(T), std::alignment_of<T>::value>::type data;
-
-	// Not copyable or movable
-	uninitialized(const uninitialized&) = delete;
-	uninitialized(uninitialized&&) = delete;
-	uninitialized& operator=(const uninitialized&) = delete;
-	uninitialized& operator=(uninitialized&&) = delete;
 };
+
+// Use to perform an action only if a minimum time has passed since the last time it was performed.
+// Not thread-safe.
+class MinimumDelay {
+public:
+	// duration: length of delay in milliseconds
+	MinimumDelay(int duration): duration(duration), lastTime(std::numeric_limits<int>::min()) {}
+
+	// Returns true if it is OK to perform the action again. Takes current time in milliseconds.
+	bool Check(int now) {
+		if (now >= lastTime && now < lastTime + duration) {
+			return false;
+		} else {
+			lastTime = now;
+			return true;
+		}
+	}
+private:
+	const int duration;
+	int lastTime;
+};
+
+// std::make_unique is not available until C++14.
+template<typename T, typename ... U>
+std::unique_ptr<T> make_unique(U&&... args)
+{
+	return std::unique_ptr<T>(new T(std::forward<U>(args)...));
+}
 
 } // namespace Util
 

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2016  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -309,7 +309,7 @@ void CG_BiSphereTrace( trace_t *result, const vec3_t start, const vec3_t end,
                        int skipmask )
 {
 	trace_t t;
-	vec3_t  mins, maxs;
+	vec3_t  mins = { 0 }, maxs = { 0 };
 
 	mins[ 0 ] = startRadius;
 	maxs[ 0 ] = endRadius;
@@ -665,7 +665,7 @@ to ease the jerk.
 */
 void CG_PredictPlayerState()
 {
-	int           cmdNum, current, i;
+	int           cmdNum, current;
 	playerState_t oldPlayerState;
 	usercmd_t     oldestCmd;
 	usercmd_t     latestCmd;
@@ -801,12 +801,11 @@ void CG_PredictPlayerState()
 		else
 		{
 			// we have a new snapshot
-			int      i;
 			int      errorcode;
 			bool error = true;
 
 			// loop through the saved states queue
-			for ( i = cg.stateHead; i != cg.stateTail;
+			for ( int i = cg.stateHead; i != cg.stateTail;
 			      i = ( i + 1 ) % NUM_SAVED_STATES )
 			{
 				// if we find a predicted state whose commandTime matches the snapshot
@@ -961,7 +960,7 @@ void CG_PredictPlayerState()
 
 		// don't predict gauntlet firing, which is only supposed to happen
 		// when it actually inflicts damage
-		for ( i = WP_NONE + 1; i < WP_NUM_WEAPONS; i++ )
+		for ( int i = WP_NONE + 1; i < WP_NUM_WEAPONS; i++ )
 		{
 			cg_pmove.autoWeaponHit[ i ] = false;
 		}

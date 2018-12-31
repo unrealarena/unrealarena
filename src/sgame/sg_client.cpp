@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -21,6 +21,7 @@
 
 #include "sg_local.h"
 #include "engine/qcommon/q_unicode.h"
+#include "Entities.h"
 #include "CBSE.h"
 
 // sg_client.c -- client functions that don't happen every frame
@@ -407,7 +408,7 @@ static gentity_t *G_SelectSpawnBuildable( vec3_t preference, buildable_t buildab
 			continue;
 		}
 
-		if ( G_Dead( search ) )
+		if ( Entities::IsDead( search ) )
 		{
 			continue;
 		}
@@ -422,8 +423,12 @@ static gentity_t *G_SelectSpawnBuildable( vec3_t preference, buildable_t buildab
 			continue;
 		}
 
-		if ( G_CheckSpawnPoint( search->s.number, search->s.origin,
-		                        search->s.origin2, buildable, nullptr ) != nullptr )
+		Entity* blocker = nullptr;
+		Vec3    spawnPoint;
+
+		search->entity->CheckSpawnPoint(blocker, spawnPoint);
+
+		if (blocker)
 		{
 			continue;
 		}
@@ -465,20 +470,17 @@ gentity_t *G_SelectUnvanquishedSpawnPoint( team_t team, vec3_t preference, vec3_
 		spot = G_SelectSpawnBuildable( preference, BA_H_SPAWN );
 	}
 
-	//no available spots
 	if ( !spot )
 	{
 		return nullptr;
 	}
 
-	if ( team == TEAM_ALIENS )
-	{
-		G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_A_SPAWN, origin );
-	}
-	else if ( team == TEAM_HUMANS )
-	{
-		G_CheckSpawnPoint( spot->s.number, spot->s.origin, spot->s.origin2, BA_H_SPAWN, origin );
-	}
+	// Get spawn point for selected spawner.
+	Entity* blocker = nullptr;
+	Vec3    spawnPoint;
+
+	spot->entity->CheckSpawnPoint(blocker, spawnPoint);
+	spawnPoint.Store(origin);
 
 	VectorCopy( spot->s.angles, angles );
 	angles[ ROLL ] = 0;
@@ -570,9 +572,9 @@ After sitting around for five seconds, fall into the ground and dissapear
 static void BodySink( gentity_t *ent )
 {
 	//run on first BodySink call
-	if ( !ent->active )
+	if ( !ent->bodyStartedSinking )
 	{
-		ent->active = true;
+		ent->bodyStartedSinking = true;
 
 		//sinking bodies can't be infested
 		ent->killedBy = ent->s.misc = MAX_CLIENTS;
@@ -920,7 +922,7 @@ static const char *G_UnnamedClientName( gclient_t *client )
 
 	client->pers.namelog->unnamedNumber = number;
 	Com_sprintf( name, sizeof( name ), "%.*s%d", (int)sizeof( name ) - 11,
-	             g_unnamedNamePrefix.string[ 0 ] ? g_unnamedNamePrefix.string : UNNAMED_PLAYER,
+	             g_unnamedNamePrefix.string[ 0 ] ? g_unnamedNamePrefix.string : UNNAMED_PLAYER"#",
 	             number );
 
 	return name;
@@ -1141,6 +1143,13 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 			trap_SendServerCommand( ent - g_entities, va( "print_tr %s %s %s", QQ( "$1t$ $2$" ), Quote( err ), Quote( newname ) ) );
 			revertName = true;
 		}
+		else if ( Q_UTF8_Strlen( newname ) > MAX_NAME_CHARACTERS )
+		{
+			trap_SendServerCommand( ent - g_entities,
+			                        va( "print_tr %s %d", QQ( N_("Name is too long! Must be less than $1$ characters.") ), MAX_NAME_CHARACTERS ) );
+			revertName = true;
+
+		}
 
 		if ( revertName )
 		{
@@ -1166,7 +1175,7 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 
 			if ( *oldname )
 			{
-				G_LogPrintf( "ClientRename: %i [%s] (%s) \"%s^7\" -> \"%s^7\" \"%s^7\"",
+				G_LogPrintf( "ClientRename: %i [%s] (%s) \"%s^*\" -> \"%s^*\" \"%s^*\"",
 				             clientNum, client->pers.ip.str, client->pers.guid,
 				             oldname, client->pers.netname,
 				             client->pers.netname );
@@ -1468,7 +1477,7 @@ const char *ClientConnect( int clientNum, bool firstTime )
 		return userInfoError;
 	}
 
-	G_LogPrintf( "ClientConnect: %i [%s] (%s) \"%s^7\" \"%s^7\"",
+	G_LogPrintf( "ClientConnect: %i [%s] (%s) \"%s^*\" \"%s^*\"",
 	             clientNum, client->pers.ip.str[0] ? client->pers.ip.str : "127.0.0.1", client->pers.guid,
 	             client->pers.netname,
 	             client->pers.netname );
@@ -1483,12 +1492,12 @@ const char *ClientConnect( int clientNum, bool firstTime )
 	{
 		if ( g_geoip.integer && country && *country )
 		{
-			trap_SendServerCommand( -1, va( "print_tr %s %s %s", QQ( N_("$1$^7 connected from $2$") ),
+			trap_SendServerCommand( -1, va( "print_tr %s %s %s", QQ( N_("$1$^* connected from $2$") ),
 			                                Quote( client->pers.netname ), Quote( country ) ) );
 		}
 		else
 		{
-			trap_SendServerCommand( -1, va( "print_tr %s %s", QQ( N_("$1$^7 connected") ),
+			trap_SendServerCommand( -1, va( "print_tr %s %s", QQ( N_("$1$^* connected") ),
 			                                Quote( client->pers.netname ) ) );
 		}
 	}
@@ -1562,7 +1571,7 @@ const char *ClientBotConnect( int clientNum, bool firstTime, team_t team )
 		G_BotSetDefaults( clientNum, team, client->sess.botSkill, client->sess.botTree );
 	}
 
-	G_LogPrintf( "ClientConnect: %i [%s] (%s) \"%s^7\" \"%s^7\" [BOT]",
+	G_LogPrintf( "ClientConnect: %i [%s] (%s) \"%s^*\" \"%s^*\" [BOT]",
 	             clientNum, client->pers.ip.str[0] ? client->pers.ip.str : "127.0.0.1", client->pers.guid,
 	             client->pers.netname,
 	             client->pers.netname );
@@ -1570,24 +1579,12 @@ const char *ClientBotConnect( int clientNum, bool firstTime, team_t team )
 	// don't do the "xxx connected" messages if they were caried over from previous level
 	if ( firstTime )
 	{
-		trap_SendServerCommand( -1, va( "print_tr %s %s", QQ( N_("$1$^7 connected") ),
+		trap_SendServerCommand( -1, va( "print_tr %s %s", QQ( N_("$1$^* connected") ),
 		                                Quote( client->pers.netname ) ) );
 	}
 
 	// count current clients and rank for scoreboard
 	CalculateRanks();
-
-	// if this is after !restart keepteams or !restart switchteams, apply said selection
-	if ( client->sess.restartTeam != TEAM_NONE )
-	{
-//		G_ChangeTeam( ent, client->sess.restartTeam );
-//		client->sess.restartTeam = TEAM_NONE;
-	}
-	else if ( team != TEAM_NONE )
-	{
-//		G_ChangeTeam( ent, team );
-		client->sess.restartTeam = team;
-	}
 
 	return nullptr;
 }
@@ -1669,7 +1666,7 @@ void ClientBegin( int clientNum )
 	// locate ent at a spawn point
 	ClientSpawn( ent, nullptr, nullptr, nullptr );
 
-	trap_SendServerCommand( -1, va( "print_tr %s %s", QQ( N_("$1$^7 entered the game") ), Quote( client->pers.netname ) ) );
+	trap_SendServerCommand( -1, va( "print_tr %s %s", QQ( N_("$1$^* entered the game") ), Quote( client->pers.netname ) ) );
 
 	trap_Cvar_VariableStringBuffer( "g_mapStartupMessage", startMsg, sizeof( startMsg ) );
 
@@ -1888,10 +1885,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	weapon_t           weapon;
 
 #ifdef UNREALARENA
-	if ( spawn != nullptr )
-	{
-		ClientSpawnCBSE(ent);
-	}
+	ClientSpawnCBSE(ent);
 #else
 	ClientSpawnCBSE(ent, ent == spawn);
 #endif
@@ -2328,7 +2322,7 @@ void ClientDisconnect( int clientNum )
 		tent->s.clientNum = ent->s.clientNum;
 	}
 
-	G_LogPrintf( "ClientDisconnect: %i [%s] (%s) \"%s^7\"", clientNum,
+	G_LogPrintf( "ClientDisconnect: %i [%s] (%s) \"%s^*\"", clientNum,
 	             ent->client->pers.ip.str, ent->client->pers.guid, ent->client->pers.netname );
 
 	ent->client->pers.connected = CON_DISCONNECTED;

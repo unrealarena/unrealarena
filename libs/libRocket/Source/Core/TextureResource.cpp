@@ -132,19 +132,19 @@ bool TextureResource::Load(RenderInterface* render_interface) const
 			// The requested texture is a font layer.
 			delete_data = true;
 
-			FontFaceHandle* handle;
-			FontEffect* layer_id;
+			void* handle;
+			void* layer_id;
 			int layout_id;
 			int texture_id;
 
 			if (sscanf(source.CString(), "?font::%p/%p/%d/%d", &handle, &layer_id, &layout_id, &texture_id) == 4)
 			{
-				handle->GenerateLayerTexture(data,
-											 dimensions,
-											 samples,
-											 layer_id,
-											 layout_id,
-											 texture_id);
+				static_cast<FontFaceHandle*>(handle)->GenerateLayerTexture(data,
+													  dimensions,
+													  samples,
+													  static_cast<FontEffect*>(layer_id),
+													  layout_id,
+													  texture_id);
 			}
 		}
 

@@ -82,9 +82,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_dynamicLightCastShadows;
 	cvar_t      *r_precomputedLighting;
 	cvar_t      *r_vertexLighting;
-	cvar_t      *r_compressDiffuseMaps;
-	cvar_t      *r_compressSpecularMaps;
-	cvar_t      *r_compressNormalMaps;
 	cvar_t      *r_exportTextures;
 	cvar_t      *r_heatHaze;
 	cvar_t      *r_noMarksOnTrisurfs;
@@ -99,13 +96,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_ext_texture_integer;
 	cvar_t      *r_ext_texture_rg;
 	cvar_t      *r_ext_texture_filter_anisotropic;
-	cvar_t      *r_ext_packed_depth_stencil;
 	cvar_t      *r_ext_gpu_shader4;
 	cvar_t      *r_arb_buffer_storage;
 	cvar_t      *r_arb_map_buffer_range;
 	cvar_t      *r_arb_sync;
 	cvar_t      *r_arb_uniform_buffer_object;
 	cvar_t      *r_arb_texture_gather;
+	cvar_t      *r_arb_gpu_shader5;
 
 	cvar_t      *r_ignoreGLErrors;
 	cvar_t      *r_logFile;
@@ -180,6 +177,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_noportals;
 	cvar_t      *r_portalOnly;
 	cvar_t      *r_portalSky;
+	cvar_t      *r_max_portal_levels;
 
 	cvar_t      *r_subdivisions;
 	cvar_t      *r_stitchCurves;
@@ -221,6 +219,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_showLightScissors;
 	cvar_t      *r_showLightBatches;
 	cvar_t      *r_showLightGrid;
+	cvar_t      *r_showLightTiles;
 	cvar_t      *r_showBatches;
 	cvar_t      *r_showLightMaps;
 	cvar_t      *r_showDeluxeMaps;
@@ -644,28 +643,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	RB_TakeScreenshotCmd
 	==================
 	*/
-	const void     *RB_TakeScreenshotCmd( const void *data )
+	const RenderCommand *ScreenshotCommand::ExecuteSelf( ) const
 	{
-		const screenshotCommand_t *cmd;
-
-		cmd = ( const screenshotCommand_t * ) data;
-
-		switch ( cmd->format )
+		switch ( format )
 		{
 			case ssFormat_t::SSF_TGA:
-				RB_TakeScreenshot( cmd->x, cmd->y, cmd->width, cmd->height, cmd->fileName );
+				RB_TakeScreenshot( x, y, width, height, fileName );
 				break;
 
 			case ssFormat_t::SSF_JPEG:
-				RB_TakeScreenshotJPEG( cmd->x, cmd->y, cmd->width, cmd->height, cmd->fileName );
+				RB_TakeScreenshotJPEG( x, y, width, height, fileName );
 				break;
 
 			case ssFormat_t::SSF_PNG:
-				RB_TakeScreenshotPNG( cmd->x, cmd->y, cmd->width, cmd->height, cmd->fileName );
+				RB_TakeScreenshotPNG( x, y, width, height, fileName );
 				break;
 		}
 
-		return ( const void * )( cmd + 1 );
+		return this + 1;
 	}
 
 	/*
@@ -676,10 +671,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	void R_TakeScreenshot( const char *name, ssFormat_t format )
 	{
 		static char         fileName[ MAX_OSPATH ]; // bad things may happen if two screenshots per frame are taken.
-		screenshotCommand_t *cmd;
+		ScreenshotCommand  *cmd;
 		int                 lastNumber;
 
-		cmd = ( screenshotCommand_t * ) R_GetCommandBuffer( sizeof( *cmd ) );
+		cmd = R_GetRenderCommand<ScreenshotCommand>();
 
 		if ( !cmd )
 		{
@@ -719,7 +714,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 		Log::Notice("Wrote %s", fileName );
 
-		cmd->commandId = renderCommand_t::RC_SCREENSHOT;
 		cmd->x = 0;
 		cmd->y = 0;
 		cmd->width = glConfig.vidWidth;
@@ -758,9 +752,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	RB_TakeVideoFrameCmd
 	==================
 	*/
-	const void     *RB_TakeVideoFrameCmd( const void *data )
+	const RenderCommand *VideoFrameCommand::ExecuteSelf( ) const
 	{
-		const videoFrameCommand_t *cmd;
 		GLint                     packAlign;
 		int                       lineLen, captureLineLen;
 		byte                      *pixels;
@@ -768,8 +761,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 		int                       outputSize;
 		int                       j;
 		int                       aviLineLen;
-
-		cmd = ( const videoFrameCommand_t * ) data;
 
 		// RB: it is possible to we still have a videoFrameCommand_t but we already stopped
 		// video recording
@@ -779,47 +770,47 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 			glGetIntegerv( GL_PACK_ALIGNMENT, &packAlign );
 
-			lineLen = cmd->width * 3;
+			lineLen = width * 3;
 			captureLineLen = PAD( lineLen, packAlign );
 
-			pixels = ( byte * ) PADP( cmd->captureBuffer, packAlign );
-			glReadPixels( 0, 0, cmd->width, cmd->height, GL_RGB, GL_UNSIGNED_BYTE, pixels );
+			pixels = ( byte * ) PADP( captureBuffer, packAlign );
+			glReadPixels( 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels );
 
-			if ( cmd->motionJpeg )
+			if ( motionJpeg )
 			{
 				// Drop alignment and line padding bytes
-				for ( i = 0; i < cmd->height; ++i )
+				for ( i = 0; i < height; ++i )
 				{
-					memmove( cmd->captureBuffer + i * lineLen, pixels + i * captureLineLen, lineLen );
+					memmove( captureBuffer + i * lineLen, pixels + i * captureLineLen, lineLen );
 				}
 
-				outputSize = SaveJPGToBuffer( cmd->encodeBuffer, 3 * cmd->width * cmd->height, 90, cmd->width, cmd->height, cmd->captureBuffer );
-				ri.CL_WriteAVIVideoFrame( cmd->encodeBuffer, outputSize );
+				outputSize = SaveJPGToBuffer( encodeBuffer, 3 * width * height, 90, width, height, captureBuffer );
+				ri.CL_WriteAVIVideoFrame( encodeBuffer, outputSize );
 			}
 			else
 			{
 				aviLineLen = PAD( lineLen, AVI_LINE_PADDING );
 
-				for ( i = 0; i < cmd->height; ++i )
+				for ( i = 0; i < height; ++i )
 				{
 					for ( j = 0; j < lineLen; j += 3 )
 					{
-						cmd->encodeBuffer[ i * aviLineLen + j + 0 ] = pixels[ i * captureLineLen + j + 2 ];
-						cmd->encodeBuffer[ i * aviLineLen + j + 1 ] = pixels[ i * captureLineLen + j + 1 ];
-						cmd->encodeBuffer[ i * aviLineLen + j + 2 ] = pixels[ i * captureLineLen + j + 0 ];
+						encodeBuffer[ i * aviLineLen + j + 0 ] = pixels[ i * captureLineLen + j + 2 ];
+						encodeBuffer[ i * aviLineLen + j + 1 ] = pixels[ i * captureLineLen + j + 1 ];
+						encodeBuffer[ i * aviLineLen + j + 2 ] = pixels[ i * captureLineLen + j + 0 ];
 					}
 
 					while ( j < aviLineLen )
 					{
-						cmd->encodeBuffer[ i * aviLineLen + j++ ] = 0;
+						encodeBuffer[ i * aviLineLen + j++ ] = 0;
 					}
 				}
 
-				ri.CL_WriteAVIVideoFrame( cmd->encodeBuffer, aviLineLen * cmd->height );
+				ri.CL_WriteAVIVideoFrame( encodeBuffer, aviLineLen * height );
 			}
 		}
 
-		return ( const void * )( cmd + 1 );
+		return this + 1;
 	}
 
 //============================================================================
@@ -837,7 +828,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 		if ( glConfig.stencilBits >= 4 )
 		{
-			GL_ClearStencil( 128 );
+			GL_ClearStencil( 0 );
 		}
 
 		GL_FrontFace( GL_CCW );
@@ -985,18 +976,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 		{
 			int contextFlags, profile;
 
-			Log::Notice("%sUsing OpenGL 3.x context", Color::CString( Color::Green ) );
+			Log::Notice("%sUsing OpenGL 3.x context", Color::ToString( Color::Green ) );
 
 			// check if we have a core-profile
 			glGetIntegerv( GL_CONTEXT_PROFILE_MASK, &profile );
 
 			if ( profile == GL_CONTEXT_CORE_PROFILE_BIT )
 			{
-				Log::Debug("%sHaving a core profile", Color::CString( Color::Green ) );
+				Log::Debug("%sHaving a core profile", Color::ToString( Color::Green ) );
 			}
 			else
 			{
-				Log::Debug("%sHaving a compatibility profile", Color::CString( Color::Red ) );
+				Log::Debug("%sHaving a compatibility profile", Color::ToString( Color::Red ) );
 			}
 
 			// check if context is forward compatible
@@ -1004,11 +995,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 			if ( contextFlags & GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT )
 			{
-				Log::Debug("%sContext is forward compatible", Color::CString( Color::Green ) );
+				Log::Debug("%sContext is forward compatible", Color::ToString( Color::Green ) );
 			}
 			else
 			{
-				Log::Debug("%sContext is NOT forward compatible", Color::CString( Color::Red  ));
+				Log::Debug("%sContext is NOT forward compatible", Color::ToString( Color::Red  ));
 			}
 		}
 
@@ -1081,13 +1072,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 		r_ext_texture_integer = ri.Cvar_Get( "r_ext_texture_integer", "1", CVAR_CHEAT | CVAR_LATCH );
 		r_ext_texture_rg = ri.Cvar_Get( "r_ext_texture_rg", "1", CVAR_CHEAT | CVAR_LATCH );
 		r_ext_texture_filter_anisotropic = ri.Cvar_Get( "r_ext_texture_filter_anisotropic", "4",  CVAR_LATCH | CVAR_ARCHIVE );
-		r_ext_packed_depth_stencil = ri.Cvar_Get( "r_ext_packed_depth_stencil", "1", CVAR_CHEAT | CVAR_LATCH );
 		r_ext_gpu_shader4 = ri.Cvar_Get( "r_ext_gpu_shader4", "1", CVAR_CHEAT | CVAR_LATCH );
 		r_arb_buffer_storage = ri.Cvar_Get( "r_arb_buffer_storage", "1", CVAR_CHEAT | CVAR_LATCH );
 		r_arb_map_buffer_range = ri.Cvar_Get( "r_arb_map_buffer_range", "1", CVAR_CHEAT | CVAR_LATCH );
 		r_arb_sync = ri.Cvar_Get( "r_arb_sync", "1", CVAR_CHEAT | CVAR_LATCH );
 		r_arb_uniform_buffer_object = ri.Cvar_Get( "r_arb_uniform_buffer_object", "1", CVAR_CHEAT | CVAR_LATCH );
 		r_arb_texture_gather = ri.Cvar_Get( "r_arb_texture_gather", "1", CVAR_CHEAT | CVAR_LATCH );
+		r_arb_gpu_shader5 = ri.Cvar_Get( "r_arb_gpu_shader5", "1", CVAR_CHEAT | CVAR_LATCH );
 
 		r_collapseStages = ri.Cvar_Get( "r_collapseStages", "1", CVAR_LATCH | CVAR_CHEAT );
 		r_picmip = ri.Cvar_Get( "r_picmip", "0",  CVAR_LATCH | CVAR_ARCHIVE );
@@ -1109,9 +1100,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 		r_dynamicLightCastShadows = ri.Cvar_Get( "r_dynamicLightCastShadows", "1", 0 );
 		r_precomputedLighting = ri.Cvar_Get( "r_precomputedLighting", "1", CVAR_SHADER );
 		r_vertexLighting = ri.Cvar_Get( "r_vertexLighting", "0", CVAR_LATCH | CVAR_ARCHIVE );
-		r_compressDiffuseMaps = ri.Cvar_Get( "r_compressDiffuseMaps", "1", CVAR_LATCH );
-		r_compressSpecularMaps = ri.Cvar_Get( "r_compressSpecularMaps", "1", CVAR_LATCH );
-		r_compressNormalMaps = ri.Cvar_Get( "r_compressNormalMaps", "0", CVAR_LATCH );
 		r_exportTextures = ri.Cvar_Get( "r_exportTextures", "0", 0 );
 		r_heatHaze = ri.Cvar_Get( "r_heatHaze", "1", 0 );
 		r_noMarksOnTrisurfs = ri.Cvar_Get( "r_noMarksOnTrisurfs", "1", CVAR_CHEAT );
@@ -1200,6 +1188,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 		r_drawworld = ri.Cvar_Get( "r_drawworld", "1", CVAR_CHEAT );
 		r_portalOnly = ri.Cvar_Get( "r_portalOnly", "0", CVAR_CHEAT );
 		r_portalSky = ri.Cvar_Get( "cg_skybox", "1", 0 );
+		r_max_portal_levels = ri.Cvar_Get( "r_max_portal_levels", "5", 0 );
 
 		r_flareSize = ri.Cvar_Get( "r_flareSize", "40", CVAR_CHEAT );
 		r_flareFade = ri.Cvar_Get( "r_flareFade", "7", CVAR_CHEAT );
@@ -1328,6 +1317,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 		r_showLightScissors = ri.Cvar_Get( "r_showLightScissors", "0", CVAR_CHEAT );
 		r_showLightBatches = ri.Cvar_Get( "r_showLightBatches", "0", CVAR_CHEAT );
 		r_showLightGrid = ri.Cvar_Get( "r_showLightGrid", "0", CVAR_CHEAT );
+		r_showLightTiles = ri.Cvar_Get("r_showLightTiles", "0", CVAR_CHEAT | CVAR_SHADER );
 		r_showBatches = ri.Cvar_Get( "r_showBatches", "0", CVAR_CHEAT );
 		r_showLightMaps = ri.Cvar_Get( "r_showLightMaps", "0", CVAR_CHEAT | CVAR_SHADER );
 		r_showDeluxeMaps = ri.Cvar_Get( "r_showDeluxeMaps", "0", CVAR_CHEAT | CVAR_SHADER );
@@ -1559,7 +1549,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	GetRefAPI
 	=====================
 	*/
-	Q_EXPORT refexport_t *GetRefAPI( int apiVersion, refimport_t *rimp )
+	refexport_t *GetRefAPI( int apiVersion, refimport_t *rimp )
 	{
 		static refexport_t re;
 

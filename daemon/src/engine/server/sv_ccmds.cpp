@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2016  Unreal Arena
+ * Copyright (C) 2016-2018  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -36,7 +36,7 @@ class MapCmd: public Cmd::StaticCmd {
             Cmd::StaticCmd(name, Cmd::SYSTEM, description), cheat(cheat) {
         }
 
-        void Run(const Cmd::Args& args) const OVERRIDE {
+        void Run(const Cmd::Args& args) const override {
             if (args.Argc() < 2) {
                 PrintUsage(args, "<mapname> (layoutname)", "loads a new map");
                 return;
@@ -45,7 +45,9 @@ class MapCmd: public Cmd::StaticCmd {
             const std::string& mapName = args.Argv(1);
 
             //Make sure the map exists to avoid typos that would kill the game
-            if (!FS::GetAvailableMaps().count(mapName)) {
+            FS::GetAvailableMaps();
+            const auto loadedPakInfo = FS::PakPath::LocateFile(Str::Format("maps/%s.bsp", mapName));
+            if (!loadedPakInfo) {
                 Print("Can't find map %s", mapName);
                 return;
             }
@@ -57,10 +59,10 @@ class MapCmd: public Cmd::StaticCmd {
             }
 
             Cvar::SetValueForce("sv_cheats", cheat ? "1" : "0");
-            SV_SpawnServer(mapName.c_str());
+            SV_SpawnServer(loadedPakInfo->name, mapName);
         }
 
-        Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const OVERRIDE {
+        Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const override {
             if (argNum == 1) {
                 Cmd::CompletionResult out;
                 for (auto& map: FS::GetAvailableMaps()) {
@@ -124,6 +126,7 @@ static void SV_MapRestart_f()
 	if ( sv_maxclients->modified )
 	{
 		char mapname[ MAX_QPATH ];
+		char pakname[ MAX_QPATH ];
 
 #ifdef UNREALARENA
 		Log::Notice( "sv_maxclients variable change - restarting.\n" );
@@ -132,8 +135,9 @@ static void SV_MapRestart_f()
 #endif
 		// restart the map the slow way
 		Q_strncpyz( mapname, Cvar_VariableString( "mapname" ), sizeof( mapname ) );
+		Q_strncpyz( pakname, Cvar_VariableString( "pakname" ), sizeof( pakname ) );
 
-		SV_SpawnServer( mapname );
+		SV_SpawnServer(pakname, mapname);
 		return;
 	}
 
@@ -220,7 +224,7 @@ public:
 		StaticCmd("status", Cmd::SYSTEM, "Shows a table with server and player information")
 	{}
 
-	void Run(const Cmd::Args&) const OVERRIDE
+	void Run(const Cmd::Args&) const override
 	{
 		// make sure server is running
 		if ( !com_sv_running->integer )
@@ -265,7 +269,11 @@ public:
 			"num score connection address                port   name\n"
 			"--- ----- ---------- ---------------------- ------ ----",
 			sv_hostname->string,
+#ifdef UNREALARENA
+			Q3_VERSION,
+#else
 			Q3_VERSION " on " Q3_ENGINE,
+#endif
 			PROTOCOL_VERSION,
 			cpu,
 			time_string,
@@ -380,7 +388,7 @@ public:
 		StaticCmd("listmaps", Cmd::SYSTEM, "Lists all maps available to the server")
 	{}
 
-	void Run(const Cmd::Args&) const OVERRIDE
+	void Run(const Cmd::Args&) const override
 	{
 		auto maps = FS::GetAvailableMaps();
 
@@ -388,7 +396,7 @@ public:
 
 		for ( const auto& map: maps )
 		{
-			Print("%s", map.c_str());
+			Print(map.c_str());
 		}
 	}
 };

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #define __BOT_AI_HEADER
 
 // integer constants given to the behavior tree to use as parameters
-// values E_A_SPAWN to E_H_REPEATER are meant to have the same
+// values E_A_SPAWN to E_H_REACTOR are meant to have the same
 // integer values as the corresponding enum in buildable_t
 // TODO: get rid of dependence on buildable_t
 typedef enum
@@ -51,7 +51,6 @@ typedef enum
 	E_H_MEDISTAT,
 	E_H_DRILL,
 	E_H_REACTOR,
-	E_H_REPEATER,
 	E_NUM_BUILDABLES,
 	E_GOAL = E_NUM_BUILDABLES,
 	E_ENEMY,
@@ -60,7 +59,7 @@ typedef enum
 #endif
 } AIEntity_t;
 
-// all behavior tree nodes must return one of 
+// all behavior tree nodes must return one of
 // these status when finished
 typedef enum
 {
@@ -170,7 +169,7 @@ typedef struct
 	AIOpType_t  opType;
 } AIOp_t;
 
-typedef struct 
+typedef struct
 {
 	AIExpType_t expType;
 	AIOpType_t  opType;
@@ -271,4 +270,7 @@ AINodeStatus_t BotActionRoam( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionRoamInRadius( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionMoveTo( gentity_t *self, AIGenericNode_t *node );
 AINodeStatus_t BotActionRush( gentity_t *self, AIGenericNode_t *node );
+AINodeStatus_t BotActionSuicide( gentity_t *self, AIGenericNode_t *node );
+AINodeStatus_t BotActionJump( gentity_t *self, AIGenericNode_t *node );
+AINodeStatus_t BotActionResetStuckTime( gentity_t *self, AIGenericNode_t *node );
 #endif

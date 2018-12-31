@@ -1,27 +1,27 @@
 /*
 ===========================================================================
 
-Daemon GPL Source Code
+Unvanquished GPL Source Code
 Copyright (C) 2012 Unvanquished Developers
 
-This file is part of the Daemon GPL Source Code (Daemon Source Code).
+This file is part of the Unvanquished GPL Source Code (Unvanquished Source Code).
 
-Daemon Source Code is free software: you can redistribute it and/or modify
+Unvanquished Source Code is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Daemon Source Code is distributed in the hope that it will be useful,
+Unvanquished Source Code is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Daemon Source Code.  If not, see <http://www.gnu.org/licenses/>.
+along with Unvanquished Source Code.  If not, see <http://www.gnu.org/licenses/>.
 
-In addition, the Daemon Source Code is also subject to certain additional terms.
+In addition, the Unvanquished Source Code is also subject to certain additional terms.
 You should have received a copy of these additional terms immediately following the
-terms and conditions of the GNU General Public License which accompanied the Daemon
+terms and conditions of the GNU General Public License which accompanied the Unvanquished
 Source Code.  If not, please request a copy in writing from id Software at the address
 below.
 
@@ -147,7 +147,7 @@ public:
 
 static polyVert_t *createVertexArray( Rocket::Core::Vertex *vertices, int count )
 {
-	polyVert_t *verts = new polyVert_t[ sizeof( polyVert_t ) * count ];
+	polyVert_t *verts = new polyVert_t[ count ];
 
 	for ( int i = 0; i < count; i++ )
 	{
@@ -180,7 +180,7 @@ public:
 	{
 		this->verts = createVertexArray( verticies, numVerticies );
 
-		this->indices = new int[ sizeof( int ) * _numIndicies ];
+		this->indices = new int[ _numIndicies ];
 		Com_Memcpy( indices, _indices, _numIndicies * sizeof( int ) );
 
 		this->shader = shader;
@@ -381,20 +381,24 @@ void Rocket_Init()
 	Rocket::Core::Factory::RegisterElementInstancer( "include", new Rocket::Core::ElementInstancerGeneric< RocketIncludeElement > () )->RemoveReference();
 	Rocket::Core::Factory::RegisterElementInstancer( "inlinecvar", new Rocket::Core::ElementInstancerGeneric< RocketCvarInlineElement > () )->RemoveReference();
 
-	whiteShader = trap_R_RegisterShader( "white", RSF_DEFAULT );
+	whiteShader = trap_R_RegisterShader( "gfx/colors/white", RSF_DEFAULT );
 }
 
 void Rocket_Shutdown()
 {
+	// Only try to destroy the librocket stuff if the cgame is a DLL.
+	// The destructors crash a lot and we don't want that to be a problem for people just playing the game.
+	// If the cgame is a process, freeing the memory is just pedantic since it is about to terminate.
+	// But if it is a DLL, shutdown is necessary because the memory is otherwise leaked and also
+	// libRocket has assertions in the global destructors that fire if things are not shut down
+	// (global destructors only run if the cgame is a DLL).
+#ifdef BUILD_VM_IN_PROCESS
 	extern std::vector<RocketDataFormatter*> dataFormatterList;
 	extern std::map<std::string, RocketDataGrid*> dataSourceMap;
 	extern std::queue< RocketEvent_t* > eventQueue;
 
-	// If the game crashes, Lua won't have been initialized it and will crash
-	// if we try to shut it down.
 	if ( Rocket::Core::Lua::Interpreter::GetLuaState() )
 	{
-		// Shut down Lua before we clean up contexts
 		Rocket::Core::Lua::Interpreter::Shutdown();
 	}
 
@@ -410,16 +414,14 @@ void Rocket_Shutdown()
 		hudContext = nullptr;
 	}
 
-	Rocket::Core::Shutdown();
-
-	// Prevent memory leaks
-
 	for ( size_t i = 0; i < dataFormatterList.size(); ++i )
 	{
+		// This also does crazy things in the destructor
 		delete dataFormatterList[i];
 	}
-
 	dataFormatterList.clear();
+
+	Rocket::Core::Shutdown();
 
 	for ( std::map<std::string, RocketDataGrid*>::iterator it = dataSourceMap.begin(); it != dataSourceMap.end(); ++it )
 	{
@@ -433,6 +435,7 @@ void Rocket_Shutdown()
 		delete eventQueue.front();
 		eventQueue.pop();
 	}
+#endif // BUILD_VM_IN_PROCESS
 
 	trap_RemoveCommand( "rocket" );
 	trap_RemoveCommand( "rocketDebug" );

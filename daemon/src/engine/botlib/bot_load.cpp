@@ -169,7 +169,7 @@ bool BotLoadNavMesh( const char *filename, NavData_t &nav )
 
 	if ( !f )
 	{
-		Log::Warn("Cannot open Navigaton Mesh file" );
+		Log::Warn("Cannot open Navigation Mesh file" );
 		return false;
 	}
 
@@ -309,7 +309,7 @@ bool BotLoadNavMesh( const char *filename, NavData_t &nav )
 	return true;
 }
 
-inline void *dtAllocCustom( int size, dtAllocHint )
+inline void *dtAllocCustom( size_t size, dtAllocHint )
 {
 	return Z_TagMalloc( size, memtag_t::TAG_BOTLIB );
 }
@@ -328,19 +328,19 @@ void BotShutdownNav()
 		if ( nav->cache )
 		{
 			dtFreeTileCache( nav->cache );
-			nav->cache = 0;
+			nav->cache = nullptr;
 		}
 
 		if ( nav->mesh )
 		{
 			dtFreeNavMesh( nav->mesh );
-			nav->mesh = 0;
+			nav->mesh = nullptr;
 		}
 
 		if ( nav->query )
 		{
 			dtFreeNavMeshQuery( nav->query );
-			nav->query = 0;
+			nav->query = nullptr;
 		}
 
 		nav->process.con.reset();

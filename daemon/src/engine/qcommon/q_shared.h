@@ -21,6 +21,8 @@
 #ifndef Q_SHARED_H_
 #define Q_SHARED_H_
 
+#include "common/Defs.h"
+
 // math.h/cmath uses _USE_MATH_DEFINES to decide if to define M_PI etc or not.
 // So define _USE_MATH_DEFINES early before including math.h/cmath
 // and before including any other header in case they bring in math.h/cmath indirectly.
@@ -35,21 +37,8 @@
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
 
-#ifdef UNREALARENA
-#define PRODUCT_NAME            "Unreal Arena"
-#define PRODUCT_NAME_UPPER      "UNREALARENA" // Case, No spaces
-#define PRODUCT_NAME_LOWER      "unrealarena" // No case, No spaces
-#define PRODUCT_VERSION         "0.1-4"
-
 #define ENGINE_NAME             "Daemon Engine"
-#define ENGINE_VERSION          "0.50.0"
-#else
-#define PRODUCT_NAME            "Unvanquished"
-#define PRODUCT_NAME_UPPER      "UNVANQUISHED" // Case, No spaces
-#define PRODUCT_NAME_LOWER      "unvanquished" // No case, No spaces
-#define PRODUCT_VERSION         "0.50"
-
-#define ENGINE_NAME             "Daemon Engine"
+#ifndef UNREALARENA
 #define ENGINE_VERSION          PRODUCT_VERSION
 #endif
 
@@ -63,22 +52,14 @@
 # define Q3_VERSION             PRODUCT_NAME " " PRODUCT_VERSION
 #endif
 
+#ifndef UNREALARENA
 #define Q3_ENGINE               ENGINE_NAME " " ENGINE_VERSION
 #define Q3_ENGINE_DATE          __DATE__
+#endif
 
 #define CLIENT_WINDOW_TITLE     PRODUCT_NAME
 #define CLIENT_WINDOW_MIN_TITLE PRODUCT_NAME_LOWER
-#define GAMENAME_FOR_MASTER     PRODUCT_NAME_UPPER
 
-
-#define AUTOEXEC_NAME           "autoexec.cfg"
-
-#define CONFIG_NAME             "autogen.cfg"
-#define KEYBINDINGS_NAME        "keybindings.cfg"
-#define TEAMCONFIG_NAME         "teamconfig.cfg"
-#define SERVERCONFIG_NAME       "autogen_server.cfg"
-
-#define UNNAMED_PLAYER "UnnamedPlayer"
 
 #define Q_UNUSED(x) (void)(x)
 
@@ -108,7 +89,6 @@ void ignore_result(T) {}
 #include <wchar.h>
 
 // C++ standard library headers
-#ifdef __cplusplus
 #include <utility>
 #include <functional>
 #include <chrono>
@@ -143,7 +123,6 @@ void ignore_result(T) {}
 #include <valarray>
 #include <sstream>
 #include <iostream>
-#endif // __cplusplus
 
 // vsnprintf is ISO/IEC 9899:1999
 // abstracting this to make it portable
@@ -233,9 +212,9 @@ using clipHandle_t = int;
 
 #define MAX_BINARY_MESSAGE 32768 // max length of binary message
 
-	enum class messageStatus_t
+	enum class messageStatus_t : uint8_t
 	{
-	  MESSAGE_EMPTY = 0,
+	  MESSAGE_EMPTY,
 	  MESSAGE_WAITING, // rate/packet limited
 	  MESSAGE_WAITING_OVERFLOW, // packet too large with message
 	};
@@ -467,6 +446,7 @@ void         ByteToDir( int b, vec3_t dir );
 #define VectorAdd( a,b,c )           ( ( c )[ 0 ] = ( a )[ 0 ] + ( b )[ 0 ],( c )[ 1 ] = ( a )[ 1 ] + ( b )[ 1 ],( c )[ 2 ] = ( a )[ 2 ] + ( b )[ 2 ] )
 #define VectorCopy( a,b )            ( ( b )[ 0 ] = ( a )[ 0 ],( b )[ 1 ] = ( a )[ 1 ],( b )[ 2 ] = ( a )[ 2 ] )
 #define VectorScale( v, s, o )       ( ( o )[ 0 ] = ( v )[ 0 ] * ( s ),( o )[ 1 ] = ( v )[ 1 ] * ( s ),( o )[ 2 ] = ( v )[ 2 ] * ( s ) )
+/** Stands for MultiplyAdd: adding a vector "b" scaled by "s" to "v" and writing it to "o" */
 #define VectorMA( v, s, b, o )       ( ( o )[ 0 ] = ( v )[ 0 ] + ( b )[ 0 ] * ( s ),( o )[ 1 ] = ( v )[ 1 ] + ( b )[ 1 ] * ( s ),( o )[ 2 ] = ( v )[ 2 ] + ( b )[ 2 ] * ( s ) )
 #define VectorLerpTrem( f, s, e, r ) (( r )[ 0 ] = ( s )[ 0 ] + ( f ) * (( e )[ 0 ] - ( s )[ 0 ] ), \
                                       ( r )[ 1 ] = ( s )[ 1 ] + ( f ) * (( e )[ 1 ] - ( s )[ 1 ] ), \
@@ -482,6 +462,7 @@ void         ByteToDir( int b, vec3_t dir );
 
 #define Vector4Set( v, x, y, z, n )  ( ( v )[ 0 ] = ( x ),( v )[ 1 ] = ( y ),( v )[ 2 ] = ( z ),( v )[ 3 ] = ( n ) )
 #define Vector4Copy( a,b )           ( ( b )[ 0 ] = ( a )[ 0 ],( b )[ 1 ] = ( a )[ 1 ],( b )[ 2 ] = ( a )[ 2 ],( b )[ 3 ] = ( a )[ 3 ] )
+/** Stands for MultiplyAdd: adding a vector "b" scaled by "s" to "v" and writing it to "o" */
 #define Vector4MA( v, s, b, o )      ( ( o )[ 0 ] = ( v )[ 0 ] + ( b )[ 0 ] * ( s ),( o )[ 1 ] = ( v )[ 1 ] + ( b )[ 1 ] * ( s ),( o )[ 2 ] = ( v )[ 2 ] + ( b )[ 2 ] * ( s ),( o )[ 3 ] = ( v )[ 3 ] + ( b )[ 3 ] * ( s ) )
 #define Vector4Average( v, b, s, o ) ( ( o )[ 0 ] = ( ( v )[ 0 ] * ( 1 - ( s ) ) ) + ( ( b )[ 0 ] * ( s ) ),( o )[ 1 ] = ( ( v )[ 1 ] * ( 1 - ( s ) ) ) + ( ( b )[ 1 ] * ( s ) ),( o )[ 2 ] = ( ( v )[ 2 ] * ( 1 - ( s ) ) ) + ( ( b )[ 2 ] * ( s ) ),( o )[ 3 ] = ( ( v )[ 3 ] * ( 1 - ( s ) ) ) + ( ( b )[ 3 ] * ( s ) ) )
 
@@ -546,6 +527,20 @@ void         ByteToDir( int b, vec3_t dir );
 		}
 
 		return 1;
+	}
+
+	inline void VectorMin(const vec3_t a, const vec3_t b, vec3_t out)
+	{
+		out[0] = a[0] < b[0] ? a[0] : b[0];
+		out[1] = a[1] < b[1] ? a[1] : b[1];
+		out[2] = a[2] < b[2] ? a[2] : b[2];
+	}
+
+	inline void VectorMax(const vec3_t a, const vec3_t b, vec3_t out)
+	{
+		out[0] = a[0] > b[0] ? a[0] : b[0];
+		out[1] = a[1] > b[1] ? a[1] : b[1];
+		out[2] = a[2] > b[2] ? a[2] : b[2];
 	}
 
 	vec_t VectorLength( const vec3_t v );
@@ -682,7 +677,8 @@ void         ByteToDir( int b, vec3_t dir );
 	void     MatrixTransformPoint2( const matrix_t m, vec3_t inout );
 	void     MatrixTransform4( const matrix_t m, const vec4_t in, vec4_t out );
 	void     MatrixTransformPlane( const matrix_t m, const vec4_t in, vec4_t out );
-	void     MatrixTransformPlane2( const matrix_t m, vec3_t inout );
+	void     MatrixTransformPlane2( const matrix_t m, vec4_t inout );
+	void     MatrixTransformBounds( const matrix_t m, const vec3_t mins, const vec3_t maxs, vec3_t omins, vec3_t omaxs );
 	void     MatrixPerspectiveProjection( matrix_t m, vec_t left, vec_t right, vec_t bottom, vec_t top, vec_t near, vec_t far );
 	void     MatrixPerspectiveProjectionLH( matrix_t m, vec_t left, vec_t right, vec_t bottom, vec_t top, vec_t near, vec_t far );
 	void     MatrixPerspectiveProjectionRH( matrix_t m, vec_t left, vec_t right, vec_t bottom, vec_t top, vec_t near, vec_t far );
@@ -801,21 +797,14 @@ void         ByteToDir( int b, vec3_t dir );
 	void QuatToAngles( const quat_t q, vec3_t angles );
 
 // Quaternion multiplication, analogous to the matrix multiplication routines.
+//
+// https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
+// Two rotation quaternions can be combined into one equivalent quaternion by the relation:
+// q' = q2q1
+// in which q' corresponds to the rotation q1 followed by the rotation q2.
 
-// qa = rotate by qa, then qb
-	void QuatMultiply0( quat_t qa, const quat_t qb );
-
-// qc = rotate by qa, then qb
-	void QuatMultiply1( const quat_t qa, const quat_t qb, quat_t qc );
-
-// qc = rotate by qa, then by inverse of qb
-	void QuatMultiply2( const quat_t qa, const quat_t qb, quat_t qc );
-
-// qc = rotate by inverse of qa, then by qb
-	void QuatMultiply3( const quat_t qa, const quat_t qb, quat_t qc );
-
-// qc = rotate by inverse of qa, then by inverse of qb
-	void QuatMultiply4( const quat_t qa, const quat_t qb, quat_t qc );
+	void QuatMultiply( const quat_t qa, const quat_t qb, quat_t qc );
+	void QuatMultiply2( quat_t qa, const quat_t qb);
 
 	void QuatSlerp( const quat_t from, const quat_t to, float frac, quat_t out );
 	void QuatTransformVector( const quat_t q, const vec3_t in, vec3_t out );
@@ -1722,8 +1711,6 @@ enum class tokenType_t {
 // if none of the catchers are active, bound key strings will be executed
 #define KEYCATCH_CONSOLE 0x0001
 #define KEYCATCH_UI      0x0002
-#define KEYCATCH_MESSAGE 0x0004
-#define KEYCATCH_CGAME   0x0008
 
 #define KEYEVSTATE_DOWN 1
 #define KEYEVSTATE_CHAR 2

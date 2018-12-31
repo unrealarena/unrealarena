@@ -1,36 +1,34 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
- * Copyright (C) 2013  Unvanquished Developers
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+===========================================================================
 
+Daemon GPL Source Code
+Copyright (C) 2013 Unvanquished Developers
+
+This file is part of the Daemon GPL Source Code (Daemon Source Code).
+
+Daemon Source Code is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Daemon Source Code is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Daemon Source Code.  If not, see <http://www.gnu.org/licenses/>.
+
+===========================================================================
+*/
 
 #include <common/FileSystem.h>
 #include "q_shared.h"
 #include "qcommon.h"
+#include "common/Defs.h"
 
 // Compatibility wrapper for the filesystem
 const char TEMP_SUFFIX[] = ".tmp";
-
-// Default base package
-#ifdef UNREALARENA
-const char DEFAULT_BASE_PAK[] = "unrealarena";
-#else
-const char DEFAULT_BASE_PAK[] = "unvanquished";
-#endif
 
 // Cvars to select the base and extra packages to use
 static Cvar::Cvar<std::string> fs_basepak("fs_basepak", "base pak to load", 0, DEFAULT_BASE_PAK);
@@ -629,11 +627,14 @@ bool FS_LoadServerPaks(const char* paks, bool isDemo)
 	for (auto& x: args) {
 		std::string name, version;
 		Util::optional<uint32_t> checksum;
+
 		if (!FS::ParsePakName(x.data(), x.data() + x.size(), name, version, checksum)) {
 			Com_Error(errorParm_t::ERR_DROP, "Invalid pak reference from server: %s", x.c_str());
-		} else if (!checksum) {
-			if (isDemo || allowRemotePakDir.Get())
+		} else if (!version.empty() && !checksum) {
+			// non-legacy paks (with non empty version) must have a checksum
+			if (isDemo || allowRemotePakDir.Get()) {
 				continue;
+			}
 			Com_Error(errorParm_t::ERR_DROP, "The server is configured to load game data from a directory which makes it incompatible with remote clients.");
 		}
 
@@ -671,19 +672,19 @@ bool FS_ComparePaks(char* neededpaks, int len, bool dlstring)
 			Q_strcat(neededpaks, len, "@");
 			Q_strcat(neededpaks, len, FS::MakePakName(std::get<0>(x), std::get<1>(x), std::get<2>(x)).c_str());
 			Q_strcat(neededpaks, len, "@");
-			std::string pakName = Str::Format("pkg/%s.pk3", FS::MakePakName(std::get<0>(x), std::get<1>(x)));
+			std::string pakName = Str::Format("pkg/%s", FS::MakePakName(std::get<0>(x), std::get<1>(x)));
 			if (FS::HomePath::FileExists(pakName))
-				Q_strcat(neededpaks, len, va("pkg/%s.pk3", FS::MakePakName(std::get<0>(x), std::get<1>(x), std::get<2>(x)).c_str()));
+				Q_strcat(neededpaks, len, va("pkg/%s", FS::MakePakName(std::get<0>(x), std::get<1>(x), std::get<2>(x)).c_str()));
 			else
 				Q_strcat(neededpaks, len, pakName.c_str());
 		} else {
-			Q_strcat(neededpaks, len, va("%s.pk3", FS::MakePakName(std::get<0>(x), std::get<1>(x)).c_str()));
+			Q_strcat(neededpaks, len, va("%s", FS::MakePakName(std::get<0>(x), std::get<1>(x)).c_str()));
 			if (FS::FindPak(std::get<0>(x), std::get<1>(x))) {
 				Q_strcat(neededpaks, len, " (local file exists with wrong checksum)");
 #ifndef BUILD_SERVER
 				if (CL_WWWBadChecksum(FS::MakePakName(std::get<0>(x), std::get<1>(x), std::get<2>(x)).c_str())) {
 					try {
-						FS::HomePath::DeleteFile(Str::Format("pkg/%s.pk3", FS::MakePakName(std::get<0>(x), std::get<1>(x))));
+						FS::HomePath::DeleteFile(Str::Format("pkg/%s", FS::MakePakName(std::get<0>(x), std::get<1>(x))));
 					} catch (std::system_error&) {}
 				}
 #endif
@@ -698,7 +699,7 @@ public:
 	WhichCmd()
 		: Cmd::StaticCmd("which", Cmd::SYSTEM, "shows which pak a file is in") {}
 
-	void Run(const Cmd::Args& args) const OVERRIDE
+	void Run(const Cmd::Args& args) const override
 	{
 		if (args.Argc() != 2) {
 			PrintUsage(args, "<file>", "");
@@ -713,7 +714,7 @@ public:
 			Print("File not found: \"%s\"", filename);
 	}
 
-	Cmd::CompletionResult Complete(int argNum, const Cmd::Args&, Str::StringRef prefix) const OVERRIDE
+	Cmd::CompletionResult Complete(int argNum, const Cmd::Args&, Str::StringRef prefix) const override
 	{
 		if (argNum == 1) {
 			return FS::PakPath::CompleteFilename(prefix, "", "", true, false);
@@ -729,7 +730,7 @@ public:
 	ListPathsCmd()
 		: Cmd::StaticCmd("listPaths", Cmd::SYSTEM, "list filesystem search paths") {}
 
-	void Run(const Cmd::Args&) const OVERRIDE
+	void Run(const Cmd::Args&) const override
 	{
 		Print("Home path: %s", FS::GetHomePath());
 		for (auto& x: FS::PakPath::GetLoadedPaks())
@@ -742,7 +743,7 @@ class DirCmd: public Cmd::StaticCmd {
 public:
 	DirCmd(): Cmd::StaticCmd("dir", Cmd::SYSTEM, "list all files in a given directory with the option to pass a filter") {}
 
-	void Run(const Cmd::Args& args) const OVERRIDE
+	void Run(const Cmd::Args& args) const override
 	{
 		bool filter = false;
 		if (args.Argc() != 2 && args.Argc() != 3) {
@@ -759,11 +760,11 @@ public:
 		try {
 			for (auto& filename : FS::PakPath::ListFiles(args.Argv(1))) {
 				if (filename.size() && (!filter || Com_Filter(args.Argv(2).c_str(), filename.c_str(), false))) {
-					Print("%s", filename.c_str());
+					Print(filename.c_str());
 				}
 			}
 		} catch (std::system_error&) {
-			Print("^1ERROR^7: Path does not exist");
+			Print("^1ERROR^*: Path does not exist");
 		}
 
 		Print("\n");
@@ -772,11 +773,11 @@ public:
 		try {
 			for (auto& filename : FS::RawPath::ListFiles(FS::Path::Build(FS::GetHomePath(),args.Argv(1)))) {
 				if (filename.size() && (!filter || Com_Filter(args.Argv(2).c_str(), filename.c_str(), false))) {
-					Print("%s", filename.c_str());
+					Print(filename.c_str());
 				}
 			}
 		} catch (std::system_error&) {
-			Print("^1ERROR^7: Path does not exist");
+			Print("^1ERROR^*: Path does not exist");
 		}
 
 	}

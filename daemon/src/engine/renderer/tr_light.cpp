@@ -453,22 +453,7 @@ Tr3B - needs finished transformMatrix
 */
 void R_SetupLightWorldBounds( trRefLight_t *light )
 {
-	int    j;
-	vec3_t v, transformed;
-
-	ClearBounds( light->worldBounds[ 0 ], light->worldBounds[ 1 ] );
-
-	for ( j = 0; j < 8; j++ )
-	{
-		v[ 0 ] = light->localBounds[ j & 1 ][ 0 ];
-		v[ 1 ] = light->localBounds[( j >> 1 ) & 1 ][ 1 ];
-		v[ 2 ] = light->localBounds[( j >> 2 ) & 1 ][ 2 ];
-
-		// transform local bounds vertices into world space
-		MatrixTransformPoint( light->transformMatrix, v, transformed );
-
-		AddPointToBounds( transformed, light->worldBounds[ 0 ], light->worldBounds[ 1 ] );
-	}
+	MatrixTransformBounds(light->transformMatrix, light->localBounds[0], light->localBounds[1], light->worldBounds[0], light->worldBounds[1]);
 }
 
 /*
@@ -933,6 +918,7 @@ bool R_AddLightInteraction( trRefLight_t *light, surfaceType_t *surface, shader_
 	ia->light = light;
 	ia->entity = tr.currentEntity;
 	ia->surface = surface;
+	ia->shader = surfaceShader;
 	ia->shaderNum = surfaceShader->sortedIndex;
 
 	ia->cubeSideBits = cubeSideBits;

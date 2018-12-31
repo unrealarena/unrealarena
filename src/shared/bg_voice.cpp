@@ -1,6 +1,6 @@
 /*
- * Daemon GPL source code
- * Copyright (C) 2015  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2008  Tony J. White
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
@@ -397,23 +397,20 @@ static voiceTrack_t *BG_VoiceParseCommand( int handle )
 			voiceTracks = voiceTracks->next;
 		}
 
-		if ( !trap_FS_FOpenFile( token.string, nullptr, fsMode_t::FS_READ ) )
+#ifdef BUILD_CGAME
+		voiceTracks->track = trap_S_RegisterSound( token.string, false );
+		if ( voiceTracks->track < 0 )
 		{
 			int  line;
 			char filename[ MAX_QPATH ];
 
 			trap_Parse_SourceFileAndLine( handle, filename, &line );
 			Log::Warn( "BG_VoiceParseCommand(): "
-			            "track \"%s\" referenced on line %d of %s does not exist",
-			            token.string, line, filename );
+					"track \"%s\" referenced on line %d of %s does not exist",
+					token.string, line, filename );
 		}
-		else
-		{
-#ifdef BUILD_CGAME
-			voiceTracks->track = trap_S_RegisterSound( token.string, false );
-			voiceTracks->duration = 0; // FIXME: Was always zero...
+		voiceTracks->duration = 0; // FIXME: Was always zero...
 #endif
-		}
 
 		voiceTracks->team = -1;
 #ifndef UNREALARENA

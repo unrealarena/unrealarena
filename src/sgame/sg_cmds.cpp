@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -22,6 +22,7 @@
 #include "sg_local.h"
 #include "engine/qcommon/q_unicode.h"
 #include <common/FileSystem.h>
+#include "Entities.h"
 #include "CBSE.h"
 
 #define CMD_CHEAT        0x0001
@@ -89,10 +90,6 @@ In the case of false, err will be populated with an error message.
 */
 int G_MatchOnePlayer( const int *plist, int found, char *err, int len )
 {
-	gclient_t *cl;
-	int       p, count;
-	char      line[ MAX_NAME_LENGTH + 10 ] = { "" };
-
 	err[ 0 ] = '\0';
 
 	if ( found <= 0 )
@@ -105,22 +102,25 @@ int G_MatchOnePlayer( const int *plist, int found, char *err, int len )
 	{
 		Q_strcat( err, len, N_("more than one player name matches. "
 		          "be more specific or use the slot #: ") );
-		count = strlen( err );
-		for ( p = 0; p < found; p++ )
+
+		const int count = strlen( err );
+		char      line[ MAX_NAME_LENGTH + 10 ] = { "" };
+
+		for ( int p = 0; p < found; p++ )
 		{
-			cl = &level.clients[ plist[p] ];
+			const gclient_t *cl = &level.clients[ plist[p] ];
 
 			if ( cl->pers.connected == CON_CONNECTED )
 			{
 #ifdef UNREALARENA
-				Com_sprintf( line, sizeof( line ), "%2i - %s^7",
+				Com_sprintf( line, sizeof( line ), "%2i - %s^*",
 				             plist[p], cl->pers.netname );
 #else
-				Com_sprintf( line, sizeof( line ), "%2i — %s^7",
+				Com_sprintf( line, sizeof( line ), "%2i — %s^*",
 				             plist[p], cl->pers.netname );
 #endif
 
-				if ( strlen( err ) + strlen( line ) > (unsigned) len )
+				if ( strlen( err ) + strlen( line ) > (size_t) len )
 				{
 					break;
 				}
@@ -235,9 +235,9 @@ int G_ClientNumberFromString( const char *s, char *err, int len )
 			if ( p )
 			{
 #ifdef UNREALARENA
-				l = Q_snprintf( p, l2, "%-2d - %s^7", i, cl->pers.netname );
+				l = Q_snprintf( p, l2, "%-2d - %s^*", i, cl->pers.netname );
 #else
-				l = Q_snprintf( p, l2, "%-2d — %s^7", i, cl->pers.netname );
+				l = Q_snprintf( p, l2, "%-2d — %s^*", i, cl->pers.netname );
 #endif
 				p += l;
 				l2 -= l;
@@ -545,14 +545,15 @@ void Cmd_Give_f( gentity_t *ent )
 {
 	char     *name;
 	bool give_all = false;
+#ifndef UNREALARENA
 	float    amount;
+#endif
 
 	if ( trap_Argc() < 2 )
 	{
 		ADMP( QQ( N_( "usage: give [what]" ) ) );
 #ifdef UNREALARENA
-		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], "
-		              "stamina, ammo" ) ) );
+		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], ammo" ) ) );
 #else
 		ADMP( QQ( N_( "usage: valid choices are: all, health [amount], funds [amount], "
 		              "bp [amount], momentum [amount], stamina, poison, fuel, ammo" ) ) );
@@ -585,21 +586,6 @@ void Cmd_Give_f( gentity_t *ent )
 		G_AddCreditToClient( ent->client, ( short ) amount, true );
 	}
 
-	// give bp
-	if ( Q_strnicmp( name, "bp", strlen("bp") ) == 0 )
-	{
-		if ( give_all || trap_Argc() < 3 )
-		{
-			amount = 100.0f;
-		}
-		else
-		{
-			amount = atof( name + strlen("bp") );
-		}
-
-		G_ModifyBuildPoints( (team_t)ent->client->pers.team, amount );
-	}
-
 	// give momentum
 	if ( Q_strnicmp( name, "momentum", strlen("momentum") ) == 0 )
 	{
@@ -614,9 +600,15 @@ void Cmd_Give_f( gentity_t *ent )
 
 		G_AddMomentumGeneric( (team_t) ent->client->pers.team, amount );
 	}
+
+	if ( Q_strnicmp( name, "bp", strlen("bp") ) == 0 )
+	{
+		float bp = trap_Argc() < 3 ? 300.0f : atof( name + strlen("bp") );
+		level.team[ent->client->pers.team].totalBudget += bp;
+	}
 #endif
 
-	if ( G_Dead( ent ) || ent->client->sess.spectatorState != SPECTATOR_NOT )
+	if ( Entities::IsDead( ent ) || ent->client->sess.spectatorState != SPECTATOR_NOT )
 	{
 		return;
 	}
@@ -773,11 +765,11 @@ void Cmd_Kill_f( gentity_t *ent )
 {
 #ifdef UNREALARENA
 	// Kill instantly
-	G_Kill(ent, MOD_SUICIDE);
+	Entities::Kill(ent, MOD_SUICIDE);
 #else
 	if ( g_cheats.integer )
 	{
-		G_Kill(ent, MOD_SUICIDE);
+		Entities::Kill(ent, MOD_SUICIDE);
 	}
 	else
 	{
@@ -840,7 +832,7 @@ void Cmd_Team_f( gentity_t *ent )
 	     g_combatCooldown.integer &&
 	     ent->client->lastCombatTime &&
 	     ent->client->sess.spectatorState == SPECTATOR_NOT &&
-	     G_Alive( ent ) &&
+	     Entities::IsAlive( ent ) &&
 	     ent->client->lastCombatTime + g_combatCooldown.integer * 1000 > level.time )
 	{
 		float remaining = ( ( ent->client->lastCombatTime + g_combatCooldown.integer * 1000 ) - level.time ) / 1000;
@@ -1124,13 +1116,13 @@ void G_Say( gentity_t *ent, saymode_t mode, const char *chatText )
 	switch ( mode )
 	{
 		case SAY_ALL:
-			G_LogPrintf( "Say: %d \"%s^7\": ^2%s",
+			G_LogPrintf( "Say: %d \"%s^*\": ^2%s",
 			             ( ent ) ? ( int )( ent - g_entities ) : -1,
 			             ( ent ) ? ent->client->pers.netname : "console", chatText );
 			break;
 
 		case SAY_ALL_ADMIN:
-			G_LogPrintf( "Say: %d \"%s^7\": ^6%s",
+			G_LogPrintf( "Say: %d \"%s^*\": ^6%s",
 			             ( ent ) ? ( int )( ent - g_entities ) : -1,
 			             ( ent ) ? ent->client->pers.netname : "console", chatText );
 			break;
@@ -1143,7 +1135,7 @@ void G_Say( gentity_t *ent, saymode_t mode, const char *chatText )
 				Com_Error( errorParm_t::ERR_FATAL, "SAY_TEAM by non-client entity" );
 			}
 
-			G_LogPrintf( "SayTeam: %d \"%s^7\": ^5%s",
+			G_LogPrintf( "SayTeam: %d \"%s^*\": ^5%s",
 			             ( int )( ent - g_entities ), ent->client->pers.netname, chatText );
 			break;
 
@@ -1193,7 +1185,7 @@ static void Cmd_SayArea_f( gentity_t *ent )
 		range[ i ] = g_sayAreaRange.value;
 	}
 
-	G_LogPrintf( "SayArea: %d \"%s^7\": ^4%s",
+	G_LogPrintf( "SayArea: %d \"%s^*\": ^4%s",
 	             ( int )( ent - g_entities ), ent->client->pers.netname, msg );
 
 	VectorAdd( ent->s.origin, range, maxs );
@@ -1238,7 +1230,7 @@ static void Cmd_SayAreaTeam_f( gentity_t *ent )
 		range[ i ] = g_sayAreaRange.value;
 	}
 
-	G_LogPrintf( "SayAreaTeam: %d \"%s^7\": ^4%s",
+	G_LogPrintf( "SayAreaTeam: %d \"%s^*\": ^4%s",
 	             ( int )( ent - g_entities ), ent->client->pers.netname, msg );
 
 	VectorAdd( ent->s.origin, range, maxs );
@@ -1293,7 +1285,7 @@ static void Cmd_Say_f( gentity_t *ent )
 	{
 		if ( !G_admin_permission( ent, ADMF_ADMINCHAT ) )
 		{
-			ADMP( va( "%s %s", QQ( N_("^3$1$: ^7permission denied") ), "asay" ) );
+			ADMP( va( "%s %s", QQ( N_("^3$1$: ^*permission denied") ), "asay" ) );
 			return;
 		}
 
@@ -1565,7 +1557,6 @@ static const struct {
 	{ "nextmap",      false, V_PUBLIC, T_OTHER,   false,  false,    qtrinary::qmaybe, &g_nextMapVotesPercent, VOTE_ALWAYS, nullptr, nullptr },
 	{ "poll",         false, V_ANY,    T_NONE,    false,  false,    qtrinary::qyes,   &g_pollVotesPercent,        VOTE_NO_AUTO, nullptr, nullptr },
 	{ "kickbots",     true,  V_PUBLIC, T_NONE,    false,  false,    qtrinary::qno,    &g_kickVotesPercent,        VOTE_ENABLE, &g_botKickVotesAllowedThisMap, nullptr },
-	{ "spectatebots", false, V_PUBLIC, T_NONE,    false,  false,    qtrinary::qno,    &g_kickVotesPercent,        VOTE_ENABLE, &g_botKickVotesAllowedThisMap, nullptr },
 	{ }
 	// note: map votes use the reason, if given, as the layout name
 };
@@ -1871,7 +1862,7 @@ vote_is_disabled:
 	{
 	case VOTE_KICK:
 		Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ),
-		             "ban %s 1s%s %s ^7called vote kick (%s^7)", level.clients[ clientNum ].pers.ip.str,
+		             "ban %s 1s%s %s^* called vote kick (%s^*)", level.clients[ clientNum ].pers.ip.str,
 		             Quote( g_adminTempBan.string ), Quote( ent->client->pers.netname ), Quote( reason ) );
 		Com_sprintf( level.team[ team ].voteDisplayString,
 		             sizeof( level.team[ team ].voteDisplayString ), N_("Kick player '%s'"), name );
@@ -1886,7 +1877,6 @@ vote_is_disabled:
 		break;
 
 	case VOTE_BOT_KICK:
-	case VOTE_BOT_SPECTATE:
 		for ( i = 0; i < MAX_CLIENTS; ++i )
 		{
 			if ( g_entities[i].r.svFlags & SVF_BOT &&
@@ -1903,16 +1893,9 @@ vote_is_disabled:
 			return;
 		}
 
-		if ( voteId == VOTE_BOT_KICK )
-		{
-			Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ), "bot del all" );
-			Com_sprintf( level.team[ team ].voteDisplayString, sizeof( level.team[ team ].voteDisplayString ), N_("Remove all bots") );
-		}
-		else
-		{
-			Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ), "bot spec all" );
-			Com_sprintf( level.team[ team ].voteDisplayString, sizeof( level.team[ team ].voteDisplayString ), N_("Move all bots to spectators") );
-		}
+		Com_sprintf( level.team[ team ].voteString, sizeof( level.team[ team ].voteString ), "bot del all" );
+		Com_sprintf( level.team[ team ].voteDisplayString, sizeof( level.team[ team ].voteDisplayString ), N_("Remove all bots") );
+
 		break;
 
 	case VOTE_MUTE:
@@ -2110,13 +2093,13 @@ vote_is_disabled:
 		          sizeof( level.team[ team ].voteDisplayString ), va( " for '%s'", reason ) );
 	}
 
-	G_LogPrintf( "%s: %d \"%s^7\": %s",
+	G_LogPrintf( "%s: %d \"%s^*\": %s",
 	             team == TEAM_NONE ? "CallVote" : "CallTeamVote",
 	             ( int )( ent - g_entities ), ent->client->pers.netname, level.team[ team ].voteString );
 
 	if ( team == TEAM_NONE )
 	{
-		trap_SendServerCommand( -1, va( "print_tr %s %s %s", QQ( N_("$1$^7 called a vote: $2$") ),
+		trap_SendServerCommand( -1, va( "print_tr %s %s %s", QQ( N_("$1$^* called a vote: $2$") ),
 		                                Quote( ent->client->pers.netname ), Quote( level.team[ team ].voteDisplayString ) ) );
 	}
 	else
@@ -2131,7 +2114,7 @@ vote_is_disabled:
 				     ( level.clients[ i ].pers.team == TEAM_NONE &&
 				       G_admin_permission( &g_entities[ i ], ADMF_SPEC_ALLCHAT ) ) )
 				{
-					trap_SendServerCommand( i, va( "print_tr %s %s %s", QQ( N_("$1$^7 called a team vote: $2t$") ),
+					trap_SendServerCommand( i, va( "print_tr %s %s %s", QQ( N_("$1$^* called a team vote: $2t$") ),
 					                               Quote( ent->client->pers.netname ), Quote( level.team[ team ].voteDisplayString ) ) );
 				}
 				else if ( G_admin_permission( &g_entities[ i ], ADMF_ADMINCHAT ) )
@@ -2459,7 +2442,7 @@ static bool Cmd_Class_internal( gentity_t *ent, const char *s, bool report )
 		return false;
 	}
 
-	if ( G_Dead( ent ) )
+	if ( Entities::IsDead( ent ) )
 	{
 		return true; // dead, can't evolve; no point in trying other classes (if any listed)
 	}
@@ -2662,7 +2645,7 @@ void Cmd_Deconstruct_f( gentity_t *ent )
 	}
 
 	// always let the builder prevent the explosion of a buildable
-	if ( G_Dead( buildable ) )
+	if ( Entities::IsDead( buildable ) )
 	{
 		G_RewardAttackers( buildable );
 		G_FreeEntity( buildable );
@@ -3922,13 +3905,13 @@ static void Cmd_Ignore_f( gentity_t *ent )
 				Com_ClientListAdd( &ent->client->sess.ignoreList, pids[ i ] );
 				ClientUserinfoChanged( ent->client->ps.clientNum, false );
 				trap_SendServerCommand( ent - g_entities, va( "print_tr \"" S_SKIPNOTIFY
-				                        "%s\" %s", N_("ignore: added $1$^7 to your ignore list"),
+				                        "%s\" %s", N_("ignore: added $1$^* to your ignore list"),
 				                        Quote( level.clients[ pids[ i ] ].pers.netname ) ) );
 			}
 			else
 			{
 				trap_SendServerCommand( ent - g_entities, va( "print_tr \"" S_SKIPNOTIFY
-				                        "%s\" %s", N_("ignore: $1$^7 is already on your ignore list"),
+				                        "%s\" %s", N_("ignore: $1$^* is already on your ignore list"),
 				                        Quote( level.clients[ pids[ i ] ].pers.netname ) ) );
 			}
 		}
@@ -3939,13 +3922,13 @@ static void Cmd_Ignore_f( gentity_t *ent )
 				Com_ClientListRemove( &ent->client->sess.ignoreList, pids[ i ] );
 				ClientUserinfoChanged( ent->client->ps.clientNum, false );
 				trap_SendServerCommand( ent - g_entities, va( "print_tr \"" S_SKIPNOTIFY
-				                        "%s\" %s", N_("unignore: removed $1$^7 from your ignore list"),
+				                        "%s\" %s", N_("unignore: removed $1$^* from your ignore list"),
 				                        Quote( level.clients[ pids[ i ] ].pers.netname ) ) );
 			}
 			else
 			{
 				trap_SendServerCommand( ent - g_entities, va( "print_tr \"" S_SKIPNOTIFY
-				                        "%s\" %s", N_("unignore: $1$^7 is not on your ignore list"),
+				                        "%s\" %s", N_("unignore: $1$^* is not on your ignore list"),
 				                        Quote( level.clients[ pids[ i ] ].pers.netname ) )  );
 			}
 		}
@@ -3960,32 +3943,20 @@ List all maps on the server
 =================
 */
 
-static int SortMaps( const void *a, const void *b )
-{
-	return strcmp( * ( const char ** ) a, * ( const char ** ) b );
-}
-
 #define MAX_MAPLIST_MAPS 256
 #define MAX_MAPLIST_ROWS 9
+#define MAX_MAPLIST_COLS 3
+
 void Cmd_ListMaps_f( gentity_t *ent )
 {
 	char search[ 16 ] = { "" };
-	const char *fileSort[ MAX_MAPLIST_MAPS ] = { 0 };
-	char *p;
-	int  shown = 0;
-	int  count = 0;
 	int  page = 0;
-	int  pages;
-	int  row, rows;
-	int  start, i, j;
-	char mapName[ MAX_QPATH ];
-
-	trap_Cvar_VariableStringBuffer( "mapname", mapName, sizeof( mapName ) );
 
 	if ( trap_Argc() > 1 )
 	{
 		trap_Argv( 1, search, sizeof( search ) );
 
+		char *p;
 		for ( p = search; ( *p ) && Str::cisdigit( *p ); p++ ) {; }
 
 		if ( !( *p ) )
@@ -4010,62 +3981,115 @@ void Cmd_ListMaps_f( gentity_t *ent )
 		}
 	}
 
-	auto paks = FS::GetAvailablePaks();
+	const char *mapNames[ MAX_MAPLIST_MAPS ] = { 0 };
+	int         mapNamesCount = 0;
+	const auto paks = FS::GetAvailablePaks();
 
 	for ( size_t i = 0; i < paks.size(); ++i )
 	{
+		const char *pakName = paks[ i ].name.c_str();
+
 		// Filter out duplicates
-		if ( i && !strcmp( paks[ i ].name.c_str(), paks[ i - 1 ].name.c_str() ) )
+		if ( i && !strcmp( pakName, paks[ i - 1 ].name.c_str() ) )
 		{
 			continue;
 		}
 
-		if ( Q_strncmp( "map-", paks[ i ].name.c_str(), 4 ) || ( search[ 0 ] && !strstr( paks[ i ].name.c_str(), search ) ) )
+		if ( Q_strncmp( "map-", pakName, 4 ) ||
+			 ( search[ 0 ] && !strstr( pakName + 4, search ) ) )
 		{
 			continue;
 		}
 
-		fileSort[ count ] = paks[ i ].name.c_str() + 4;
-		count++;
+		mapNames[ mapNamesCount++ ] = pakName + 4;
 	}
 
-	qsort( fileSort, count, sizeof( fileSort[ 0 ] ), SortMaps );
+	std::sort( mapNames,
+			   mapNames + mapNamesCount,
+			   [] ( const char *mapNameFirst, const char *mapNameSecond )
+			   {
+			   		return strcmp( mapNameFirst, mapNameSecond ) < 0;
+			   }
+	);
 
-	rows = ( count + 2 ) / 3;
-	pages = std::max( 1, ( rows + MAX_MAPLIST_ROWS - 1 ) / MAX_MAPLIST_ROWS );
+	/* About the MAX_MAPLIST_COLS - 1 trick:
+	 *
+	 * This is to fill an extra row when the number of map is not a
+	 * multiple of MAX_MAPLIST_COLS, 1 being the obvious minimal number
+	 * of map to make the filling effective and add an extra row.
+	 *
+	 * Because:
+	 *     1 extra map name + MAX_MAPLIST_COLS - 1 = MAX_MAPLIST_COLS
+	 * The condition:
+	 *     N extra map name + MAX_MAPLIST_COLS - 1 > MAX_MAPLIST_COLS
+	 * is true when a an extra row is needed.
+	 *
+	 * The integer result of the division by MAX_MAPLIST_COLS does
+	 * that > condition implicitely since:
+	 *     N extra maps + MAX_MAPLIST_COLS - 1 / MAX_MAPLIST_COLS
+	 * returns 0 if it divides a multiple of MAX_MAPLIST_COLS
+	 * or truncates to 1 if not, so:
+	 *
+	 * With I a multiple of MAX_MAPLIST_COLS
+	 * And N a number of extra maps not being a multiple of MAX_MAPLIST_COLS
+	 * The way:
+	 *    mapNamesCount = I × MAX_MAPLISt_COLS + N
+	 *
+	 * We can compute:
+	 *    rows = (I + N + MAX_MAPLIST_COLS - 1)                     / MAX_MAPLIST_COLS
+	 *    rows = (I / MAX_MAPLIST_COLS) + (N + MAX_MAPLIST_COLS - 1 / MAX_MAPLIST_COLS)
+	 *    rows =  I                     + 1
+	 *
+	 * This adds an extra row every time a row is not enough to contains
+	 * remaining map names.
+	 *
+	 * The rows + MAX_MAPLIST_ROWS - 1 ) / MAX_MAPLIST_ROWS trick does the same
+	 * to add an extra page everytime a column is not enough to contains the
+	 * remaining map names */
+
+	int rows = ( mapNamesCount + MAX_MAPLIST_COLS - 1 ) / MAX_MAPLIST_COLS;
+	int pages = std::max( 1, ( rows + MAX_MAPLIST_ROWS - 1 ) / MAX_MAPLIST_ROWS );
 
 	if ( page >= pages )
 	{
 		page = pages - 1;
 	}
 
-	start = page * MAX_MAPLIST_ROWS * 3;
+	int start = page * MAX_MAPLIST_ROWS * MAX_MAPLIST_COLS;
 
-	if ( count < start + ( 3 * MAX_MAPLIST_ROWS ) )
+	if ( mapNamesCount < start + ( MAX_MAPLIST_ROWS * MAX_MAPLIST_COLS) )
 	{
-		rows = ( count - start + 2 ) / 3;
+		rows = ( mapNamesCount - start + MAX_MAPLIST_COLS - 1 ) / MAX_MAPLIST_COLS;
 	}
 	else
 	{
 		rows = MAX_MAPLIST_ROWS;
 	}
 
+	char mapName[ MAX_QPATH ];
+
+	trap_Cvar_VariableStringBuffer( "mapname", mapName, sizeof( mapName ) );
+
 	ADMBP_begin();
 
-	for ( row = 0; row < rows; row++ )
+	int shownMapNamesCount = 0;
+
+	for ( int row = 0; row < rows; row++ )
 	{
-		for ( i = start + row, j = 0; i < count && j < 3; i += rows, j++ )
+		for ( int i = start + row, j = 0; i < mapNamesCount && j < MAX_MAPLIST_COLS; i += rows, j++ )
 		{
-			if ( !strcmp( fileSort[ i ], mapName ) )
+			const char *printedMapName = mapNames[ i ];
+
+			if ( !strcmp( printedMapName, mapName ) )
 			{
-				ADMBP( va( "^3 %-20s", fileSort[ i ] ) );
+				ADMBP_raw( va( "^3 %-20s", printedMapName ) );
 			}
 			else
 			{
-				ADMBP( va( "^7 %-20s", fileSort[ i ] ) );
+				ADMBP_raw( va( "^7 %-20s", printedMapName ) );
 			}
 
-			shown++;
+			shownMapNamesCount++;
 		}
 
 		ADMBP( "" );
@@ -4075,21 +4099,38 @@ void Cmd_ListMaps_f( gentity_t *ent )
 
 	if ( search[ 0 ] )
 	{
-		ADMP_P( va( "%s %d %s", Quote( P_("^3listmaps: ^7found $1$ map matching '$2$^7'", "^3listmaps: ^7found $1$ maps matching '$2$^7'", count) ), count, Quote( search ) ), count );
+		ADMP_P( va( "%s %d %s",
+					Quote( P_("^3listmaps:^* found $1$ map matching '$2$^*'",
+							  "^3listmaps:^* found $1$ maps matching '$2$^*'",
+							  mapNamesCount)
+					),
+					mapNamesCount,
+					Quote( search )
+			      ),
+				mapNamesCount );
 	}
 	else
 	{
-		ADMP_P( va( "%s %d %d", Quote( P_("^3listmaps: ^7listing $1$ of $2$ map", "^3listmaps: ^7listing $1$ of $2$ maps", count) ), shown, count ), count );
+		ADMP_P( va( "%s %d %d",
+					Quote( P_("^3listmaps:^* listing $1$ of $2$ map",
+							  "^3listmaps:^* listing $1$ of $2$ maps",
+							  mapNamesCount)
+					),
+					shownMapNamesCount,
+					mapNamesCount
+				  ),
+				mapNamesCount );
 	}
 
 	if ( pages > 1 && page + 1 < pages )
 	{
-		ADMP( va( "%s %d %d %s %s %d", QQ( N_("^3listmaps: ^7page $1$ of $2$; use 'listmaps $3$$4$$5$' to see more") ),
-		           page + 1, pages, Quote( search ), ( search[ 0 ] ) ? " " : "", page + 2 ) );
+		ADMP( va( "%s %d %d %s %s %d",
+				  QQ( N_("^3listmaps:^* page $1$ of $2$; use 'listmaps $3$$4$$5$' to see more") ),
+		          page + 1, pages, Quote( search ), ( search[ 0 ] ) ? " " : "", page + 2 ) );
 	}
 	else if ( pages > 1 )
 	{
-		ADMP( va( "%s %d %d", QQ( N_("^3listmaps: ^7page $1$ of $2$") ),  page + 1, pages ) );
+		ADMP( va( "%s %d %d", QQ( N_("^3listmaps:^* page $1$ of $2$") ),  page + 1, pages ) );
 	}
 }
 
@@ -4104,14 +4145,14 @@ static const mapLogResult_t maplog_table[] = {
 	{ 't', "^7tie"                                  },
 #ifdef UNREALARENA
 	{ 'q', "^1Q team won"                           },
-	{ 'Q', "^1Q team won ^7/ U team admitted defeat"},
+	{ 'Q', "^1Q team won^* / U team admitted defeat"},
 	{ 'u', "^4U team won"                           },
-	{ 'U', "^4U team won ^7/ Q team admitted defeat"},
+	{ 'U', "^4U team won^* / Q team admitted defeat"},
 #else
 	{ 'a', "^1Alien win"                            },
-	{ 'A', "^1Alien win ^7/ Humans admitted defeat" },
+	{ 'A', "^1Alien win^* / Humans admitted defeat" },
 	{ 'h', "^5Human win"                            },
-	{ 'H', "^5Human win ^7/ Aliens admitted defeat" },
+	{ 'H', "^5Human win^* / Aliens admitted defeat" },
 #endif
 	{ 'd', "^2draw vote"                            },
 	{ 'm', "^2map vote"                             },
@@ -4221,7 +4262,7 @@ void Cmd_MapLog_f( gentity_t *ent )
 	Q_strncpyz( maplog, g_mapLog.string, sizeof( maplog ) );
 	ptr = maplog;
 
-	ADMP( "\"" N_("^3maplog: ^7recent map results, newest first") "\"" );
+	ADMP( "\"" N_("^3maplog:^* recent map results, newest first") "\"" );
 	ADMBP_begin();
 
 	while( *ptr )
@@ -4267,7 +4308,7 @@ void Cmd_MapLog_f( gentity_t *ent )
 			result = "^7current map";
 		}
 
-		ADMBP( va( "  ^%s%-20s %6s %s^7",
+		ADMBP( va( "  ^%s%-20s %6s %s^*",
 		           ptr == maplog ? "2" : "7",
 		           ptr, clock, result ) );
 		ptr = end;
@@ -4639,7 +4680,7 @@ void ClientCommand( int clientNum )
 #endif
 
 	if ( (command->cmdFlags & CMD_ALIVE) &&
-	     ( G_Dead( ent ) || ent->client->sess.spectatorState != SPECTATOR_NOT ) )
+	     ( Entities::IsDead( ent ) || ent->client->sess.spectatorState != SPECTATOR_NOT ) )
 	{
 		G_TriggerMenu( clientNum, MN_CMD_ALIVE );
 		return;
@@ -4707,35 +4748,35 @@ void Cmd_PrivateMessage_f( gentity_t *ent )
 		              teamonly ? SAY_TPRIVMSG : SAY_PRIVMSG, msg ) )
 		{
 			count++;
-			Q_strcat( recipients, sizeof( recipients ), va( "%s^7, ",
+			Q_strcat( recipients, sizeof( recipients ), va( "%s^*, ",
 			          level.clients[ pids[ i ] ].pers.netname ) );
 		}
 	}
 
 	// report the results
-	const char* color = Color::CString( teamonly ? Color::Cyan : Color::Yellow );
+	auto color = Color::ToString( teamonly ? Color::Cyan : Color::Yellow );
 
 	if ( !count )
 	{
-		ADMP( va( "%s %s", QQ( N_("^3No player matching ^7 '$1$^7' ^3to send message to.") ),
+		ADMP( va( "%s %s", QQ( N_("^3No player matching ^7 '$1$^*' ^3to send message to.") ),
 		          Quote( name ) ) );
 	}
 	else
 	{
-		ADMP( va( "%s %s %s", QQ( N_("$1$Private message: ^7$2$") ), color, Quote( msg ) ) );
+		ADMP( va( "%s %s %s", QQ( N_("$1$Private message: ^7$2$") ), color.c_str(), Quote( msg ) ) );
 		// remove trailing ", "
 		recipients[ strlen( recipients ) - 2 ] = '\0';
 		// FIXME PLURAL
 		ADMP( va( "%s %s %i %s",
 		          Quote( P_( "$1$sent to $2$ player: ^7$3$",
 		                     "$1$sent to $2$ players: ^7$3$", count ) ),
-		          color, count, Quote( recipients ) ) );
+		          color.c_str(), count, Quote( recipients ) ) );
 
-		G_LogPrintf( "%s: %d \"%s^7\" \"%s\": %s%s",
+		G_LogPrintf( "%s: %d \"%s^*\" \"%s\": %s%s",
 		             ( teamonly ) ? "TPrivMsg" : "PrivMsg",
 		             ( ent ) ? ( int )( ent - g_entities ) : -1,
 		             ( ent ) ? ent->client->pers.netname : "console",
-		             name, color, msg );
+		             name, color.c_str(), msg );
 	}
 }
 

@@ -1,6 +1,6 @@
 /*
- * Daemon GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Unvanquished GPL Source Code
+ * Copyright (C) 2015-2018  Unreal Arena
  * Copyright (C) 2014  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -385,7 +385,7 @@ static void MarkRelevantBeacons()
 		if( tofind & 2 )
 		{
 			if( team == TEAM_HUMANS && ( beacon->data == BA_H_ARMOURY ||
-			    ( energy && ( beacon->data == BA_H_REPEATER || beacon->data == BA_H_REACTOR ) ) ) )
+			    ( energy && beacon->data == BA_H_REACTOR ) ) )
 			{
 				if( lowammo )
 					beacon->type = BCT_AMMO;
