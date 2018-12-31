@@ -13,8 +13,8 @@ clone_depth: 50
 #    Environment Configuration    #
 #---------------------------------#
 
-# Operating system
-# os: Windows Server 2012 R2
+# Build worker image (VM template)
+image: Visual Studio 2017
 
 # Scripts called before repo cloning
 # init:
@@ -25,14 +25,14 @@ environment:
   matrix:
     - PLATFORM: x86
       OS: win32
-      TARGET: x86
+      VCVARS: vcvars32.bat
     - PLATFORM: x64
       OS: win64
-      TARGET: x86_amd64
+      VCVARS: vcvars64.bat
 
 # Environment configuration
 install:
-  - call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %TARGET%
+  - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\%VCVARS%"
 
 
 #---------------------------------#
@@ -50,12 +50,12 @@ before_build:
 build_script:
   - mkdir build
   - cd build
-  - cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SERVER=0 -DBUILD_GAME_NATIVE_EXE=0 -DBUILD_GAME_NATIVE_DLL=0 -DBUILD_GAME_NACL=0 -DBUILD_TTY_CLIENT=0 ..
+  - cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_GAME_NATIVE_EXE=0 -DBUILD_GAME_NATIVE_DLL=0 -DBUILD_GAME_NACL=0 -DBUILD_SERVER=0 -DBUILD_TTY_CLIENT=0 ..
   - cmake --build .
 
 # Scripts called after build
 after_build:
-  - copy "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\redist\%PLATFORM%\Microsoft.VC140.CRT\*"
+  - copy "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Redist\MSVC\14.16.27012\%PLATFORM%\Microsoft.VC141.CRT\*"
   - copy "C:\Program Files (x86)\Windows Kits\10\Redist\ucrt\DLLs\%PLATFORM%\*"
   - 7z a %APPVEYOR_BUILD_FOLDER%\%ARTIFACT% *.dll *.exe *.nexe
 
