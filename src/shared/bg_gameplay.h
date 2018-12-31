@@ -322,9 +322,17 @@ extern int   REACTOR_ATTACK_DAMAGE;
 #endif
 
 // fall distance
+#ifdef UNREALARENA
+#define MIN_FALL_DISTANCE                  40.0f  // the fall distance at which fall damage kicks in
+#else
 #define MIN_FALL_DISTANCE                  30.0f  // the fall distance at which fall damage kicks in
+#endif
 #define MAX_FALL_DISTANCE                  120.0f // the fall distance at which maximum damage is dealt
+#ifdef UNREALARENA
+#define AVG_FALL_DISTANCE                  60.0f
+#else
 #define AVG_FALL_DISTANCE                  (( MIN_FALL_DISTANCE + MAX_FALL_DISTANCE ) / 2.0f )
+#endif
 
 // impact and weight damage
 #define IMPACTDMG_JOULE_TO_DAMAGE          0.002f  // in 1/J

@@ -221,7 +221,7 @@ static classData_t bg_classData[] =
 	},
 	{
 		TEAM_Q,
-		"qplayer",
+		"q",
 		WP_NONE
 	},
 	{

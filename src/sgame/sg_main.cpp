@@ -281,9 +281,15 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_unlagged,                    "g_unlagged",                    "1",                                CVAR_SERVERINFO,                                 0, true     , nullptr       },
 	{ &g_smoothClients,               "g_smoothClients",               "1",                                0,                                               0, false    , nullptr       },
 	{ &g_synchronousClients,          "g_synchronousClients",          "0",                                0,                                               0, false    , nullptr       },
+#ifdef UNREALARENA
+	{ &pmove_fixed,                   "pmove_fixed",                   "1",                                0,                                               0, false    , nullptr       },
+	{ &pmove_msec,                    "pmove_msec",                    "8",                                0,                                               0, false    , nullptr       },
+	{ &pmove_accurate,                "pmove_accurate",                "0",                                0,                                               0, false    , nullptr       },
+#else
 	{ &pmove_fixed,                   "pmove_fixed",                   "0",                                0,                                               0, false    , nullptr       },
 	{ &pmove_msec,                    "pmove_msec",                    "8",                                0,                                               0, false    , nullptr       },
 	{ &pmove_accurate,                "pmove_accurate",                "1",                                0,                                               0, false    , nullptr       },
+#endif
 	{ &g_floodMaxDemerits,            "g_floodMaxDemerits",            "5000",                             0,                                               0, false    , nullptr       },
 	{ &g_floodMinTime,                "g_floodMinTime",                "2000",                             0,                                               0, false    , nullptr       },
 
