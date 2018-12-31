@@ -38,7 +38,7 @@
 /** No case, No spaces */
 #define PRODUCT_NAME_LOWER  "unrealarena"
 
-#define PRODUCT_VERSION     "0.1-4"
+#define PRODUCT_VERSION     "0.1-5"
 #else
 #define PRODUCT_NAME        "Unvanquished"
 /** Case, No spaces */
