@@ -216,6 +216,7 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../.git")
         # this may fail with annotated non-release tags
         if (GIT_DESCRIBE_REPORT MATCHES "-0-g.......$")
             set(GIT_DESCRIBE_REPORT)
+            set(GIT_RELEASE_TAG ON)
         else()
             execute_process(
                 COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
@@ -227,9 +228,11 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../.git")
 endif()
 
 if (GIT_DESCRIBE_REPORT)
-    set(VCS_TAG ${GIT_DESCRIBE_REPORT})
+    set(VCS_TAG "-${GIT_DESCRIBE_REPORT}")
 else()
-    set(VCS_TAG "unknown")
+    if (NOT GIT_RELEASE_TAG)
+        set(VCS_TAG "-unknown")
+    endif()
 endif()
 
 configure_file("src/common/Revision.h.in" "${CMAKE_BINARY_DIR}/revision.h" @ONLY)

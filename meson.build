@@ -36,8 +36,8 @@ add_project_arguments(
 revision_h = vcs_tag(
   input : 'daemon/src/common/Revision.h.in',
   output : 'revision.h',
-  command : ['git', 'rev-parse', '--short', 'HEAD'],
-  fallback : 'unknown',
+  command : ['git', 'log', '-1', '--pretty=-%h'],
+  fallback : '-unknown',
   )
 
 # ==============================================================================
