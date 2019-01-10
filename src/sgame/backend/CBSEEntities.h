@@ -1,6 +1,6 @@
 /*
  * CBSE GPL Source Code
- * Copyright (C) 2016-2018  Unreal Arena
+ * Copyright (C) 2016-2019  Unreal Arena
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -111,58 +111,31 @@ class SpectatorEntity: public Entity {
 };
 
 /** A specific entity. */
-class QPlayerEntity: public Entity {
+class PlayerEntity: public Entity {
 	public:
-		/** Initialization parameters for QPlayerEntity. */
+		/** Initialization parameters for PlayerEntity. */
 		struct Params {
 			gentity_t* oldEnt;
+			team_t Team_team;
 			gclient_t* Client_clientData;
 		};
 
-		/** Default constructor of QPlayerEntity. */
-		QPlayerEntity(Params params);
+		/** Default constructor of PlayerEntity. */
+		PlayerEntity(Params params);
 
-		/** Default destructor of QPlayerEntity. */
-		virtual ~QPlayerEntity() = default;
+		/** Default destructor of PlayerEntity. */
+		virtual ~PlayerEntity() = default;
 
-		TeamComponent c_TeamComponent; /**< QPlayerEntity's TeamComponent instance. */
-		ClientComponent c_ClientComponent; /**< QPlayerEntity's ClientComponent instance. */
-		HealthComponent c_HealthComponent; /**< QPlayerEntity's HealthComponent instance. */
-		KnockbackComponent c_KnockbackComponent; /**< QPlayerEntity's KnockbackComponent instance. */
-
-	private:
-		/** QPlayerEntity's message handler vtable. */
-		static const MessageHandler messageHandlers[];
-
-		/** QPlayerEntity's component offset table. */
-		static const int componentOffsets[];
-};
-
-/** A specific entity. */
-class UPlayerEntity: public Entity {
-	public:
-		/** Initialization parameters for UPlayerEntity. */
-		struct Params {
-			gentity_t* oldEnt;
-			gclient_t* Client_clientData;
-		};
-
-		/** Default constructor of UPlayerEntity. */
-		UPlayerEntity(Params params);
-
-		/** Default destructor of UPlayerEntity. */
-		virtual ~UPlayerEntity() = default;
-
-		TeamComponent c_TeamComponent; /**< UPlayerEntity's TeamComponent instance. */
-		ClientComponent c_ClientComponent; /**< UPlayerEntity's ClientComponent instance. */
-		HealthComponent c_HealthComponent; /**< UPlayerEntity's HealthComponent instance. */
-		KnockbackComponent c_KnockbackComponent; /**< UPlayerEntity's KnockbackComponent instance. */
+		TeamComponent c_TeamComponent; /**< PlayerEntity's TeamComponent instance. */
+		ClientComponent c_ClientComponent; /**< PlayerEntity's ClientComponent instance. */
+		HealthComponent c_HealthComponent; /**< PlayerEntity's HealthComponent instance. */
+		KnockbackComponent c_KnockbackComponent; /**< PlayerEntity's KnockbackComponent instance. */
 
 	private:
-		/** UPlayerEntity's message handler vtable. */
+		/** PlayerEntity's message handler vtable. */
 		static const MessageHandler messageHandlers[];
 
-		/** UPlayerEntity's component offset table. */
+		/** PlayerEntity's component offset table. */
 		static const int componentOffsets[];
 };
 

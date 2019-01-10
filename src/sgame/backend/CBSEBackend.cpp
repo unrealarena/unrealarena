@@ -1,6 +1,6 @@
 /*
  * CBSE GPL Source Code
- * Copyright (C) 2016-2018  Unreal Arena
+ * Copyright (C) 2016-2019  Unreal Arena
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -208,99 +208,50 @@ SpectatorEntity::SpectatorEntity(Params params)
 	, c_SpectatorComponent(*this, c_ClientComponent)
 {}
 
-// QPlayerEntity
+// PlayerEntity
 // ---------
 
-// QPlayerEntity's component offset vtable.
-const int QPlayerEntity::componentOffsets[] = {
-	myoffsetof(QPlayerEntity, c_TeamComponent),
-	myoffsetof(QPlayerEntity, c_ClientComponent),
+// PlayerEntity's component offset vtable.
+const int PlayerEntity::componentOffsets[] = {
+	myoffsetof(PlayerEntity, c_TeamComponent),
+	myoffsetof(PlayerEntity, c_ClientComponent),
 	0,
-	myoffsetof(QPlayerEntity, c_HealthComponent),
-	myoffsetof(QPlayerEntity, c_KnockbackComponent),
+	myoffsetof(PlayerEntity, c_HealthComponent),
+	myoffsetof(PlayerEntity, c_KnockbackComponent),
 };
 
-// QPlayerEntity's Damage message dispatcher.
-void h_QPlayer_Damage(Entity* _entity, const void* _data) {
-	auto* entity = static_cast<QPlayerEntity*>(_entity);
+// PlayerEntity's Damage message dispatcher.
+void h_Player_Damage(Entity* _entity, const void* _data) {
+	auto* entity = static_cast<PlayerEntity*>(_entity);
 	const auto* data = static_cast<const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>*>(_data);
 	entity->c_HealthComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
 	entity->c_KnockbackComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
 }
 
-// QPlayerEntity's Heal message dispatcher.
-void h_QPlayer_Heal(Entity* _entity, const void* _data) {
-	auto* entity = static_cast<QPlayerEntity*>(_entity);
+// PlayerEntity's Heal message dispatcher.
+void h_Player_Heal(Entity* _entity, const void* _data) {
+	auto* entity = static_cast<PlayerEntity*>(_entity);
 	const auto* data = static_cast<const std::tuple<int, gentity_t*>*>(_data);
 	entity->c_HealthComponent.HandleHeal(std::get<0>(*data), std::get<1>(*data));
 }
 
-// QPlayerEntity's PrepareNetCode message dispatcher.
-void h_QPlayer_PrepareNetCode(Entity* _entity, const void*) {
-	auto* entity = static_cast<QPlayerEntity*>(_entity);
+// PlayerEntity's PrepareNetCode message dispatcher.
+void h_Player_PrepareNetCode(Entity* _entity, const void*) {
+	auto* entity = static_cast<PlayerEntity*>(_entity);
 	entity->c_HealthComponent.HandlePrepareNetCode();
 }
 
-// QPlayerEntity's message dispatcher vtable.
-const MessageHandler QPlayerEntity::messageHandlers[] = {
-	h_QPlayer_PrepareNetCode,
-	h_QPlayer_Heal,
-	h_QPlayer_Damage,
+// PlayerEntity's message dispatcher vtable.
+const MessageHandler PlayerEntity::messageHandlers[] = {
+	h_Player_PrepareNetCode,
+	h_Player_Heal,
+	h_Player_Damage,
 };
 
-// QPlayerEntity's constructor.
-QPlayerEntity::QPlayerEntity(Params params)
+// PlayerEntity's constructor.
+PlayerEntity::PlayerEntity(Params params)
 	: Entity(messageHandlers, componentOffsets, params.oldEnt)
-	, c_TeamComponent(*this, TEAM_Q)
-	, c_ClientComponent(*this, params.Client_clientData, c_TeamComponent)
-	, c_HealthComponent(*this)
-	, c_KnockbackComponent(*this)
-{}
-
-// UPlayerEntity
-// ---------
-
-// UPlayerEntity's component offset vtable.
-const int UPlayerEntity::componentOffsets[] = {
-	myoffsetof(UPlayerEntity, c_TeamComponent),
-	myoffsetof(UPlayerEntity, c_ClientComponent),
-	0,
-	myoffsetof(UPlayerEntity, c_HealthComponent),
-	myoffsetof(UPlayerEntity, c_KnockbackComponent),
-};
-
-// UPlayerEntity's Damage message dispatcher.
-void h_UPlayer_Damage(Entity* _entity, const void* _data) {
-	auto* entity = static_cast<UPlayerEntity*>(_entity);
-	const auto* data = static_cast<const std::tuple<int, gentity_t*, Util::optional<Vec3>, Util::optional<Vec3>, int, meansOfDeath_t>*>(_data);
-	entity->c_HealthComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
-	entity->c_KnockbackComponent.HandleDamage(std::get<0>(*data), std::get<1>(*data), std::get<2>(*data), std::get<3>(*data), std::get<4>(*data), std::get<5>(*data));
-}
-
-// UPlayerEntity's Heal message dispatcher.
-void h_UPlayer_Heal(Entity* _entity, const void* _data) {
-	auto* entity = static_cast<UPlayerEntity*>(_entity);
-	const auto* data = static_cast<const std::tuple<int, gentity_t*>*>(_data);
-	entity->c_HealthComponent.HandleHeal(std::get<0>(*data), std::get<1>(*data));
-}
-
-// UPlayerEntity's PrepareNetCode message dispatcher.
-void h_UPlayer_PrepareNetCode(Entity* _entity, const void*) {
-	auto* entity = static_cast<UPlayerEntity*>(_entity);
-	entity->c_HealthComponent.HandlePrepareNetCode();
-}
-
-// UPlayerEntity's message dispatcher vtable.
-const MessageHandler UPlayerEntity::messageHandlers[] = {
-	h_UPlayer_PrepareNetCode,
-	h_UPlayer_Heal,
-	h_UPlayer_Damage,
-};
-
-// UPlayerEntity's constructor.
-UPlayerEntity::UPlayerEntity(Params params)
-	: Entity(messageHandlers, componentOffsets, params.oldEnt)
-	, c_TeamComponent(*this, TEAM_U)
+	, c_TeamComponent(*this, params.Team_team)
 	, c_ClientComponent(*this, params.Client_clientData, c_TeamComponent)
 	, c_HealthComponent(*this)
 	, c_KnockbackComponent(*this)

@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1753,23 +1753,26 @@ static void ClientSpawnCBSE(gentity_t *ent, bool evolving) {
 		case TEAM_NONE:
 			SpectatorEntity::Params params;
 			params.oldEnt = ent;
+			params.Team_team = TEAM_NONE;
 			params.Client_clientData = client;
 			ent->entity = new SpectatorEntity(params);
 			break;
 
 		case TEAM_Q: {
-			QPlayerEntity::Params params;
+			PlayerEntity::Params params;
 			params.oldEnt = ent;
+			params.Team_team = TEAM_Q;
 			params.Client_clientData = client;
-			ent->entity = new QPlayerEntity(params);
+			ent->entity = new PlayerEntity(params);
 			break;
 		}
 
 		case TEAM_U: {
-			UPlayerEntity::Params params;
+			PlayerEntity::Params params;
 			params.oldEnt = ent;
+			params.Team_team = TEAM_U;
 			params.Client_clientData = client;
-			ent->entity = new UPlayerEntity(params);
+			ent->entity = new PlayerEntity(params);
 			break;
 		}
 #else

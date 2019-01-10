@@ -67,18 +67,8 @@ entities:
         components:
             Spectator:
 
-    QPlayer:
+    Player:
         components:
             Client:
-            Team:
-                team: TEAM_Q
-            Health:
-            Knockback:
-
-    UPlayer:
-        components:
-            Client:
-            Team:
-                team: TEAM_U
             Health:
             Knockback:
