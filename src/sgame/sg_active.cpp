@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -2256,18 +2256,39 @@ void ClientThink_real( gentity_t *self )
 #ifndef UNREALARENA
 	// inform client about the state of unlockable items
 	client->ps.persistant[ PERS_UNLOCKABLES ] = BG_UnlockablesMask( client->pers.team );
-#endif
 
 	// Don't think anymore if dead
 	if ( Entities::IsDead( self ) )
 	{
 		return;
 	}
+#endif
 
 	// swap and latch button actions
 	usercmdCopyButtons( client->oldbuttons, client->buttons );
 	usercmdCopyButtons( client->buttons, ucmd->buttons );
 	usercmdLatchButtons( client->latched_buttons, client->buttons, client->oldbuttons );
+
+#ifdef UNREALARENA
+	// check for respawning
+	if ( Entities::IsDead( self ) )
+	{
+		// wait for the attack button to be pressed
+		if ( level.time > client->respawnTime )
+		{
+			// pressing attack or use is the normal respawn method
+			if ( ( usercmdButtonPressed( client->buttons, BUTTON_ATTACK ) ||
+			       usercmdButtonPressed( client->buttons, BUTTON_USE_HOLDABLE ) ) &&
+			     usercmdButtonsDiffer( client->oldbuttons, client->buttons ) )
+			{
+				respawn( self );
+			}
+		}
+
+		// Don't think anymore if dead
+		return;
+	}
+#endif
 
 	if ( usercmdButtonPressed( client->buttons, BUTTON_ACTIVATE ) &&
 	     !usercmdButtonPressed( client->oldbuttons, BUTTON_ACTIVATE ) &&
@@ -2434,11 +2455,13 @@ void ClientEndFrame( gentity_t *ent )
 		ent->client->ps.eFlags &= ~EF_CONNECTION;
 	}
 
+#ifndef UNREALARENA
 	// respawn if dead
 	if ( Entities::IsDead( ent ) && level.time >= ent->client->respawnTime )
 	{
 		respawn( ent );
 	}
+#endif
 
 	G_SetClientSound( ent );
 

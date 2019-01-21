@@ -1960,6 +1960,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 		{
 			G_PushSpawnQueue( &level.team[ teamLocal ].spawnQueue, index );
 			client->ps.persistant[ PERS_TEAM ] = teamLocal;
+			return;
 		}
 #else
 		if ( teamLocal == TEAM_NONE )
