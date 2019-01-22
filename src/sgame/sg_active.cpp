@@ -2283,6 +2283,12 @@ void ClientThink_real( gentity_t *self )
 			{
 				respawn( self );
 			}
+			// forcerespawn is to prevent users from waiting out powerups
+			else if ( g_forcerespawn.integer > 0 &&
+			     ( level.time - client->respawnTime ) > g_forcerespawn.integer * 1000 )
+			{
+				respawn( self );
+			}
 		}
 
 		// Don't think anymore if dead

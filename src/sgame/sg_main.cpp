@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -65,6 +65,9 @@ vmCvar_t           g_maxGameClients;
 vmCvar_t           g_speed;
 vmCvar_t           g_gravity;
 vmCvar_t           g_cheats;
+#ifdef UNREALARENA
+vmCvar_t           g_forcerespawn;
+#endif
 vmCvar_t           g_inactivity;
 vmCvar_t           g_debugMove;
 vmCvar_t           g_debugDamage;
@@ -297,6 +300,9 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_minNameChangePeriod,         "g_minNameChangePeriod",         "5",                                0,                                               0, false    , nullptr       },
 	{ &g_maxNameChanges,              "g_maxNameChanges",              "5",                                0,                                               0, false    , nullptr       },
 	{ &g_enableVsays,                 "g_voiceChats",                  "1",                                0,                                               0, false    , nullptr       },
+#ifdef UNREALARENA
+	{ &g_forcerespawn,                "g_forcerespawn",                "20",                               0,                                               0, true     , nullptr       },
+#endif
 	{ &g_inactivity,                  "g_inactivity",                  "0",                                0,                                               0, true     , nullptr       },
 	{ &g_emoticonsAllowedInNames,     "g_emoticonsAllowedInNames",     "1",                                CVAR_LATCH,                                      0, false    , nullptr       },
 	{ &g_privateMessages,             "g_privateMessages",             "1",                                0,                                               0, false    , nullptr       },

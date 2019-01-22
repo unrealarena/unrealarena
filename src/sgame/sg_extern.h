@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -64,6 +64,9 @@ extern  vmCvar_t g_password;
 extern  vmCvar_t g_needpass;
 extern  vmCvar_t g_gravity;
 extern  vmCvar_t g_speed;
+#ifdef UNREALARENA
+extern  vmCvar_t g_forcerespawn;
+#endif
 extern  vmCvar_t g_inactivity;
 extern  vmCvar_t g_debugMove;
 extern  vmCvar_t g_debugDamage;
