@@ -1082,22 +1082,8 @@ void ClientTimerActions( gentity_t *ent, int msec )
 			ent->entity->Damage(ALIEN_POISON_DMG, client->lastPoisonClient, Util::nullopt,
 			                    Util::nullopt, DAMAGE_NO_LOCDAMAGE, MOD_POISON);
 		}
-#endif
 
 		// turn off life support when a team admits defeat
-#ifdef UNREALARENA
-		if ( client->pers.team == TEAM_Q &&
-		     level.surrenderTeam == TEAM_Q )
-		{
-			ent->entity->Damage((float)BG_Class((team_t)client->ps.persistant[PERS_TEAM])->regenRate,
-			                    nullptr, Util::nullopt, Util::nullopt, DAMAGE_PURE, MOD_SUICIDE);
-		}
-		else if ( client->pers.team == TEAM_U &&
-		          level.surrenderTeam == TEAM_U )
-		{
-			ent->entity->Damage(5.0f, nullptr, Util::nullopt, Util::nullopt, DAMAGE_PURE, MOD_SUICIDE);
-		}
-#else
 		if ( client->pers.team == TEAM_ALIENS &&
 		     level.surrenderTeam == TEAM_ALIENS )
 		{

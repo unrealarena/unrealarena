@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1209,7 +1209,9 @@ typedef struct
 
 	int      health;
 	float    fallDamage;
+#ifndef UNREALARENA
 	float    regenRate;
+#endif
 
 	int      abilities;
 

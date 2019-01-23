@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1003,7 +1003,9 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		TEAM               = 1 <<  2,
 		HEALTH             = 1 <<  3,
 		FALLDAMAGE         = 1 <<  4,
+#ifndef UNREALARENA
 		REGEN              = 1 <<  5,
+#endif
 		FOV                = 1 <<  6,
 		STEPTIME           = 1 <<  7,
 		SPEED              = 1 <<  8,
@@ -1099,13 +1101,13 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 			ca->fallDamage = atof( token );
 			defined |= FALLDAMAGE;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "regen" ) )
 		{
 			PARSE(text, token);
 			ca->regenRate = atof( token );
 			defined |= REGEN;
 		}
-#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "wallClimber" ) )
 		{
 			ca->abilities |= SCA_WALLCLIMBER;
@@ -1279,7 +1281,9 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		else if ( !( defined & TEAM ) )            { token = "team"; }
 		else if ( !( defined & HEALTH ) )          { token = "health"; }
 		else if ( !( defined & FALLDAMAGE ) )      { token = "fallDamage"; }
+#ifndef UNREALARENA
 		else if ( !( defined & REGEN ) )           { token = "regen"; }
+#endif
 		else if ( !( defined & FOV ) )             { token = "fov"; }
 		else if ( !( defined & STEPTIME ) )        { token = "stepTime"; }
 		else if ( !( defined & SPEED ) )           { token = "speed"; }

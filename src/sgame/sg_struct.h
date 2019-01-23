@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2012-2013  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -363,7 +363,9 @@ struct gentity_s
 #endif
 
 	int         lastDamageTime;
+#ifndef UNREALARENA
 	int         nextRegenTime;
+#endif
 
 	bool    pointAgainstWorld; // don't use the bbox for map collisions
 
