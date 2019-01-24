@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -136,7 +136,9 @@ void         BotClampPos( gentity_t *self );
 // local navigation
 bool BotDodge( gentity_t *self );
 void     BotWalk( gentity_t *self, bool enable );
+#ifndef UNREALARENA
 bool BotSprint( gentity_t *self, bool enable );
+#endif
 bool BotJump( gentity_t *self );
 void     BotStrafeDodge( gentity_t *self );
 void     BotAlternateStrafe( gentity_t *self );

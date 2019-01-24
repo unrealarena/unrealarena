@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  *
  * This program is free software: you can redistribute it and/or modify
@@ -38,7 +38,9 @@ static bind_t bindings[] =
 {
 	{ "+useitem",       N_( "Activate Upgrade" ),                      {} },
 	{ "+speed",         N_( "Run/Walk" ),                              {} },
+#ifndef UNREALARENA
 	{ "+sprint",        N_( "Sprint" ),                                {} },
+#endif
 	{ "+moveup",        N_( "Jump" ),                                  {} },
 	{ "+movedown",      N_( "Crouch" ),                                {} },
 	{ "+attack",        N_( "Primary Attack" ),                        {} },
@@ -507,11 +509,11 @@ static void CG_HumanText( char *text, playerState_t *ps )
 			              _( BG_Buildable( cg.nearUsableBuildable )->humanName ) ) );
 			break;
 	}
-#endif
 
 	Q_strcat( text, MAX_TUTORIAL_TEXT,
 	          va( _( "Press %s and any direction to sprint\n" ),
 	              CG_KeyNameForCommand( "+sprint" ) ) );
+#endif
 
 	if ( BG_InventoryContainsUpgrade( UP_FIREBOMB, ps->stats ) ||
 		BG_InventoryContainsUpgrade( UP_GRENADE, ps->stats ) )

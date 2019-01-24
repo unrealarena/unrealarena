@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -342,7 +342,9 @@ void BotStandStill( gentity_t *self )
 	usercmd_t *botCmdBuffer = &self->botMind->cmdBuffer;
 
 	BotWalk( self, false );
+#ifndef UNREALARENA
 	BotSprint( self, false );
+#endif
 	botCmdBuffer->forwardmove = 0;
 	botCmdBuffer->rightmove = 0;
 	botCmdBuffer->upmove = 0;
@@ -350,30 +352,25 @@ void BotStandStill( gentity_t *self )
 
 bool BotJump( gentity_t *self )
 {
+#ifndef UNREALARENA
 	int staminaJumpCost;
 
-#ifdef UNREALARENA
-	if ( self->client->pers.team == TEAM_U )
-#else
 	if ( self->client->pers.team == TEAM_HUMANS )
-#endif
 	{
-#ifdef UNREALARENA
-		staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
-#else
 		staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
-#endif
 
 		if ( self->client->ps.stats[STAT_STAMINA] < staminaJumpCost )
 		{
 			return false;
 		}
 	}
+#endif
 
 	self->botMind->cmdBuffer.upmove = 127;
 	return true;
 }
 
+#ifndef UNREALARENA
 bool BotSprint( gentity_t *self, bool enable )
 {
 	usercmd_t *botCmdBuffer = &self->botMind->cmdBuffer;
@@ -385,21 +382,11 @@ bool BotSprint( gentity_t *self, bool enable )
 		return false;
 	}
 
-#ifdef UNREALARENA
-	staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
-#else
 	staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
-#endif
 
-#ifdef UNREALARENA
-	if ( self->client->pers.team == TEAM_U
-	     && self->client->ps.stats[ STAT_STAMINA ] > staminaJumpCost
-	     && self->botMind->botSkill.level >= 5 )
-#else
 	if ( self->client->pers.team == TEAM_HUMANS
 	     && self->client->ps.stats[ STAT_STAMINA ] > staminaJumpCost
 	     && self->botMind->botSkill.level >= 5 )
-#endif
 	{
 		usercmdPressButton( botCmdBuffer->buttons, BUTTON_SPRINT );
 		BotWalk( self, false );
@@ -411,6 +398,7 @@ bool BotSprint( gentity_t *self, bool enable )
 		return false;
 	}
 }
+#endif
 
 void BotWalk( gentity_t *self, bool enable )
 {
@@ -774,7 +762,9 @@ void BotClampPos( gentity_t *self )
 
 void BotMoveToGoal( gentity_t *self )
 {
+#ifndef UNREALARENA
 	int    staminaJumpCost;
+#endif
 	vec3_t dir;
 	VectorCopy( self->botMind->nav.dir, dir );
 
@@ -787,25 +777,20 @@ void BotMoveToGoal( gentity_t *self )
 	BotAvoidObstacles( self, dir );
 	BotSeek( self, dir );
 
-#ifdef UNREALARENA
-	staminaJumpCost = BG_Class( ( team_t ) self->client->ps.persistant[ PERS_TEAM ] )->staminaJumpCost;
-#else
+#ifndef UNREALARENA
 	staminaJumpCost = BG_Class( self->client->ps.stats[ STAT_CLASS ] )->staminaJumpCost;
-#endif
 
 	//dont sprint or dodge if we dont have enough stamina and are about to slow
-#ifdef UNREALARENA
-	if ( self->client->pers.team == TEAM_U
-	     && self->client->ps.stats[ STAT_STAMINA ] < staminaJumpCost )
-#else
 	if ( self->client->pers.team == TEAM_HUMANS
 	     && self->client->ps.stats[ STAT_STAMINA ] < staminaJumpCost )
 #endif
 	{
+#ifndef UNREALARENA
 		usercmd_t *botCmdBuffer = &self->botMind->cmdBuffer;
 
 		usercmdReleaseButton( botCmdBuffer->buttons, BUTTON_SPRINT );
 		usercmdReleaseButton( botCmdBuffer->buttons, BUTTON_DODGE );
+#endif
 
 		// walk to regain stamina
 		BotWalk( self, true );

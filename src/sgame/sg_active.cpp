@@ -658,8 +658,8 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 #endif
 
 		client->ps.speed = client->pers.flySpeed;
-		client->ps.stats[ STAT_STAMINA ] = 0;
 #ifndef UNREALARENA
+		client->ps.stats[ STAT_STAMINA ] = 0;
 		client->ps.stats[ STAT_FUEL ] = 0;
 #endif
 		client->ps.stats[ STAT_MISC ] = 0;

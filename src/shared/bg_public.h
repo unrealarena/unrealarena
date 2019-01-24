@@ -175,7 +175,9 @@ typedef enum
 #endif
 #define PMF_CHARGE         0x004000 // keep track of pouncing
 #define PMF_WEAPON_SWITCH  0x008000 // force a weapon switch
+#ifndef UNREALARENA
 #define PMF_SPRINTHELD     0x010000
+#endif
 
 #ifdef UNREALARENA
 #define PMF_ALL_TIMES      ( PMF_TIME_WATERJUMP | PMF_TIME_KNOCKBACK )
@@ -250,7 +252,9 @@ typedef enum
   STAT_CLASS,      // player class
 #endif
   STAT_STATE2,     // more client states
+#ifndef UNREALARENA
   STAT_STAMINA,    // humans: stamina
+#endif
   STAT_STATE,      // client states
   STAT_MISC,       // aliens: pounce, trample; humans: lcannon
 #ifndef UNREALARENA
@@ -283,8 +287,8 @@ typedef enum
 #ifndef UNREALARENA
 #define SS_WALLCLIMBING     BIT(0)
 #define SS_CREEPSLOWED      BIT(1)
-#endif
 #define SS_SPEEDBOOST       BIT(2)
+#endif
 #define SS_UNUSED_1         BIT(3)
 #ifndef UNREALARENA
 #define SS_BLOBLOCKED       BIT(4)
@@ -372,7 +376,9 @@ typedef enum
 #define PS_WALLCLIMBINGTOGGLE 0x00000002
 #endif
 #define PS_NONSEGMODEL        0x00000004
+#ifndef UNREALARENA
 #define PS_SPRINTTOGGLE       0x00000008
+#endif
 
 // entityState_t->eFlags
 // notice that some flags are overlapped, so their meaning depends on context
@@ -1227,7 +1233,9 @@ typedef struct
 	int      steptime;
 
 	float    speed;
+#ifndef UNREALARENA
 	float    sprintMod;
+#endif
 	float    acceleration;
 	float    airAcceleration;
 	float    friction;
@@ -1235,6 +1243,7 @@ typedef struct
 	float    jumpMagnitude;
 	int      mass;
 
+#ifndef UNREALARENA
 	// stamina (human only)
 	int      staminaJumpCost;
 	int      staminaSprintCost;
@@ -1242,7 +1251,6 @@ typedef struct
 	int      staminaWalkRestore;
 	int      staminaStopRestore;
 
-#ifndef UNREALARENA
 	int      cost;
 	int      value;
 #endif

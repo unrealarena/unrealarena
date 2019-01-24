@@ -1,6 +1,6 @@
 /*
  * Daemon GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 1999-2010  id Software LLC, a ZeniMax Media company
  *
  * This program is free software: you can redistribute it and/or modify
@@ -1908,7 +1908,9 @@ using GameStateCSs = std::array<std::string, MAX_CONFIGSTRINGS>;
                                // only generate a small move value for that
                                // frame; walking will use different animations
                                // and won't generate footsteps
+#ifndef UNREALARENA
 #define BUTTON_SPRINT       5
+#endif
 #define BUTTON_ACTIVATE     6
 #define BUTTON_ANY          7  // if any key is pressed
 #define BUTTON_ATTACK2      8
@@ -1918,7 +1920,9 @@ using GameStateCSs = std::array<std::string, MAX_CONFIGSTRINGS>;
 //                          12
 //                          13
 #define BUTTON_RALLY        14
+#ifndef UNREALARENA
 #define BUTTON_DODGE        15
+#endif
 
 #define MOVE_RUN          120 // if forwardmove or rightmove are >= MOVE_RUN,
 // then BUTTON_WALKING should be set

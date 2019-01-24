@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -2019,7 +2019,9 @@ extern  vmCvar_t            cg_painBlendScale;
 extern  vmCvar_t            cg_painBlendZoom;
 
 extern  vmCvar_t            cg_stickySpec;
+#ifndef UNREALARENA
 extern  vmCvar_t            cg_sprintToggle;
+#endif
 extern  vmCvar_t            cg_unlagged;
 
 extern  vmCvar_t            cg_cmdGrenadeThrown;

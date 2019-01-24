@@ -1017,18 +1017,18 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		ICON               = 1 << 14,
 #ifndef UNREALARENA
 		COST               = 1 << 15,
-#endif
 		SPRINTMOD          = 1 << 16,
+#endif
 		UNUSED_17          = 1 << 17,
 		MASS               = 1 << 18,
 #ifndef UNREALARENA
 		UNLOCKTHRESHOLD    = 1 << 19,
-#endif
 		STAMINAJUMPCOST    = 1 << 20,
 		STAMINASPRINTCOST  = 1 << 21,
 		STAMINAJOGRESTORE  = 1 << 22,
 		STAMINAWALKRESTORE = 1 << 23,
 		STAMINASTOPRESTORE = 1 << 24
+#endif
 	};
 
 	if( !BG_ReadWholeFile( filename, text_buffer, sizeof(text_buffer) ) )
@@ -1213,14 +1213,12 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 			ca->cost = atoi( token );
 			defined |= COST;
 		}
-#endif
 		else if ( !Q_stricmp( token, "sprintMod" ) )
 		{
 			PARSE(text, token);
 			ca->sprintMod = atof( token );
 			defined |= SPRINTMOD;
 		}
-#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "unlockThreshold" ) )
 		{
 			PARSE(text, token);
@@ -1238,6 +1236,7 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 			ca->mass = atoi( token );
 			defined |= MASS;
 		}
+#ifndef UNREALARENA
 		else if ( !Q_stricmp( token, "staminaJumpCost" ) )
 		{
 			PARSE( text, token );
@@ -1268,6 +1267,7 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 			ca->staminaStopRestore = atoi( token );
 			defined |= STAMINASTOPRESTORE;
 		}
+#endif
 		else
 		{
 			Log::Warn( "%s: unknown token '%s'", filename, token );
@@ -1304,12 +1304,9 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 		}
 	}
 
+#ifndef UNREALARENA
 	// check for missing mandatory fields for the human team
-#ifdef UNREALARENA
-	if ( ca->team == TEAM_U )
-#else
 	if ( ca->team == TEAM_HUMANS )
-#endif
 	{
 		if      ( !( defined & SPRINTMOD ) )          { token = "sprintMod"; }
 		else if ( !( defined & STAMINAJUMPCOST ) )    { token = "staminaJumpCost"; }
@@ -1321,15 +1318,11 @@ void BG_ParseClassAttributeFile( const char *filename, classAttributes_t *ca )
 
 		if ( token )
 		{
-#ifdef UNREALARENA
-			Log::Warn( "%s (mandatory for U team) not defined in %s",
-			            token, filename );
-#else
 			Log::Warn( "%s (mandatory for human team) not defined in %s",
 			            token, filename );
-#endif
 		}
 	}
+#endif
 }
 
 /*

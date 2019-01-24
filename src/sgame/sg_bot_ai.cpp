@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -774,7 +774,6 @@ AINodeStatus_t BotActionFight( gentity_t *self, AIGenericNode_t *node )
 			{
 				// [TODO] UNIMPLEMENTED
 				BotStandStill( self );
-				BotSprint( self, true );
 			}
 			else if ( myTeam == TEAM_Q )
 			{

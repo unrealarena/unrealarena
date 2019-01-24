@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -303,7 +303,7 @@ static void CG_CompleteGive()
 	static const char give[][ 12 ] =
 	{
 #ifdef UNREALARENA
-		"all", "health", "stamina", "ammo"
+		"all", "health", "ammo"
 #else
 		"all", "health", "funds", "stamina", "poison", "fuel", "ammo", "momentum", "bp"
 #endif
@@ -622,8 +622,13 @@ void CG_InitConsoleCommands()
 	}
 
 	trap_RegisterButtonCommands(
+#ifdef UNREALARENA
+	    // 0      12       3     456        78       9ABCDEF      <- bit nos.
+	      "attack,,useitem,taunt,,,activate,,attack2,,,,,,rally"
+#else
 	    // 0      12       3     45      6        78       9ABCDEF      <- bit nos.
 	      "attack,,useitem,taunt,,sprint,activate,,attack2,,,,,,rally"
+#endif
 	    );
 }
 

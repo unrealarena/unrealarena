@@ -1255,7 +1255,6 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 	{
 		client->ps.persistant[ PERS_STATE ] &= ~PS_WALLCLIMBINGTOGGLE;
 	}
-#endif
 
 	// always sprint
 	s = Info_ValueForKey( userinfo, "cg_sprintToggle" );
@@ -1268,6 +1267,7 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 	{
 		client->ps.persistant[ PERS_STATE ] &= ~PS_SPRINTTOGGLE;
 	}
+#endif
 
 	// fly speed
 	s = Info_ValueForKey( userinfo, "cg_flySpeed" );

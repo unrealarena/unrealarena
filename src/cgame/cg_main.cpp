@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -149,7 +149,9 @@ vmCvar_t        cg_painBlendScale;
 vmCvar_t        cg_painBlendZoom;
 
 vmCvar_t        cg_stickySpec;
+#ifndef UNREALARENA
 vmCvar_t        cg_sprintToggle;
+#endif
 vmCvar_t        cg_unlagged;
 
 vmCvar_t        cg_cmdGrenadeThrown;
@@ -292,7 +294,9 @@ static const cvarTable_t cvarTable[] =
 #endif
 	{ nullptr,                            "cg_disableBlueprintErrors",      "0",            CVAR_USERINFO                },
 	{ &cg_stickySpec,                  "cg_stickySpec",                  "1",            CVAR_USERINFO                },
+#ifndef UNREALARENA
 	{ &cg_sprintToggle,                "cg_sprintToggle",                "0",            CVAR_USERINFO                },
+#endif
 	{ &cg_unlagged,                    "cg_unlagged",                    "1",            CVAR_USERINFO                },
 	{ nullptr,                            "cg_flySpeed",                    "800",          CVAR_USERINFO                },
 	{ &cg_depthSortParticles,          "cg_depthSortParticles",          "1",            0                            },
