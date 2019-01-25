@@ -1194,13 +1194,14 @@ const char *ClientUserinfoChanged( int clientNum, bool forceName )
 	if ( client->pers.classSelection == PCL_NONE )
 #endif
 	{
+#ifdef UNREALARENA
+		// Spectators don't need any model
+		buffer[ 0 ] = '\0';
+#else
 		//This looks hacky and frankly it is. The clientInfo string needs to hold different
 		//model details to that of the spawning class or the info change will not be
 		//registered and an axis appears instead of the player model. There is zero chance
 		//the player can spawn with the battlesuit, hence this choice.
-#ifdef UNREALARENA
-		Com_sprintf( buffer, MAX_QPATH, "human_bsuit/default" );
-#else
 		Com_sprintf( buffer, MAX_QPATH, "%s/%s",  BG_ClassModelConfig( PCL_HUMAN_BSUIT )->modelName,
 		             BG_ClassModelConfig( PCL_HUMAN_BSUIT )->skinName );
 #endif

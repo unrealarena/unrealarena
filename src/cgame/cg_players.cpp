@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -817,6 +817,13 @@ static bool CG_RegisterClientModelname( clientInfo_t *ci, const char *modelName,
 {
 	char filename[ MAX_QPATH ];
 
+#ifdef UNREALARENA
+	// This is required for spectators empty models
+	if ( modelName[ 0 ] == '\0' )
+	{
+		return true;
+	}
+#endif
 	Com_sprintf( filename, sizeof( filename ), "models/players/%s/%s.iqm", modelName, modelName );
 	if ( CG_FileExists( filename ) )
 	{
