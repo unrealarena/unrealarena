@@ -9,6 +9,14 @@ add_project_arguments('-DUNREALARENA', language : 'cpp')
 cc = meson.get_compiler('c')
 cxx = meson.get_compiler('cpp')
 
+c_debugging = get_option('buildtype') == 'debug' ? ['-g3'] : ['']
+
+c_warnings = [
+  '-Wno-unused-parameter',
+  ]
+
+cpp_debugging = get_option('buildtype') == 'debug' ? ['-g3'] : ['']
+
 cpp_warnings = [
   '-Wno-class-memaccess',
   '-Wno-format-truncation',
@@ -18,18 +26,16 @@ cpp_warnings = [
   '-Wno-unused-parameter',
   ]
 
-c_warnings = [
-  '-Wno-unused-parameter',
-  ]
-
 add_project_arguments(
-  cxx.get_supported_arguments(cpp_warnings),
-  language : 'cpp'
+  cc.get_supported_arguments(c_debugging),
+  cc.get_supported_arguments(c_warnings),
+  language : 'c'
   )
 
 add_project_arguments(
-  cc.get_supported_arguments(c_warnings),
-  language : 'c'
+  cxx.get_supported_arguments(cpp_debugging),
+  cxx.get_supported_arguments(cpp_warnings),
+  language : 'cpp'
   )
 
 # FIXME Skip this for releases
