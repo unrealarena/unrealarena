@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2016-2018  Unreal Arena
+ * Copyright (C) 2016-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -27,6 +27,9 @@
 #define MIN_WALK_NORMAL   0.7f // can't walk on very steep slopes
 
 #define STEPSIZE          18
+#ifdef UNREALARENA
+#define MIN_LEDGE_HEIGHT  20.125
+#endif
 
 #define TIMER_LAND        130
 #define TIMER_GESTURE     ( 34 * 66 + 50 )
@@ -90,7 +93,11 @@ void            PM_ClipVelocity( const vec3_t in, const vec3_t normal, vec3_t ou
 void            PM_AddTouchEnt( int entityNum );
 void            PM_AddEvent( int newEvent );
 
+#ifdef UNREALARENA
+bool        PM_SlideMove( bool gravity, int stepsize=0 );
+#else
 bool        PM_SlideMove( bool gravity );
+#endif
 #ifndef UNREALARENA
 void            PM_StepEvent( const vec3_t from, const vec3_t to, const vec3_t normal );
 #endif

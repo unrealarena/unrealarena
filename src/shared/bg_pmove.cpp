@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2018  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -1637,6 +1637,10 @@ static bool PM_CheckJump()
 	pm->ps->pm_flags |= PMF_JUMP_HELD;
 	pm->ps->pm_flags |= PMF_JUMPED;
 	pm->ps->groundEntityNum = ENTITYNUM_NONE;
+#ifdef UNREALARENA
+	// Disable ledge detection
+	pm->ps->pm_flags &= ~PMF_PREVENT_FALLING;
+#endif
 
 #ifndef UNREALARENA
 	// don't allow walljump for a short while after jumping from the ground
@@ -3556,6 +3560,41 @@ static void PM_CheckDuck()
 	PM_SetViewheight();
 }
 
+#ifdef UNREALARENA
+/*
+=============
+PM_CheckLedgeDetection
+=============
+*/
+static void PM_CheckLedgeDetection()
+{
+	// apply only to U team
+	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_U )
+	{
+		pm->ps->pm_flags &= ~PMF_PREVENT_FALLING;
+		return;
+	}
+
+	// if we are not on the ground or going down stairs then do nothing
+	if ( !pml.walking && !( pm->ps->pm_flags & PMF_PREVENT_FALLING ) )
+	{
+		// pm->ps->pm_flags &= ~PMF_PREVENT_FALLING;
+		return;
+	}
+
+	// if we are not walking or crawling then do nothing
+	if ( !usercmdButtonPressed( pm->cmd.buttons, BUTTON_WALKING ) &&
+	     !( pm->ps->pm_flags & PMF_DUCKED ) )
+	{
+		pm->ps->pm_flags &= ~PMF_PREVENT_FALLING;
+		return;
+	}
+
+	// otherwise enable ledge detection
+	pm->ps->pm_flags |= PMF_PREVENT_FALLING;
+}
+#endif
+
 //===================================================================
 
 /*
@@ -5181,6 +5220,10 @@ void PmoveSingle( pmove_t *pmove )
 
 	// set groundentity
 	PM_GroundTrace();
+
+#ifdef UNREALARENA
+	PM_CheckLedgeDetection();
+#endif
 
 #ifndef UNREALARENA
 	// update the viewangles
