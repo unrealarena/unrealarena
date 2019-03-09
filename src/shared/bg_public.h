@@ -170,7 +170,9 @@ typedef enum
 #define PMF_WEAPON_RELOAD  0x000400 // force a weapon switch
 #define PMF_FOLLOW         0x000800 // spectate following another player
 #define PMF_QUEUED         0x001000 // player is queued
-#ifndef UNREALARENA
+#ifdef UNREALARENA
+#define PMF_PREVENT_FALLING 0x002000 // for ledge detection
+#else
 #define PMF_TIME_WALLJUMP  0x002000 // for limiting wall jumping
 #endif
 #define PMF_CHARGE         0x004000 // keep track of pouncing

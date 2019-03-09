@@ -1,6 +1,6 @@
 /*
  * CBSE GPL Source Code
- * Copyright (C) 2016-2018  Unreal Arena
+ * Copyright (C) 2016-2019  Unreal Arena
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,6 +77,10 @@ void KnockbackComponent::HandleDamage(float amount, gentity_t* source, Util::opt
 	Vec3 clientVelocity = Vec3::Load(client->ps.velocity);
 	clientVelocity += Math::Normalize(direction.value()) * strength;
 	clientVelocity.Store(client->ps.velocity);
+#ifdef UNREALARENA
+	// Disable ledge detection
+	client->ps.pm_flags &= ~PMF_PREVENT_FALLING;
+#endif
 
 	// Set pmove timer so that the client can't cancel out the movement immediately.
 	if (!client->ps.pm_time) {

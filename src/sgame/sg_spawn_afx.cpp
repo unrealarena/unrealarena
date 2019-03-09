@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2015-2016  Unreal Arena
+ * Copyright (C) 2015-2019  Unreal Arena
  * Copyright (C) 2012  Unvanquished Developers
  *
  * This program is free software: you can redistribute it and/or modify
@@ -78,6 +78,10 @@ void env_afx_push_touch( gentity_t *self, gentity_t *activator, trace_t* )
 	}
 	self->nextthink = VariatedLevelTime( self->config.wait );
 
+#ifdef UNREALARENA
+	// Disable ledge detection
+	activator->client->ps.pm_flags &= ~PMF_PREVENT_FALLING;
+#endif
 	VectorCopy( self->s.origin2, activator->client->ps.velocity );
 }
 

@@ -1,6 +1,6 @@
 /*
  * Unvanquished GPL Source Code
- * Copyright (C) 2016-2018  Unreal Arena
+ * Copyright (C) 2016-2019  Unreal Arena
  * Copyright (C) 2000-2009  Darklegion Development
  * Copyright (C) 1999-2005  Id Software, Inc.
  *
@@ -25,6 +25,123 @@
 #include "bg_public.h"
 #include "bg_local.h"
 
+#ifdef UNREALARENA
+/*
+==================
+PM_CheckFallingFromLedge
+==================
+*/
+static bool PM_CheckFallingFromLedge( const vec3_t origin )
+{
+	vec3_t end;
+	trace_t trace;
+
+	// apply only to U team
+	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_U )
+	{
+		return false;
+	}
+
+	// apply only if ledge detection is enable
+	if ( !( pm->ps->pm_flags & PMF_PREVENT_FALLING ) )
+	{
+		return false;
+	}
+
+	end[ 0 ] = origin[ 0 ];
+	end[ 1 ] = origin[ 1 ];
+	end[ 2 ] = origin[ 2 ] - MIN_LEDGE_HEIGHT;
+
+	// check if we are going to fall
+	pm->trace( &trace, origin, pm->mins, pm->maxs, end, pm->ps->clientNum, pm->tracemask, CONTENTS_BODY );
+
+	if ( trace.allsolid )
+	{
+		return false;
+	}
+
+	// if we land on ground check if it is walkable
+	if ( trace.fraction < 1.0f && trace.plane.normal[ 2 ] >= MIN_WALK_NORMAL )
+	{
+		return false;
+	}
+
+	return true;
+}
+
+/*
+==================
+PM_FindLedgeNormal
+==================
+*/
+static void PM_FindLedgeNormal( const vec3_t old_origin, const vec3_t origin, vec3_t normal, int iteration=0 )
+{
+	vec3_t end;
+	trace_t trace;
+
+	end[ 0 ] = origin[ 0 ];
+	end[ 1 ] = origin[ 1 ];
+	end[ 2 ] = origin[ 2 ] - MIN_LEDGE_HEIGHT;
+
+	// trace backwards to find the ledge plane
+	pm->trace( &trace, end, pm->mins, pm->maxs, old_origin, pm->ps->clientNum, pm->tracemask, CONTENTS_BODY );
+
+	// if trace misses then first try again with the ground projection of old origin
+	if ( trace.fraction == 1.0f && iteration == 0 )
+	{
+		// old origin shouldn't be falling so this is enough to find its ground projection
+		end[ 0 ] = old_origin[ 0 ];
+		end[ 1 ] = old_origin[ 1 ];
+		end[ 2 ] = old_origin[ 2 ] - MIN_LEDGE_HEIGHT;
+
+		pm->trace( &trace, old_origin, pm->mins, pm->maxs, end, pm->ps->clientNum, pm->tracemask, CONTENTS_BODY );
+
+		iteration++;
+
+		if ( trace.fraction < 1.0f )
+		{
+			vec3_t old_origin_ground_projection;
+
+			VectorCopy( trace.endpos, old_origin_ground_projection );
+
+			old_origin_ground_projection[ 2 ] += 0.125;
+
+			// proceed only if the ground projection is below the old origin
+			if ( old_origin_ground_projection[ 2 ] < old_origin[ 2 ] )
+			{
+				return PM_FindLedgeNormal( old_origin_ground_projection, origin, normal, iteration );
+			}
+		}
+	}
+
+	// if trace misses then try again with old origin shifted a bit back along the velocity vector
+	if ( trace.fraction == 1.0f && iteration == 1 )
+	{
+		vec3_t dir, previous_old_origin;
+
+		VectorCopy( pm->ps->velocity, dir );
+		VectorNormalize( dir );
+		VectorMA( old_origin, -1.0f, dir, previous_old_origin );
+
+		iteration++;
+
+		return PM_FindLedgeNormal( previous_old_origin, origin, normal, iteration );
+	}
+
+	// if everything fails then return a null vector
+	if ( trace.fraction == 1.0f )
+	{
+		VectorClear(normal);
+		return;
+	}
+
+	// otherwise get the normal
+	VectorCopy( trace.plane.normal, normal );
+	normal[ 2 ] = 0.0f;
+	VectorNormalize( normal );
+}
+#endif
+
 /*
 
 input: origin, velocity, bounds, groundPlane, trace function
@@ -41,9 +158,16 @@ Returns true if the velocity was clipped in some way
 ==================
 */
 #define MAX_CLIP_PLANES 5
+#ifdef UNREALARENA
+bool  PM_SlideMove( bool gravity, int stepsize/*=0*/ )
+#else
 bool  PM_SlideMove( bool gravity )
+#endif
 {
 	int     bumpcount, numbumps;
+#ifdef UNREALARENA
+	int     fallingcount = 0;
+#endif
 	vec3_t  dir;
 	float   d;
 	int     numplanes;
@@ -117,6 +241,38 @@ bool  PM_SlideMove( bool gravity )
 
 		if ( trace.fraction > 0 )
 		{
+#ifdef UNREALARENA
+			vec3_t pos;
+
+			VectorCopy( trace.endpos, pos );
+
+			pos[ 2 ] -= stepsize;
+
+			if ( PM_CheckFallingFromLedge( pos ) )
+			{
+				vec3_t normal;
+
+				// using pos in place of trace.endpos as it should give better results
+				PM_FindLedgeNormal( pm->ps->origin, pos, normal );
+
+				// if we can't determine the ledge plane then stop everything
+				if ( normal[ 0 ] == 0.0f &&
+				     normal[ 1 ] == 0.0f &&
+				     normal[ 2 ] == 0.0f )
+				{
+					VectorClear( pm->ps->velocity );
+					fallingcount++;
+
+					break;
+				}
+
+				// slide along the ledge plane
+				PM_ClipVelocity( pm->ps->velocity, normal, pm->ps->velocity );
+				fallingcount++;
+
+				continue;
+			}
+#endif
 			// actually covered some distance
 			VectorCopy( trace.endpos, pm->ps->origin );
 		}
@@ -289,6 +445,9 @@ bool  PM_SlideMove( bool gravity )
 		VectorCopy( primal_velocity, pm->ps->velocity );
 	}
 
+#ifdef UNREALARENA
+	bumpcount -= fallingcount;
+#endif
 	return ( bumpcount != 0 );
 }
 
@@ -469,6 +628,14 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 
 #ifdef UNREALARENA
 		stepSize = trace.endpos[ 2 ] - start_o[ 2 ];
+
+		// if the new position is falling then do nothing
+		if ( PM_CheckFallingFromLedge( trace.endpos ) )
+		{
+			VectorCopy( start_o, pm->ps->origin );
+
+			return stepped;
+		}
 #else
 		VectorSubtract( trace.endpos, start_o, step_v );
 		VectorCopy( step_v, step_vNormal );
@@ -481,7 +648,7 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 		VectorCopy( start_v, pm->ps->velocity );
 
 #ifdef UNREALARENA
-		PM_SlideMove( gravity );
+		PM_SlideMove( gravity, stepSize );
 #else
 		if ( PM_SlideMove( gravity ) == 0 )
 		{
@@ -506,6 +673,15 @@ bool PM_StepSlideMove( bool gravity, bool predictive )
 
 		if ( !trace.allsolid )
 		{
+#ifdef UNREALARENA
+			// if the new position is falling then do nothing
+			if ( PM_CheckFallingFromLedge( trace.endpos ) )
+			{
+				VectorCopy( start_o, pm->ps->origin );
+
+				return stepped;
+			}
+#endif
 			VectorCopy( trace.endpos, pm->ps->origin );
 		}
 
